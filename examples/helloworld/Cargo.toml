@@ -1,0 +1,14 @@
+[package]
+name = "helloworld"
+version = "0.0.1"
+authors = ["John Millikin <john@john-millikin.com>"]
+license = "MIT/Apache-2.0"
+edition = "2018"
+
+[[bin]]
+name = "helloworld"
+path = "helloworld.rs"
+
+[dependencies]
+fuse = { version = "0.0.1", path = "../../fuse" }
+libc = "0.2"

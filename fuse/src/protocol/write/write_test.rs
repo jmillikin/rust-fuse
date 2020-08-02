@@ -1,0 +1,147 @@
+// Copyright 2020 John Millikin and the rust-fuse contributors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// SPDX-License-Identifier: Apache-2.0
+
+use crate::internal::testutil::MessageBuilder;
+use crate::protocol::prelude::*;
+
+use super::{WriteRequest, WriteResponse};
+
+const DUMMY_WRITE_FLAG: u32 = 0x80000000;
+
+#[test]
+fn request_v7p1() {
+	assert_eq!(
+		size_of::<super::fuse_write_in_v7p1>(),
+		fuse_kernel::FUSE_COMPAT_WRITE_IN_SIZE
+	);
+
+	let buf = MessageBuilder::new()
+		.set_opcode(fuse_kernel::FUSE_WRITE)
+		.push_sized(&super::fuse_write_in_v7p1 {
+			fh: 123,
+			offset: 45,
+			size: 12,
+			write_flags: 0,
+		})
+		.push_bytes(b"hello.world!")
+		.build_aligned();
+
+	let req: WriteRequest = decode_request!(buf, {
+		protocol_version: (7, 1),
+	});
+
+	assert_eq!(req.handle(), 123);
+	assert_eq!(req.offset(), 45);
+	assert_eq!(req.lock_owner(), None);
+	assert_eq!(req.page_cache(), false);
+	assert_eq!(req.flags(), 0);
+	assert_eq!(req.value(), b"hello.world!");
+}
+
+#[test]
+fn request_v7p9() {
+	let buf = MessageBuilder::new()
+		.set_opcode(fuse_kernel::FUSE_WRITE)
+		.push_sized(&fuse_kernel::fuse_write_in {
+			fh: 123,
+			offset: 45,
+			size: 12,
+			write_flags: 0,
+			lock_owner: 0,
+			flags: 67,
+			padding: 0,
+		})
+		.push_bytes(b"hello.world!")
+		.build_aligned();
+
+	let req: WriteRequest = decode_request!(buf, {
+		protocol_version: (7, 9),
+	});
+
+	assert_eq!(req.handle(), 123);
+	assert_eq!(req.offset(), 45);
+	assert_eq!(req.lock_owner(), None);
+	assert_eq!(req.page_cache(), false);
+	assert_eq!(req.flags(), 67);
+	assert_eq!(req.value(), b"hello.world!");
+}
+
+#[test]
+fn request_lock_owner() {
+	let buf = MessageBuilder::new()
+		.set_opcode(fuse_kernel::FUSE_WRITE)
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_WRITE;
+		})
+		.push_sized(&fuse_kernel::fuse_write_in {
+			fh: 0,
+			offset: 0,
+			size: 0,
+			write_flags: DUMMY_WRITE_FLAG | fuse_kernel::FUSE_WRITE_LOCKOWNER,
+			lock_owner: 123,
+			flags: 0,
+			padding: 0,
+		})
+		.build_aligned();
+
+	let req: WriteRequest = decode_request!(buf);
+
+	assert_eq!(req.lock_owner(), Some(123));
+}
+
+#[test]
+fn request_page_cache() {
+	let buf = MessageBuilder::new()
+		.set_opcode(fuse_kernel::FUSE_WRITE)
+		.push_sized(&fuse_kernel::fuse_write_in {
+			fh: 0,
+			offset: 0,
+			size: 0,
+			write_flags: DUMMY_WRITE_FLAG | fuse_kernel::FUSE_WRITE_CACHE,
+			lock_owner: 0,
+			flags: 0,
+			padding: 0,
+		})
+		.build_aligned();
+
+	let req: WriteRequest = decode_request!(buf);
+
+	assert_eq!(req.page_cache(), true);
+}
+
+#[test]
+fn response() {
+	let mut resp = WriteResponse::new();
+	resp.set_size(123);
+
+	let encoded = encode_response!(resp);
+
+	assert_eq!(
+		encoded,
+		MessageBuilder::new()
+			.push_sized(&fuse_kernel::fuse_out_header {
+				len: (size_of::<fuse_kernel::fuse_out_header>()
+					+ size_of::<fuse_kernel::fuse_write_out>()) as u32,
+				error: 0,
+				unique: 0,
+			})
+			.push_sized(&fuse_kernel::fuse_write_out {
+				size: 123,
+				padding: 0,
+			})
+			.build()
+	);
+}

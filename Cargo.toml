@@ -1,0 +1,6 @@
+[workspace]
+members = [
+	"fuse",
+	"examples/helloworld",
+	"examples/helloworld_async",
+]
