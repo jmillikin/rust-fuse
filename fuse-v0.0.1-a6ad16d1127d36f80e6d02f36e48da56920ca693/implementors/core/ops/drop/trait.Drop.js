@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["fuse"] = [{"text":"impl&lt;'_&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/ops/drop/trait.Drop.html\" title=\"trait core::ops::drop::Drop\">Drop</a> for <a class=\"struct\" href=\"fuse/protocol/struct.Dirent.html\" title=\"struct fuse::protocol::Dirent\">Dirent</a>&lt;'_&gt;","synthetic":false,"types":["fuse::protocol::readdir::Dirent"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
