@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use std::io;
+use core::num::NonZeroU16;
 use std::sync::Arc;
 
 use crate::internal::fuse_io;
@@ -59,7 +59,7 @@ mod private {
 /// **\[UNSTABLE\]** **\[SEALED\]**
 pub trait RespondOnce<Response>: private::Sealed + Send {
 	fn ok(self, response: &Response);
-	fn err(self, err: io::Error);
+	fn err(self, err: NonZeroU16);
 
 	fn into_box(self) -> Box<dyn RespondOnceBox<Response> + 'static>;
 }
@@ -67,7 +67,7 @@ pub trait RespondOnce<Response>: private::Sealed + Send {
 /// **\[UNSTABLE\]** **\[SEALED\]**
 pub trait RespondOnceBox<Response>: private::Sealed + Send {
 	fn ok(self: Box<Self>, response: &Response);
-	fn err(self: Box<Self>, err: io::Error);
+	fn err(self: Box<Self>, err: NonZeroU16);
 }
 
 // RespondOnceImpl {{{
@@ -91,16 +91,14 @@ impl<'a> RespondOnceImpl<'a> {
 		}
 	}
 
-	fn encoder(&self) -> fuse_io::ResponseEncoder<fuse_io::FileChannel> {
+	pub(crate) fn encoder(
+		&self,
+	) -> fuse_io::ResponseEncoder<fuse_io::FileChannel> {
 		fuse_io::ResponseEncoder::new(
 			self.channel,
 			self.request_id,
 			self.fuse_version,
 		)
-	}
-
-	pub(crate) fn err_impl(self, err: io::Error) {
-		self.encoder().encode_error(-err_code(err));
 	}
 }
 
@@ -114,8 +112,8 @@ where
 		response.encode_response(self.encoder());
 	}
 
-	fn err(self, err: io::Error) {
-		self.err_impl(err);
+	fn err(self, err: NonZeroU16) {
+		self.encoder().encode_error(err);
 	}
 
 	fn into_box(self) -> Box<dyn RespondOnceBox<Response> + 'static> {
@@ -157,18 +155,9 @@ where
 		response.encode_response(self.encoder());
 	}
 
-	fn err(self: Box<Self>, err: io::Error) {
-		self.encoder().encode_error(-err_code(err));
+	fn err(self: Box<Self>, err: NonZeroU16) {
+		self.encoder().encode_error(err);
 	}
 }
 
 // }}}
-
-fn err_code(err: io::Error) -> i32 {
-	match err.raw_os_error() {
-		Some(err_code) => err_code,
-		None => match err.kind() {
-			_ => libc::EIO,
-		},
-	}
-}

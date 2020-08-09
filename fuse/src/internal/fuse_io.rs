@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::num::NonZeroU16;
 use std::ffi::CStr;
 use std::io::{self, IoSlice, Read, Write};
 use std::mem::{align_of, size_of};
@@ -296,11 +297,11 @@ impl<'a, Chan> ResponseEncoder<'a, Chan> {
 }
 
 impl<Chan: Channel> ResponseEncoder<'_, Chan> {
-	pub(crate) fn encode_error(self, error_code: i32) -> io::Result<()> {
+	pub(crate) fn encode_error(self, err: NonZeroU16) -> io::Result<()> {
 		let len = size_of::<fuse_kernel::fuse_out_header>();
 		let out_hdr = fuse_kernel::fuse_out_header {
 			len: len as u32,
-			error: error_code,
+			error: -(err.get() as i32),
 			unique: self.request_id,
 		};
 		let out_hdr_buf: &[u8] = unsafe {

@@ -109,7 +109,7 @@ fn response() {
 	// value must fit in kernel buffer
 	{
 		let err = resp.set_value(&[255; 11]).unwrap_err();
-		assert_eq!(err.raw_os_error().unwrap(), libc::ERANGE);
+		assert_eq!(err.raw_os_error().unwrap(), errors::ERANGE.get() as i32);
 
 		assert!(resp.buf.is_empty());
 	}
@@ -154,7 +154,7 @@ fn response_detect_overflow() {
 	};
 
 	let err = resp.set_value(&buf).unwrap_err();
-	assert_eq!(err.raw_os_error().unwrap(), libc::ERANGE);
+	assert_eq!(err.raw_os_error().unwrap(), errors::ERANGE.get() as i32);
 
 	assert!(resp.buf.is_empty());
 }

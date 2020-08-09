@@ -10,6 +10,7 @@
 
 use std::io;
 
+use crate::internal::errors;
 use crate::protocol;
 use crate::server;
 
@@ -66,7 +67,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::AccessResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 
@@ -88,7 +89,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::BmapResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Create and open a file
@@ -119,7 +120,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::CreateResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	// **\[UNSTABLE\]** Allocate requested space. If this function returns success then
@@ -139,7 +140,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::FallocateResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Flush method
@@ -180,7 +181,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::FlushResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Forget about an inode
@@ -238,7 +239,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::FsyncResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Synchronize directory contents
@@ -262,7 +263,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::FsyncdirResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Get file attributes.
@@ -285,7 +286,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::GetattrResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Test for a POSIX file lock
@@ -298,7 +299,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::GetlkResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Get an extended attribute
@@ -325,7 +326,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::GetxattrResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Ioctl
@@ -363,7 +364,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::IoctlResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Create a hard link
@@ -376,7 +377,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::LinkResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** List extended attribute names
@@ -404,7 +405,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::ListxattrResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Look up a directory entry by name and get its attributes.
@@ -417,7 +418,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::LookupResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Find next data or hole after the specified offset
@@ -435,7 +436,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::LseekResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Create a directory
@@ -448,7 +449,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::MkdirResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Create file node
@@ -464,7 +465,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::MknodResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Open a file
@@ -522,7 +523,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::OpenResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Open a directory
@@ -546,7 +547,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::OpendirResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Read data
@@ -569,7 +570,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::ReadResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Read directory
@@ -611,7 +612,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::ReaddirResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Read symbolic link
@@ -624,7 +625,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::ReadlinkResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Release an open file
@@ -652,7 +653,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::ReleaseResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Release an open directory
@@ -671,7 +672,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::ReleasedirResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Remove an extended attribute
@@ -689,7 +690,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::RemovexattrResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Rename a file
@@ -720,7 +721,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::RenameResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Remove a directory
@@ -738,7 +739,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::RmdirResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Set file attributes
@@ -766,7 +767,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::SetattrResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Acquire, modify or release a POSIX file lock
@@ -789,7 +790,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::SetlkResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Set an extended attribute
@@ -807,7 +808,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::SetxattrResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Get file system statistics
@@ -820,7 +821,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::StatfsResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Create a symbolic link
@@ -833,7 +834,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::SymlinkResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Remove a file
@@ -851,7 +852,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::UnlinkResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
 
 	/// **\[UNSTABLE\]** Write data
@@ -876,10 +877,6 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::WriteResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(enosys());
+		respond.err(errors::ENOSYS);
 	}
-}
-
-fn enosys() -> std::io::Error {
-	std::io::Error::from_raw_os_error(libc::ENOSYS)
 }

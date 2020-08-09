@@ -64,7 +64,7 @@ fn response_sized() {
 	{
 		let cstring = CString::new("12345678901").unwrap();
 		let err = resp.push(&cstring).unwrap_err();
-		assert_eq!(err.raw_os_error().unwrap(), libc::ERANGE);
+		assert_eq!(err.raw_os_error().unwrap(), errors::ERANGE.get() as i32);
 
 		assert!(resp.buf.is_empty());
 		assert_eq!(resp.raw.size, 0);
@@ -160,5 +160,5 @@ fn response_detect_overflow() {
 	let big_cstr = unsafe { CStr::from_bytes_with_nul_unchecked(big_buf) };
 
 	let err = resp.push(&big_cstr).unwrap_err();
-	assert_eq!(err.raw_os_error().unwrap(), libc::ERANGE);
+	assert_eq!(err.raw_os_error().unwrap(), errors::ERANGE.get() as i32);
 }

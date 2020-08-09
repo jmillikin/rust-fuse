@@ -18,6 +18,7 @@ use std::io;
 use std::sync::{Arc, Mutex};
 
 use crate::fuse_handlers::FuseHandlers;
+use crate::internal::errors;
 use crate::internal::fuse_io::{
 	self,
 	AlignedBuffer,
@@ -247,7 +248,7 @@ impl<Handlers: FuseHandlers> FuseServerExecutor<Handlers> {
 			let request_size = match self.channel.read(self.read_buf.get_mut())
 			{
 				Err(err) => {
-					if err.raw_os_error() == Some(libc::ENODEV) {
+					if err.raw_os_error() == Some(errors::ENODEV.get() as i32) {
 						return Ok(());
 					} else {
 						return Err(err);
@@ -376,8 +377,7 @@ fn fuse_request_dispatch<Handlers: FuseHandlers>(
 			// handlers.unknown(ctx, &request);
 			// TODO: use ServerLogger to log the unknown request
 			let _ = request;
-			respond_once
-				.err_impl(std::io::Error::from_raw_os_error(libc::ENOSYS));
+			respond_once.encoder().encode_error(errors::ENOSYS);
 		},
 	}
 	Ok(())

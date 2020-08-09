@@ -124,7 +124,9 @@ impl<'a> ReadResponse<'a> {
 
 	pub fn set_value(&mut self, value: &'a [u8]) -> io::Result<()> {
 		if value.len() > self.request_size as usize {
-			return Err(io::Error::from_raw_os_error(libc::ERANGE));
+			return Err(io::Error::from_raw_os_error(
+				errors::ERANGE.get() as i32
+			));
 		}
 		self.buf = value;
 		Ok(())

@@ -121,7 +121,7 @@ fn response_noexist_v7p1() {
 		MessageBuilder::new()
 			.push_sized(&fuse_kernel::fuse_out_header {
 				len: size_of::<fuse_kernel::fuse_out_header>() as u32,
-				error: -libc::ENOENT,
+				error: -(errors::ENOENT.get() as i32),
 				unique: 0,
 			})
 			.build()

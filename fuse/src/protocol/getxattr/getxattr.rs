@@ -89,7 +89,9 @@ impl<'a> GetxattrResponse<'a> {
 
 	pub fn set_value(&mut self, value: &'a [u8]) -> io::Result<()> {
 		if value.len() > u32::MAX as usize {
-			return Err(io::Error::from_raw_os_error(libc::ERANGE));
+			return Err(io::Error::from_raw_os_error(
+				errors::ERANGE.get() as i32
+			));
 		}
 		let value_len = value.len() as u32;
 
@@ -99,7 +101,9 @@ impl<'a> GetxattrResponse<'a> {
 		}
 
 		if value_len > self.request_size {
-			return Err(io::Error::from_raw_os_error(libc::ERANGE));
+			return Err(io::Error::from_raw_os_error(
+				errors::ERANGE.get() as i32
+			));
 		}
 		self.raw.size = 0;
 		self.buf = value;

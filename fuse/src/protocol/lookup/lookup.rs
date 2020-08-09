@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::internal::errors;
 use crate::protocol::node;
 use crate::protocol::prelude::*;
 
@@ -106,7 +107,7 @@ impl fuse_io::EncodeResponse for LookupResponse<'_> {
 		// field and must be non-zero. FUSE v7.4 relaxed this so that a zero
 		// node ID was the same as returning ENOENT, but with a cache hint.
 		if self.raw.nodeid == 0 && enc.version().minor() < 4 {
-			return enc.encode_error(-libc::ENOENT);
+			return enc.encode_error(errors::ENOENT);
 		}
 
 		crate::protocol::common::encode_entry_out(enc, &self.raw)

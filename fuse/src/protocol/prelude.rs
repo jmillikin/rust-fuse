@@ -22,6 +22,7 @@ pub(crate) use std::mem::size_of;
 pub(crate) use std::time::Duration;
 pub(crate) use std::{cmp, fmt, io, mem, ptr, slice, time};
 
+pub(crate) use crate::internal::errors;
 pub(crate) use crate::internal::fuse_io;
 pub(crate) use crate::internal::fuse_kernel;
 

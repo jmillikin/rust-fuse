@@ -15,7 +15,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::ffi::CString;
-use std::{io, thread};
+use std::num::NonZeroU16;
+use std::thread;
 
 const HELLO_WORLD: &[u8] = b"Hello, world!\n";
 
@@ -207,12 +208,12 @@ impl fuse::FuseHandlers for HelloWorldFS {
 	}
 }
 
-fn err_not_found() -> io::Error {
-	io::Error::from_raw_os_error(libc::ENOENT)
+fn err_not_found() -> NonZeroU16 {
+	unsafe { NonZeroU16::new_unchecked(libc::ENOENT as u16) }
 }
 
-fn err_io() -> io::Error {
-	io::Error::from_raw_os_error(libc::EIO)
+fn err_io() -> NonZeroU16 {
+	unsafe { NonZeroU16::new_unchecked(libc::EIO as u16) }
 }
 
 fn getuid() -> u32 {

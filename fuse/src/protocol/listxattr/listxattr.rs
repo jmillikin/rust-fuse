@@ -87,7 +87,9 @@ impl ListxattrResponse<'_> {
 	pub fn push<'a>(&mut self, name: &'a CStr) -> io::Result<()> {
 		let bytes = name.to_bytes_with_nul();
 		if bytes.len() > u32::MAX as usize {
-			return Err(io::Error::from_raw_os_error(libc::ERANGE));
+			return Err(io::Error::from_raw_os_error(
+				errors::ERANGE.get() as i32
+			));
 		}
 		let bytes_len = bytes.len() as u32;
 
@@ -100,7 +102,9 @@ impl ListxattrResponse<'_> {
 
 		let new_buf_size = match old_buf_size.checked_add(bytes_len) {
 			Some(x) => Ok(x),
-			None => Err(io::Error::from_raw_os_error(libc::ERANGE)),
+			None => {
+				Err(io::Error::from_raw_os_error(errors::ERANGE.get() as i32))
+			},
 		}?;
 
 		if self.request_size == 0 {
@@ -109,7 +113,9 @@ impl ListxattrResponse<'_> {
 		}
 
 		if new_buf_size > self.request_size {
-			return Err(io::Error::from_raw_os_error(libc::ERANGE));
+			return Err(io::Error::from_raw_os_error(
+				errors::ERANGE.get() as i32
+			));
 		}
 		self.buf.extend_from_slice(bytes);
 		Ok(())

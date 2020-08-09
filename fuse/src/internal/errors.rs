@@ -14,22 +14,43 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-pub(crate) mod errors;
-pub(crate) mod fuse_io;
-pub(crate) mod types;
+use core::num::NonZeroU16;
 
-#[macro_use]
-mod fuse_kernel_util;
-
-#[allow(dead_code, non_camel_case_types)]
-#[path = "fuse_kernel.rs"]
-mod fuse_kernel_impl;
-
-pub(crate) mod fuse_kernel {
-	pub use super::fuse_kernel_impl::*;
-	pub use super::fuse_kernel_util::Opcode;
+macro_rules! error_numbers {
+	([ $( $name:ident , )* ]) => {
+		$(
+			pub(crate) const $name: NonZeroU16 = unsafe {
+				NonZeroU16::new_unchecked(target::$name)
+			};
+		)*
+	}
 }
 
-#[cfg(test)]
-#[macro_use]
-pub(crate) mod testutil;
+macro_rules! error_numbers_target {
+	($( $name:ident = $value:literal ; )*) => {
+		mod target {
+			$(
+				pub(super) const $name: u16 = $value;
+			)*
+		}
+	}
+}
+
+#[rustfmt::skip]
+error_numbers!([
+	ENODEV,
+	ENOENT,
+	ENOSYS,
+	ERANGE,
+]);
+
+#[cfg(all(
+	target_os = "linux",
+	any(target_arch = "x86", target_arch = "x86_64",),
+))]
+error_numbers_target! {
+	ENODEV = 19;
+	ENOENT = 2;
+	ENOSYS = 38;
+	ERANGE = 34;
+}
