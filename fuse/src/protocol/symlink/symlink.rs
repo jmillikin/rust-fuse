@@ -23,6 +23,7 @@ mod symlink_test;
 
 // SymlinkRequest {{{
 
+/// **\[UNSTABLE\]**
 pub struct SymlinkRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	old_name: &'a CStr,
@@ -64,6 +65,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for SymlinkRequest<'a> {
 
 // SymlinkResponse {{{
 
+/// **\[UNSTABLE\]**
 pub struct SymlinkResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_entry_out,

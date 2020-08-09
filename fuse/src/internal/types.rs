@@ -16,6 +16,7 @@
 
 use crate::internal::fuse_kernel;
 
+/// **\[UNSTABLE\]**
 #[derive(Clone, Copy, Debug)]
 pub struct ProtocolVersion {
 	major: u32,
@@ -28,6 +29,7 @@ impl ProtocolVersion {
 		minor: fuse_kernel::FUSE_KERNEL_MINOR_VERSION,
 	};
 
+	/// **\[UNSTABLE\]**
 	pub fn new(major: u32, minor: u32) -> Self {
 		ProtocolVersion { major, minor }
 	}

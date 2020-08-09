@@ -21,7 +21,7 @@ mod fuse_init_test;
 
 // FuseInitRequest {{{
 
-/// Request type for [`FuseHandlers::fuse_init`].
+/// **\[UNSTABLE\]** Request type for [`FuseHandlers::fuse_init`].
 ///
 /// [`FuseHandlers::fuse_init`]: ../trait.FuseHandlers.html#method.fuse_init
 #[derive(Debug)]
@@ -102,7 +102,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for FuseInitRequest {
 
 // FuseInitResponse {{{
 
-/// Response type for [`FuseHandlers::fuse_init`].
+/// **\[UNSTABLE\]** Response type for [`FuseHandlers::fuse_init`].
 ///
 /// [`FuseHandlers::fuse_init`]: ../trait.FuseHandlers.html#method.fuse_init
 pub struct FuseInitResponse {
@@ -262,6 +262,7 @@ impl fuse_io::EncodeResponse for FuseInitResponse {
 
 // FuseInitFlags {{{
 
+/// **\[UNSTABLE\]**
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct FuseInitFlag {
 	bits: u32,
@@ -386,6 +387,7 @@ impl fmt::Display for FuseInitFlag {
 	}
 }
 
+/// **\[UNSTABLE\]**
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct FuseInitFlags {
 	bits: u32,

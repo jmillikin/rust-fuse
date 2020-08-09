@@ -19,6 +19,7 @@ use crate::protocol::prelude::*;
 
 // UnknownRequest {{{
 
+/// **\[UNSTABLE\]**
 pub struct UnknownRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	body: &'a [u8],

@@ -23,6 +23,7 @@ mod link_test;
 
 // LinkRequest {{{
 
+/// **\[UNSTABLE\]**
 #[derive(Debug)]
 pub struct LinkRequest<'a> {
 	phantom: PhantomData<&'a ()>,
@@ -68,6 +69,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for LinkRequest<'a> {
 
 // LinkResponse {{{
 
+/// **\[UNSTABLE\]**
 pub struct LinkResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_entry_out,

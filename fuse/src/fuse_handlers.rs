@@ -27,7 +27,7 @@ use crate::server;
 /// [`ServerContext`]: struct.ServerContext.html
 /// [`ServerResponseWriter`]: struct.ServerResponseWriter.html
 pub trait FuseHandlers {
-	/// Initialize the FUSE connection parameters.
+	/// **\[UNSTABLE\]** Initialize the FUSE connection parameters.
 	///
 	/// Most servers do not need to override this method.
 	///
@@ -43,7 +43,7 @@ pub trait FuseHandlers {
 		Ok(protocol::FuseInitResponse::for_request(request))
 	}
 
-	/// Check file access permissions
+	/// **\[UNSTABLE\]** Check file access permissions
 	///
 	/// This will be called for the [`access(2)`] and [`chdir(2)`] system
 	/// calls.  If the `default_permissions` mount option is given,
@@ -57,6 +57,8 @@ pub trait FuseHandlers {
 	///
 	/// [`access(2)`]: http://pubs.opengroup.org/onlinepubs/9699919799/functions/access.html
 	/// [`chdir(2)`]: http://pubs.opengroup.org/onlinepubs/9699919799/functions/chdir.html
+	#[cfg(any(doc, feature = "unstable_fuse_access"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_access")))]
 	fn access(
 		&self,
 		ctx: server::ServerContext,
@@ -68,7 +70,7 @@ pub trait FuseHandlers {
 	}
 
 
-	/// Map block index within file to block index within device
+	/// **\[UNSTABLE\]** Map block index within file to block index within device
 	///
 	/// Note: This makes sense only for block device backed filesystems
 	/// mounted with the `blkdev` option
@@ -77,6 +79,8 @@ pub trait FuseHandlers {
 	/// treated as a permanent failure, i.e. all future `bmap()` requests will
 	/// fail with the same error code without being send to the filesystem
 	/// process.
+	#[cfg(any(doc, feature = "unstable_fuse_bmap"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_bmap")))]
 	fn bmap(
 		&self,
 		ctx: server::ServerContext,
@@ -87,7 +91,7 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Create and open a file
+	/// **\[UNSTABLE\]** Create and open a file
 	///
 	/// If the file does not exist, first create it with the specified
 	/// mode, and then open it.
@@ -106,6 +110,8 @@ pub trait FuseHandlers {
 	///
 	/// [`FuseHandlers::mknod`]: #method.mknod
 	/// [`FuseHandlers::open`]: #method.open
+	#[cfg(any(doc, feature = "unstable_fuse_create"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_create")))]
 	fn create(
 		&self,
 		ctx: server::ServerContext,
@@ -116,7 +122,7 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	// Allocate requested space. If this function returns success then
+	// **\[UNSTABLE\]** Allocate requested space. If this function returns success then
 	// subsequent writes to the specified range shall not fail due to the lack
 	// of free space on the file system storage media.
 	//
@@ -124,6 +130,8 @@ pub trait FuseHandlers {
 	// treated as a permanent failure with error code `EOPNOTSUPP`, i.e. all
 	// future `fallocate()` requests will fail with `EOPNOTSUPP` without being
 	// send to the filesystem process.
+	#[cfg(any(doc, feature = "unstable_fuse_fallocate"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_fallocate")))]
 	fn fallocate(
 		&self,
 		ctx: server::ServerContext,
@@ -134,7 +142,7 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Flush method
+	/// **\[UNSTABLE\]** Flush method
 	///
 	/// This is called on each `close()` of the opened file.
 	///
@@ -163,6 +171,8 @@ pub trait FuseHandlers {
 	/// process.
 	///
 	/// [close]: http://pubs.opengroup.org/onlinepubs/9699919799/functions/close.html
+	#[cfg(any(doc, feature = "unstable_fuse_flush"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_flush")))]
 	fn flush(
 		&self,
 		ctx: server::ServerContext,
@@ -173,7 +183,7 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Forget about an inode
+	/// **\[UNSTABLE\]** Forget about an inode
 	///
 	/// This function is called when the kernel removes an inode
 	/// from its internal caches.
@@ -200,6 +210,8 @@ pub trait FuseHandlers {
 	/// to zero. It is not guaranteed that the file system will
 	/// receive corresponding forget messages for the affected
 	/// inodes.
+	#[cfg(any(doc, feature = "unstable_fuse_forget"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_forget")))]
 	fn forget(
 		&self,
 		ctx: server::ServerContext,
@@ -208,7 +220,7 @@ pub trait FuseHandlers {
 		let _ = (ctx, request);
 	}
 
-	/// Synchronize file contents
+	/// **\[UNSTABLE\]** Synchronize file contents
 	///
 	/// If the datasync parameter is non-zero, then only the user data
 	/// should be flushed, not the meta data.
@@ -217,6 +229,8 @@ pub trait FuseHandlers {
 	/// this is treated as success and future calls to fsync() will
 	/// succeed automatically without being send to the filesystem
 	/// process.
+	#[cfg(any(doc, feature = "unstable_fuse_fsync"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_fsync")))]
 	fn fsync(
 		&self,
 		ctx: server::ServerContext,
@@ -227,7 +241,7 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Synchronize directory contents
+	/// **\[UNSTABLE\]** Synchronize directory contents
 	///
 	/// If the datasync parameter is non-zero, then only the directory
 	/// contents should be flushed, not the meta data.
@@ -239,6 +253,8 @@ pub trait FuseHandlers {
 	/// this is treated as success and future calls to fsyncdir() will
 	/// succeed automatically without being send to the filesystem
 	/// process.
+	#[cfg(any(doc, feature = "unstable_fuse_fsyncdir"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_fsyncdir")))]
 	fn fsyncdir(
 		&self,
 		ctx: server::ServerContext,
@@ -248,9 +264,8 @@ pub trait FuseHandlers {
 		let _ = (ctx, request);
 		respond.err(enosys());
 	}
-	////
 
-	/// Get file attributes.
+	/// **\[UNSTABLE\]** Get file attributes.
 	///
 	/// If writeback caching is enabled, the kernel may have a
 	/// better idea of a file's length than the FUSE file system
@@ -261,6 +276,8 @@ pub trait FuseHandlers {
 	/// will be ignored.
 	///
 	/// [`NodeAttr::size`]: protocol/struct.NodeAttr.html#method.size
+	#[cfg(any(doc, feature = "unstable_fuse_getattr"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_getattr")))]
 	fn getattr(
 		&self,
 		ctx: server::ServerContext,
@@ -271,7 +288,9 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Test for a POSIX file lock
+	/// **\[UNSTABLE\]** Test for a POSIX file lock
+	#[cfg(any(doc, feature = "unstable_fuse_getlk"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_getlk")))]
 	fn getlk(
 		&self,
 		ctx: server::ServerContext,
@@ -282,7 +301,7 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Get an extended attribute
+	/// **\[UNSTABLE\]** Get an extended attribute
 	///
 	/// If size is zero, the size of the value should be sent with
 	/// fuse_reply_xattr.
@@ -297,6 +316,8 @@ pub trait FuseHandlers {
 	/// treated as a permanent failure with error code EOPNOTSUPP, i.e. all
 	/// future getxattr() requests will fail with EOPNOTSUPP without being
 	/// send to the filesystem process.
+	#[cfg(any(doc, feature = "unstable_fuse_getxattr"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_getxattr")))]
 	fn getxattr(
 		&self,
 		ctx: server::ServerContext,
@@ -307,7 +328,7 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Ioctl
+	/// **\[UNSTABLE\]** Ioctl
 	///
 	/// Note: For unrestricted ioctls (not allowed for FUSE
 	/// servers), data in and out areas can be discovered by giving
@@ -333,6 +354,8 @@ pub trait FuseHandlers {
 	///
 	/// Note : the unsigned long request submitted by the application
 	/// is truncated to 32 bits.
+	#[cfg(any(doc, feature = "unstable_fuse_ioctl"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_ioctl")))]
 	fn ioctl(
 		&self,
 		ctx: server::ServerContext,
@@ -343,7 +366,9 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Create a hard link
+	/// **\[UNSTABLE\]** Create a hard link
+	#[cfg(any(doc, feature = "unstable_fuse_link"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_link")))]
 	fn link(
 		&self,
 		ctx: server::ServerContext,
@@ -354,7 +379,7 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// List extended attribute names
+	/// **\[UNSTABLE\]** List extended attribute names
 	///
 	/// If size is zero, the total size of the attribute list should be
 	/// sent with fuse_reply_xattr.
@@ -370,6 +395,8 @@ pub trait FuseHandlers {
 	/// treated as a permanent failure with error code EOPNOTSUPP, i.e. all
 	/// future listxattr() requests will fail with EOPNOTSUPP without being
 	/// send to the filesystem process.
+	#[cfg(any(doc, feature = "unstable_fuse_listxattr"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_listxattr")))]
 	fn listxattr(
 		&self,
 		ctx: server::ServerContext,
@@ -380,7 +407,9 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Look up a directory entry by name and get its attributes.
+	/// **\[UNSTABLE\]** Look up a directory entry by name and get its attributes.
+	#[cfg(any(doc, feature = "unstable_fuse_lookup"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_lookup")))]
 	fn lookup(
 		&self,
 		ctx: server::ServerContext,
@@ -391,12 +420,14 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Find next data or hole after the specified offset
+	/// **\[UNSTABLE\]** Find next data or hole after the specified offset
 	///
 	/// If this request is answered with an error code of ENOSYS, this is
 	/// treated as a permanent failure, i.e. all future lseek() requests will
 	/// fail with the same error code without being send to the filesystem
 	/// process.
+	#[cfg(any(doc, feature = "unstable_fuse_lseek"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_lseek")))]
 	fn lseek(
 		&self,
 		ctx: server::ServerContext,
@@ -407,7 +438,9 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Create a directory
+	/// **\[UNSTABLE\]** Create a directory
+	#[cfg(any(doc, feature = "unstable_fuse_mkdir"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_mkdir")))]
 	fn mkdir(
 		&self,
 		ctx: server::ServerContext,
@@ -418,10 +451,12 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Create file node
+	/// **\[UNSTABLE\]** Create file node
 	///
 	/// Create a regular file, character device, block device, fifo or
 	/// socket node.
+	#[cfg(any(doc, feature = "unstable_fuse_mknod"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_mknod")))]
 	fn mknod(
 		&self,
 		ctx: server::ServerContext,
@@ -432,7 +467,7 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Open a file
+	/// **\[UNSTABLE\]** Open a file
 	///
 	/// Open flags are available in fi->flags. The following rules
 	/// apply.
@@ -478,6 +513,8 @@ pub trait FuseHandlers {
 	/// `fuse_conn_info.capable`, this is treated as success and
 	/// future calls to open and release will also succeed without being
 	/// sent to the filesystem process.
+	#[cfg(any(doc, feature = "unstable_fuse_open"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_open")))]
 	fn open(
 		&self,
 		ctx: server::ServerContext,
@@ -488,7 +525,7 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Open a directory
+	/// **\[UNSTABLE\]** Open a directory
 	///
 	/// Filesystem may store an arbitrary file handle (pointer, index,
 	/// etc) in fi->fh, and use this in other all other directory
@@ -500,6 +537,8 @@ pub trait FuseHandlers {
 	/// releasedir will also succeed without being sent to the filesystem
 	/// process. In addition, the kernel will cache readdir results
 	/// as if opendir returned FOPEN_KEEP_CACHE | FOPEN_CACHE_DIR.
+	#[cfg(any(doc, feature = "unstable_fuse_opendir"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_opendir")))]
 	fn opendir(
 		&self,
 		ctx: server::ServerContext,
@@ -510,7 +549,7 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Read data
+	/// **\[UNSTABLE\]** Read data
 	///
 	/// Read should send exactly the number of bytes requested except
 	/// on EOF or error, otherwise the rest of the data will be
@@ -521,6 +560,8 @@ pub trait FuseHandlers {
 	///
 	/// fi->fh will contain the value set by the open method, or will
 	/// be undefined if the open method didn't set any value.
+	#[cfg(any(doc, feature = "unstable_fuse_read"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_read")))]
 	fn read(
 		&self,
 		ctx: server::ServerContext,
@@ -531,7 +572,7 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Read directory
+	/// **\[UNSTABLE\]** Read directory
 	///
 	/// Send a buffer filled using fuse_add_direntry(), with size not
 	/// exceeding the requested size.  Send an empty buffer on end of
@@ -561,6 +602,8 @@ pub trait FuseHandlers {
 	/// entries, but is allowed to do so. Note that, if readdir does
 	/// not return '.' or '..', they will not be implicitly returned,
 	/// and this behavior is observable by the caller.
+	#[cfg(any(doc, feature = "unstable_fuse_readdir"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_readdir")))]
 	fn readdir(
 		&self,
 		ctx: server::ServerContext,
@@ -571,7 +614,9 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Read symbolic link
+	/// **\[UNSTABLE\]** Read symbolic link
+	#[cfg(any(doc, feature = "unstable_fuse_readlink"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_readlink")))]
 	fn readlink(
 		&self,
 		ctx: server::ServerContext,
@@ -582,7 +627,7 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Release an open file
+	/// **\[UNSTABLE\]** Release an open file
 	///
 	/// Release is called when there are no more references to an open
 	/// file: all file descriptors are closed and all memory mappings
@@ -598,6 +643,8 @@ pub trait FuseHandlers {
 	/// fi->fh will contain the value set by the open method, or will
 	/// be undefined if the open method didn't set any value.
 	/// fi->flags will contain the same flags as for open.
+	#[cfg(any(doc, feature = "unstable_fuse_release"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_release")))]
 	fn release(
 		&self,
 		ctx: server::ServerContext,
@@ -608,13 +655,15 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Release an open directory
+	/// **\[UNSTABLE\]** Release an open directory
 	///
 	/// For every opendir call there will be exactly one releasedir
 	/// call (unless the filesystem is force-unmounted).
 	///
 	/// fi->fh will contain the value set by the opendir method, or
 	/// will be undefined if the opendir method didn't set any value.
+	#[cfg(any(doc, feature = "unstable_fuse_releasedir"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_releasedir")))]
 	fn releasedir(
 		&self,
 		ctx: server::ServerContext,
@@ -625,12 +674,14 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Remove an extended attribute
+	/// **\[UNSTABLE\]** Remove an extended attribute
 	///
 	/// If this request is answered with an error code of ENOSYS, this is
 	/// treated as a permanent failure with error code EOPNOTSUPP, i.e. all
 	/// future removexattr() requests will fail with EOPNOTSUPP without being
 	/// send to the filesystem process.
+	#[cfg(any(doc, feature = "unstable_fuse_removexattr"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_removexattr")))]
 	fn removexattr(
 		&self,
 		ctx: server::ServerContext,
@@ -641,7 +692,7 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Rename a file
+	/// **\[UNSTABLE\]** Rename a file
 	///
 	/// If the target exists it should be atomically replaced. If
 	/// the target's inode's lookup count is non-zero, the file
@@ -660,6 +711,8 @@ pub trait FuseHandlers {
 	/// instead. If `RENAME_EXCHANGE` is specified, the filesystem
 	/// must atomically exchange the two files, i.e. both must
 	/// exist and neither may be deleted.
+	#[cfg(any(doc, feature = "unstable_fuse_rename"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_rename")))]
 	fn rename(
 		&self,
 		ctx: server::ServerContext,
@@ -670,12 +723,14 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Remove a directory
+	/// **\[UNSTABLE\]** Remove a directory
 	///
 	/// If the directory's inode's lookup count is non-zero, the
 	/// file system is expected to postpone any removal of the
 	/// inode until the lookup count reaches zero (see description
 	/// of the forget function).
+	#[cfg(any(doc, feature = "unstable_fuse_rmdir"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_rmdir")))]
 	fn rmdir(
 		&self,
 		ctx: server::ServerContext,
@@ -686,7 +741,7 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Set file attributes
+	/// **\[UNSTABLE\]** Set file attributes
 	///
 	/// In the 'attr' argument only members indicated by the 'to_set'
 	/// bitmask contain valid values.  Other members contain undefined
@@ -702,6 +757,8 @@ pub trait FuseHandlers {
 	/// if the open method didn't set any value.  Otherwise (not
 	/// ftruncate call, or kernel version earlier than 2.6.15) the fi
 	/// parameter will be NULL.
+	#[cfg(any(doc, feature = "unstable_fuse_setattr"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_setattr")))]
 	fn setattr(
 		&self,
 		ctx: server::ServerContext,
@@ -712,7 +769,7 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Acquire, modify or release a POSIX file lock
+	/// **\[UNSTABLE\]** Acquire, modify or release a POSIX file lock
 	///
 	/// For POSIX threads (NPTL) there's a 1-1 relation between pid and
 	/// owner, but otherwise this is not always the case.  For checking
@@ -723,6 +780,8 @@ pub trait FuseHandlers {
 	/// Note: if the locking methods are not implemented, the kernel
 	/// will still allow file locking to work locally.  Hence these are
 	/// only interesting for network filesystems and similar.
+	#[cfg(any(doc, feature = "unstable_fuse_setlk"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_setlk")))]
 	fn setlk(
 		&self,
 		ctx: server::ServerContext,
@@ -733,12 +792,14 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Set an extended attribute
+	/// **\[UNSTABLE\]** Set an extended attribute
 	///
 	/// If this request is answered with an error code of ENOSYS, this is
 	/// treated as a permanent failure with error code EOPNOTSUPP, i.e. all
 	/// future setxattr() requests will fail with EOPNOTSUPP without being
 	/// send to the filesystem process.
+	#[cfg(any(doc, feature = "unstable_fuse_setxattr"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_setxattr")))]
 	fn setxattr(
 		&self,
 		ctx: server::ServerContext,
@@ -749,7 +810,9 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Get file system statistics
+	/// **\[UNSTABLE\]** Get file system statistics
+	#[cfg(any(doc, feature = "unstable_fuse_statfs"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_statfs")))]
 	fn statfs(
 		&self,
 		ctx: server::ServerContext,
@@ -760,7 +823,9 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Create a symbolic link
+	/// **\[UNSTABLE\]** Create a symbolic link
+	#[cfg(any(doc, feature = "unstable_fuse_symlink"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_symlink")))]
 	fn symlink(
 		&self,
 		ctx: server::ServerContext,
@@ -771,12 +836,14 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Remove a file
+	/// **\[UNSTABLE\]** Remove a file
 	///
 	/// If the file's inode's lookup count is non-zero, the file
 	/// system is expected to postpone any removal of the inode
 	/// until the lookup count reaches zero (see description of the
 	/// forget function).
+	#[cfg(any(doc, feature = "unstable_fuse_unlink"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_unlink")))]
 	fn unlink(
 		&self,
 		ctx: server::ServerContext,
@@ -787,7 +854,7 @@ pub trait FuseHandlers {
 		respond.err(enosys());
 	}
 
-	/// Write data
+	/// **\[UNSTABLE\]** Write data
 	///
 	/// Write should return exactly the number of bytes requested
 	/// except on error.  An exception to this is when the file has
@@ -800,6 +867,8 @@ pub trait FuseHandlers {
 	///
 	/// fi->fh will contain the value set by the open method, or will
 	/// be undefined if the open method didn't set any value.
+	#[cfg(any(doc, feature = "unstable_fuse_write"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_write")))]
 	fn write(
 		&self,
 		ctx: server::ServerContext,

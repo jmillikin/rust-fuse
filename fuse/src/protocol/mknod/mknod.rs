@@ -23,6 +23,7 @@ mod mknod_test;
 
 // MknodRequest {{{
 
+/// **\[UNSTABLE\]**
 pub struct MknodRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	name: &'a CStr,
@@ -94,6 +95,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for MknodRequest<'a> {
 
 // MknodResponse {{{
 
+/// **\[UNSTABLE\]**
 pub struct MknodResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_entry_out,

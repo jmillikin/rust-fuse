@@ -22,6 +22,7 @@ mod releasedir_test;
 
 // ReleasedirRequest {{{
 
+/// **\[UNSTABLE\]**
 pub struct ReleasedirRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	raw: fuse_kernel::fuse_release_in,
@@ -79,6 +80,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReleasedirRequest<'a> {
 
 // ReleasedirResponse {{{
 
+/// **\[UNSTABLE\]**
 pub struct ReleasedirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }

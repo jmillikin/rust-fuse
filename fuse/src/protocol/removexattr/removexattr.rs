@@ -21,6 +21,7 @@ mod removexattr_test;
 
 // RemovexattrRequest {{{
 
+/// **\[UNSTABLE\]**
 pub struct RemovexattrRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	name: &'a CStr,
@@ -52,6 +53,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for RemovexattrRequest<'a> {
 
 // RemovexattrResponse {{{
 
+/// **\[UNSTABLE\]**
 pub struct RemovexattrResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }

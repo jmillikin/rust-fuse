@@ -25,6 +25,7 @@ use std::{fs, io};
 use libc::c_ulong;
 use libc::c_void;
 
+/// **\[UNSTABLE\]**
 pub struct FuseMountOptions {
 	device_path: PathBuf,
 	mount_source: String,
@@ -125,6 +126,7 @@ impl FuseMountOptions {
 	}
 }
 
+/// **\[UNSTABLE\]**
 pub struct FuseMount {
 	mount_target: PathBuf,
 }
@@ -132,6 +134,7 @@ pub struct FuseMount {
 impl crate::FuseMount for FuseMount {
 	type Options = FuseMountOptions;
 
+	#[doc(hidden)]
 	fn mount(
 		mount_target: &std::path::Path,
 		options: Option<Self::Options>,
@@ -177,6 +180,7 @@ impl crate::FuseMount for FuseMount {
 		))
 	}
 
+	#[doc(hidden)]
 	fn unmount(self) -> io::Result<()> {
 		println!("Linux unmount not implemented yet");
 		let _ = self.mount_target;

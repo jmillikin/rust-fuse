@@ -23,6 +23,7 @@ mod readdir_test;
 
 // ReaddirRequest {{{
 
+/// **\[UNSTABLE\]**
 pub struct ReaddirRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	raw: fuse_kernel::fuse_read_in,
@@ -109,6 +110,7 @@ pub const FUSE_NAME_MAX: usize = FUSE_NAME_MAX_CFG_FREEBSD;
 
 const MAX_RESPONSE_SIZE: usize = 4096;
 
+/// **\[UNSTABLE\]**
 pub struct ReaddirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	opcode: fuse_kernel::Opcode,
@@ -252,6 +254,7 @@ impl fuse_io::EncodeResponse for ReaddirResponse<'_> {
 
 // Dirent {{{
 
+/// **\[UNSTABLE\]**
 pub struct Dirent<'a> {
 	node_id: node::NodeId,
 	node: Option<&'a mut node::Node>,

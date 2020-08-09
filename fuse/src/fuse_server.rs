@@ -29,6 +29,7 @@ use crate::internal::fuse_kernel;
 use crate::protocol;
 use crate::server;
 
+/// **\[UNSTABLE\]**
 pub struct FuseServer<Handlers, Mount> {
 	fuse_device: fuse_io::FileChannel,
 	mount: Mount,
@@ -71,16 +72,19 @@ impl<Handlers, Mount> FuseServer<Handlers, Mount>
 where
 	Mount: FuseMount,
 {
+	/// **\[UNSTABLE\]**
 	pub fn unmount(self) -> io::Result<()> {
 		self.mount.unmount()
 	}
 }
 
 impl<Handlers, Mount> FuseServer<Handlers, Mount> {
+	/// **\[UNSTABLE\]**
 	pub fn executor(&self) -> &Arc<Mutex<FuseServerExecutor<Handlers>>> {
 		&self.executor
 	}
 
+	#[doc(hidden)]
 	pub fn new_executor(&self) -> io::Result<FuseServerExecutor<Handlers>> {
 		let _ = self.fuse_device;
 		let _ = self.handlers;
@@ -146,21 +150,26 @@ where
 	}
 }
 
+/// **\[UNSTABLE\]**
 pub trait FuseMountOptions {
 	type Mount: FuseMount;
 }
 
+/// **\[UNSTABLE\]**
 pub trait FuseMount: Sized {
 	type Options: FuseMountOptions;
 
+	#[doc(hidden)]
 	fn mount(
 		mount_target: &std::path::Path,
 		options: Option<Self::Options>,
 	) -> io::Result<(std::fs::File, Self)>;
 
+	#[doc(hidden)]
 	fn unmount(self) -> io::Result<()>;
 }
 
+/// **\[UNSTABLE\]**
 pub struct FuseServerBuilder<Handlers, MountOptions> {
 	handlers: Handlers,
 	mount_options: Option<MountOptions>,
@@ -171,6 +180,7 @@ where
 	Handlers: FuseHandlers,
 	MountOptions: FuseMountOptions,
 {
+	/// **\[UNSTABLE\]**
 	pub fn new(handlers: Handlers) -> Self {
 		Self {
 			mount_options: None,
@@ -178,11 +188,13 @@ where
 		}
 	}
 
+	/// **\[UNSTABLE\]**
 	pub fn set_mount_options(mut self, mount_options: MountOptions) -> Self {
 		self.mount_options = Some(mount_options);
 		self
 	}
 
+	/// **\[UNSTABLE\]**
 	pub fn mount<Mount, Path>(
 		self,
 		mount_target: Path,
@@ -205,6 +217,7 @@ where
 	}
 }
 
+/// **\[UNSTABLE\]**
 pub struct FuseServerExecutor<Handlers> {
 	channel: Arc<fuse_io::FileChannel>,
 	handlers: Arc<Handlers>,
@@ -227,6 +240,7 @@ impl<Handlers: FuseHandlers> FuseServerExecutor<Handlers> {
 		}
 	}
 
+	/// **\[UNSTABLE\]**
 	pub fn run(&mut self) -> io::Result<()> {
 		let handlers = &*self.handlers;
 		loop {
@@ -274,45 +288,82 @@ fn fuse_request_dispatch<Handlers: FuseHandlers>(
 	}
 
 	match header.opcode {
+		#[cfg(feature = "unstable_fuse_access")]
 		fuse_kernel::FUSE_ACCESS => do_dispatch!(access),
+		#[cfg(feature = "unstable_fuse_bmap")]
 		fuse_kernel::FUSE_BMAP => do_dispatch!(bmap),
+		#[cfg(feature = "unstable_fuse_create")]
 		fuse_kernel::FUSE_CREATE => do_dispatch!(create),
+		#[cfg(feature = "unstable_fuse_fallocate")]
 		fuse_kernel::FUSE_FALLOCATE => do_dispatch!(fallocate),
+		#[cfg(feature = "unstable_fuse_flush")]
 		fuse_kernel::FUSE_FLUSH => do_dispatch!(flush),
-		fuse_kernel::FUSE_FORGET => {
+		#[cfg(feature = "unstable_fuse_forget")]
+		fuse_kernel::FUSE_FORGET | fuse_kernel::FUSE_BATCH_FORGET => {
 			let request = DecodeRequest::decode_request(request_decoder)?;
 			handlers.forget(ctx, &request);
 		},
+		#[cfg(feature = "unstable_fuse_fsync")]
 		fuse_kernel::FUSE_FSYNC => do_dispatch!(fsync),
+		#[cfg(feature = "unstable_fuse_fsyncdir")]
 		fuse_kernel::FUSE_FSYNCDIR => do_dispatch!(fsyncdir),
+		#[cfg(feature = "unstable_fuse_getattr")]
 		fuse_kernel::FUSE_GETATTR => do_dispatch!(getattr),
+		#[cfg(feature = "unstable_fuse_getlk")]
 		fuse_kernel::FUSE_GETLK => do_dispatch!(getlk),
+		#[cfg(feature = "unstable_fuse_getxattr")]
 		fuse_kernel::FUSE_GETXATTR => do_dispatch!(getxattr),
+		#[cfg(feature = "unstable_fuse_ioctl")]
 		fuse_kernel::FUSE_IOCTL => do_dispatch!(ioctl),
+		#[cfg(feature = "unstable_fuse_link")]
 		fuse_kernel::FUSE_LINK => do_dispatch!(link),
+		#[cfg(feature = "unstable_fuse_listxattr")]
 		fuse_kernel::FUSE_LISTXATTR => do_dispatch!(listxattr),
+		#[cfg(feature = "unstable_fuse_lookup")]
 		fuse_kernel::FUSE_LOOKUP => do_dispatch!(lookup),
+		#[cfg(feature = "unstable_fuse_lseek")]
 		fuse_kernel::FUSE_LSEEK => do_dispatch!(lseek),
+		#[cfg(feature = "unstable_fuse_mkdir")]
 		fuse_kernel::FUSE_MKDIR => do_dispatch!(mkdir),
+		#[cfg(feature = "unstable_fuse_mknod")]
 		fuse_kernel::FUSE_MKNOD => do_dispatch!(mknod),
+		#[cfg(feature = "unstable_fuse_open")]
 		fuse_kernel::FUSE_OPEN => do_dispatch!(open),
+		#[cfg(feature = "unstable_fuse_opendir")]
 		fuse_kernel::FUSE_OPENDIR => do_dispatch!(opendir),
+		#[cfg(feature = "unstable_fuse_read")]
 		fuse_kernel::FUSE_READ => do_dispatch!(read),
+		#[cfg(feature = "unstable_fuse_readdir")]
 		fuse_kernel::FUSE_READDIR => do_dispatch!(readdir),
+		#[cfg(feature = "unstable_fuse_readdir")]
 		fuse_kernel::FUSE_READDIRPLUS => do_dispatch!(readdir),
+		#[cfg(feature = "unstable_fuse_readlink")]
 		fuse_kernel::FUSE_READLINK => do_dispatch!(readlink),
+		#[cfg(feature = "unstable_fuse_release")]
 		fuse_kernel::FUSE_RELEASE => do_dispatch!(release),
+		#[cfg(feature = "unstable_fuse_releasedir")]
 		fuse_kernel::FUSE_RELEASEDIR => do_dispatch!(releasedir),
+		#[cfg(feature = "unstable_fuse_removexattr")]
 		fuse_kernel::FUSE_REMOVEXATTR => do_dispatch!(removexattr),
+		#[cfg(feature = "unstable_fuse_rename")]
 		fuse_kernel::FUSE_RENAME => do_dispatch!(rename),
+		#[cfg(feature = "unstable_fuse_rename")]
 		fuse_kernel::FUSE_RENAME2 => do_dispatch!(rename),
+		#[cfg(feature = "unstable_fuse_rmdir")]
 		fuse_kernel::FUSE_RMDIR => do_dispatch!(rmdir),
+		#[cfg(feature = "unstable_fuse_setattr")]
 		fuse_kernel::FUSE_SETATTR => do_dispatch!(setattr),
+		#[cfg(feature = "unstable_fuse_setlk")]
 		fuse_kernel::FUSE_SETLK => do_dispatch!(setlk),
+		#[cfg(feature = "unstable_fuse_setxattr")]
 		fuse_kernel::FUSE_SETXATTR => do_dispatch!(setxattr),
+		#[cfg(feature = "unstable_fuse_statfs")]
 		fuse_kernel::FUSE_STATFS => do_dispatch!(statfs),
+		#[cfg(feature = "unstable_fuse_symlink")]
 		fuse_kernel::FUSE_SYMLINK => do_dispatch!(symlink),
+		#[cfg(feature = "unstable_fuse_unlink")]
 		fuse_kernel::FUSE_UNLINK => do_dispatch!(unlink),
+		#[cfg(feature = "unstable_fuse_write")]
 		fuse_kernel::FUSE_WRITE => do_dispatch!(write),
 		_ => {
 			let request =

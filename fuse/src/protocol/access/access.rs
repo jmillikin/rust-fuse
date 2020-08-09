@@ -22,7 +22,7 @@ mod access_test;
 
 // AccessRequest {{{
 
-/// Request type for [`FuseHandlers::access`].
+/// **\[UNSTABLE\]** Request type for [`FuseHandlers::access`].
 ///
 /// [`FuseHandlers::access`]: ../trait.FuseHandlers.html#method.access
 #[derive(Debug)]
@@ -60,7 +60,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for AccessRequest {
 
 // AccessResponse {{{
 
-/// Response type for [`FuseHandlers::access`].
+/// **\[UNSTABLE\]** Response type for [`FuseHandlers::access`].
 ///
 /// [`FuseHandlers::access`]: ../trait.FuseHandlers.html#method.access
 pub struct AccessResponse<'a> {

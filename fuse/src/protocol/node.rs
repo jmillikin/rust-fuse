@@ -22,6 +22,7 @@ use crate::internal::fuse_kernel;
 
 // NodeId {{{
 
+/// **\[UNSTABLE\]**
 #[repr(C)]
 #[derive(Eq, PartialEq, Clone, Copy)]
 pub struct NodeId(NonZeroU64);
@@ -73,6 +74,7 @@ impl fmt::UpperHex for NodeId {
 
 // NodeKind {{{
 
+/// **\[UNSTABLE\]**
 #[derive(Eq, PartialEq, Clone, Copy)]
 pub struct NodeKind(u32);
 
@@ -151,6 +153,7 @@ impl fmt::UpperHex for NodeKind {
 
 // NodeAttr {{{
 
+/// **\[UNSTABLE\]**
 pub struct NodeAttr(fuse_kernel::fuse_attr);
 
 impl NodeAttr {
@@ -254,6 +257,7 @@ impl fmt::Debug for NodeAttr {
 
 // Node {{{
 
+/// **\[UNSTABLE\]**
 pub struct Node(fuse_kernel::fuse_entry_out);
 
 impl Node {

@@ -18,6 +18,7 @@ use crate::protocol::prelude::*;
 
 // BmapRequest {{{
 
+/// **\[UNSTABLE\]**
 pub struct BmapRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	raw: &'a fuse_kernel::fuse_bmap_in,
@@ -52,6 +53,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for BmapRequest<'a> {
 
 // BmapResponse {{{
 
+/// **\[UNSTABLE\]**
 pub struct BmapResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_bmap_out,

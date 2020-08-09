@@ -21,6 +21,7 @@ mod read_test;
 
 // ReadRequest {{{
 
+/// **\[UNSTABLE\]**
 pub struct ReadRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	handle: u64,
@@ -106,6 +107,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReadRequest<'a> {
 
 // ReadResponse {{{
 
+/// **\[UNSTABLE\]**
 pub struct ReadResponse<'a> {
 	request_size: u32,
 	buf: &'a [u8],

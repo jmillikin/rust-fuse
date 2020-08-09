@@ -18,6 +18,7 @@ use crate::protocol::prelude::*;
 
 // LseekRequest {{{
 
+/// **\[UNSTABLE\]**
 pub struct LseekRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	raw: &'a fuse_kernel::fuse_lseek_in,
@@ -61,6 +62,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for LseekRequest<'a> {
 
 // LseekResponse {{{
 
+/// **\[UNSTABLE\]**
 pub struct LseekResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_lseek_out,

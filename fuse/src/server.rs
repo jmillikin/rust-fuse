@@ -20,6 +20,7 @@ use std::sync::Arc;
 use crate::internal::fuse_io;
 use crate::internal::fuse_kernel;
 
+/// **\[UNSTABLE\]**
 pub struct ServerContext {
 	header: fuse_kernel::fuse_in_header,
 }
@@ -45,8 +46,9 @@ impl<'a> ServerContext {
 		self.header.pid
 	}
 
-	pub fn interrupted(&self) -> bool {
-		todo!()
+	#[doc(hidden)]
+	pub fn is_interrupted(&self) -> bool {
+		todo!("ServerContext::is_interrupted")
 	}
 }
 
@@ -54,6 +56,7 @@ mod private {
 	pub trait Sealed {}
 }
 
+/// **\[UNSTABLE\]** **\[SEALED\]**
 pub trait RespondOnce<Response>: private::Sealed + Send {
 	fn ok(self, response: &Response);
 	fn err(self, err: io::Error);
@@ -61,6 +64,7 @@ pub trait RespondOnce<Response>: private::Sealed + Send {
 	fn into_box(self) -> Box<dyn RespondOnceBox<Response> + 'static>;
 }
 
+/// **\[UNSTABLE\]** **\[SEALED\]**
 pub trait RespondOnceBox<Response>: private::Sealed + Send {
 	fn ok(self: Box<Self>, response: &Response);
 	fn err(self: Box<Self>, err: io::Error);

@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#![cfg_attr(doc, feature(doc_cfg))]
+
 extern crate libc;
 
 #[macro_use]
@@ -31,6 +33,8 @@ pub use self::server::*;
 pub use crate::internal::types::ProtocolVersion;
 
 pub mod os {
+	#[cfg(any(target_os = "linux", doc))]
+	#[cfg_attr(doc, doc(cfg(target_os = "linux")))]
 	pub mod linux {
 		mod linux_mount_options;
 		pub use self::linux_mount_options::*;

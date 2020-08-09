@@ -22,6 +22,7 @@ mod opendir_test;
 
 // OpendirRequest {{{
 
+/// **\[UNSTABLE\]**
 pub struct OpendirRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: node::NodeId,
@@ -58,6 +59,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for OpendirRequest<'a> {
 
 // OpendirResponse {{{
 
+/// **\[UNSTABLE\]**
 pub struct OpendirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_open_out,

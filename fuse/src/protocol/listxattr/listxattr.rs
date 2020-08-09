@@ -21,6 +21,7 @@ mod listxattr_test;
 
 // ListxattrRequest {{{
 
+/// **\[UNSTABLE\]**
 pub struct ListxattrRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	size: u32,
@@ -58,6 +59,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for ListxattrRequest<'a> {
 
 // ListxattrResponse {{{
 
+/// **\[UNSTABLE\]**
 pub struct ListxattrResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	request_size: u32,

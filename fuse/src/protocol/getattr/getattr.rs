@@ -22,7 +22,7 @@ mod getattr_test;
 
 // GetattrRequest {{{
 
-/// Request type for [`FuseHandlers::getattr`].
+/// **\[UNSTABLE\]** Request type for [`FuseHandlers::getattr`].
 ///
 /// [`FuseHandlers::getattr`]: ../trait.FuseHandlers.html#method.getattr
 pub struct GetattrRequest {
@@ -70,7 +70,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for GetattrRequest {
 
 // GetattrResponse {{{
 
-/// Response type for [`FuseHandlers::getattr`].
+/// **\[UNSTABLE\]** Response type for [`FuseHandlers::getattr`].
 ///
 /// [`FuseHandlers::getattr`]: ../trait.FuseHandlers.html#method.getattr
 pub struct GetattrResponse<'a> {

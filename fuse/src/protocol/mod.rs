@@ -19,8 +19,12 @@ mod common;
 
 mod prelude;
 
+#[cfg(any(doc, feature = "unstable_fuse_access"))]
+#[doc(cfg(feature = "unstable_fuse_access"))]
 #[path = "access/access.rs"]
 mod access;
+#[cfg(any(doc, feature = "unstable_fuse_access"))]
+#[doc(cfg(feature = "unstable_fuse_access"))]
 pub use self::access::*;
 
 #[path = "bmap/bmap.rs"]

@@ -25,6 +25,7 @@ mod rename_test;
 const RENAME_NOREPLACE: u32 = 1 << 0;
 const RENAME_EXCHANGE: u32 = 1 << 1;
 
+/// **\[UNSTABLE\]**
 pub struct RenameRequest<'a> {
 	flags: u32,
 	old_dir: node::NodeId,
@@ -92,6 +93,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for RenameRequest<'a> {
 
 // RenameResponse {{{
 
+/// **\[UNSTABLE\]**
 pub struct RenameResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }

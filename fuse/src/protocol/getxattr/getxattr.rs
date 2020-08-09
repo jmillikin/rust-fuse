@@ -21,6 +21,7 @@ mod getxattr_test;
 
 // GetxattrRequest {{{
 
+/// **\[UNSTABLE\]**
 pub struct GetxattrRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	raw: &'a fuse_kernel::fuse_getxattr_in,
@@ -62,6 +63,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for GetxattrRequest<'a> {
 
 // GetxattrResponse {{{
 
+/// **\[UNSTABLE\]**
 pub struct GetxattrResponse<'a> {
 	request_size: u32,
 	raw: fuse_kernel::fuse_getxattr_out,

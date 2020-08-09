@@ -18,6 +18,7 @@ use crate::protocol::prelude::*;
 
 // GetlkRequest {{{
 
+/// **\[UNSTABLE\]**
 pub struct GetlkRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	raw: &'a fuse_kernel::fuse_lk_in,
@@ -58,6 +59,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for GetlkRequest<'a> {
 
 // GetlkResponse {{{
 
+/// **\[UNSTABLE\]**
 pub struct GetlkResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_lk_out,

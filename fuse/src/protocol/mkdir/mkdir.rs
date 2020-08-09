@@ -23,6 +23,7 @@ mod mkdir_test;
 
 // MkdirRequest {{{
 
+/// **\[UNSTABLE\]**
 pub struct MkdirRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	name: &'a CStr,
@@ -70,6 +71,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for MkdirRequest<'a> {
 
 // MkdirResponse {{{
 
+/// **\[UNSTABLE\]**
 pub struct MkdirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_entry_out,

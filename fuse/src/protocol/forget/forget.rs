@@ -22,6 +22,7 @@ mod forget_test;
 
 // ForgetRequest {{{
 
+/// **\[UNSTABLE\]**
 pub struct ForgetRequest<'a> {
 	single: Option<ForgetNode>,
 	batch: &'a [ForgetNode],
@@ -36,6 +37,7 @@ impl ForgetRequest<'_> {
 	}
 }
 
+/// **\[UNSTABLE\]**
 #[repr(C)]
 #[derive(Debug)]
 pub struct ForgetNode {

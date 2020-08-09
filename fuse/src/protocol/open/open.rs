@@ -22,6 +22,7 @@ mod open_test;
 
 // OpenRequest {{{
 
+/// **\[UNSTABLE\]**
 pub struct OpenRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: node::NodeId,
@@ -58,6 +59,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for OpenRequest<'a> {
 
 // OpenResponse {{{
 
+/// **\[UNSTABLE\]**
 pub struct OpenResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_open_out,

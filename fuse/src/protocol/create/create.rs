@@ -23,7 +23,7 @@ mod create_test;
 
 // CreateRequest {{{
 
-/// Request type for [`FuseHandlers::create`].
+/// **\[UNSTABLE\]** Request type for [`FuseHandlers::create`].
 ///
 /// [`FuseHandlers::create`]: ../trait.FuseHandlers.html#method.create
 #[derive(Debug)]
@@ -100,7 +100,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for CreateRequest<'a> {
 
 // CreateResponse {{{
 
-/// Response type for [`FuseHandlers::create`].
+/// **\[UNSTABLE\]** Response type for [`FuseHandlers::create`].
 ///
 /// [`FuseHandlers::create`]: ../trait.FuseHandlers.html#method.create
 pub struct CreateResponse<'a> {

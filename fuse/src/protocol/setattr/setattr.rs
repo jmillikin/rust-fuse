@@ -22,6 +22,7 @@ mod setattr_test;
 
 // SetattrRequest {{{
 
+/// **\[UNSTABLE\]**
 pub struct SetattrRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	raw: &'a fuse_kernel::fuse_setattr_in,
@@ -127,6 +128,7 @@ fn systime(seconds: u64, nanos: u32) -> time::SystemTime {
 
 // SetattrResponse {{{
 
+/// **\[UNSTABLE\]**
 pub struct SetattrResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_attr_out,

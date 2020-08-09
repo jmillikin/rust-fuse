@@ -21,6 +21,7 @@ mod readlink_test;
 
 // ReadlinkRequest {{{
 
+/// **\[UNSTABLE\]**
 pub struct ReadlinkRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 }
@@ -43,6 +44,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReadlinkRequest<'a> {
 
 // ReadlinkResponse {{{
 
+/// **\[UNSTABLE\]**
 pub struct ReadlinkResponse<'a> {
 	name: &'a CStr,
 }

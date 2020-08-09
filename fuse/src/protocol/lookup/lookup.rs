@@ -22,7 +22,7 @@ mod lookup_test;
 
 // LookupRequest {{{
 
-/// Request type for [`FuseHandlers::lookup`].
+/// **\[UNSTABLE\]** Request type for [`FuseHandlers::lookup`].
 ///
 /// [`FuseHandlers::lookup`]: ../trait.FuseHandlers.html#method.lookup
 #[derive(Debug)]
@@ -59,7 +59,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for LookupRequest<'a> {
 
 // LookupResponse {{{
 
-/// Response type for [`FuseHandlers::lookup`].
+/// **\[UNSTABLE\]** Response type for [`FuseHandlers::lookup`].
 ///
 /// [`FuseHandlers::lookup`]: ../trait.FuseHandlers.html#method.lookup
 pub struct LookupResponse<'a> {

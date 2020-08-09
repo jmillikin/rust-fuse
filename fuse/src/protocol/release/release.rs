@@ -21,6 +21,7 @@ mod release_test;
 
 // ReleaseRequest {{{
 
+/// **\[UNSTABLE\]**
 pub struct ReleaseRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	raw: fuse_kernel::fuse_release_in,
@@ -85,6 +86,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReleaseRequest<'a> {
 
 // ReleaseResponse {{{
 
+/// **\[UNSTABLE\]**
 pub struct ReleaseResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
