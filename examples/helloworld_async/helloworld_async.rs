@@ -51,11 +51,11 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		request: &fuse::LookupRequest,
 		respond: impl for<'a> fuse::RespondOnce<fuse::LookupResponse<'a>>,
 	) {
-		if request.node_id() != fuse::NodeId::ROOT {
+		if request.parent_id() != fuse::NodeId::ROOT {
 			respond.err(err_not_found());
 			return;
 		}
-		if request.name().to_bytes() != HELLO_TXT.name() {
+		if request.name().as_bytes() != HELLO_TXT.name() {
 			respond.err(err_not_found());
 			return;
 		}

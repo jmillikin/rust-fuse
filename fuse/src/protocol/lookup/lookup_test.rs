@@ -31,8 +31,30 @@ fn request() {
 		.build_aligned();
 	let req: LookupRequest = decode_request!(buf);
 
-	let expect = CString::new("hello.world!").unwrap();
-	assert_eq!(req.name(), expect.as_ref());
+	let expect: &[u8] = b"hello.world!\x00";
+	assert_eq!(req.name(), expect);
+}
+
+#[test]
+fn request_impl_debug() {
+	let buf = MessageBuilder::new()
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_LOOKUP;
+			h.nodeid = 123;
+		})
+		.push_bytes(b"hello.world!\x00")
+		.build_aligned();
+	let request: LookupRequest = decode_request!(buf);
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"LookupRequest {\n",
+			"    parent_id: 123,\n",
+			"    name: \"hello.world!\",\n",
+			"}",
+		),
+	);
 }
 
 #[test]

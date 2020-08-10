@@ -14,10 +14,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use std::fmt;
-use std::num::NonZeroU64;
-use std::time::Duration;
+use core::{ascii, cmp, fmt, num, time};
+use std::ffi;
 
+use crate::internal::fuse_io;
 use crate::internal::fuse_kernel;
 
 // NodeId {{{
@@ -25,14 +25,15 @@ use crate::internal::fuse_kernel;
 /// **\[UNSTABLE\]**
 #[repr(C)]
 #[derive(Eq, PartialEq, Clone, Copy)]
-pub struct NodeId(NonZeroU64);
+pub struct NodeId(num::NonZeroU64);
 
 impl NodeId {
-	pub const ROOT: NodeId =
-		NodeId(unsafe { NonZeroU64::new_unchecked(fuse_kernel::FUSE_ROOT_ID) });
+	pub const ROOT: NodeId = NodeId(unsafe {
+		num::NonZeroU64::new_unchecked(fuse_kernel::FUSE_ROOT_ID)
+	});
 
 	pub fn new(id: u64) -> Option<NodeId> {
-		NonZeroU64::new(id).map(|bits| NodeId(bits))
+		num::NonZeroU64::new(id).map(|bits| NodeId(bits))
 	}
 
 	pub fn get(&self) -> u64 {
@@ -67,6 +68,84 @@ impl fmt::LowerHex for NodeId {
 impl fmt::UpperHex for NodeId {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		self.0.fmt(fmt)
+	}
+}
+
+// }}}
+
+// NodeName {{{
+
+#[derive(Hash)]
+#[repr(transparent)]
+pub struct NodeName {
+	pub(crate) bytes: [u8],
+}
+
+impl NodeName {
+	pub(crate) fn new<'a>(bytes: fuse_io::NulTerminatedBytes<'a>) -> &'a Self {
+		let bytes = bytes.to_bytes();
+		unsafe { &*(bytes as *const [u8] as *const NodeName) }
+	}
+
+	pub fn as_bytes(&self) -> &[u8] {
+		&self.bytes
+	}
+
+	pub fn as_cstr(&self) -> &ffi::CStr {
+		unsafe { ffi::CStr::from_bytes_with_nul_unchecked(&self.bytes) }
+	}
+}
+
+impl fmt::Debug for NodeName {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt::Display::fmt(self, fmt)
+	}
+}
+
+impl fmt::Display for NodeName {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		write!(fmt, "\"")?;
+		for byte in self
+			.as_bytes()
+			.iter()
+			.filter(|&b| *b != 0)
+			.flat_map(|&b| ascii::escape_default(b))
+		{
+			fmt::Write::write_char(fmt, byte as char)?;
+		}
+		write!(fmt, "\"")
+	}
+}
+
+impl Eq for NodeName {}
+
+impl PartialEq for NodeName {
+	fn eq(&self, other: &NodeName) -> bool {
+		self.as_bytes().eq(other.as_bytes())
+	}
+}
+
+impl PartialEq<[u8]> for NodeName {
+	fn eq(&self, other: &[u8]) -> bool {
+		self.as_bytes().eq(other)
+	}
+}
+
+impl PartialEq<NodeName> for [u8] {
+	fn eq(&self, other: &NodeName) -> bool {
+		self.eq(other.as_bytes())
+	}
+}
+
+impl PartialOrd for NodeName {
+	fn partial_cmp(&self, other: &NodeName) -> Option<cmp::Ordering> {
+		self.as_bytes().partial_cmp(&other.as_bytes())
+	}
+}
+
+impl Ord for NodeName {
+	fn cmp(&self, other: &NodeName) -> cmp::Ordering {
+		self.as_bytes().cmp(&other.as_bytes())
 	}
 }
 
@@ -173,29 +252,29 @@ impl NodeAttr {
 		self.0.blocks = blocks;
 	}
 
-	pub fn atime(&self) -> Duration {
-		Duration::new(self.0.atime, self.0.atimensec)
+	pub fn atime(&self) -> time::Duration {
+		time::Duration::new(self.0.atime, self.0.atimensec)
 	}
 
-	pub fn set_atime(&mut self, atime: Duration) {
+	pub fn set_atime(&mut self, atime: time::Duration) {
 		self.0.atime = atime.as_secs();
 		self.0.atimensec = atime.subsec_nanos();
 	}
 
-	pub fn mtime(&self) -> Duration {
-		Duration::new(self.0.mtime, self.0.mtimensec)
+	pub fn mtime(&self) -> time::Duration {
+		time::Duration::new(self.0.mtime, self.0.mtimensec)
 	}
 
-	pub fn set_mtime(&mut self, mtime: Duration) {
+	pub fn set_mtime(&mut self, mtime: time::Duration) {
 		self.0.mtime = mtime.as_secs();
 		self.0.mtimensec = mtime.subsec_nanos();
 	}
 
-	pub fn ctime(&self) -> Duration {
-		Duration::new(self.0.ctime, self.0.ctimensec)
+	pub fn ctime(&self) -> time::Duration {
+		time::Duration::new(self.0.ctime, self.0.ctimensec)
 	}
 
-	pub fn set_ctime(&mut self, ctime: Duration) {
+	pub fn set_ctime(&mut self, ctime: time::Duration) {
 		self.0.ctime = ctime.as_secs();
 		self.0.ctimensec = ctime.subsec_nanos();
 	}
@@ -299,11 +378,11 @@ impl Node {
 		self.0.attr.mode = new_mode;
 	}
 
-	pub fn cache_timeout(&self) -> Duration {
-		Duration::new(self.0.entry_valid, self.0.entry_valid_nsec)
+	pub fn cache_timeout(&self) -> time::Duration {
+		time::Duration::new(self.0.entry_valid, self.0.entry_valid_nsec)
 	}
 
-	pub fn set_cache_timeout(&mut self, cache_timeout: Duration) {
+	pub fn set_cache_timeout(&mut self, cache_timeout: time::Duration) {
 		self.0.entry_valid = cache_timeout.as_secs();
 		self.0.entry_valid_nsec = cache_timeout.subsec_nanos();
 	}
@@ -316,11 +395,11 @@ impl Node {
 		NodeAttr::new_ref_mut(&mut self.0.attr)
 	}
 
-	pub fn attr_cache_timeout(&self) -> Duration {
-		Duration::new(self.0.attr_valid, self.0.attr_valid_nsec)
+	pub fn attr_cache_timeout(&self) -> time::Duration {
+		time::Duration::new(self.0.attr_valid, self.0.attr_valid_nsec)
 	}
 
-	pub fn set_attr_cache_timeout(&mut self, d: Duration) {
+	pub fn set_attr_cache_timeout(&mut self, d: time::Duration) {
 		self.0.attr_valid = d.as_secs();
 		self.0.attr_valid_nsec = d.subsec_nanos();
 	}

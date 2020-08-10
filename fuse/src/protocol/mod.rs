@@ -168,7 +168,7 @@ mod write;
 pub use self::write::*;
 
 mod node;
-pub use self::node::{Node, NodeAttr, NodeId, NodeKind};
+pub use self::node::{Node, NodeAttr, NodeId, NodeKind, NodeName};
 
 #[path = "unknown/unknown.rs"]
 mod unknown;

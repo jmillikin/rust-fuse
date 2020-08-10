@@ -23,22 +23,22 @@ mod lookup_test;
 
 // LookupRequest {{{
 
-/// **\[UNSTABLE\]** Request type for [`FuseHandlers::lookup`].
+/// Request type for [`FuseHandlers::lookup`].
 ///
 /// [`FuseHandlers::lookup`]: ../trait.FuseHandlers.html#method.lookup
 #[derive(Debug)]
 pub struct LookupRequest<'a> {
-	node_id: node::NodeId,
-	name: &'a CStr,
+	parent_id: node::NodeId,
+	name: &'a node::NodeName,
 }
 
 impl LookupRequest<'_> {
-	pub fn node_id(&self) -> node::NodeId {
-		self.node_id
+	pub fn parent_id(&self) -> node::NodeId {
+		self.parent_id
 	}
 
-	pub fn name(&self) -> &CStr {
-		&self.name
+	pub fn name(&self) -> &node::NodeName {
+		self.name
 	}
 }
 
@@ -50,8 +50,8 @@ impl<'a> fuse_io::DecodeRequest<'a> for LookupRequest<'a> {
 		debug_assert!(header.opcode == fuse_kernel::FUSE_LOOKUP);
 
 		Ok(Self {
-			node_id: try_node_id(header.nodeid)?,
-			name: dec.next_cstr()?,
+			parent_id: try_node_id(header.nodeid)?,
+			name: node::NodeName::new(dec.next_nul_terminated_bytes()?),
 		})
 	}
 }

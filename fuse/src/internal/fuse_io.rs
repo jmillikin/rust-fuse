@@ -153,6 +153,14 @@ impl AlignedBuffer for AlignedVec {
 	}
 }
 
+pub(crate) struct NulTerminatedBytes<'a>(&'a [u8]);
+
+impl<'a> NulTerminatedBytes<'a> {
+	pub(crate) fn to_bytes(self) -> &'a [u8] {
+		self.0
+	}
+}
+
 pub(crate) trait DecodeRequest<'a>: Sized {
 	fn decode_request(decoder: RequestDecoder<'a>) -> io::Result<Self>;
 }
@@ -251,6 +259,19 @@ impl<'a> RequestDecoder<'a> {
 		let (out, _) = start.split_at(len as usize);
 		self.consumed = new_consumed;
 		Ok(out)
+	}
+
+	pub(crate) fn next_nul_terminated_bytes(
+		&mut self,
+	) -> io::Result<NulTerminatedBytes<'a>> {
+		for off in self.consumed..self.header.len {
+			if self.buf[off as usize] == 0 {
+				let len = off - self.consumed;
+				let buf = self.next_bytes(len + 1)?;
+				return Ok(NulTerminatedBytes(buf));
+			}
+		}
+		Err(io::ErrorKind::UnexpectedEof.into())
 	}
 
 	pub(crate) fn next_cstr(&mut self) -> io::Result<&'a CStr> {
