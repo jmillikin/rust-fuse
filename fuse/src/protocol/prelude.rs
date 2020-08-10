@@ -40,3 +40,11 @@ pub(crate) fn try_node_id(raw: u64) -> io::Result<crate::NodeId> {
 		None => todo!("failure path in try_node_id"),
 	}
 }
+
+pub(crate) struct DebugHexU32(pub(crate) u32);
+
+impl fmt::Debug for DebugHexU32 {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		write!(fmt, "{:#010X}", self.0)
+	}
+}

@@ -15,9 +15,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::internal::testutil::MessageBuilder;
+use crate::protocol::node;
 use crate::protocol::prelude::*;
 
-use super::{OpenRequest, OpenResponse};
+use super::{OpenFlags, OpenRequest, OpenResponse};
 
 #[test]
 fn request() {
@@ -38,10 +39,29 @@ fn request() {
 }
 
 #[test]
+fn request_impl_debug() {
+	let request = &OpenRequest {
+		phantom: PhantomData,
+		node_id: node::NodeId::ROOT,
+		flags: 0x1,
+	};
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"OpenRequest {\n",
+			"    node_id: 1,\n",
+			"    flags: 0x00000001,\n",
+			"}",
+		),
+	);
+}
+
+#[test]
 fn response() {
 	let mut resp = OpenResponse::new();
 	resp.set_handle(123);
-	resp.set_flags(0xFE);
+	resp.set_flags(OpenFlags(0xFE));
 
 	let encoded = encode_response!(resp);
 
@@ -60,5 +80,43 @@ fn response() {
 				padding: 0,
 			})
 			.build()
+	);
+}
+
+#[test]
+fn response_impl_debug() {
+	let mut response = OpenResponse::new();
+	response.set_handle(123);
+	response.set_flags(OpenFlags(0x3));
+
+	assert_eq!(
+		format!("{:#?}", response),
+		concat!(
+			"OpenResponse {\n",
+			"    handle: 123,\n",
+			"    flags: OpenFlags {\n",
+			"        direct_io: true,\n",
+			"        keep_cache: true,\n",
+			"        nonseekable: false,\n",
+			"    },\n",
+			"}",
+		),
+	);
+}
+
+#[test]
+fn open_flags() {
+	// Flag sets render as a struct, with unknown flags falling back
+	// to hex.
+	assert_eq!(
+		format!("{:#?}", OpenFlags(0x3 | (1u32 << 31))),
+		concat!(
+			"OpenFlags {\n",
+			"    direct_io: true,\n",
+			"    keep_cache: true,\n",
+			"    nonseekable: false,\n",
+			"    0x80000000: true,\n",
+			"}",
+		),
 	);
 }

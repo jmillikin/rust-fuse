@@ -456,20 +456,12 @@ impl fmt::Display for FuseInitFlags {
 						list.entry(&flag);
 					},
 					None => {
-						list.entry(&DebugFlagMask(mask));
+						list.entry(&DebugHexU32(mask));
 					},
 				}
 			}
 		}
 		list.finish()
-	}
-}
-
-struct DebugFlagMask(u32);
-
-impl fmt::Debug for DebugFlagMask {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		write!(fmt, "{:#010X}", self.0)
 	}
 }
 

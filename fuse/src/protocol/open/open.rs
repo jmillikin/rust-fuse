@@ -22,7 +22,9 @@ mod open_test;
 
 // OpenRequest {{{
 
-/// **\[UNSTABLE\]**
+/// Request type for [`FuseHandlers::open`].
+///
+/// [`FuseHandlers::open`]: ../trait.FuseHandlers.html#method.open
 pub struct OpenRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: node::NodeId,
@@ -36,6 +38,15 @@ impl OpenRequest<'_> {
 
 	pub fn flags(&self) -> u32 {
 		self.flags
+	}
+}
+
+impl fmt::Debug for OpenRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("OpenRequest")
+			.field("node_id", &self.node_id)
+			.field("flags", &DebugHexU32(self.flags))
+			.finish()
 	}
 }
 
@@ -59,7 +70,9 @@ impl<'a> fuse_io::DecodeRequest<'a> for OpenRequest<'a> {
 
 // OpenResponse {{{
 
-/// **\[UNSTABLE\]**
+/// Response type for [`FuseHandlers::open`].
+///
+/// [`FuseHandlers::open`]: ../trait.FuseHandlers.html#method.open
 pub struct OpenResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_open_out,
@@ -71,22 +84,35 @@ impl OpenResponse<'_> {
 			phantom: PhantomData,
 			raw: fuse_kernel::fuse_open_out {
 				fh: 0,
-				open_flags: 0, // TODO: should this be copied from request.flags ?
+				open_flags: 0,
 				padding: 0,
 			},
 		}
+	}
+
+	pub fn handle(&self) -> u64 {
+		self.raw.fh
 	}
 
 	pub fn set_handle(&mut self, handle: u64) {
 		self.raw.fh = handle;
 	}
 
-	pub fn flags(&self) -> u32 {
-		self.raw.open_flags
+	pub fn flags(&self) -> OpenFlags {
+		OpenFlags(self.raw.open_flags)
 	}
 
-	pub fn set_flags(&mut self, flags: u32) {
-		self.raw.open_flags = flags;
+	pub fn set_flags(&mut self, flags: OpenFlags) {
+		self.raw.open_flags = flags.0;
+	}
+}
+
+impl fmt::Debug for OpenResponse<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("OpenResponse")
+			.field("handle", &self.raw.fh)
+			.field("flags", &self.flags())
+			.finish()
 	}
 }
 
@@ -97,6 +123,27 @@ impl fuse_io::EncodeResponse for OpenResponse<'_> {
 	) -> std::io::Result<()> {
 		enc.encode_sized(&self.raw)
 	}
+}
+
+// }}}
+
+// OpenFlags {{{
+
+bitflags_struct! {
+	pub struct OpenFlags(u32);
+
+	FOPEN_DIRECT_IO: {
+		get: direct_io,
+		set: set_direct_io,
+	},
+	FOPEN_KEEP_CACHE: {
+		get: keep_cache,
+		set: set_keep_cache,
+	},
+	FOPEN_NONSEEKABLE: {
+		get: nonseekable,
+		set: set_nonseekable,
+	},
 }
 
 // }}}
