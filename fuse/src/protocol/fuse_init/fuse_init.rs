@@ -282,187 +282,97 @@ impl fuse_io::EncodeResponse for FuseInitResponse {
 
 // FuseInitFlags {{{
 
-#[allow(non_camel_case_types)]
-#[derive(Copy, Clone, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum FuseInitFlag {
-	ASYNC_READ,
-	POSIX_LOCKS,
-	FILE_OPS,
-	ATOMIC_O_TRUNC,
-	EXPORT_SUPPORT,
-	BIG_WRITES,
-	DONT_MASK,
-	SPLICE_WRITE,
-	SPLICE_MOVE,
-	SPLICE_READ,
-	FLOCK_LOCKS,
-	HAS_IOCTL_DIR,
-	AUTO_INVAL_DATA,
-	DO_READDIRPLUS,
-	READDIRPLUS_AUTO,
-	ASYNC_DIO,
-	WRITEBACK_CACHE,
-	NO_OPEN_SUPPORT,
-	PARALLEL_DIROPS,
-	HANDLE_KILLPRIV,
-	POSIX_ACL,
-	ABORT_ERROR,
-}
+bitflags_struct! {
+	pub struct FuseInitFlags(u32);
 
-macro_rules! FuseInitFlag_impl {
-	( $( $name:ident : $value:literal , )* ) => {
-		fn name(self) -> &'static str {
-			match self {
-				$(
-					FuseInitFlag::$name => stringify!($name),
-				)*
-			}
-		}
-
-		fn to_offset(&self) -> u8 {
-			match self {
-				$(
-					FuseInitFlag::$name => $value,
-				)*
-			}
-		}
-
-		fn from_offset(off: u8) -> Option<FuseInitFlag> {
-			match off {
-				$(
-					$value => Some(FuseInitFlag::$name),
-				)*
-				_ => None,
-			}
-		}
-	}
-}
-
-impl FuseInitFlag {
-	FuseInitFlag_impl! {
-		ASYNC_READ:        0,
-		POSIX_LOCKS:       1,
-		FILE_OPS:          2,
-		ATOMIC_O_TRUNC:    3,
-		EXPORT_SUPPORT:    4,
-		BIG_WRITES:        5,
-		DONT_MASK:         6,
-		SPLICE_WRITE:      7,
-		SPLICE_MOVE:       8,
-		SPLICE_READ:       9,
-		FLOCK_LOCKS:      10,
-		HAS_IOCTL_DIR:    11,
-		AUTO_INVAL_DATA:  12,
-		DO_READDIRPLUS:   13,
-		READDIRPLUS_AUTO: 14,
-		ASYNC_DIO:        15,
-		WRITEBACK_CACHE:  16,
-		NO_OPEN_SUPPORT:  17,
-		PARALLEL_DIROPS:  18,
-		HANDLE_KILLPRIV:  19,
-		POSIX_ACL:        20,
-		ABORT_ERROR:      21,
-	}
-
-	fn mask(&self) -> u32 {
-		1u32 << self.to_offset()
-	}
-}
-
-impl fmt::Binary for FuseInitFlag {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		self.mask().fmt(fmt)
-	}
-}
-
-impl fmt::LowerHex for FuseInitFlag {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		self.mask().fmt(fmt)
-	}
-}
-
-impl fmt::UpperHex for FuseInitFlag {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		self.mask().fmt(fmt)
-	}
-}
-
-impl fmt::Debug for FuseInitFlag {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt::Display::fmt(self, fmt)
-	}
-}
-
-impl fmt::Display for FuseInitFlag {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.write_str(self.name())
-	}
-}
-
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub struct FuseInitFlags(u32);
-
-impl FuseInitFlags {
-	pub fn new() -> FuseInitFlags {
-		FuseInitFlags(0)
-	}
-
-	pub fn get(&self, flag: FuseInitFlag) -> bool {
-		(self.0 & flag.mask()) > 0
-	}
-
-	pub fn set(&mut self, flag: FuseInitFlag, value: bool) {
-		if value {
-			self.0 |= flag.mask();
-		} else {
-			self.0 &= !flag.mask();
-		}
-	}
-}
-
-impl fmt::Binary for FuseInitFlags {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		self.0.fmt(fmt)
-	}
-}
-
-impl fmt::LowerHex for FuseInitFlags {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		self.0.fmt(fmt)
-	}
-}
-
-impl fmt::UpperHex for FuseInitFlags {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		self.0.fmt(fmt)
-	}
-}
-
-impl fmt::Debug for FuseInitFlags {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt::Display::fmt(self, fmt)
-	}
-}
-
-impl fmt::Display for FuseInitFlags {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		let mut list = fmt.debug_list();
-		for off in 0..32 {
-			let mask: u32 = 1 << off;
-			if (self.0 & mask) > 0 {
-				match FuseInitFlag::from_offset(off) {
-					Some(flag) => {
-						list.entry(&flag);
-					},
-					None => {
-						list.entry(&DebugHexU32(mask));
-					},
-				}
-			}
-		}
-		list.finish()
-	}
+	FUSE_ASYNC_READ: {
+		get: async_read,
+		set: set_async_read,
+	},
+	FUSE_POSIX_LOCKS: {
+		get: posix_locks,
+		set: set_posix_locks,
+	},
+	FUSE_FILE_OPS: {
+		get: file_ops,
+		set: set_file_ops,
+	},
+	FUSE_ATOMIC_O_TRUNC: {
+		get: atomic_o_trunc,
+		set: set_atomic_o_trunc,
+	},
+	FUSE_EXPORT_SUPPORT: {
+		get: export_support,
+		set: set_export_support,
+	},
+	FUSE_BIG_WRITES: {
+		get: big_writes,
+		set: set_big_writes,
+	},
+	FUSE_DONT_MASK: {
+		get: dont_mask,
+		set: set_dont_mask,
+	},
+	FUSE_SPLICE_WRITE: {
+		get: splice_write,
+		set: set_splice_write,
+	},
+	FUSE_SPLICE_MOVE: {
+		get: splice_move,
+		set: set_splice_move,
+	},
+	FUSE_SPLICE_READ: {
+		get: splice_read,
+		set: set_splice_read,
+	},
+	FUSE_FLOCK_LOCKS: {
+		get: flock_locks,
+		set: set_flock_locks,
+	},
+	FUSE_HAS_IOCTL_DIR: {
+		get: has_ioctl_dir,
+		set: set_has_ioctl_dir,
+	},
+	FUSE_AUTO_INVAL_DATA: {
+		get: auto_inval_data,
+		set: set_auto_inval_data,
+	},
+	FUSE_DO_READDIRPLUS: {
+		get: do_readdirplus,
+		set: set_do_readdirplus,
+	},
+	FUSE_READDIRPLUS_AUTO: {
+		get: readdirplus_auto,
+		set: set_readdirplus_auto,
+	},
+	FUSE_ASYNC_DIO: {
+		get: async_dio,
+		set: set_async_dio,
+	},
+	FUSE_WRITEBACK_CACHE: {
+		get: writeback_cache,
+		set: set_writeback_cache,
+	},
+	FUSE_NO_OPEN_SUPPORT: {
+		get: no_open_support,
+		set: set_no_open_support,
+	},
+	FUSE_PARALLEL_DIROPS: {
+		get: parallel_dirops,
+		set: set_parallel_dirops,
+	},
+	FUSE_HANDLE_KILLPRIV: {
+		get: handle_killpriv,
+		set: set_handle_killpriv,
+	},
+	FUSE_POSIX_ACL: {
+		get: posix_acl,
+		set: set_posix_acl,
+	},
+	FUSE_ABORT_ERROR: {
+		get: abort_error,
+		set: set_abort_error,
+	},
 }
 
 // }}}

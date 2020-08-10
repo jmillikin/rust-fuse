@@ -17,7 +17,7 @@
 use crate::internal::testutil::MessageBuilder;
 use crate::protocol::prelude::*;
 
-use super::{FuseInitFlag, FuseInitFlags, FuseInitRequest, FuseInitResponse};
+use super::{FuseInitFlags, FuseInitRequest, FuseInitResponse};
 
 #[test]
 fn request_v7p1() {
@@ -224,30 +224,38 @@ fn response_major_mismatch() {
 
 #[test]
 fn init_flags() {
-	// Formatting known flags works.
-	assert_eq!(format!("{:?}", FuseInitFlag::ASYNC_READ), "ASYNC_READ");
-
-	// Flag set renders as a list. Unknown flags fall back to hex.
+	// Flag sets render as a struct, with unknown flags falling back
+	// to hex.
 	assert_eq!(
-		format!("{:?}", FuseInitFlags(0x3 | (1u32 << 31))),
-		"[ASYNC_READ, POSIX_LOCKS, 0x80000000]"
+		format!("{:#?}", FuseInitFlags(0x3 | (1u32 << 31))),
+		concat!(
+			"FuseInitFlags {\n",
+			"    async_read: true,\n",
+			"    posix_locks: true,\n",
+			"    file_ops: false,\n",
+			"    atomic_o_trunc: false,\n",
+			"    export_support: false,\n",
+			"    big_writes: false,\n",
+			"    dont_mask: false,\n",
+			"    splice_write: false,\n",
+			"    splice_move: false,\n",
+			"    splice_read: false,\n",
+			"    flock_locks: false,\n",
+			"    has_ioctl_dir: false,\n",
+			"    auto_inval_data: false,\n",
+			"    do_readdirplus: false,\n",
+			"    readdirplus_auto: false,\n",
+			"    async_dio: false,\n",
+			"    writeback_cache: false,\n",
+			"    no_open_support: false,\n",
+			"    parallel_dirops: false,\n",
+			"    handle_killpriv: false,\n",
+			"    posix_acl: false,\n",
+			"    abort_error: false,\n",
+			"    0x80000000: true,\n",
+			"}",
+		),
 	);
-
-	// Flag sets are mutable
-	let mut flags = FuseInitFlags::new();
-	flags.set(FuseInitFlag::ASYNC_READ, true);
-	flags.set(FuseInitFlag::POSIX_LOCKS, true);
-	flags.set(FuseInitFlag::ASYNC_READ, false);
-	assert_eq!(format!("{:?}", flags), "[POSIX_LOCKS]");
-
-	// Flags support explicit formatting modes.
-	assert_eq!(format!("{:#b}", FuseInitFlag::ASYNC_READ), "0b1");
-	assert_eq!(format!("{:#x}", FuseInitFlag::ASYNC_READ), "0x1");
-	assert_eq!(format!("{:#X}", FuseInitFlag::ASYNC_READ), "0x1");
-
-	assert_eq!(format!("{:#b}", FuseInitFlag::ASYNC_READ), "0b1");
-	assert_eq!(format!("{:#x}", FuseInitFlag::ASYNC_READ), "0x1");
-	assert_eq!(format!("{:#X}", FuseInitFlag::ASYNC_READ), "0x1");
 }
 
 #[test]
@@ -269,9 +277,30 @@ fn request_impl_debug() {
 			"        minor: 1,\n",
 			"    },\n",
 			"    max_readahead: 4096,\n",
-			"    flags: [\n",
-			"        ASYNC_READ,\n",
-			"    ],\n",
+			"    flags: FuseInitFlags {\n",
+			"        async_read: true,\n",
+			"        posix_locks: false,\n",
+			"        file_ops: false,\n",
+			"        atomic_o_trunc: false,\n",
+			"        export_support: false,\n",
+			"        big_writes: false,\n",
+			"        dont_mask: false,\n",
+			"        splice_write: false,\n",
+			"        splice_move: false,\n",
+			"        splice_read: false,\n",
+			"        flock_locks: false,\n",
+			"        has_ioctl_dir: false,\n",
+			"        auto_inval_data: false,\n",
+			"        do_readdirplus: false,\n",
+			"        readdirplus_auto: false,\n",
+			"        async_dio: false,\n",
+			"        writeback_cache: false,\n",
+			"        no_open_support: false,\n",
+			"        parallel_dirops: false,\n",
+			"        handle_killpriv: false,\n",
+			"        posix_acl: false,\n",
+			"        abort_error: false,\n",
+			"    },\n",
 			"}",
 		),
 	);
@@ -297,9 +326,30 @@ fn response_impl_debug() {
 			"        minor: 1,\n",
 			"    },\n",
 			"    max_readahead: 4096,\n",
-			"    flags: [\n",
-			"        ASYNC_READ,\n",
-			"    ],\n",
+			"    flags: FuseInitFlags {\n",
+			"        async_read: true,\n",
+			"        posix_locks: false,\n",
+			"        file_ops: false,\n",
+			"        atomic_o_trunc: false,\n",
+			"        export_support: false,\n",
+			"        big_writes: false,\n",
+			"        dont_mask: false,\n",
+			"        splice_write: false,\n",
+			"        splice_move: false,\n",
+			"        splice_read: false,\n",
+			"        flock_locks: false,\n",
+			"        has_ioctl_dir: false,\n",
+			"        auto_inval_data: false,\n",
+			"        do_readdirplus: false,\n",
+			"        readdirplus_auto: false,\n",
+			"        async_dio: false,\n",
+			"        writeback_cache: false,\n",
+			"        no_open_support: false,\n",
+			"        parallel_dirops: false,\n",
+			"        handle_killpriv: false,\n",
+			"        posix_acl: false,\n",
+			"        abort_error: false,\n",
+			"    },\n",
 			"    max_background: 10,\n",
 			"    congestion_threshold: 11,\n",
 			"    max_write: 8192,\n",
