@@ -15,8 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #![cfg_attr(doc, feature(doc_cfg))]
-
-extern crate libc;
+#![feature(asm)]
 
 #[macro_use]
 mod internal;

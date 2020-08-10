@@ -8,9 +8,6 @@ edition = "2018"
 [lib]
 name = "fuse"
 
-[dependencies]
-libc = "0.2"
-
 [features]
 unstable_fuse_access = []
 unstable_fuse_bmap = []

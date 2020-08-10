@@ -14,7 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use std::ffi::CStr;
 use std::ffi::{CString, OsStr, OsString};
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::MetadataExt;
@@ -22,8 +21,8 @@ use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::PathBuf;
 use std::{fs, io};
 
-use libc::c_ulong;
-use libc::c_void;
+#[path = "syscalls.rs"]
+mod syscalls;
 
 /// **\[UNSTABLE\]**
 pub struct FuseMountOptions {
@@ -76,7 +75,7 @@ impl FuseMountOptions {
 		self
 	}
 
-	fn mount_flags(&self) -> c_ulong {
+	fn mount_flags(&self) -> u32 {
 		// int flags = MS_NOSUID | MS_NODEV;
 
 		// unimplemented!()
@@ -103,24 +102,14 @@ impl FuseMountOptions {
 	}
 
 	fn mount_data(&self, fd: RawFd, root_mode: u32) -> io::Result<CString> {
-		let user_id = self.user_id.unwrap_or_else(|| unsafe { libc::getuid() });
-		let group_id =
-			self.group_id.unwrap_or_else(|| unsafe { libc::getgid() });
+		let user_id = self.user_id.unwrap_or_else(|| syscalls::getuid());
+		let group_id = self.group_id.unwrap_or_else(|| syscalls::getgid());
 
 		let mut out = Vec::new();
 		out.push(format!("fd={},rootmode={:o}", fd, root_mode));
 		out.push(format!("user_id={}", user_id));
 		out.push(format!("group_id={}", group_id));
 		let joined = CString::new(out.join(",")).unwrap();
-
-		/*
-		if joined.as_bytes_with_nul().len() > libc::getpagesize()? {
-			return Err(io::Error::new(
-				io::ErrorKind::InvalidInput,
-				"mount options too long",
-			));
-		}
-		*/
 
 		Ok(joined)
 	}
@@ -164,12 +153,12 @@ impl crate::FuseMount for FuseMount {
 		let fd = file.as_raw_fd();
 
 		let mount_data = options.mount_data(fd, root_mode)?;
-		libc_mount(
+		syscalls::mount(
 			&mount_source_cstr,
 			&mount_target_cstr,
 			&mount_type_cstr,
 			mount_flags,
-			mount_data.as_ptr() as *const c_void,
+			mount_data.to_bytes_with_nul(),
 		)?;
 
 		Ok((
@@ -193,27 +182,4 @@ fn cstr_from_osstr(x: &OsStr) -> io::Result<CString> {
 		Ok(val) => Ok(val),
 		Err(err) => Err(io::Error::new(io::ErrorKind::InvalidInput, err)),
 	}
-}
-
-fn libc_mount(
-	source: &CStr,
-	target: &CStr,
-	filesystemtype: &CStr,
-	mountflags: c_ulong,
-	data: *const c_void,
-) -> io::Result<()> {
-	let rc = unsafe {
-		libc::mount(
-			source.as_ptr(),
-			target.as_ptr(),
-			filesystemtype.as_ptr(),
-			mountflags,
-			data,
-		)
-	};
-	if rc == -1 {
-		return Err(io::Error::last_os_error());
-	}
-	assert!(rc == 0);
-	Ok(())
 }
