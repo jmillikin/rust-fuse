@@ -114,18 +114,18 @@ pub(crate) fn encode_entry_sized<'a, Chan: fuse_io::Channel, T: Sized>(
 
 macro_rules! bitflags_struct {
 	(
-		$( #[$struct_doc:meta] )?
+		$( #[$struct_doc:meta] )*
 		pub struct $struct_name:ident(u32);
 
 		$(
-			$( #[$item_doc:meta] )?
+			$( #[$item_doc:meta] )*
 			$item_mask:ident: {
 				get: $item_getter:ident ,
 				set: $item_setter:ident ,
 			},
 		)*
 	) => {
-		$( #[$struct_doc] )?
+		$( #[$struct_doc] )*
 		#[derive(Copy, Clone, PartialEq, Eq)]
 		#[repr(transparent)]
 		pub struct $struct_name(u32);
@@ -145,7 +145,7 @@ macro_rules! bitflags_struct {
 			}
 
 			$(
-				$( #[$item_doc] )?
+				$( #[$item_doc] )*
 				pub fn $item_getter(&self) -> bool {
 					(self.0 & fuse_kernel::$item_mask) > 0
 				}

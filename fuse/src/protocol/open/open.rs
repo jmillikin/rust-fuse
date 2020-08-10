@@ -36,6 +36,9 @@ impl OpenRequest<'_> {
 		self.node_id
 	}
 
+	/// Platform-specific flags passed to [`open(2)`].
+	///
+	/// [`open(2)`]: https://pubs.opengroup.org/onlinepubs/9699919799/functions/open.html
 	pub fn flags(&self) -> u32 {
 		self.flags
 	}
@@ -130,16 +133,27 @@ impl fuse_io::EncodeResponse for OpenResponse<'_> {
 // OpenFlags {{{
 
 bitflags_struct! {
+	/// Optional flags set on [`OpenResponse`].
+	///
+	/// [`OpenResponse`]: struct.OpenResponse.html
 	pub struct OpenFlags(u32);
 
+	/// Use [page-based direct I/O][direct-io] on this file.
+	///
+	/// [direct-io]: https://lwn.net/Articles/348719/
 	FOPEN_DIRECT_IO: {
 		get: direct_io,
 		set: set_direct_io,
 	},
+
+	/// Allow the kernel to preserve cached file data from the last time this
+	/// file was opened.
 	FOPEN_KEEP_CACHE: {
 		get: keep_cache,
 		set: set_keep_cache,
 	},
+
+	/// Tell the kernel this file is not seekable.
 	FOPEN_NONSEEKABLE: {
 		get: nonseekable,
 		set: set_nonseekable,

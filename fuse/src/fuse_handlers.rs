@@ -468,54 +468,55 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Open a file
+	/// Open a file
 	///
-	/// Open flags are available in fi->flags. The following rules
-	/// apply.
+	/// Platform-specific flags passed to [`open(2)`] are available in
+	/// [`OpenRequest::flags`]. The following rules apply:
 	///
-	///  - Creation (O_CREAT, O_EXCL, O_NOCTTY) flags will be
-	///    filtered out / handled by the kernel.
+	///  - Creation (`O_CREAT`, `O_EXCL`, `O_NOCTTY`) flags will be filtered out
+	///    / handled by the kernel.
 	///
-	///  - Access modes (O_RDONLY, O_WRONLY, O_RDWR) should be used
-	///    by the filesystem to check if the operation is
-	///    permitted.  If the ``-o default_permissions`` mount
-	///    option is given, this check is already done by the
-	///    kernel before calling open() and may thus be omitted by
+	///  - Access modes (`O_RDONLY`, `O_WRONLY`, `O_RDWR`) should be used by the
+	///    filesystem to check if the operation is permitted. If the
+	///    `-o default_permissions` mount option is given, this check is already
+	///    done by the kernel before calling `open` and may thus be omitted by
 	///    the filesystem.
 	///
-	///  - When writeback caching is enabled, the kernel may send
-	///    read requests even for files opened with O_WRONLY. The
-	///    filesystem should be prepared to handle this.
+	///  - When writeback caching is enabled, the kernel may send read requests
+	///    even for files opened with `O_WRONLY`. The filesystem should be
+	///    prepared to handle this.
 	///
-	///  - When writeback caching is disabled, the filesystem is
-	///    expected to properly handle the O_APPEND flag and ensure
-	///    that each write is appending to the end of the file.
+	///  - When writeback caching is disabled, the filesystem is expected to
+	///    properly handle the `O_APPEND` flag and ensure that each write is
+	///    appending to the end of the file.
 	///
-	///  - When writeback caching is enabled, the kernel will
-	///    handle O_APPEND. However, unless all changes to the file
-	///    come through the kernel this will not work reliably. The
-	///    filesystem should thus either ignore the O_APPEND flag
-	///    (and let the kernel handle it), or return an error
-	///    (indicating that reliably O_APPEND is not available).
+	///  - When writeback caching is enabled, the kernel will handle `O_APPEND`.
+	///    However, unless all changes to the file come through the kernel this
+	///    will not work reliably. The filesystem should thus either ignore the
+	///    `O_APPEND` flag (and let the kernel handle it), or return an error
+	///    (indicating that reliable `O_APPEND` is not available).
 	///
-	/// Filesystem may store an arbitrary file handle (pointer,
-	/// index, etc) in fi->fh, and use this in other all other file
-	/// operations (read, write, flush, release, fsync).
+	/// Filesystem may store an arbitrary file handle (pointer, index, etc) with
+	/// [`OpenResponse::set_handle`], and use this in other all other file
+	/// operations (`read`, `write`, `flush`, `release`, `fsync`).
 	///
-	/// Filesystem may also implement stateless file I/O and not store
-	/// anything in fi->fh.
+	/// Filesystem may also implement stateless file I/O and not store anything
+	/// with [`OpenResponse::set_handle`].
 	///
-	/// There are also some flags (direct_io, keep_cache) which the
-	/// filesystem may set in fi, to change the way the file is opened.
-	/// See fuse_file_info structure in <fuse_common.h> for more details.
+	/// There are also some flags (`direct_io`, `keep_cache`) which the
+	/// filesystem may set in the response, to change the way the file is opened.
+	/// See [`OpenFlags`] for more details.
 	///
-	/// If this request is answered with an error code of ENOSYS
-	/// and FUSE_CAP_NO_OPEN_SUPPORT is set in
-	/// `fuse_conn_info.capable`, this is treated as success and
-	/// future calls to open and release will also succeed without being
+	/// If this request is answered with an error code of `ENOSYS` and
+	/// `no_open_support` was set in [`FuseInitFlags`], this is treated as success
+	/// and future calls to `open` and `release` will also succeed without being
 	/// sent to the filesystem process.
-	#[cfg(any(doc, feature = "unstable_fuse_open"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_open")))]
+	///
+	/// [`FuseInitFlags`]: protocol/struct.FuseInitFlags.html
+	/// [`open(2)`]: https://pubs.opengroup.org/onlinepubs/9699919799/functions/open.html
+	/// [`OpenFlags`]: protocol/struct.OpenFlags.html
+	/// [`OpenRequest::flags`]: protocol/struct.OpenRequest.html#method.flags
+	/// [`OpenResponse::set_handle`]: protocol/struct.OpenResponse.html#method.set_handle
 	fn open(
 		&self,
 		ctx: server::ServerContext,
