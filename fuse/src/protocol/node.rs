@@ -88,7 +88,7 @@ impl NodeName {
 	}
 
 	pub fn as_bytes(&self) -> &[u8] {
-		&self.bytes
+		&self.bytes[0..self.bytes.len() - 1]
 	}
 
 	pub fn as_cstr(&self) -> &ffi::CStr {
@@ -108,7 +108,6 @@ impl fmt::Display for NodeName {
 		for byte in self
 			.as_bytes()
 			.iter()
-			.filter(|&b| *b != 0)
 			.flat_map(|&b| ascii::escape_default(b))
 		{
 			fmt::Write::write_char(fmt, byte as char)?;
