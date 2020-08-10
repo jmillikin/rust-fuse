@@ -51,7 +51,7 @@ where
 	) -> std::io::Result<Self> {
 		let executor_channel = fuse_device.try_clone()?;
 		let init_response = fuse_handshake(&fuse_device, &mut handlers)?;
-		let fuse_version = init_response.protocol_version();
+		let fuse_version = init_response.version();
 		let handlers_arc = Arc::new(handlers);
 		let executor_handlers = handlers_arc.clone();
 		Ok(Self {
@@ -127,20 +127,19 @@ where
 		let init_request =
 			protocol::FuseInitRequest::decode_request(request_decoder)?;
 
-		let major_version = init_request.protocol_version().major();
+		let major_version = init_request.version().major();
 		if major_version != fuse_kernel::FUSE_KERNEL_VERSION {
 			let init_response =
 				protocol::FuseInitResponse::new(crate::ProtocolVersion::LATEST);
 			init_response.encode_response(fuse_io::ResponseEncoder::new(
 				channel,
 				request_id,
-				init_response.protocol_version(),
+				init_response.version(),
 			))?;
 			continue;
 		}
 
-		let init_response = handlers.fuse_init(&init_request)?;
-		// TODO: if init_fn returns an error, pass it back to the kernel
+		let init_response = handlers.fuse_init(&init_request);
 		init_response.encode_response(fuse_io::ResponseEncoder::new(
 			channel,
 			request_id,

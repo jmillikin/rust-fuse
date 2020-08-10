@@ -28,10 +28,10 @@ fn request_v7p1() {
 
 	let req: FuseInitRequest = decode_request!(buf);
 
-	assert_eq!(req.protocol_version().major(), 7);
-	assert_eq!(req.protocol_version().minor(), 1);
+	assert_eq!(req.version().major(), 7);
+	assert_eq!(req.version().minor(), 1);
 	assert_eq!(req.max_readahead(), 0);
-	assert_eq!(req.flags(), FuseInitFlags { bits: 0 });
+	assert_eq!(req.flags(), FuseInitFlags(0));
 }
 
 #[test]
@@ -48,10 +48,10 @@ fn request_v7p6() {
 
 	let req: FuseInitRequest = decode_request!(buf);
 
-	assert_eq!(req.protocol_version().major(), 7);
-	assert_eq!(req.protocol_version().minor(), 6);
+	assert_eq!(req.version().major(), 7);
+	assert_eq!(req.version().minor(), 6);
 	assert_eq!(req.max_readahead(), 9);
-	assert_eq!(req.flags(), FuseInitFlags { bits: 0xFFFFFFFF });
+	assert_eq!(req.flags(), FuseInitFlags(0xFFFFFFFF));
 }
 
 #[test]
@@ -68,10 +68,10 @@ fn request_major_mismatch() {
 
 	let req: FuseInitRequest = decode_request!(buf);
 
-	assert_eq!(req.protocol_version().major(), 0xFF);
-	assert_eq!(req.protocol_version().minor(), 0xFF);
+	assert_eq!(req.version().major(), 0xFF);
+	assert_eq!(req.version().minor(), 0xFF);
 	assert_eq!(req.max_readahead(), 0);
-	assert_eq!(req.flags(), FuseInitFlags { bits: 0 });
+	assert_eq!(req.flags(), FuseInitFlags(0));
 }
 
 #[test]
@@ -124,7 +124,7 @@ fn response_v7p5() {
 fn response_v7p23() {
 	let mut resp = FuseInitResponse::new(crate::ProtocolVersion::new(7, 23));
 	resp.set_max_readahead(4096);
-	resp.set_flags(FuseInitFlags { bits: 0xFFFFFFFF });
+	resp.set_flags(FuseInitFlags(0xFFFFFFFF));
 	let encoded = encode_response!(resp);
 
 	assert_eq!(
@@ -153,13 +153,14 @@ fn response_v7p23() {
 
 #[test]
 fn response_minor_mismatch() {
-	let resp = FuseInitResponse::for_request(&FuseInitRequest {
-		protocol_version: crate::ProtocolVersion::new(
+	let resp = FuseInitResponse::for_request_impl(&FuseInitRequest {
+		phantom: PhantomData,
+		version: crate::ProtocolVersion::new(
 			fuse_kernel::FUSE_KERNEL_VERSION,
 			0xFF,
 		),
 		max_readahead: 4096,
-		flags: FuseInitFlags { bits: 0xFFFFFFFF },
+		flags: FuseInitFlags(0xFFFFFFFF),
 	});
 	let encoded = encode_response!(resp);
 
@@ -189,10 +190,11 @@ fn response_minor_mismatch() {
 
 #[test]
 fn response_major_mismatch() {
-	let resp = FuseInitResponse::for_request(&FuseInitRequest {
-		protocol_version: crate::ProtocolVersion::new(0xFF, 0xFF),
+	let resp = FuseInitResponse::for_request_impl(&FuseInitRequest {
+		phantom: PhantomData,
+		version: crate::ProtocolVersion::new(0xFF, 0xFF),
 		max_readahead: 0,
-		flags: FuseInitFlags { bits: 0 },
+		flags: FuseInitFlags(0),
 	});
 	let encoded = encode_response!(resp);
 
@@ -225,24 +227,84 @@ fn init_flags() {
 	// Formatting known flags works.
 	assert_eq!(format!("{:?}", FuseInitFlag::ASYNC_READ), "ASYNC_READ");
 
-	// Formatting unknown flags falls back to hex.
+	// Flag set renders as a list. Unknown flags fall back to hex.
 	assert_eq!(
-		format!("{:?}", FuseInitFlag { bits: 1 << 31 }),
-		"0x80000000"
+		format!("{:?}", FuseInitFlags(0x3 | (1u32 << 31))),
+		"[ASYNC_READ, POSIX_LOCKS, 0x80000000]"
 	);
 
-	// Flag set renders as a list.
-	assert_eq!(
-		format!("{:?}", FuseInitFlags { bits: 0x3 }),
-		"[ASYNC_READ, POSIX_LOCKS]"
-	);
+	// Flag sets are mutable
+	let mut flags = FuseInitFlags::new();
+	flags.set(FuseInitFlag::ASYNC_READ, true);
+	flags.set(FuseInitFlag::POSIX_LOCKS, true);
+	flags.set(FuseInitFlag::ASYNC_READ, false);
+	assert_eq!(format!("{:?}", flags), "[POSIX_LOCKS]");
 
 	// Flags support explicit formatting modes.
-	assert_eq!(format!("{:#b}", FuseInitFlag { bits: 1 }), "0b1");
-	assert_eq!(format!("{:#x}", FuseInitFlag { bits: 1 }), "0x1");
-	assert_eq!(format!("{:#X}", FuseInitFlag { bits: 1 }), "0x1");
+	assert_eq!(format!("{:#b}", FuseInitFlag::ASYNC_READ), "0b1");
+	assert_eq!(format!("{:#x}", FuseInitFlag::ASYNC_READ), "0x1");
+	assert_eq!(format!("{:#X}", FuseInitFlag::ASYNC_READ), "0x1");
 
-	assert_eq!(format!("{:#b}", FuseInitFlag { bits: 1 }), "0b1");
-	assert_eq!(format!("{:#x}", FuseInitFlag { bits: 1 }), "0x1");
-	assert_eq!(format!("{:#X}", FuseInitFlag { bits: 1 }), "0x1");
+	assert_eq!(format!("{:#b}", FuseInitFlag::ASYNC_READ), "0b1");
+	assert_eq!(format!("{:#x}", FuseInitFlag::ASYNC_READ), "0x1");
+	assert_eq!(format!("{:#X}", FuseInitFlag::ASYNC_READ), "0x1");
+}
+
+#[test]
+fn request_impl_debug() {
+	let version = crate::ProtocolVersion::new(7, 1);
+	let request = &FuseInitRequest {
+		phantom: PhantomData,
+		version: version,
+		max_readahead: 4096,
+		flags: FuseInitFlags(0x1),
+	};
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"FuseInitRequest {\n",
+			"    version: ProtocolVersion {\n",
+			"        major: 7,\n",
+			"        minor: 1,\n",
+			"    },\n",
+			"    max_readahead: 4096,\n",
+			"    flags: [\n",
+			"        ASYNC_READ,\n",
+			"    ],\n",
+			"}",
+		),
+	);
+}
+
+#[test]
+fn response_impl_debug() {
+	let version = crate::ProtocolVersion::new(7, 1);
+	let mut response = FuseInitResponse::new(version);
+	response.set_max_readahead(4096);
+	response.set_max_write(8192);
+	response.set_max_background(10);
+	response.set_congestion_threshold(11);
+	response.set_time_granularity(100);
+	response.set_flags(FuseInitFlags(0x1));
+
+	assert_eq!(
+		format!("{:#?}", response),
+		concat!(
+			"FuseInitResponse {\n",
+			"    version: ProtocolVersion {\n",
+			"        major: 7,\n",
+			"        minor: 1,\n",
+			"    },\n",
+			"    max_readahead: 4096,\n",
+			"    flags: [\n",
+			"        ASYNC_READ,\n",
+			"    ],\n",
+			"    max_background: 10,\n",
+			"    congestion_threshold: 11,\n",
+			"    max_write: 8192,\n",
+			"    time_granularity: 100,\n",
+			"}",
+		),
+	);
 }

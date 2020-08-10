@@ -28,7 +28,7 @@ use crate::server;
 /// [`ServerContext`]: struct.ServerContext.html
 /// [`ServerResponseWriter`]: struct.ServerResponseWriter.html
 pub trait FuseHandlers {
-	/// **\[UNSTABLE\]** Initialize the FUSE connection parameters.
+	/// Initialize the FUSE connection parameters.
 	///
 	/// Most servers do not need to override this method.
 	///
@@ -40,8 +40,8 @@ pub trait FuseHandlers {
 	fn fuse_init(
 		&mut self,
 		request: &protocol::FuseInitRequest,
-	) -> io::Result<protocol::FuseInitResponse> {
-		Ok(protocol::FuseInitResponse::for_request(request))
+	) -> protocol::FuseInitResponse {
+		protocol::FuseInitResponse::for_request_impl(request)
 	}
 
 	/// **\[UNSTABLE\]** Check file access permissions

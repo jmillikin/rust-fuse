@@ -21,19 +21,19 @@ mod fuse_init_test;
 
 // FuseInitRequest {{{
 
-/// **\[UNSTABLE\]** Request type for [`FuseHandlers::fuse_init`].
+/// Request type for [`FuseHandlers::fuse_init`].
 ///
 /// [`FuseHandlers::fuse_init`]: ../trait.FuseHandlers.html#method.fuse_init
-#[derive(Debug)]
-pub struct FuseInitRequest {
-	protocol_version: crate::ProtocolVersion,
+pub struct FuseInitRequest<'a> {
+	phantom: PhantomData<&'a ()>,
+	version: crate::ProtocolVersion,
 	max_readahead: u32,
 	flags: FuseInitFlags,
 }
 
-impl FuseInitRequest {
-	pub fn protocol_version(&self) -> crate::ProtocolVersion {
-		self.protocol_version
+impl FuseInitRequest<'_> {
+	pub fn version(&self) -> crate::ProtocolVersion {
+		self.version
 	}
 
 	pub fn max_readahead(&self) -> u32 {
@@ -53,13 +53,23 @@ impl FuseInitRequest {
 	}
 }
 
+impl fmt::Debug for FuseInitRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("FuseInitRequest")
+			.field("version", &self.version)
+			.field("max_readahead", &self.max_readahead)
+			.field("flags", &self.flags)
+			.finish()
+	}
+}
+
 #[repr(C)]
 struct fuse_init_in_v7p1 {
 	major: u32,
 	minor: u32,
 }
 
-impl<'a> fuse_io::DecodeRequest<'a> for FuseInitRequest {
+impl<'a> fuse_io::DecodeRequest<'a> for FuseInitRequest<'_> {
 	fn decode_request(
 		mut dec: fuse_io::RequestDecoder<'a>,
 	) -> io::Result<Self> {
@@ -80,20 +90,22 @@ impl<'a> fuse_io::DecodeRequest<'a> for FuseInitRequest {
 			|| raw_v7p1.major != fuse_kernel::FUSE_KERNEL_VERSION
 		{
 			return Ok(FuseInitRequest {
-				protocol_version: crate::ProtocolVersion::new(
+				phantom: PhantomData,
+				version: crate::ProtocolVersion::new(
 					raw_v7p1.major,
 					raw_v7p1.minor,
 				),
 				max_readahead: 0,
-				flags: FuseInitFlags { bits: 0 },
+				flags: FuseInitFlags(0),
 			});
 		}
 
 		let raw: &'a fuse_kernel::fuse_init_in = dec.next_sized()?;
 		Ok(FuseInitRequest {
-			protocol_version: crate::ProtocolVersion::new(raw.major, raw.minor),
+			phantom: PhantomData,
+			version: crate::ProtocolVersion::new(raw.major, raw.minor),
 			max_readahead: raw.max_readahead,
-			flags: FuseInitFlags { bits: raw.flags },
+			flags: FuseInitFlags(raw.flags),
 		})
 	}
 }
@@ -102,7 +114,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for FuseInitRequest {
 
 // FuseInitResponse {{{
 
-/// **\[UNSTABLE\]** Response type for [`FuseHandlers::fuse_init`].
+/// Response type for [`FuseHandlers::fuse_init`].
 ///
 /// [`FuseHandlers::fuse_init`]: ../trait.FuseHandlers.html#method.fuse_init
 pub struct FuseInitResponse {
@@ -126,8 +138,18 @@ impl FuseInitResponse {
 		}
 	}
 
+	/// **\[UNSTABLE\]**
+	#[cfg(any(doc, feature = "unstable_fuse_init_response_for_request"))]
+	#[cfg_attr(
+		doc,
+		doc(cfg(feature = "unstable_fuse_init_response_for_request"))
+	)]
 	pub fn for_request(request: &FuseInitRequest) -> Self {
-		let version = request.protocol_version();
+		Self::for_request_impl(request)
+	}
+
+	pub(crate) fn for_request_impl(request: &FuseInitRequest) -> Self {
+		let version = request.version();
 
 		let v_minor;
 		if version.major() == fuse_kernel::FUSE_KERNEL_VERSION {
@@ -151,7 +173,7 @@ impl FuseInitResponse {
 		response
 	}
 
-	pub fn protocol_version(&self) -> crate::ProtocolVersion {
+	pub fn version(&self) -> crate::ProtocolVersion {
 		crate::ProtocolVersion::new(self.raw.major, self.raw.minor)
 	}
 
@@ -164,13 +186,11 @@ impl FuseInitResponse {
 	}
 
 	pub fn flags(&self) -> FuseInitFlags {
-		FuseInitFlags {
-			bits: self.raw.flags,
-		}
+		FuseInitFlags(self.raw.flags)
 	}
 
 	pub fn set_flags(&mut self, flags: FuseInitFlags) {
-		self.raw.flags = flags.bits;
+		self.raw.flags = flags.0;
 	}
 
 	pub fn max_background(&self) -> u16 {
@@ -197,25 +217,25 @@ impl FuseInitResponse {
 		self.raw.max_write = max_write;
 	}
 
-	pub fn time_gran(&self) -> u32 {
+	pub fn time_granularity(&self) -> u32 {
 		self.raw.time_gran
 	}
 
-	pub fn set_time_gran(&mut self, time_gran: u32) {
-		self.raw.time_gran = time_gran;
+	pub fn set_time_granularity(&mut self, granularity: u32) {
+		self.raw.time_gran = granularity;
 	}
 }
 
 impl fmt::Debug for FuseInitResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("FuseInitResponse")
-			.field("protocol_version", &self.protocol_version())
+			.field("version", &self.version())
 			.field("max_readahead", &self.max_readahead())
 			.field("flags", &self.flags())
 			.field("max_background", &self.max_background())
 			.field("congestion_threshold", &self.congestion_threshold())
 			.field("max_write", &self.max_write())
-			.field("time_gran", &self.time_gran())
+			.field("time_granularity", &self.time_granularity())
 			.finish()
 	}
 }
@@ -262,93 +282,109 @@ impl fuse_io::EncodeResponse for FuseInitResponse {
 
 // FuseInitFlags {{{
 
-/// **\[UNSTABLE\]**
+#[allow(non_camel_case_types)]
 #[derive(Copy, Clone, PartialEq, Eq)]
-pub struct FuseInitFlag {
-	bits: u32,
+#[non_exhaustive]
+pub enum FuseInitFlag {
+	ASYNC_READ,
+	POSIX_LOCKS,
+	FILE_OPS,
+	ATOMIC_O_TRUNC,
+	EXPORT_SUPPORT,
+	BIG_WRITES,
+	DONT_MASK,
+	SPLICE_WRITE,
+	SPLICE_MOVE,
+	SPLICE_READ,
+	FLOCK_LOCKS,
+	HAS_IOCTL_DIR,
+	AUTO_INVAL_DATA,
+	DO_READDIRPLUS,
+	READDIRPLUS_AUTO,
+	ASYNC_DIO,
+	WRITEBACK_CACHE,
+	NO_OPEN_SUPPORT,
+	PARALLEL_DIROPS,
+	HANDLE_KILLPRIV,
+	POSIX_ACL,
+	ABORT_ERROR,
+}
+
+macro_rules! FuseInitFlag_impl {
+	( $( $name:ident : $value:literal , )* ) => {
+		fn name(self) -> &'static str {
+			match self {
+				$(
+					FuseInitFlag::$name => stringify!($name),
+				)*
+			}
+		}
+
+		fn to_offset(&self) -> u8 {
+			match self {
+				$(
+					FuseInitFlag::$name => $value,
+				)*
+			}
+		}
+
+		fn from_offset(off: u8) -> Option<FuseInitFlag> {
+			match off {
+				$(
+					$value => Some(FuseInitFlag::$name),
+				)*
+				_ => None,
+			}
+		}
+	}
 }
 
 impl FuseInitFlag {
-	pub const ASYNC_READ: FuseInitFlag = FuseInitFlag {
-		bits: fuse_kernel::FUSE_ASYNC_READ,
-	};
-	pub const POSIX_LOCKS: FuseInitFlag = FuseInitFlag {
-		bits: fuse_kernel::FUSE_POSIX_LOCKS,
-	};
-	pub const ATOMIC_O_TRUNC: FuseInitFlag = FuseInitFlag {
-		bits: fuse_kernel::FUSE_ATOMIC_O_TRUNC,
-	};
-	pub const BIG_WRITES: FuseInitFlag = FuseInitFlag {
-		bits: fuse_kernel::FUSE_BIG_WRITES,
-	};
-	pub const EXPORT_SUPPORT: FuseInitFlag = FuseInitFlag {
-		bits: fuse_kernel::FUSE_EXPORT_SUPPORT,
-	};
-	pub const DONT_MASK: FuseInitFlag = FuseInitFlag {
-		bits: fuse_kernel::FUSE_DONT_MASK,
-	};
-	pub const SPLICE_WRITE: FuseInitFlag = FuseInitFlag {
-		bits: fuse_kernel::FUSE_SPLICE_WRITE,
-	};
-	pub const SPLICE_MOVE: FuseInitFlag = FuseInitFlag {
-		bits: fuse_kernel::FUSE_SPLICE_MOVE,
-	};
-	pub const SPLICE_READ: FuseInitFlag = FuseInitFlag {
-		bits: fuse_kernel::FUSE_SPLICE_READ,
-	};
-	pub const FLOCK_LOCKS: FuseInitFlag = FuseInitFlag {
-		bits: fuse_kernel::FUSE_FLOCK_LOCKS,
-	};
-	pub const IOCTL_DIR: FuseInitFlag = FuseInitFlag {
-		bits: fuse_kernel::FUSE_HAS_IOCTL_DIR,
-	};
-	pub const AUTO_INVAL_DATA: FuseInitFlag = FuseInitFlag {
-		bits: fuse_kernel::FUSE_AUTO_INVAL_DATA,
-	};
-	pub const READDIRPLUS: FuseInitFlag = FuseInitFlag {
-		bits: fuse_kernel::FUSE_DO_READDIRPLUS,
-	};
-	pub const READDIRPLUS_AUTO: FuseInitFlag = FuseInitFlag {
-		bits: fuse_kernel::FUSE_READDIRPLUS_AUTO,
-	};
-	pub const ASYNC_DIO: FuseInitFlag = FuseInitFlag {
-		bits: fuse_kernel::FUSE_ASYNC_DIO,
-	};
-	pub const WRITEBACK_CACHE: FuseInitFlag = FuseInitFlag {
-		bits: fuse_kernel::FUSE_WRITEBACK_CACHE,
-	};
-	pub const NO_OPEN_SUPPORT: FuseInitFlag = FuseInitFlag {
-		bits: fuse_kernel::FUSE_NO_OPEN_SUPPORT,
-	};
-	pub const PARALLEL_DIROPS: FuseInitFlag = FuseInitFlag {
-		bits: fuse_kernel::FUSE_PARALLEL_DIROPS,
-	};
-	pub const HANDLE_KILLPRIV: FuseInitFlag = FuseInitFlag {
-		bits: fuse_kernel::FUSE_HANDLE_KILLPRIV,
-	};
-	pub const POSIX_ACL: FuseInitFlag = FuseInitFlag {
-		bits: fuse_kernel::FUSE_POSIX_ACL,
-	};
-	pub const ABORT_ERROR: FuseInitFlag = FuseInitFlag {
-		bits: fuse_kernel::FUSE_ABORT_ERROR,
-	};
+	FuseInitFlag_impl! {
+		ASYNC_READ:        0,
+		POSIX_LOCKS:       1,
+		FILE_OPS:          2,
+		ATOMIC_O_TRUNC:    3,
+		EXPORT_SUPPORT:    4,
+		BIG_WRITES:        5,
+		DONT_MASK:         6,
+		SPLICE_WRITE:      7,
+		SPLICE_MOVE:       8,
+		SPLICE_READ:       9,
+		FLOCK_LOCKS:      10,
+		HAS_IOCTL_DIR:    11,
+		AUTO_INVAL_DATA:  12,
+		DO_READDIRPLUS:   13,
+		READDIRPLUS_AUTO: 14,
+		ASYNC_DIO:        15,
+		WRITEBACK_CACHE:  16,
+		NO_OPEN_SUPPORT:  17,
+		PARALLEL_DIROPS:  18,
+		HANDLE_KILLPRIV:  19,
+		POSIX_ACL:        20,
+		ABORT_ERROR:      21,
+	}
+
+	fn mask(&self) -> u32 {
+		1u32 << self.to_offset()
+	}
 }
 
 impl fmt::Binary for FuseInitFlag {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		self.bits.fmt(fmt)
+		self.mask().fmt(fmt)
 	}
 }
 
 impl fmt::LowerHex for FuseInitFlag {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		self.bits.fmt(fmt)
+		self.mask().fmt(fmt)
 	}
 }
 
 impl fmt::UpperHex for FuseInitFlag {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		self.bits.fmt(fmt)
+		self.mask().fmt(fmt)
 	}
 }
 
@@ -360,54 +396,46 @@ impl fmt::Debug for FuseInitFlag {
 
 impl fmt::Display for FuseInitFlag {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		match *self {
-			FuseInitFlag::ASYNC_READ => fmt.write_str("ASYNC_READ"),
-			FuseInitFlag::POSIX_LOCKS => fmt.write_str("POSIX_LOCKS"),
-			FuseInitFlag::ATOMIC_O_TRUNC => fmt.write_str("ATOMIC_O_TRUNC"),
-			FuseInitFlag::BIG_WRITES => fmt.write_str("BIG_WRITES"),
-			FuseInitFlag::EXPORT_SUPPORT => fmt.write_str("EXPORT_SUPPORT"),
-			FuseInitFlag::DONT_MASK => fmt.write_str("DONT_MASK"),
-			FuseInitFlag::SPLICE_WRITE => fmt.write_str("SPLICE_WRITE"),
-			FuseInitFlag::SPLICE_MOVE => fmt.write_str("SPLICE_MOVE"),
-			FuseInitFlag::SPLICE_READ => fmt.write_str("SPLICE_READ"),
-			FuseInitFlag::FLOCK_LOCKS => fmt.write_str("FLOCK_LOCKS"),
-			FuseInitFlag::IOCTL_DIR => fmt.write_str("IOCTL_DIR"),
-			FuseInitFlag::AUTO_INVAL_DATA => fmt.write_str("AUTO_INVAL_DATA"),
-			FuseInitFlag::READDIRPLUS => fmt.write_str("READDIRPLUS"),
-			FuseInitFlag::READDIRPLUS_AUTO => fmt.write_str("READDIRPLUS_AUTO"),
-			FuseInitFlag::ASYNC_DIO => fmt.write_str("ASYNC_DIO"),
-			FuseInitFlag::WRITEBACK_CACHE => fmt.write_str("WRITEBACK_CACHE"),
-			FuseInitFlag::NO_OPEN_SUPPORT => fmt.write_str("NO_OPEN_SUPPORT"),
-			FuseInitFlag::PARALLEL_DIROPS => fmt.write_str("PARALLEL_DIROPS"),
-			FuseInitFlag::HANDLE_KILLPRIV => fmt.write_str("HANDLE_KILLPRIV"),
-			FuseInitFlag::POSIX_ACL => fmt.write_str("POSIX_ACL"),
-			FuseInitFlag::ABORT_ERROR => fmt.write_str("ABORT_ERROR"),
-			_ => write!(fmt, "{:#010X}", self.bits),
+		fmt.write_str(self.name())
+	}
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct FuseInitFlags(u32);
+
+impl FuseInitFlags {
+	pub fn new() -> FuseInitFlags {
+		FuseInitFlags(0)
+	}
+
+	pub fn get(&self, flag: FuseInitFlag) -> bool {
+		(self.0 & flag.mask()) > 0
+	}
+
+	pub fn set(&mut self, flag: FuseInitFlag, value: bool) {
+		if value {
+			self.0 |= flag.mask();
+		} else {
+			self.0 &= !flag.mask();
 		}
 	}
 }
 
-/// **\[UNSTABLE\]**
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub struct FuseInitFlags {
-	bits: u32,
-}
-
 impl fmt::Binary for FuseInitFlags {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		self.bits.fmt(fmt)
+		self.0.fmt(fmt)
 	}
 }
 
 impl fmt::LowerHex for FuseInitFlags {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		self.bits.fmt(fmt)
+		self.0.fmt(fmt)
 	}
 }
 
 impl fmt::UpperHex for FuseInitFlags {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		self.bits.fmt(fmt)
+		self.0.fmt(fmt)
 	}
 }
 
@@ -419,33 +447,29 @@ impl fmt::Debug for FuseInitFlags {
 
 impl fmt::Display for FuseInitFlags {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		let mut chunks = [FuseInitFlag { bits: 0 }; 32];
-		let mut ii = 0;
-		for bit in 0..31 {
-			let mask: u32 = 1 << bit;
-			if (self.bits & mask) > 0 {
-				chunks[ii].bits = mask;
-				ii += 1;
+		let mut list = fmt.debug_list();
+		for off in 0..32 {
+			let mask: u32 = 1 << off;
+			if (self.0 & mask) > 0 {
+				match FuseInitFlag::from_offset(off) {
+					Some(flag) => {
+						list.entry(&flag);
+					},
+					None => {
+						list.entry(&DebugFlagMask(mask));
+					},
+				}
 			}
 		}
-		fmt.debug_list().entries(chunks[0..ii].iter()).finish()
+		list.finish()
 	}
 }
 
-impl FuseInitFlags {
-	pub fn new() -> FuseInitFlags {
-		FuseInitFlags { bits: 0 }
-	}
+struct DebugFlagMask(u32);
 
-	pub fn get(&self, flag: FuseInitFlag) -> bool {
-		(self.bits & flag.bits) > 0
-	}
-	pub fn set(&mut self, flag: FuseInitFlag, value: bool) {
-		if value {
-			self.bits |= flag.bits;
-		} else {
-			self.bits &= !(flag.bits);
-		}
+impl fmt::Debug for DebugFlagMask {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		write!(fmt, "{:#010X}", self.0)
 	}
 }
 
