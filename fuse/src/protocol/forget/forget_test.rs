@@ -18,7 +18,7 @@ use crate::internal::testutil::MessageBuilder;
 use crate::protocol::node;
 use crate::protocol::prelude::*;
 
-use super::ForgetRequest;
+use super::{ForgetRequest, ForgetRequestItem};
 
 #[test]
 fn request_single() {
@@ -32,10 +32,10 @@ fn request_single() {
 
 	let req: ForgetRequest = decode_request!(buf);
 
-	let nodes = req.nodes();
-	assert_eq!(nodes.len(), 1);
-	assert_eq!(nodes[0].id(), node::NodeId::new(123));
-	assert_eq!(nodes[0].count(), 456);
+	let items: Vec<ForgetRequestItem> = req.items().collect();
+	assert_eq!(items.len(), 1);
+	assert_eq!(items[0].node_id(), node::NodeId::new(123).unwrap());
+	assert_eq!(items[0].lookup_count(), 456);
 }
 
 #[test]
@@ -55,10 +55,37 @@ fn request_batch() {
 
 	let req: ForgetRequest = decode_request!(buf);
 
-	let nodes = req.nodes();
-	assert_eq!(nodes.len(), 2);
-	assert_eq!(nodes[0].id(), node::NodeId::new(12));
-	assert_eq!(nodes[0].count(), 34);
-	assert_eq!(nodes[1].id(), node::NodeId::new(56));
-	assert_eq!(nodes[1].count(), 78);
+	let items: Vec<ForgetRequestItem> = req.items().collect();
+	assert_eq!(items.len(), 2);
+	assert_eq!(items[0].node_id(), node::NodeId::new(12).unwrap());
+	assert_eq!(items[0].lookup_count(), 34);
+	assert_eq!(items[1].node_id(), node::NodeId::new(56).unwrap());
+	assert_eq!(items[1].lookup_count(), 78);
+}
+
+#[test]
+fn request_impl_debug() {
+	let buf = MessageBuilder::new()
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_FORGET;
+			h.nodeid = 123;
+		})
+		.push_sized(&fuse_kernel::fuse_forget_in { nlookup: 456 })
+		.build_aligned();
+
+	let request: ForgetRequest = decode_request!(buf);
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"ForgetRequest {\n",
+			"    items: [\n",
+			"        ForgetRequestItem {\n",
+			"            node_id: 123,\n",
+			"            lookup_count: 456,\n",
+			"        },\n",
+			"    ],\n",
+			"}",
+		),
+	);
 }

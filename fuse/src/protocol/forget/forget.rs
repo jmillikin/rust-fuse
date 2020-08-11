@@ -22,36 +22,48 @@ mod forget_test;
 
 // ForgetRequest {{{
 
-/// **\[UNSTABLE\]**
-pub struct ForgetRequest<'a> {
-	single: Option<ForgetNode>,
-	batch: &'a [ForgetNode],
-}
-
-impl ForgetRequest<'_> {
-	pub fn nodes(&self) -> &[ForgetNode] {
-		if let Some(ref n) = self.single {
-			return slice::from_ref(n);
-		}
-		return self.batch;
-	}
-}
-
-/// **\[UNSTABLE\]**
-#[repr(C)]
 #[derive(Debug)]
-pub struct ForgetNode {
-	id: Option<node::NodeId>,
-	count: u64,
+pub struct ForgetRequestItem {
+	node_id: node::NodeId,
+	lookup_count: u64,
 }
 
-impl ForgetNode {
-	pub fn id(&self) -> Option<node::NodeId> {
-		self.id
+impl ForgetRequestItem {
+	pub fn node_id(&self) -> node::NodeId {
+		self.node_id
 	}
 
-	pub fn count(&self) -> u64 {
-		self.count
+	pub fn lookup_count(&self) -> u64 {
+		self.lookup_count
+	}
+}
+
+/// Request type for [`FuseHandlers::forget`].
+///
+/// [`FuseHandlers::forget`]: ../trait.FuseHandlers.html#method.forget
+pub struct ForgetRequest<'a> {
+	forget: Option<fuse_kernel::fuse_forget_one>,
+	batch_forgets: &'a [fuse_kernel::fuse_forget_one],
+}
+
+impl<'a> ForgetRequest<'a> {
+	pub fn items(&self) -> impl Iterator<Item = ForgetRequestItem> + 'a {
+		self.items_impl()
+	}
+
+	fn items_impl(&self) -> ForgetRequestIter<'a> {
+		match self.forget {
+			Some(item) => ForgetRequestIter::One(Some(item)),
+			None => ForgetRequestIter::Batch(self.batch_forgets),
+		}
+	}
+}
+
+impl fmt::Debug for ForgetRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("ForgetRequest")
+			.field("items", &self.items_impl())
+			.finish()
 	}
 }
 
@@ -61,32 +73,106 @@ impl<'a> fuse_io::DecodeRequest<'a> for ForgetRequest<'a> {
 	) -> io::Result<Self> {
 		let header = dec.header();
 		if header.opcode == fuse_kernel::FUSE_BATCH_FORGET {
-			let raw: &fuse_kernel::fuse_batch_forget_in = dec.next_sized()?;
+			let raw: &'a fuse_kernel::fuse_batch_forget_in =
+				dec.next_sized()?;
 			let batch_size =
 				raw.count * size_of::<fuse_kernel::fuse_forget_one>() as u32;
 			let batch_bytes = dec.next_bytes(batch_size)?;
-			let batch = unsafe {
+			let batch_forgets: &'a [fuse_kernel::fuse_forget_one] = unsafe {
 				slice::from_raw_parts(
-					batch_bytes.as_ptr() as *const ForgetNode,
+					batch_bytes.as_ptr() as *const fuse_kernel::fuse_forget_one,
 					raw.count as usize,
 				)
 			};
 			return Ok(Self {
-				single: None,
-				batch,
+				forget: None,
+				batch_forgets,
 			});
 		}
 
 		debug_assert!(header.opcode == fuse_kernel::FUSE_FORGET);
 		let raw: &fuse_kernel::fuse_forget_in = dec.next_sized()?;
-		let node_id = try_node_id(header.nodeid)?;
 		Ok(Self {
-			single: Some(ForgetNode {
-				id: Some(node_id),
-				count: raw.nlookup,
+			forget: Some(fuse_kernel::fuse_forget_one {
+				nodeid: header.nodeid,
+				nlookup: raw.nlookup,
 			}),
-			batch: &[],
+			batch_forgets: &[],
 		})
+	}
+}
+
+// }}}
+
+// ForgetRequestIter {{{
+
+enum ForgetRequestIter<'a> {
+	One(Option<fuse_kernel::fuse_forget_one>),
+	Batch(&'a [fuse_kernel::fuse_forget_one]),
+}
+
+impl ForgetRequestIter<'_> {
+	fn clone(&self) -> Self {
+		match self {
+			Self::One(x) => Self::One(*x),
+			Self::Batch(x) => Self::Batch(x),
+		}
+	}
+}
+
+impl Iterator for ForgetRequestIter<'_> {
+	type Item = ForgetRequestItem;
+
+	fn next(&mut self) -> Option<Self::Item> {
+		match self {
+			Self::One(None) => return None,
+			Self::One(Some(item)) => {
+				let item = *item;
+				*self = Self::One(None);
+				match node::NodeId::new(item.nodeid) {
+					Some(node_id) => {
+						return Some(ForgetRequestItem {
+							node_id,
+							lookup_count: item.nlookup,
+						});
+					},
+					None => return None,
+				};
+			},
+			Self::Batch(items) => {
+				let (head, tail) = next_batch_item(items);
+				*self = Self::Batch(tail);
+				return head;
+			},
+		}
+	}
+}
+
+fn next_batch_item(
+	mut items: &[fuse_kernel::fuse_forget_one],
+) -> (Option<ForgetRequestItem>, &[fuse_kernel::fuse_forget_one]) {
+	loop {
+		match items.split_first() {
+			None => return (None, &[]),
+			Some((head, tail)) => match node::NodeId::new(head.nodeid) {
+				None => {
+					items = tail;
+				},
+				Some(node_id) => {
+					let next = Some(ForgetRequestItem {
+						node_id,
+						lookup_count: head.nlookup,
+					});
+					return (next, tail);
+				},
+			},
+		}
+	}
+}
+
+impl fmt::Debug for ForgetRequestIter<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_list().entries(self.clone()).finish()
 	}
 }
 

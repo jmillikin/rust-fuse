@@ -184,35 +184,42 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Forget about an inode
+	/// Decrease lookup count on node IDs.
 	///
-	/// This function is called when the kernel removes an inode
-	/// from its internal caches.
+	/// This function is called when the kernel removes node IDs from its
+	/// internal caches.
 	///
-	/// The inode's lookup count increases by one for every call to
-	/// fuse_reply_entry and fuse_reply_create. The nlookup parameter
-	/// indicates by how much the lookup count should be decreased.
+	/// A node ID's lookup count increases by one for every successful call to
+	/// [`lookup`], [`create`], [`link`], [`mkdir`], [`mknod`], or [`symlink`].
 	///
-	/// Inodes with a non-zero lookup count may receive request from
-	/// the kernel even after calls to unlink, rmdir or (when
-	/// overwriting an existing file) rename. Filesystems must handle
-	/// such requests properly and it is recommended to defer removal
-	/// of the inode until the lookup count reaches zero. Calls to
-	/// unlink, rmdir or rename will be followed closely by forget
-	/// unless the file or directory is open, in which case the
-	/// kernel issues forget only after the release or releasedir
-	/// calls.
+	/// Node IDs with a non-zero lookup count may receive requests from the
+	/// kernel even after calls to [`unlink`], [`rmdir`] or (when overwriting an
+	/// existing file) [`rename`]. Filesystems must handle such requests properly
+	/// and it is recommended to defer removal of the node ID until the lookup
+	/// count reaches zero. Calls to [`unlink`], [`rmdir`] or [`rename`] will be
+	/// followed closely by `forget` unless the file or directory is open, in
+	/// which case the kernel issues `forget` only after the [`release`] or
+	/// [`releasedir`] calls.
 	///
-	/// Note that if a file system will be exported over NFS the
-	/// inodes lifetime must extend even beyond forget. See the
-	/// generation field in struct fuse_entry_param above.
+	/// Note that if a file system will be exported over NFS the node ID's
+	/// lifetime must extend even beyond `forget` (see [`Node::generation`]).
 	///
-	/// On unmount the lookup count for all inodes implicitly drops
-	/// to zero. It is not guaranteed that the file system will
-	/// receive corresponding forget messages for the affected
-	/// inodes.
-	#[cfg(any(doc, feature = "unstable_fuse_forget"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_forget")))]
+	/// On unmount the lookup count for all node IDs implicitly drops to zero.
+	/// It is not guaranteed that the file system will receive corresponding
+	/// forget requests for the affected node IDs.
+	///
+	/// [`lookup`]: #method.lookup
+	/// [`create`]: #method.create
+	/// [`link`]: #method.link
+	/// [`mkdir`]: #method.mkdir
+	/// [`mknod`]: #method.mknod
+	/// [`symlink`]: #method.symlink
+	/// [`unlink`]: #method.unlink
+	/// [`rmdir`]: #method.rmdir
+	/// [`rename`]: #method.rename
+	/// [`release`]: #method.release
+	/// [`releasedir`]: #method.releasedir
+	/// [`Node::generation`]: protocol/struct.Node.html#method.generation
 	fn forget(
 		&self,
 		ctx: server::ServerContext,

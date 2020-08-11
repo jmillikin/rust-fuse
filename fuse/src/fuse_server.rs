@@ -298,7 +298,6 @@ fn fuse_request_dispatch<Handlers: FuseHandlers>(
 		fuse_kernel::FUSE_FALLOCATE => do_dispatch!(fallocate),
 		#[cfg(feature = "unstable_fuse_flush")]
 		fuse_kernel::FUSE_FLUSH => do_dispatch!(flush),
-		#[cfg(feature = "unstable_fuse_forget")]
 		fuse_kernel::FUSE_FORGET | fuse_kernel::FUSE_BATCH_FORGET => {
 			let request = DecodeRequest::decode_request(request_decoder)?;
 			handlers.forget(ctx, &request);
