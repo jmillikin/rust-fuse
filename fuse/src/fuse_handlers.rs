@@ -551,19 +551,18 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Read data
+	/// Read data
 	///
-	/// Read should send exactly the number of bytes requested except
-	/// on EOF or error, otherwise the rest of the data will be
-	/// substituted with zeroes.  An exception to this is when the file
-	/// has been opened in 'direct_io' mode, in which case the return
-	/// value of the read system call will reflect the return value of
-	/// this operation.
+	/// Read should send exactly the number of bytes requested except on EOF or
+	/// error, otherwise the rest of the data will be substituted with zeroes. An
+	/// exception to this is when the file has been opened in `direct_io` mode,
+	/// in which case the return value of the read system call will reflect the
+	/// response from this operation.
 	///
-	/// fi->fh will contain the value set by the open method, or will
-	/// be undefined if the open method didn't set any value.
-	#[cfg(any(doc, feature = "unstable_fuse_read"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_read")))]
+	/// [`ReadRequest::handle`] will return the value set by the open method,
+	/// or will return 0 if the open method didn't set any value.
+	///
+	/// [`ReadRequest::handle`]: protocol/struct.ReadRequest.html#method.handle
 	fn read(
 		&self,
 		ctx: server::ServerContext,

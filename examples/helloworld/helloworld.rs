@@ -120,10 +120,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 			return;
 		}
 
-		let mut value = Vec::new();
-		let mut resp = fuse::ReadResponse::new(request);
-		value.extend_from_slice(HELLO_WORLD);
-		resp.set_value(&value).unwrap();
+		let resp = fuse::ReadResponse::from_bytes(HELLO_WORLD);
 		respond.ok(&resp);
 	}
 

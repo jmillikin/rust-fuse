@@ -15,6 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::internal::testutil::MessageBuilder;
+use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 use super::{ReadRequest, ReadResponse};
@@ -24,7 +25,10 @@ const DUMMY_READ_FLAG: u32 = 0x80000000;
 #[test]
 fn request_v7p1() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_READ)
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_READ;
+			h.nodeid = 123;
+		})
 		.push_sized(&super::fuse_read_in_v7p1 {
 			fh: 123,
 			offset: 45,
@@ -47,7 +51,10 @@ fn request_v7p1() {
 #[test]
 fn request_v7p9() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_READ)
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_READ;
+			h.nodeid = 123;
+		})
 		.push_sized(&fuse_kernel::fuse_read_in {
 			fh: 123,
 			offset: 45,
@@ -73,7 +80,10 @@ fn request_v7p9() {
 #[test]
 fn request_lock_owner() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_READ)
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_READ;
+			h.nodeid = 123;
+		})
 		.push_sized(&fuse_kernel::fuse_read_in {
 			fh: 123,
 			offset: 45,
@@ -91,32 +101,35 @@ fn request_lock_owner() {
 }
 
 #[test]
+fn request_impl_debug() {
+	let request = &ReadRequest {
+		phantom: PhantomData,
+		node_id: node::NodeId::ROOT,
+		size: 1,
+		offset: 2,
+		handle: 3,
+		lock_owner: None,
+		flags: 0x4,
+	};
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"ReadRequest {\n",
+			"    node_id: 1,\n",
+			"    size: 1,\n",
+			"    offset: 2,\n",
+			"    handle: 3,\n",
+			"    lock_owner: None,\n",
+			"    flags: 0x00000004,\n",
+			"}",
+		),
+	);
+}
+
+#[test]
 fn response() {
-	let mut resp: ReadResponse = todo!();
-	/*
-	let mut resp = ReadRequest {
-		header: &HEADER,
-		handle: 0,
-		offset: 0,
-		size: 10,
-		read_flags: 0,
-		lock_owner: 0,
-		flags: 0,
-		}.new_response();
-		*/
-	assert_eq!(resp.request_size, 10);
-
-	// value must fit in kernel buffer
-	{
-		let err = resp.set_value(&[255; 11]).unwrap_err();
-		assert_eq!(err.raw_os_error().unwrap(), errors::ERANGE.get() as i32);
-
-		assert!(resp.buf.is_empty());
-	}
-
-	resp.set_value(&[255, 0, 255]).unwrap();
-	assert_eq!(resp.buf, &[255, 0, 255]);
-
+	let resp = ReadResponse::from_bytes(&[255, 0, 255]);
 	let encoded = encode_response!(resp);
 
 	assert_eq!(
@@ -124,7 +137,7 @@ fn response() {
 		MessageBuilder::new()
 			.push_sized(&fuse_kernel::fuse_out_header {
 				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ resp.buf.len()) as u32,
+					+ resp.bytes.len()) as u32,
 				error: 0,
 				unique: 0,
 			})
@@ -134,27 +147,16 @@ fn response() {
 }
 
 #[test]
-fn response_detect_overflow() {
-	let mut resp: ReadResponse = todo!();
-	/*
-		let mut resp = ReadRequest {
-			header: &HEADER,
-			handle: 0,
-			offset: 0,
-			size: 10,
-			read_flags: 0,
-			lock_owner: 0,
-			flags: 0,
-		}.new_response();
-	*/
-	// response must be small enough to size with a u32
-	let mut buf = vec![0];
-	unsafe {
-		buf.set_len(u32::MAX as usize + 1)
-	};
+fn response_impl_debug() {
+	let response = ReadResponse::from_bytes(&[255, 0, 255]);
 
-	let err = resp.set_value(&buf).unwrap_err();
-	assert_eq!(err.raw_os_error().unwrap(), errors::ERANGE.get() as i32);
-
-	assert!(resp.buf.is_empty());
+	#[rustfmt::skip]
+	assert_eq!(
+		format!("{:#?}", response),
+		concat!(
+			"ReadResponse {\n",
+			r#"    bytes: "\xff\x00\xff","#, "\n",
+			"}",
+		),
+	);
 }

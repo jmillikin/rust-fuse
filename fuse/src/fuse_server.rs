@@ -330,7 +330,6 @@ fn fuse_request_dispatch<Handlers: FuseHandlers>(
 		fuse_kernel::FUSE_OPEN => do_dispatch!(open),
 		#[cfg(feature = "unstable_fuse_opendir")]
 		fuse_kernel::FUSE_OPENDIR => do_dispatch!(opendir),
-		#[cfg(feature = "unstable_fuse_read")]
 		fuse_kernel::FUSE_READ => do_dispatch!(read),
 		#[cfg(feature = "unstable_fuse_readdir")]
 		fuse_kernel::FUSE_READDIR => do_dispatch!(readdir),

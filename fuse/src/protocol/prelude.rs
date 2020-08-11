@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::ascii;
+
 pub(crate) use std::cmp::min;
 #[allow(unused_imports)]
 pub(crate) use std::ffi::{CStr, CString};
@@ -46,5 +48,17 @@ pub(crate) struct DebugHexU32(pub(crate) u32);
 impl fmt::Debug for DebugHexU32 {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		write!(fmt, "{:#010X}", self.0)
+	}
+}
+
+pub(crate) struct DebugBytesAsString<'a>(pub(crate) &'a [u8]);
+
+impl fmt::Debug for DebugBytesAsString<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		write!(fmt, "\"")?;
+		for byte in self.0.iter().flat_map(|&b| ascii::escape_default(b)) {
+			fmt::Write::write_char(fmt, byte as char)?;
+		}
+		write!(fmt, "\"")
 	}
 }

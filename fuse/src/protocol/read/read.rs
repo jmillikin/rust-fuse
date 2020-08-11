@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 #[cfg(test)]
@@ -21,43 +22,61 @@ mod read_test;
 
 // ReadRequest {{{
 
-/// **\[UNSTABLE\]**
+/// Request type for [`FuseHandlers::read`].
+///
+/// [`FuseHandlers::read`]: ../trait.FuseHandlers.html#method.read
 pub struct ReadRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	handle: u64,
-	offset: u64,
+	phantom: PhantomData<&'a ()>,
+	node_id: node::NodeId,
 	size: u32,
-	read_flags: u32,
-	lock_owner: u64,
+	offset: u64,
+	handle: u64,
+	lock_owner: Option<u64>,
 	flags: u32,
 }
 
 impl ReadRequest<'_> {
-	pub fn node_id(&self) -> u64 {
-		self.header.nodeid
-	}
-
-	pub fn handle(&self) -> u64 {
-		self.handle
-	}
-
-	pub fn offset(&self) -> u64 {
-		self.offset
+	pub fn node_id(&self) -> node::NodeId {
+		self.node_id
 	}
 
 	pub fn size(&self) -> u32 {
 		self.size
 	}
 
-	pub fn lock_owner(&self) -> Option<u64> {
-		if self.read_flags & fuse_kernel::FUSE_READ_LOCKOWNER == 0 {
-			return None;
-		}
-		Some(self.lock_owner)
+	pub fn offset(&self) -> u64 {
+		self.offset
 	}
 
+	/// The value passed to [`OpenResponse::set_handle`], or zero if not set.
+	///
+	/// [`OpenResponse::set_handle`]: protocol/struct.OpenResponse.html#method.set_handle
+	pub fn handle(&self) -> u64 {
+		self.handle
+	}
+
+	pub fn lock_owner(&self) -> Option<u64> {
+		self.lock_owner
+	}
+
+	/// Platform-specific flags passed to [`open(2)`].
+	///
+	/// [`open(2)`]: https://pubs.opengroup.org/onlinepubs/9699919799/functions/open.html
 	pub fn flags(&self) -> u32 {
 		self.flags
+	}
+}
+
+impl fmt::Debug for ReadRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("ReadRequest")
+			.field("node_id", &self.node_id)
+			.field("size", &self.size)
+			.field("offset", &self.offset)
+			.field("handle", &self.handle)
+			.field("lock_owner", &self.lock_owner)
+			.field("flags", &DebugHexU32(self.flags))
+			.finish()
 	}
 }
 
@@ -80,24 +99,30 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReadRequest<'a> {
 		if dec.version().minor() < 9 {
 			let raw: &'a fuse_read_in_v7p1 = dec.next_sized()?;
 			return Ok(Self {
-				header,
-				handle: raw.fh,
-				offset: raw.offset,
+				phantom: PhantomData,
+				node_id: try_node_id(header.nodeid)?,
 				size: raw.size,
-				read_flags: 0,
-				lock_owner: 0,
+				offset: raw.offset,
+				handle: raw.fh,
+				lock_owner: None,
 				flags: 0,
 			});
 		}
 
 		let raw: &'a fuse_kernel::fuse_read_in = dec.next_sized()?;
+
+		let mut lock_owner = None;
+		if raw.read_flags & fuse_kernel::FUSE_READ_LOCKOWNER != 0 {
+			lock_owner = Some(raw.lock_owner);
+		}
+
 		Ok(Self {
-			header,
-			handle: raw.fh,
-			offset: raw.offset,
+			phantom: PhantomData,
+			node_id: try_node_id(header.nodeid)?,
 			size: raw.size,
-			read_flags: raw.read_flags,
-			lock_owner: raw.lock_owner,
+			offset: raw.offset,
+			handle: raw.fh,
+			lock_owner,
 			flags: raw.flags,
 		})
 	}
@@ -107,29 +132,29 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReadRequest<'a> {
 
 // ReadResponse {{{
 
-/// **\[UNSTABLE\]**
+/// Response type for [`FuseHandlers::read`].
+///
+/// [`FuseHandlers::read`]: ../trait.FuseHandlers.html#method.read
 pub struct ReadResponse<'a> {
-	request_size: u32,
-	buf: &'a [u8],
+	bytes: &'a [u8],
 }
 
 impl<'a> ReadResponse<'a> {
-	// TODO: fix API
-	pub fn new(request: &ReadRequest) -> Self {
-		Self {
-			request_size: request.size,
-			buf: &[],
-		}
+	pub fn from_bytes(bytes: &'a [u8]) -> Self {
+		Self { bytes }
 	}
 
-	pub fn set_value(&mut self, value: &'a [u8]) -> io::Result<()> {
-		if value.len() > self.request_size as usize {
-			return Err(io::Error::from_raw_os_error(
-				errors::ERANGE.get() as i32
-			));
-		}
-		self.buf = value;
-		Ok(())
+	// TODO; from &[std::io::IoSlice]
+
+	// TODO: from file descriptor (for splicing)
+}
+
+impl fmt::Debug for ReadResponse<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		let bytes = DebugBytesAsString(self.bytes);
+		fmt.debug_struct("ReadResponse")
+			.field("bytes", &bytes)
+			.finish()
 	}
 }
 
@@ -138,7 +163,7 @@ impl fuse_io::EncodeResponse for ReadResponse<'_> {
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
 	) -> std::io::Result<()> {
-		enc.encode_bytes(self.buf)
+		enc.encode_bytes(self.bytes)
 	}
 }
 
