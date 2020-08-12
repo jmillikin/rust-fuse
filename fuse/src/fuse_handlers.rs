@@ -504,8 +504,8 @@ pub trait FuseHandlers {
 	///    (indicating that reliable `O_APPEND` is not available).
 	///
 	/// Filesystem may store an arbitrary file handle (pointer, index, etc) with
-	/// [`OpenResponse::set_handle`], and use this in other all other file
-	/// operations (`read`, `write`, `flush`, `release`, `fsync`).
+	/// [`OpenResponse::set_handle`], and use this in other file operations
+	/// ([`read`], [`write`], [`flush`], [`release`], [`fsync`]).
 	///
 	/// Filesystem may also implement stateless file I/O and not store anything
 	/// with [`OpenResponse::set_handle`].
@@ -516,14 +516,19 @@ pub trait FuseHandlers {
 	///
 	/// If this request is answered with an error code of `ENOSYS` and
 	/// `no_open_support` was set in [`FuseInitFlags`], this is treated as success
-	/// and future calls to `open` and `release` will also succeed without being
+	/// and future calls to `open` and [`release`] will also succeed without being
 	/// sent to the filesystem process.
 	///
+	/// [`flush`]: #method.flush
+	/// [`fsync`]: #method.fsync
 	/// [`FuseInitFlags`]: protocol/struct.FuseInitFlags.html
 	/// [`open(2)`]: https://pubs.opengroup.org/onlinepubs/9699919799/functions/open.html
 	/// [`OpenFlags`]: protocol/struct.OpenFlags.html
 	/// [`OpenRequest::flags`]: protocol/struct.OpenRequest.html#method.flags
 	/// [`OpenResponse::set_handle`]: protocol/struct.OpenResponse.html#method.set_handle
+	/// [`read`]: #method.read
+	/// [`release`]: #method.release
+	/// [`write`]: #method.write
 	fn open(
 		&self,
 		ctx: server::ServerContext,
@@ -534,20 +539,26 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Open a directory
+	/// Open a directory
 	///
-	/// Filesystem may store an arbitrary file handle (pointer, index,
-	/// etc) in fi->fh, and use this in other all other directory
-	/// stream operations (readdir, releasedir, fsyncdir).
+	/// Filesystem may store an arbitrary file handle (pointer, index, etc) with
+	/// [`OpendirResponse::set_handle`], and use this in other directory stream
+	/// operations ([`fsyncdir`], [`readdir`], [`releasedir`]).
 	///
-	/// If this request is answered with an error code of ENOSYS and
-	/// FUSE_CAP_NO_OPENDIR_SUPPORT is set in `fuse_conn_info.capable`,
-	/// this is treated as success and future calls to opendir and
-	/// releasedir will also succeed without being sent to the filesystem
-	/// process. In addition, the kernel will cache readdir results
-	/// as if opendir returned FOPEN_KEEP_CACHE | FOPEN_CACHE_DIR.
-	#[cfg(any(doc, feature = "unstable_fuse_opendir"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_opendir")))]
+	/// If this request is answered with an error code of `ENOSYS` and
+	/// `no_opendir_support` was set in [`FuseInitFlags`], this is treated as
+	/// success and future calls to `opendir` and [`releasedir`] will also
+	/// succeed without being sent to the filesystem process. In addition, the
+	/// kernel will cache [`readdir`] results as if `opendir` set
+	/// [`OpendirFlags::keep_cache`] and [`OpendirFlags::cache_dir`].
+	///
+	/// [`fsyncdir`]: #method.fsyncdir
+	/// [`FuseInitFlags`]: protocol/struct.FuseInitFlags.html
+	/// [`OpendirFlags::cache_dir`]: protocol/struct.OpendirFlags.html#method.cache_dir
+	/// [`OpendirFlags::keep_cache`]: protocol/struct.OpendirFlags.html#method.keep_cache
+	/// [`OpendirResponse::set_handle`]: protocol/struct.OpendirResponse.html#method.set_handle
+	/// [`readdir`]: #method.readdir
+	/// [`releasedir`]: #method.releasedir
 	fn opendir(
 		&self,
 		ctx: server::ServerContext,

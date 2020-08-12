@@ -15,9 +15,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::internal::testutil::MessageBuilder;
+use crate::protocol::node;
 use crate::protocol::prelude::*;
 
-use super::{OpendirRequest, OpendirResponse};
+use super::{OpendirFlags, OpendirRequest, OpendirResponse};
 
 #[test]
 fn request() {
@@ -38,10 +39,29 @@ fn request() {
 }
 
 #[test]
+fn request_impl_debug() {
+	let request = &OpendirRequest {
+		phantom: PhantomData,
+		node_id: node::NodeId::ROOT,
+		flags: 0x1,
+	};
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"OpendirRequest {\n",
+			"    node_id: 1,\n",
+			"    flags: 0x00000001,\n",
+			"}",
+		),
+	);
+}
+
+#[test]
 fn response() {
 	let mut resp = OpendirResponse::new();
 	resp.set_handle(123);
-	resp.set_flags(0xFE);
+	resp.set_flags(OpendirFlags(0xFE));
 
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 1),
@@ -62,5 +82,41 @@ fn response() {
 				padding: 0,
 			})
 			.build()
+	);
+}
+
+#[test]
+fn response_impl_debug() {
+	let mut response = OpendirResponse::new();
+	response.set_handle(123);
+	response.set_flags(OpendirFlags(0x2));
+
+	assert_eq!(
+		format!("{:#?}", response),
+		concat!(
+			"OpendirResponse {\n",
+			"    handle: 123,\n",
+			"    flags: OpendirFlags {\n",
+			"        keep_cache: true,\n",
+			"        nonseekable: false,\n",
+			"    },\n",
+			"}",
+		),
+	);
+}
+
+#[test]
+fn open_flags() {
+	// Flag sets render as a struct, with unknown flags falling back
+	// to hex.
+	assert_eq!(
+		format!("{:#?}", OpendirFlags(0x2 | (1u32 << 31))),
+		concat!(
+			"OpendirFlags {\n",
+			"    keep_cache: true,\n",
+			"    nonseekable: false,\n",
+			"    0x80000000: true,\n",
+			"}",
+		),
 	);
 }

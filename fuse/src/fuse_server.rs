@@ -327,7 +327,6 @@ fn fuse_request_dispatch<Handlers: FuseHandlers>(
 		#[cfg(feature = "unstable_fuse_mknod")]
 		fuse_kernel::FUSE_MKNOD => do_dispatch!(mknod),
 		fuse_kernel::FUSE_OPEN => do_dispatch!(open),
-		#[cfg(feature = "unstable_fuse_opendir")]
 		fuse_kernel::FUSE_OPENDIR => do_dispatch!(opendir),
 		fuse_kernel::FUSE_READ => do_dispatch!(read),
 		#[cfg(feature = "unstable_fuse_readdir")]
