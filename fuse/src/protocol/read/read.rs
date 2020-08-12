@@ -59,9 +59,11 @@ impl ReadRequest<'_> {
 		self.lock_owner
 	}
 
-	/// Platform-specific flags passed to [`open(2)`].
+	/// Platform-specific flags passed to [`FuseHandlers::open`]. See
+	/// [`OpenRequest::flags`] for details.
 	///
-	/// [`open(2)`]: https://pubs.opengroup.org/onlinepubs/9699919799/functions/open.html
+	/// [`FuseHandlers::open`]: ../trait.FuseHandlers.html#method.open
+	/// [`OpenRequest::flags`]: struct.OpenRequest.html#method.flags
 	pub fn flags(&self) -> u32 {
 		self.flags
 	}

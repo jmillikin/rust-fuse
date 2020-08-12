@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 #[cfg(test)]
@@ -21,31 +22,51 @@ mod release_test;
 
 // ReleaseRequest {{{
 
-/// **\[UNSTABLE\]**
+/// Request type for [`FuseHandlers::release`].
+///
+/// [`FuseHandlers::release`]: ../trait.FuseHandlers.html#method.release
 pub struct ReleaseRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	raw: fuse_kernel::fuse_release_in,
+	phantom: PhantomData<&'a ()>,
+	node_id: node::NodeId,
+	handle: u64,
+	lock_owner: Option<u64>,
+	flags: u32,
 }
 
 impl ReleaseRequest<'_> {
-	pub fn node_id(&self) -> u64 {
-		self.header.nodeid
+	pub fn node_id(&self) -> node::NodeId {
+		self.node_id
 	}
 
+	/// The value passed to [`OpenResponse::set_handle`], or zero if not set.
+	///
+	/// [`OpenResponse::set_handle`]: protocol/struct.OpenResponse.html#method.set_handle
 	pub fn handle(&self) -> u64 {
-		self.raw.fh
-	}
-
-	pub fn flags(&self) -> u32 {
-		self.raw.flags
+		self.handle
 	}
 
 	pub fn lock_owner(&self) -> Option<u64> {
-		if self.raw.release_flags & fuse_kernel::FUSE_RELEASE_FLOCK_UNLOCK == 0
-		{
-			return None;
-		}
-		Some(self.raw.lock_owner)
+		self.lock_owner
+	}
+
+	/// Platform-specific flags passed to [`FuseHandlers::open`]. See
+	/// [`OpenRequest::flags`] for details.
+	///
+	/// [`FuseHandlers::open`]: ../trait.FuseHandlers.html#method.open
+	/// [`OpenRequest::flags`]: struct.OpenRequest.html#method.flags
+	pub fn flags(&self) -> u32 {
+		self.flags
+	}
+}
+
+impl fmt::Debug for ReleaseRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("ReleaseRequest")
+			.field("node_id", &self.node_id)
+			.field("handle", &self.handle)
+			.field("lock_owner", &self.lock_owner)
+			.field("flags", &DebugHexU32(self.flags))
+			.finish()
 	}
 }
 
@@ -63,22 +84,34 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReleaseRequest<'a> {
 		let header = dec.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_RELEASE);
 
+		let node_id = try_node_id(header.nodeid)?;
+
 		// FUSE v7.8 added new fields to `fuse_release_in`.
 		if dec.version().minor() < 8 {
 			let raw: &'a fuse_release_in_v7p1 = dec.next_sized()?;
 			return Ok(Self {
-				header,
-				raw: fuse_kernel::fuse_release_in {
-					fh: raw.fh,
-					flags: raw.flags,
-					release_flags: 0,
-					lock_owner: 0,
-				},
+				phantom: PhantomData,
+				node_id,
+				handle: raw.fh,
+				lock_owner: None,
+				flags: raw.flags,
 			});
 		}
 
 		let raw: &'a fuse_kernel::fuse_release_in = dec.next_sized()?;
-		Ok(Self { header, raw: *raw })
+
+		let mut lock_owner = None;
+		if raw.release_flags & fuse_kernel::FUSE_RELEASE_FLOCK_UNLOCK != 0 {
+			lock_owner = Some(raw.lock_owner);
+		}
+
+		Ok(Self {
+			phantom: PhantomData,
+			node_id,
+			handle: raw.fh,
+			lock_owner,
+			flags: raw.flags,
+		})
 	}
 }
 
@@ -86,7 +119,9 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReleaseRequest<'a> {
 
 // ReleaseResponse {{{
 
-/// **\[UNSTABLE\]**
+/// Response type for [`FuseHandlers::release`].
+///
+/// [`FuseHandlers::release`]: ../trait.FuseHandlers.html#method.release
 pub struct ReleaseResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
@@ -96,6 +131,12 @@ impl ReleaseResponse<'_> {
 		ReleaseResponse {
 			phantom: PhantomData,
 		}
+	}
+}
+
+impl fmt::Debug for ReleaseResponse<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("ReleaseResponse").finish()
 	}
 }
 

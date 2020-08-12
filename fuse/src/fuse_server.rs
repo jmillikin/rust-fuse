@@ -334,9 +334,7 @@ fn fuse_request_dispatch<Handlers: FuseHandlers>(
 		#[cfg(feature = "unstable_fuse_readdir")]
 		fuse_kernel::FUSE_READDIRPLUS => do_dispatch!(readdir),
 		fuse_kernel::FUSE_READLINK => do_dispatch!(readlink),
-		#[cfg(feature = "unstable_fuse_release")]
 		fuse_kernel::FUSE_RELEASE => do_dispatch!(release),
-		#[cfg(feature = "unstable_fuse_releasedir")]
 		fuse_kernel::FUSE_RELEASEDIR => do_dispatch!(releasedir),
 		#[cfg(feature = "unstable_fuse_removexattr")]
 		fuse_kernel::FUSE_REMOVEXATTR => do_dispatch!(removexattr),

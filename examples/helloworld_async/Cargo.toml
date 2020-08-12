@@ -18,5 +18,4 @@ default = [
 	"fuse/unstable_fuse_getattr",
 	"fuse/unstable_fuse_lookup",
 	"fuse/unstable_fuse_readdir",
-	"fuse/unstable_fuse_releasedir",
 ]

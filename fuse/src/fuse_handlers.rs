@@ -644,24 +644,28 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Release an open file
+	/// Release an open file
 	///
-	/// Release is called when there are no more references to an open
-	/// file: all file descriptors are closed and all memory mappings
-	/// are unmapped.
+	/// Release is called when there are no more references to an open file: all
+	/// file descriptors are closed and all memory mappings are unmapped.
 	///
-	/// For every open call there will be exactly one release call (unless
+	/// For every [`open`] call there will be exactly one `release` call (unless
 	/// the filesystem is force-unmounted).
 	///
-	/// The filesystem may reply with an error, but error values are
-	/// not returned to close() or munmap() which triggered the
-	/// release.
+	/// The filesystem may reply with an error, but error values are not returned
+	/// to `close()` or `munmap()` which triggered the release.
 	///
-	/// fi->fh will contain the value set by the open method, or will
-	/// be undefined if the open method didn't set any value.
-	/// fi->flags will contain the same flags as for open.
-	#[cfg(any(doc, feature = "unstable_fuse_release"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_release")))]
+	/// [`ReleaseRequest::handle`] will return the value passed to
+	/// [`OpenResponse::set_handle`], or 0 if [`open`] didn't set a handle.
+	///
+	/// [`ReleaseRequest::flags`] will return the same flags as
+	/// [`OpenRequest::flags`].
+	///
+	/// [`open`]: #method.open
+	/// [`OpenRequest::flags`]: protocol/struct.OpenRequest.html#method.flags
+	/// [`OpenResponse::set_handle`]: protocol/struct.OpenResponse.html#method.set_handle
+	/// [`ReleaseRequest::flags`]: protocol/struct.ReleaseRequest.html#method.flags
+	/// [`ReleaseRequest::handle`]: protocol/struct.ReleaseRequest.html#method.handle
 	fn release(
 		&self,
 		ctx: server::ServerContext,
@@ -672,15 +676,22 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Release an open directory
+	/// Release an open directory
 	///
-	/// For every opendir call there will be exactly one releasedir
+	/// For every [`opendir`] call there will be exactly one `releasedir`
 	/// call (unless the filesystem is force-unmounted).
 	///
-	/// fi->fh will contain the value set by the opendir method, or
-	/// will be undefined if the opendir method didn't set any value.
-	#[cfg(any(doc, feature = "unstable_fuse_releasedir"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_releasedir")))]
+	/// [`ReleasedirRequest::handle`] will return the value passed to
+	/// [`OpendirResponse::set_handle`], or 0 if [`opendir`] didn't set a handle.
+	///
+	/// [`ReleasedirRequest::flags`] will return the same flags as
+	/// [`OpendirRequest::flags`].
+	///
+	/// [`opendir`]: #method.opendir
+	/// [`OpendirRequest::flags`]: protocol/struct.OpendirRequest.html#method.flags
+	/// [`OpendirResponse::set_handle`]: protocol/struct.OpendirResponse.html#method.set_handle
+	/// [`ReleasedirRequest::flags`]: protocol/struct.ReleasedirRequest.html#method.flags
+	/// [`ReleasedirRequest::handle`]: protocol/struct.ReleasedirRequest.html#method.handle
 	fn releasedir(
 		&self,
 		ctx: server::ServerContext,
