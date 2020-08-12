@@ -333,7 +333,6 @@ fn fuse_request_dispatch<Handlers: FuseHandlers>(
 		fuse_kernel::FUSE_READDIR => do_dispatch!(readdir),
 		#[cfg(feature = "unstable_fuse_readdir")]
 		fuse_kernel::FUSE_READDIRPLUS => do_dispatch!(readdir),
-		#[cfg(feature = "unstable_fuse_readlink")]
 		fuse_kernel::FUSE_READLINK => do_dispatch!(readlink),
 		#[cfg(feature = "unstable_fuse_release")]
 		fuse_kernel::FUSE_RELEASE => do_dispatch!(release),

@@ -15,6 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::internal::testutil::MessageBuilder;
+use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 use super::{ReadlinkRequest, ReadlinkResponse};
@@ -22,17 +23,32 @@ use super::{ReadlinkRequest, ReadlinkResponse};
 #[test]
 fn request_empty() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_READLINK)
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_READLINK;
+			h.nodeid = 123;
+		})
 		.build_aligned();
 
 	let _req: ReadlinkRequest = decode_request!(buf);
 }
 
 #[test]
-fn response() {
-	let mut resp = ReadlinkResponse::new();
-	resp.set_name(CStr::from_bytes_with_nul(b"hello.world!\x00").unwrap());
+fn request_impl_debug() {
+	let request = &ReadlinkRequest {
+		phantom: PhantomData,
+		node_id: node::NodeId::ROOT,
+	};
 
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!("ReadlinkRequest {\n", "    node_id: 1,\n", "}",),
+	);
+}
+
+#[test]
+fn response() {
+	let name = CStr::from_bytes_with_nul(b"hello.world!\x00").unwrap();
+	let resp = ReadlinkResponse::from_cstr(name);
 	let encoded = encode_response!(resp);
 
 	assert_eq!(
@@ -45,5 +61,21 @@ fn response() {
 			})
 			.push_bytes(b"hello.world!\x00")
 			.build()
+	);
+}
+
+#[test]
+fn response_impl_debug() {
+	let name = CStr::from_bytes_with_nul(b"hello.world!\x00").unwrap();
+	let response = ReadlinkResponse::from_cstr(name);
+
+	#[rustfmt::skip]
+	assert_eq!(
+		format!("{:#?}", response),
+		concat!(
+			"ReadlinkResponse {\n",
+			r#"    name: "hello.world!","#, "\n",
+			"}",
+		),
 	);
 }

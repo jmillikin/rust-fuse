@@ -633,9 +633,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Read symbolic link
-	#[cfg(any(doc, feature = "unstable_fuse_readlink"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_readlink")))]
+	/// Read symbolic link
 	fn readlink(
 		&self,
 		ctx: server::ServerContext,

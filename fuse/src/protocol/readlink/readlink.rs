@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 #[cfg(test)]
@@ -21,14 +22,25 @@ mod readlink_test;
 
 // ReadlinkRequest {{{
 
-/// **\[UNSTABLE\]**
+/// Request type for [`FuseHandlers::readlink`].
+///
+/// [`FuseHandlers::readlink`]: ../trait.FuseHandlers.html#method.readlink
 pub struct ReadlinkRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
+	phantom: PhantomData<&'a ()>,
+	node_id: node::NodeId,
 }
 
 impl ReadlinkRequest<'_> {
-	pub fn node_id(&self) -> u64 {
-		self.header.nodeid
+	pub fn node_id(&self) -> node::NodeId {
+		self.node_id
+	}
+}
+
+impl fmt::Debug for ReadlinkRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("ReadlinkRequest")
+			.field("node_id", &self.node_id)
+			.finish()
 	}
 }
 
@@ -36,7 +48,10 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReadlinkRequest<'a> {
 	fn decode_request(dec: fuse_io::RequestDecoder<'a>) -> io::Result<Self> {
 		let header = dec.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_READLINK);
-		Ok(Self { header })
+		Ok(Self {
+			phantom: PhantomData,
+			node_id: try_node_id(header.nodeid)?,
+		})
 	}
 }
 
@@ -44,20 +59,16 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReadlinkRequest<'a> {
 
 // ReadlinkResponse {{{
 
-/// **\[UNSTABLE\]**
+/// Response type for [`FuseHandlers::readlink`].
+///
+/// [`FuseHandlers::readlink`]: ../trait.FuseHandlers.html#method.readlink
 pub struct ReadlinkResponse<'a> {
 	name: &'a CStr,
 }
 
 impl<'a> ReadlinkResponse<'a> {
-	pub fn new() -> Self {
-		ReadlinkResponse {
-			name: CStr::from_bytes_with_nul(b"\x00").unwrap(),
-		}
-	}
-
-	pub fn set_name(&mut self, name: &'a CStr) {
-		self.name = name;
+	pub fn from_cstr(name: &'a CStr) -> Self {
+		Self { name }
 	}
 }
 
