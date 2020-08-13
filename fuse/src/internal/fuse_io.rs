@@ -123,6 +123,7 @@ impl<'a> AlignedSlice<'a> {
 pub(crate) struct AlignedVec {
 	pinned: Pin<Box<[u8]>>,
 	offset: usize,
+	size: usize,
 }
 
 impl AlignedVec {
@@ -131,14 +132,19 @@ impl AlignedVec {
 		vec.resize(size + 7, 0u8);
 		let pinned = Pin::new(vec.into_boxed_slice());
 		let offset = pinned.as_ptr().align_offset(align_of::<u64>());
-		Self { pinned, offset }
+		Self {
+			pinned,
+			offset,
+			size,
+		}
 	}
 }
 
 impl AlignedBuffer for AlignedVec {
 	fn get(&self) -> &[u8] {
 		if self.offset == 0 {
-			return &self.pinned;
+			let (aligned, _) = self.pinned.split_at(self.size);
+			return aligned;
 		}
 		let (_, aligned) = self.pinned.split_at(self.offset);
 		aligned
@@ -146,7 +152,8 @@ impl AlignedBuffer for AlignedVec {
 
 	fn get_mut(&mut self) -> &mut [u8] {
 		if self.offset == 0 {
-			return &mut self.pinned;
+			let (aligned, _) = self.pinned.split_at_mut(self.size);
+			return aligned;
 		}
 		let (_, aligned) = self.pinned.split_at_mut(self.offset);
 		aligned
