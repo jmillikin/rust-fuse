@@ -163,8 +163,8 @@ impl AlignedBuffer for AlignedVec {
 pub(crate) struct NulTerminatedBytes<'a>(&'a [u8]);
 
 impl<'a> NulTerminatedBytes<'a> {
-	pub(crate) fn to_bytes(self) -> &'a [u8] {
-		self.0
+	pub(crate) fn to_bytes_without_nul(self) -> &'a [u8] {
+		&self.0[0..self.0.len() - 1]
 	}
 }
 
@@ -274,6 +274,9 @@ impl<'a> RequestDecoder<'a> {
 		for off in self.consumed..self.header.len {
 			if self.buf[off as usize] == 0 {
 				let len = off - self.consumed;
+				if len == 0 {
+					return Err(io::ErrorKind::UnexpectedEof.into());
+				}
 				let buf = self.next_bytes(len + 1)?;
 				return Ok(NulTerminatedBytes(buf));
 			}

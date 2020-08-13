@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::{ascii, cmp, fmt, num, time};
+use core::{cmp, fmt, num, time};
 use std::ffi;
 
 use crate::internal::fuse_io;
@@ -82,17 +82,30 @@ pub struct NodeName {
 }
 
 impl NodeName {
+	#[rustfmt::skip]
+	pub const NAME_MAX: usize = {
+		#[cfg(target_os = "linux")]   { 1024 }
+		#[cfg(target_os = "freebsd")] {  255 }
+	};
+
 	pub(crate) fn new<'a>(bytes: fuse_io::NulTerminatedBytes<'a>) -> &'a Self {
-		let bytes = bytes.to_bytes();
+		let bytes = bytes.to_bytes_without_nul();
 		unsafe { &*(bytes as *const [u8] as *const NodeName) }
 	}
 
-	pub fn as_bytes(&self) -> &[u8] {
-		&self.bytes[0..self.bytes.len() - 1]
+	pub fn from_bytes<'a>(bytes: &'a [u8]) -> Option<&'a Self> {
+		let len = bytes.len();
+		if len == 0 || len > Self::NAME_MAX {
+			return None;
+		}
+		if bytes.contains(&b'/') {
+			return None;
+		}
+		Some(unsafe { &*(bytes as *const [u8] as *const NodeName) })
 	}
 
-	pub fn as_cstr(&self) -> &ffi::CStr {
-		unsafe { ffi::CStr::from_bytes_with_nul_unchecked(&self.bytes) }
+	pub fn as_bytes(&self) -> &[u8] {
+		&self.bytes
 	}
 }
 
@@ -104,15 +117,8 @@ impl fmt::Debug for NodeName {
 
 impl fmt::Display for NodeName {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		write!(fmt, "\"")?;
-		for byte in self
-			.as_bytes()
-			.iter()
-			.flat_map(|&b| ascii::escape_default(b))
-		{
-			fmt::Write::write_char(fmt, byte as char)?;
-		}
-		write!(fmt, "\"")
+		use core::fmt::Debug;
+		super::prelude::DebugBytesAsString(&self.bytes).fmt(fmt)
 	}
 }
 
