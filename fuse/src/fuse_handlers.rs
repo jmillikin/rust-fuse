@@ -8,8 +8,6 @@
 //
 // SPDX-License-Identifier: LGPL-2.1-only
 
-use std::io;
-
 use crate::internal::errors;
 use crate::protocol;
 use crate::server;
@@ -591,38 +589,44 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Read directory
+	/// Read directory
 	///
-	/// Send a buffer filled using fuse_add_direntry(), with size not
-	/// exceeding the requested size.  Send an empty buffer on end of
+	/// Send a response filled using [`ReaddirResponse::try_new_entry`], with
+	/// size not exceeding the requested size. Send an empty response on end of
 	/// stream.
 	///
-	/// fi->fh will contain the value set by the opendir method, or
-	/// will be undefined if the opendir method didn't set any value.
+	/// [`ReaddirRequest::handle`] will return the value passed to
+	/// [`OpendirResponse::set_handle`], or 0 if [`opendir`] didn't set a
+	/// handle.
 	///
-	/// Returning a directory entry from readdir() does not affect
+	/// Returning a directory entry from `readdir` does not affect
 	/// its lookup count.
 	///
-	/// If off_t is non-zero, then it will correspond to one of the off_t
-	/// values that was previously returned by readdir() for the same
-	/// directory handle. In this case, readdir() should skip over entries
-	/// coming before the position defined by the off_t value. If entries
-	/// are added or removed while the directory handle is open, they filesystem
-	/// may still include the entries that have been removed, and may not
-	/// report the entries that have been created. However, addition or
-	/// removal of entries must never cause readdir() to skip over unrelated
-	/// entries or to report them more than once. This means
-	/// that off_t can not be a simple index that enumerates the entries
-	/// that have been returned but must contain sufficient information to
-	/// uniquely determine the next directory entry to return even when the
-	/// set of entries is changing.
+	/// If [`ReaddirRequest::offset`] is not `None`, then it will correspond to
+	/// one of the [`ReaddirEntry::offset`] values that was previously returned
+	/// by `readdir` for the same directory handle. In this case, `readdir`
+	/// should skip over entries coming before the position defined by the offset
+	/// value. If entries are added or removed while the directory handle is
+	/// open, the filesystem may still include the entries that have been
+	/// removed, and may not report the entries that have been created. However,
+	/// addition or removal of entries must never cause `readdir` to skip over
+	/// unrelated entries or to report them more than once. This means that
+	/// offsets can not be a simple index that enumerates the entries that have
+	/// been returned but must contain sufficient information to uniquely
+	/// determine the next directory entry to return even when the set of entries
+	/// is changing.
 	///
-	/// The function does not have to report the '.' and '..'
-	/// entries, but is allowed to do so. Note that, if readdir does
-	/// not return '.' or '..', they will not be implicitly returned,
-	/// and this behavior is observable by the caller.
-	#[cfg(any(doc, feature = "unstable_fuse_readdir"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_readdir")))]
+	/// The function does not have to report the `"."` and `".."` entries, but
+	/// is allowed to do so. Note that, if `readdir` does not return `"."` or
+	/// `".."`, they will not be implicitly returned, and this behavior is
+	/// observable by the caller.
+	///
+	/// [`ReaddirResponse::try_new_entry`]: protocol/struct.ReaddirResponse.html#method.try_new_entry
+	/// [`ReaddirRequest::handle`]: protocol/struct.ReaddirRequest.html#method.handle
+	/// [`OpendirResponse::set_handle`]: protocol/struct.OpendirResponse.html#method.set_handle
+	/// [`opendir`]: #method.opendir
+	/// [`ReaddirRequest::offset`]: protocol/struct.ReaddirRequest.html#method.offset
+	/// [`ReaddirEntry::offset`]: protocol/struct.ReaddirEntry.html#field.offset
 	fn readdir(
 		&self,
 		ctx: server::ServerContext,

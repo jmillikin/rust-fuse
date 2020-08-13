@@ -14,8 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use std::ffi::CString;
-use std::num::NonZeroU16;
+use std::num::{NonZeroU16, NonZeroU64};
 
 const HELLO_WORLD: &[u8] = b"Hello, world!\n";
 
@@ -151,20 +150,17 @@ impl fuse::FuseHandlers for HelloWorldFS {
 			return;
 		}
 
-		let mut resp = fuse::ReaddirResponse::new(request);
-		if request.offset() != 0 {
-			respond.ok(&resp);
+		if request.cursor().is_some() {
+			respond.ok(fuse::ReaddirResponse::EMPTY);
 			return;
 		}
 
-		{
-			let name = CString::new("hello.txt").unwrap();
-			let mut dirent = resp.push(HELLO_TXT.node_id(), 1, &name).unwrap();
-			dirent.set_node_kind(fuse::NodeKind::REG);
-			if let Some(node) = dirent.node_mut() {
-				HELLO_TXT.set_attr(node.attr_mut());
-			}
-		}
+		let mut resp = fuse::ReaddirResponse::with_max_size(request.size());
+
+		let node_name = fuse::NodeName::from_bytes(HELLO_TXT.name()).unwrap();
+		let node_offset = NonZeroU64::new(1).unwrap();
+		resp.new_entry(HELLO_TXT.node_id(), node_name, node_offset)
+			.set_kind(fuse::NodeKind::REG);
 
 		respond.ok(&resp);
 	}

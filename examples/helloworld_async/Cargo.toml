@@ -17,5 +17,4 @@ libc = "0.2"
 default = [
 	"fuse/unstable_fuse_getattr",
 	"fuse/unstable_fuse_lookup",
-	"fuse/unstable_fuse_readdir",
 ]

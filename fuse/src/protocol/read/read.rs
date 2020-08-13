@@ -50,7 +50,7 @@ impl ReadRequest<'_> {
 
 	/// The value passed to [`OpenResponse::set_handle`], or zero if not set.
 	///
-	/// [`OpenResponse::set_handle`]: protocol/struct.OpenResponse.html#method.set_handle
+	/// [`OpenResponse::set_handle`]: struct.OpenResponse.html#method.set_handle
 	pub fn handle(&self) -> u64 {
 		self.handle
 	}
@@ -97,12 +97,14 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReadRequest<'a> {
 		let header = dec.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_READ);
 
+		let node_id = try_node_id(header.nodeid)?;
+
 		// FUSE v7.9 added new fields to `fuse_read_in`.
 		if dec.version().minor() < 9 {
 			let raw: &'a fuse_read_in_v7p1 = dec.next_sized()?;
 			return Ok(Self {
 				phantom: PhantomData,
-				node_id: try_node_id(header.nodeid)?,
+				node_id,
 				size: raw.size,
 				offset: raw.offset,
 				handle: raw.fh,
@@ -120,7 +122,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReadRequest<'a> {
 
 		Ok(Self {
 			phantom: PhantomData,
-			node_id: try_node_id(header.nodeid)?,
+			node_id,
 			size: raw.size,
 			offset: raw.offset,
 			handle: raw.fh,

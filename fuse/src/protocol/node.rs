@@ -15,7 +15,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use core::{cmp, fmt, num, time};
-use std::ffi;
 
 use crate::internal::fuse_io;
 use crate::internal::fuse_kernel;
@@ -31,6 +30,10 @@ impl NodeId {
 	pub const ROOT: NodeId = NodeId(unsafe {
 		num::NonZeroU64::new_unchecked(fuse_kernel::FUSE_ROOT_ID)
 	});
+
+	pub(crate) unsafe fn new_unchecked(id: u64) -> NodeId {
+		NodeId(num::NonZeroU64::new_unchecked(id))
+	}
 
 	pub fn new(id: u64) -> Option<NodeId> {
 		num::NonZeroU64::new(id).map(|bits| NodeId(bits))

@@ -62,3 +62,16 @@ impl fmt::Debug for DebugBytesAsString<'_> {
 		write!(fmt, "\"")
 	}
 }
+
+pub(crate) struct DebugClosure<F>(pub(crate) F)
+where
+	F: Fn(&mut fmt::Formatter) -> fmt::Result;
+
+impl<F> fmt::Debug for DebugClosure<F>
+where
+	F: Fn(&mut fmt::Formatter) -> fmt::Result,
+{
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		self.0(fmt)
+	}
+}
