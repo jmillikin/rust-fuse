@@ -60,7 +60,7 @@ fn request_impl_debug() {
 fn response() {
 	let mut resp = OpenResponse::new();
 	resp.set_handle(123);
-	resp.set_flags(OpenFlags(0xFE));
+	resp.set_flags(OpenFlags::from_bits(0xFE));
 
 	let encoded = encode_response!(resp);
 
@@ -86,7 +86,7 @@ fn response() {
 fn response_impl_debug() {
 	let mut response = OpenResponse::new();
 	response.set_handle(123);
-	response.set_flags(OpenFlags(0x3));
+	response.set_flags(OpenFlags::from_bits(0x3));
 
 	assert_eq!(
 		format!("{:#?}", response),
@@ -108,7 +108,7 @@ fn open_flags() {
 	// Flag sets render as a struct, with unknown flags falling back
 	// to hex.
 	assert_eq!(
-		format!("{:#?}", OpenFlags(0x3 | (1u32 << 31))),
+		format!("{:#?}", OpenFlags::from_bits(0x3 | (1u32 << 31))),
 		concat!(
 			"OpenFlags {\n",
 			"    direct_io: true,\n",

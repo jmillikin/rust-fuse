@@ -101,11 +101,11 @@ impl OpenResponse<'_> {
 	}
 
 	pub fn flags(&self) -> OpenFlags {
-		OpenFlags(self.raw.open_flags)
+		OpenFlags::from_bits(self.raw.open_flags)
 	}
 
 	pub fn set_flags(&mut self, flags: OpenFlags) {
-		self.raw.open_flags = flags.0;
+		self.raw.open_flags = flags.to_bits();
 	}
 }
 
@@ -140,23 +140,14 @@ bitflags_struct! {
 	/// Use [page-based direct I/O][direct-io] on this file.
 	///
 	/// [direct-io]: https://lwn.net/Articles/348719/
-	FOPEN_DIRECT_IO: {
-		get: direct_io,
-		set: set_direct_io,
-	},
+	FOPEN_DIRECT_IO: direct_io,
 
 	/// Allow the kernel to preserve cached file data from the last time this
 	/// file was opened.
-	FOPEN_KEEP_CACHE: {
-		get: keep_cache,
-		set: set_keep_cache,
-	},
+	FOPEN_KEEP_CACHE: keep_cache,
 
 	/// Tell the kernel this file is not seekable.
-	FOPEN_NONSEEKABLE: {
-		get: nonseekable,
-		set: set_nonseekable,
-	},
+	FOPEN_NONSEEKABLE: nonseekable,
 }
 
 // }}}

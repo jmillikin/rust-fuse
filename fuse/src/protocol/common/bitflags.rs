@@ -21,45 +21,60 @@ macro_rules! bitflags_struct {
 
 		$(
 			$( #[$item_doc:meta] )*
-			$item_mask:ident: {
-				get: $item_getter:ident ,
-				set: $item_setter:ident ,
-			},
+			$item_mask:ident: $item_name:ident ,
 		)*
 	) => {
 		$( #[$struct_doc] )*
+		#[non_exhaustive]
 		#[derive(Copy, Clone, PartialEq, Eq)]
-		#[repr(transparent)]
-		pub struct $struct_name(u32);
+		pub struct $struct_name {
+			bits: u32,
+			$(
+				$( #[$item_doc] )*
+				pub $item_name: bool,
+			)*
+		}
 
 		impl $struct_name {
-			pub fn new() -> Self {
-				Self(0)
+			pub fn new() -> $struct_name {
+				Self {
+					bits: 0,
+					$(
+						$item_name: false,
+					)*
+				}
 			}
 
-			fn field_name(mask: u32) -> Option<&'static str> {
+			fn known_field(&self, mask: u32) -> Option<(&'static str, bool)> {
 				match mask {
 					$(
-						fuse_kernel::$item_mask => Some(stringify!($item_getter)),
+						fuse_kernel::$item_mask => Some((
+							stringify!($item_name),
+							self.$item_name,
+						)),
 					)*
 					_ => None,
 				}
 			}
 
-			$(
-				$( #[$item_doc] )*
-				pub fn $item_getter(&self) -> bool {
-					(self.0 & fuse_kernel::$item_mask) > 0
+			fn from_bits(bits: u32) -> $struct_name {
+				Self {
+					bits,
+					$(
+						$item_name: (bits & fuse_kernel::$item_mask) > 0,
+					)*
 				}
+			}
 
-				pub fn $item_setter(&mut self, $item_getter: bool) {
-					if $item_getter {
-						self.0 |= fuse_kernel::$item_mask;
-					} else {
-						self.0 &= !fuse_kernel::$item_mask;
+			fn to_bits(&self) -> u32 {
+				let mut out = 0;
+				$(
+					if self.$item_name {
+						out |= fuse_kernel::$item_mask;
 					}
-				}
-			)*
+				)*
+				out | self.bits
+			}
 		}
 
 		impl fmt::Debug for $struct_name {
@@ -67,12 +82,12 @@ macro_rules! bitflags_struct {
 				let mut out = fmt.debug_struct(stringify!($struct_name));
 				for off in 0..32 {
 					let mask: u32 = 1 << off;
-					let is_set = self.0 & mask > 0;
-					match Self::field_name(mask) {
-						Some(name) => {
+					match self.known_field(mask) {
+						Some((name, is_set)) => {
 							out.field(name, &is_set);
 						},
 						None => {
+							let is_set = self.bits & mask > 0;
 							if is_set {
 								out.field(&format!("{:#010X}", mask), &is_set);
 							}

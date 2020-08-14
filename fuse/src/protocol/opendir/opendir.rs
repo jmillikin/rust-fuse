@@ -101,11 +101,11 @@ impl OpendirResponse<'_> {
 	}
 
 	pub fn flags(&self) -> OpendirFlags {
-		OpendirFlags(self.raw.open_flags)
+		OpendirFlags::from_bits(self.raw.open_flags)
 	}
 
 	pub fn set_flags(&mut self, flags: OpendirFlags) {
-		self.raw.open_flags = flags.0;
+		self.raw.open_flags = flags.to_bits();
 	}
 }
 
@@ -138,16 +138,10 @@ bitflags_struct! {
 
 	/// Allow the kernel to preserve cached directory entries from the last
 	/// time this directory was opened.
-	FOPEN_KEEP_CACHE: {
-		get: keep_cache,
-		set: set_keep_cache,
-	},
+	FOPEN_KEEP_CACHE: keep_cache,
 
 	/// Tell the kernel this directory is not seekable.
-	FOPEN_NONSEEKABLE: {
-		get: nonseekable,
-		set: set_nonseekable,
-	},
+	FOPEN_NONSEEKABLE: nonseekable,
 
 	// TODO: CACHE_DIR
 }

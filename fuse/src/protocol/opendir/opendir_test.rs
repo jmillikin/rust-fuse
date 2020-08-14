@@ -60,7 +60,7 @@ fn request_impl_debug() {
 fn response() {
 	let mut resp = OpendirResponse::new();
 	resp.set_handle(123);
-	resp.set_flags(OpendirFlags(0xFE));
+	resp.set_flags(OpendirFlags::from_bits(0xFE));
 
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 1),
@@ -88,7 +88,7 @@ fn response() {
 fn response_impl_debug() {
 	let mut response = OpendirResponse::new();
 	response.set_handle(123);
-	response.set_flags(OpendirFlags(0x2));
+	response.set_flags(OpendirFlags::from_bits(0x2));
 
 	assert_eq!(
 		format!("{:#?}", response),
@@ -109,7 +109,7 @@ fn open_flags() {
 	// Flag sets render as a struct, with unknown flags falling back
 	// to hex.
 	assert_eq!(
-		format!("{:#?}", OpendirFlags(0x2 | (1u32 << 31))),
+		format!("{:#?}", OpendirFlags::from_bits(0x2 | (1u32 << 31))),
 		concat!(
 			"OpendirFlags {\n",
 			"    keep_cache: true,\n",

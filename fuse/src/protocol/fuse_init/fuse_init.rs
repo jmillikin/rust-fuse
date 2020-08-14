@@ -96,7 +96,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for FuseInitRequest<'_> {
 					raw_v7p1.minor,
 				),
 				max_readahead: 0,
-				flags: FuseInitFlags(0),
+				flags: FuseInitFlags::from_bits(0),
 			});
 		}
 
@@ -105,7 +105,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for FuseInitRequest<'_> {
 			phantom: PhantomData,
 			version: crate::ProtocolVersion::new(raw.major, raw.minor),
 			max_readahead: raw.max_readahead,
-			flags: FuseInitFlags(raw.flags),
+			flags: FuseInitFlags::from_bits(raw.flags),
 		})
 	}
 }
@@ -164,9 +164,10 @@ impl FuseInitResponse {
 		let mut response = FuseInitResponse::new(version);
 		response.set_max_readahead(request.max_readahead());
 
-		let mut flags = FuseInitFlags(request.flags().0 & 0x3FFFFF);
-		flags.set_do_readdirplus(false);
-		flags.set_readdirplus_auto(false);
+		let mut flags = request.flags();
+		flags.bits = 0; // clear unknown flag bits
+		flags.do_readdirplus = false;
+		flags.readdirplus_auto = false;
 
 		response.set_flags(flags);
 		response
@@ -185,11 +186,11 @@ impl FuseInitResponse {
 	}
 
 	pub fn flags(&self) -> FuseInitFlags {
-		FuseInitFlags(self.raw.flags)
+		FuseInitFlags::from_bits(self.raw.flags)
 	}
 
 	pub fn set_flags(&mut self, flags: FuseInitFlags) {
-		self.raw.flags = flags.0;
+		self.raw.flags = flags.to_bits();
 	}
 
 	pub fn max_background(&self) -> u16 {
@@ -284,94 +285,28 @@ impl fuse_io::EncodeResponse for FuseInitResponse {
 bitflags_struct! {
 	pub struct FuseInitFlags(u32);
 
-	FUSE_ASYNC_READ: {
-		get: async_read,
-		set: set_async_read,
-	},
-	FUSE_POSIX_LOCKS: {
-		get: posix_locks,
-		set: set_posix_locks,
-	},
-	FUSE_FILE_OPS: {
-		get: file_ops,
-		set: set_file_ops,
-	},
-	FUSE_ATOMIC_O_TRUNC: {
-		get: atomic_o_trunc,
-		set: set_atomic_o_trunc,
-	},
-	FUSE_EXPORT_SUPPORT: {
-		get: export_support,
-		set: set_export_support,
-	},
-	FUSE_BIG_WRITES: {
-		get: big_writes,
-		set: set_big_writes,
-	},
-	FUSE_DONT_MASK: {
-		get: dont_mask,
-		set: set_dont_mask,
-	},
-	FUSE_SPLICE_WRITE: {
-		get: splice_write,
-		set: set_splice_write,
-	},
-	FUSE_SPLICE_MOVE: {
-		get: splice_move,
-		set: set_splice_move,
-	},
-	FUSE_SPLICE_READ: {
-		get: splice_read,
-		set: set_splice_read,
-	},
-	FUSE_FLOCK_LOCKS: {
-		get: flock_locks,
-		set: set_flock_locks,
-	},
-	FUSE_HAS_IOCTL_DIR: {
-		get: has_ioctl_dir,
-		set: set_has_ioctl_dir,
-	},
-	FUSE_AUTO_INVAL_DATA: {
-		get: auto_inval_data,
-		set: set_auto_inval_data,
-	},
-	FUSE_DO_READDIRPLUS: {
-		get: do_readdirplus,
-		set: set_do_readdirplus,
-	},
-	FUSE_READDIRPLUS_AUTO: {
-		get: readdirplus_auto,
-		set: set_readdirplus_auto,
-	},
-	FUSE_ASYNC_DIO: {
-		get: async_dio,
-		set: set_async_dio,
-	},
-	FUSE_WRITEBACK_CACHE: {
-		get: writeback_cache,
-		set: set_writeback_cache,
-	},
-	FUSE_NO_OPEN_SUPPORT: {
-		get: no_open_support,
-		set: set_no_open_support,
-	},
-	FUSE_PARALLEL_DIROPS: {
-		get: parallel_dirops,
-		set: set_parallel_dirops,
-	},
-	FUSE_HANDLE_KILLPRIV: {
-		get: handle_killpriv,
-		set: set_handle_killpriv,
-	},
-	FUSE_POSIX_ACL: {
-		get: posix_acl,
-		set: set_posix_acl,
-	},
-	FUSE_ABORT_ERROR: {
-		get: abort_error,
-		set: set_abort_error,
-	},
+	FUSE_ASYNC_READ: async_read,
+	FUSE_POSIX_LOCKS: posix_locks,
+	FUSE_FILE_OPS: file_ops,
+	FUSE_ATOMIC_O_TRUNC: atomic_o_trunc,
+	FUSE_EXPORT_SUPPORT: export_support,
+	FUSE_BIG_WRITES: big_writes,
+	FUSE_DONT_MASK: dont_mask,
+	FUSE_SPLICE_WRITE: splice_write,
+	FUSE_SPLICE_MOVE: splice_move,
+	FUSE_SPLICE_READ: splice_read,
+	FUSE_FLOCK_LOCKS: flock_locks,
+	FUSE_HAS_IOCTL_DIR: has_ioctl_dir,
+	FUSE_AUTO_INVAL_DATA: auto_inval_data,
+	FUSE_DO_READDIRPLUS: do_readdirplus,
+	FUSE_READDIRPLUS_AUTO: readdirplus_auto,
+	FUSE_ASYNC_DIO: async_dio,
+	FUSE_WRITEBACK_CACHE: writeback_cache,
+	FUSE_NO_OPEN_SUPPORT: no_open_support,
+	FUSE_PARALLEL_DIROPS: parallel_dirops,
+	FUSE_HANDLE_KILLPRIV: handle_killpriv,
+	FUSE_POSIX_ACL: posix_acl,
+	FUSE_ABORT_ERROR: abort_error,
 }
 
 // }}}
