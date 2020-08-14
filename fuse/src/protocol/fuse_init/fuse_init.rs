@@ -169,7 +169,10 @@ impl FuseInitResponse {
 		let mut response = FuseInitResponse::new(version);
 		response.set_max_readahead(request.max_readahead());
 		// TODO: only set flags that are known to this library.
-		response.set_flags(request.flags());
+		let mut flags = request.flags();
+		flags.set_do_readdirplus(false);
+		flags.set_readdirplus_auto(false);
+		response.set_flags(flags);
 		response
 	}
 
