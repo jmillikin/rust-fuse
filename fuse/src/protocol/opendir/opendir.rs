@@ -14,7 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 #[cfg(test)]
@@ -27,12 +26,12 @@ mod opendir_test;
 /// [`FuseHandlers::opendir`]: ../trait.FuseHandlers.html#method.opendir
 pub struct OpendirRequest<'a> {
 	phantom: PhantomData<&'a ()>,
-	node_id: node::NodeId,
+	node_id: NodeId,
 	flags: u32,
 }
 
 impl OpendirRequest<'_> {
-	pub fn node_id(&self) -> node::NodeId {
+	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 

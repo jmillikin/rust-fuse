@@ -30,7 +30,7 @@ use crate::internal::fuse_kernel;
 use crate::protocol;
 use crate::server;
 
-/// **\[UNSTABLE\]**
+#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
 pub struct FuseServer<Handlers, Mount> {
 	fuse_device: fuse_io::FileChannel,
 	mount: Mount,
@@ -73,14 +73,14 @@ impl<Handlers, Mount> FuseServer<Handlers, Mount>
 where
 	Mount: FuseMount,
 {
-	/// **\[UNSTABLE\]**
+	#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
 	pub fn unmount(self) -> io::Result<()> {
 		self.mount.unmount()
 	}
 }
 
 impl<Handlers, Mount> FuseServer<Handlers, Mount> {
-	/// **\[UNSTABLE\]**
+	#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
 	pub fn executor(&self) -> &Arc<Mutex<FuseServerExecutor<Handlers>>> {
 		&self.executor
 	}
@@ -150,12 +150,12 @@ where
 	}
 }
 
-/// **\[UNSTABLE\]**
+#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
 pub trait FuseMountOptions {
 	type Mount: FuseMount;
 }
 
-/// **\[UNSTABLE\]**
+#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
 pub trait FuseMount: Sized {
 	type Options: FuseMountOptions;
 
@@ -169,7 +169,7 @@ pub trait FuseMount: Sized {
 	fn unmount(self) -> io::Result<()>;
 }
 
-/// **\[UNSTABLE\]**
+#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
 pub struct FuseServerBuilder<Handlers, MountOptions> {
 	handlers: Handlers,
 	mount_options: Option<MountOptions>,
@@ -180,7 +180,7 @@ where
 	Handlers: FuseHandlers,
 	MountOptions: FuseMountOptions,
 {
-	/// **\[UNSTABLE\]**
+	#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
 	pub fn new(handlers: Handlers) -> Self {
 		Self {
 			mount_options: None,
@@ -188,13 +188,13 @@ where
 		}
 	}
 
-	/// **\[UNSTABLE\]**
+	#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
 	pub fn set_mount_options(mut self, mount_options: MountOptions) -> Self {
 		self.mount_options = Some(mount_options);
 		self
 	}
 
-	/// **\[UNSTABLE\]**
+	#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
 	pub fn mount<Mount, Path>(
 		self,
 		mount_target: Path,
@@ -217,7 +217,7 @@ where
 	}
 }
 
-/// **\[UNSTABLE\]**
+#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
 pub struct FuseServerExecutor<Handlers> {
 	channel: Arc<fuse_io::FileChannel>,
 	handlers: Arc<Handlers>,
@@ -240,7 +240,7 @@ impl<Handlers: FuseHandlers> FuseServerExecutor<Handlers> {
 		}
 	}
 
-	/// **\[UNSTABLE\]**
+	#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
 	pub fn run(&mut self) -> io::Result<()> {
 		let handlers = &*self.handlers;
 		loop {

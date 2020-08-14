@@ -20,7 +20,7 @@ use std::sync::Arc;
 use crate::internal::fuse_io;
 use crate::internal::fuse_kernel;
 
-/// **\[UNSTABLE\]**
+#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
 pub struct ServerContext {
 	header: fuse_kernel::fuse_in_header,
 }
@@ -56,7 +56,8 @@ mod private {
 	pub trait Sealed {}
 }
 
-/// **\[UNSTABLE\]** **\[SEALED\]**
+/// **\[SEALED\]**
+#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
 pub trait RespondOnce<Response>: private::Sealed + Send {
 	fn ok(self, response: &Response);
 	fn err(self, err: NonZeroU16);
@@ -64,7 +65,8 @@ pub trait RespondOnce<Response>: private::Sealed + Send {
 	fn into_box(self) -> Box<dyn RespondOnceBox<Response> + 'static>;
 }
 
-/// **\[UNSTABLE\]** **\[SEALED\]**
+/// **\[SEALED\]**
+#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
 pub trait RespondOnceBox<Response>: private::Sealed + Send {
 	fn ok(self: Box<Self>, response: &Response);
 	fn err(self: Box<Self>, err: NonZeroU16);

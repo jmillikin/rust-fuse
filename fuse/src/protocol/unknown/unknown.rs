@@ -14,20 +14,20 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::node;
+#![cfg_attr(doc, doc(cfg(feature = "unstable")))]
+
 use crate::protocol::prelude::*;
 
 // UnknownRequest {{{
 
-/// **\[UNSTABLE\]**
 pub struct UnknownRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	body: &'a [u8],
 }
 
 impl<'a> UnknownRequest<'a> {
-	pub fn node_id(&self) -> Option<node::NodeId> {
-		node::NodeId::new(self.header.nodeid)
+	pub fn node_id(&self) -> Option<NodeId> {
+		NodeId::new(self.header.nodeid)
 	}
 
 	pub fn request_id(&self) -> u64 {

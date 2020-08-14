@@ -138,12 +138,7 @@ impl FuseInitResponse {
 		}
 	}
 
-	/// **\[UNSTABLE\]**
-	#[cfg(any(doc, feature = "unstable_fuse_init_response_for_request"))]
-	#[cfg_attr(
-		doc,
-		doc(cfg(feature = "unstable_fuse_init_response_for_request"))
-	)]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
 	pub fn for_request(request: &FuseInitRequest) -> Self {
 		Self::for_request_impl(request)
 	}

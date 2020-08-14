@@ -33,7 +33,7 @@ impl HelloTxt {
 	fn set_attr(&self, attr: &mut fuse::NodeAttr) {
 		attr.set_user_id(getuid());
 		attr.set_group_id(getgid());
-		attr.set_mode(fuse::NodeKind::REG | 0o644);
+		attr.set_mode(fuse::FileType::REG | 0o644);
 		attr.set_size(HELLO_WORLD.len() as u64);
 		attr.set_nlink(1);
 	}
@@ -50,7 +50,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		request: &fuse::LookupRequest,
 		respond: impl for<'a> fuse::RespondOnce<fuse::LookupResponse<'a>>,
 	) {
-		if request.parent_id() != fuse::NodeId::ROOT {
+		if request.parent_id() != fuse::ROOT_ID {
 			respond.err(err_not_found());
 			return;
 		}
@@ -62,9 +62,9 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		let respond = respond.into_box();
 		thread::spawn(move || {
 			let mut resp = fuse::LookupResponse::new();
-			let entry = resp.entry_mut();
-			entry.set_node_id(HELLO_TXT.node_id());
-			HELLO_TXT.set_attr(entry.attr_mut());
+			let node = resp.node_mut();
+			node.set_id(HELLO_TXT.node_id());
+			HELLO_TXT.set_attr(node.attr_mut());
 
 			respond.ok(&resp);
 		});
@@ -83,10 +83,10 @@ impl fuse::FuseHandlers for HelloWorldFS {
 			let mut resp = fuse::GetattrResponse::new();
 			let attr = resp.attr_mut();
 
-			if node_id == fuse::NodeId::ROOT {
+			if node_id == fuse::ROOT_ID {
 				attr.set_user_id(getuid());
 				attr.set_group_id(getgid());
-				attr.set_mode(fuse::NodeKind::DIR | 0o755);
+				attr.set_mode(fuse::FileType::DIR | 0o755);
 				attr.set_nlink(2);
 				respond.ok(&resp);
 				return;
@@ -145,7 +145,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		request: &fuse::OpendirRequest,
 		respond: impl for<'a> fuse::RespondOnce<fuse::OpendirResponse<'a>>,
 	) {
-		if request.node_id() != fuse::NodeId::ROOT {
+		if request.node_id() != fuse::ROOT_ID {
 			respond.err(err_not_found());
 			return;
 		}
@@ -179,11 +179,10 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		thread::spawn(move || {
 			let mut resp = fuse::ReaddirResponse::with_max_size(request_size);
 
-			let node_name =
-				fuse::NodeName::from_bytes(HELLO_TXT.name()).unwrap();
+			let node_name = fuse::Name::from_bytes(HELLO_TXT.name()).unwrap();
 			let node_offset = NonZeroU64::new(1).unwrap();
 			resp.new_entry(HELLO_TXT.node_id(), node_name, node_offset)
-				.set_kind(fuse::NodeKind::REG);
+				.set_file_type(fuse::FileType::REG);
 
 			respond.ok(&resp);
 		});

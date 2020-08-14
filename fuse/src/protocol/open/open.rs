@@ -14,7 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 #[cfg(test)]
@@ -27,12 +26,12 @@ mod open_test;
 /// [`FuseHandlers::open`]: ../trait.FuseHandlers.html#method.open
 pub struct OpenRequest<'a> {
 	phantom: PhantomData<&'a ()>,
-	node_id: node::NodeId,
+	node_id: NodeId,
 	flags: u32,
 }
 
 impl OpenRequest<'_> {
-	pub fn node_id(&self) -> node::NodeId {
+	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 

@@ -14,8 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::common;
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 #[cfg(test)]
@@ -23,12 +21,12 @@ mod create_test;
 
 // CreateRequest {{{
 
-/// **\[UNSTABLE\]** Request type for [`FuseHandlers::create`].
+/// Request type for [`FuseHandlers::create`].
 ///
 /// [`FuseHandlers::create`]: ../trait.FuseHandlers.html#method.create
 #[derive(Debug)]
 pub struct CreateRequest<'a> {
-	node_id: node::NodeId,
+	node_id: NodeId,
 	name: &'a CStr,
 	flags: u32,
 	mode: u32,
@@ -36,7 +34,7 @@ pub struct CreateRequest<'a> {
 }
 
 impl CreateRequest<'_> {
-	pub fn node_id(&self) -> node::NodeId {
+	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 
@@ -100,7 +98,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for CreateRequest<'a> {
 
 // CreateResponse {{{
 
-/// **\[UNSTABLE\]** Response type for [`FuseHandlers::create`].
+/// Response type for [`FuseHandlers::create`].
 ///
 /// [`FuseHandlers::create`]: ../trait.FuseHandlers.html#method.create
 pub struct CreateResponse<'a> {
@@ -123,12 +121,12 @@ impl CreateResponse<'_> {
 		err -EIO
 	*/
 
-	pub fn node(&self) -> &node::NodeEntry {
-		node::NodeEntry::new_ref(&self.entry_out)
+	pub fn node(&self) -> &Node {
+		Node::new_ref(&self.entry_out)
 	}
 
-	pub fn node_mut(&mut self) -> &mut node::NodeEntry {
-		node::NodeEntry::new_ref_mut(&mut self.entry_out)
+	pub fn node_mut(&mut self) -> &mut Node {
+		Node::new_ref_mut(&mut self.entry_out)
 	}
 
 	pub fn set_handle(&mut self, handle: u64) {
@@ -156,7 +154,7 @@ impl fuse_io::EncodeResponse for CreateResponse<'_> {
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
 	) -> std::io::Result<()> {
-		common::encode_entry_sized(enc, &self.entry_out, &self.open_out)
+		self.node().encode_entry_sized(enc, &self.open_out)
 	}
 }
 

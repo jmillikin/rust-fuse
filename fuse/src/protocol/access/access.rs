@@ -14,7 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 #[cfg(test)]
@@ -22,17 +21,17 @@ mod access_test;
 
 // AccessRequest {{{
 
-/// **\[UNSTABLE\]** Request type for [`FuseHandlers::access`].
+/// Request type for [`FuseHandlers::access`].
 ///
 /// [`FuseHandlers::access`]: ../trait.FuseHandlers.html#method.access
 #[derive(Debug)]
 pub struct AccessRequest {
-	node_id: node::NodeId,
+	node_id: NodeId,
 	mask: u32,
 }
 
 impl AccessRequest {
-	pub fn node_id(&self) -> node::NodeId {
+	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 
@@ -60,7 +59,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for AccessRequest {
 
 // AccessResponse {{{
 
-/// **\[UNSTABLE\]** Response type for [`FuseHandlers::access`].
+/// Response type for [`FuseHandlers::access`].
 ///
 /// [`FuseHandlers::access`]: ../trait.FuseHandlers.html#method.access
 pub struct AccessResponse<'a> {

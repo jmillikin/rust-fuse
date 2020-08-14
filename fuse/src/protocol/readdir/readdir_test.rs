@@ -17,7 +17,6 @@
 use core::num;
 
 use crate::internal::testutil::MessageBuilder;
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 use crate::protocol::read::fuse_read_in_v7p1;
 
@@ -79,7 +78,7 @@ fn readdir_request_v7p9() {
 fn request_impl_debug() {
 	let request = &ReaddirRequest {
 		phantom: PhantomData,
-		node_id: node::NodeId::ROOT,
+		node_id: crate::ROOT_ID,
 		size: 1,
 		cursor: num::NonZeroU64::new(2),
 		handle: 3,
@@ -127,8 +126,8 @@ fn readdir_response_stack() {
 fn readdir_response_test_impl(resp: &mut ReaddirResponse) {
 	// Adding a dirent fails if there's not enough capacity.
 	{
-		let node_id = node::NodeId::new(100).unwrap();
-		let name = node::NodeName::from_bytes(b"123456789ABCDEF").unwrap();
+		let node_id = NodeId::new(100).unwrap();
+		let name = Name::from_bytes(b"123456789ABCDEF").unwrap();
 		let cursor = num::NonZeroU64::new(1).unwrap();
 		let opt_dirent = resp.try_new_entry(node_id, name, cursor);
 		assert!(opt_dirent.is_none());
@@ -136,8 +135,8 @@ fn readdir_response_test_impl(resp: &mut ReaddirResponse) {
 
 	// Dirent capacity takes 8-byte name padding into account.
 	{
-		let node_id = node::NodeId::new(100).unwrap();
-		let name = node::NodeName::from_bytes(b"123456789").unwrap();
+		let node_id = NodeId::new(100).unwrap();
+		let name = Name::from_bytes(b"123456789").unwrap();
 		let cursor = num::NonZeroU64::new(1).unwrap();
 		let opt_dirent = resp.try_new_entry(node_id, name, cursor);
 		assert!(opt_dirent.is_none());
@@ -145,15 +144,15 @@ fn readdir_response_test_impl(resp: &mut ReaddirResponse) {
 
 	// Adding a dirent works if there's enough capacity.
 	{
-		let node_id = node::NodeId::new(100).unwrap();
-		let name = node::NodeName::from_bytes(b"foobar").unwrap();
+		let node_id = NodeId::new(100).unwrap();
+		let name = Name::from_bytes(b"foobar").unwrap();
 		let cursor = num::NonZeroU64::new(1).unwrap();
 		let mut dirent = resp.try_new_entry(node_id, name, cursor).unwrap();
 
 		assert_eq!(dirent.cursor(), cursor);
-		assert_eq!(dirent.kind(), node::NodeKind::UNKNOWN);
+		assert_eq!(dirent.file_type(), FileType::UNKNOWN);
 
-		dirent.set_kind(node::NodeKind::REG);
+		dirent.set_file_type(FileType::REG);
 	}
 
 	let encoded = encode_response!(resp);
@@ -185,21 +184,21 @@ fn response_impl_debug() {
 	let mut response = ReaddirResponse::with_max_size(1024);
 
 	{
-		let node_id = node::NodeId::new(100).unwrap();
-		let name = node::NodeName::from_bytes(b"hello.txt").unwrap();
+		let node_id = NodeId::new(100).unwrap();
+		let name = Name::from_bytes(b"hello.txt").unwrap();
 		let cursor = num::NonZeroU64::new(1).unwrap();
 		response
 			.new_entry(node_id, name, cursor)
-			.set_kind(node::NodeKind::REG);
+			.set_file_type(FileType::REG);
 	}
 
 	{
-		let node_id = node::NodeId::new(101).unwrap();
-		let name = node::NodeName::from_bytes(b"world.txt").unwrap();
+		let node_id = NodeId::new(101).unwrap();
+		let name = Name::from_bytes(b"world.txt").unwrap();
 		let cursor = num::NonZeroU64::new(2).unwrap();
 		response
 			.new_entry(node_id, name, cursor)
-			.set_kind(node::NodeKind::REG);
+			.set_file_type(FileType::REG);
 	}
 
 	assert_eq!(
@@ -210,13 +209,13 @@ fn response_impl_debug() {
 			"        ReaddirEntry {\n",
 			"            node_id: 100,\n",
 			"            cursor: 1,\n",
-			"            kind: REG,\n",
+			"            file_type: REG,\n",
 			"            name: \"hello.txt\",\n",
 			"        },\n",
 			"        ReaddirEntry {\n",
 			"            node_id: 101,\n",
 			"            cursor: 2,\n",
-			"            kind: REG,\n",
+			"            file_type: REG,\n",
 			"            name: \"world.txt\",\n",
 			"        },\n",
 			"    ],\n",

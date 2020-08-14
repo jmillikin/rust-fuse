@@ -55,7 +55,7 @@ impl MessageBuilder {
 		out
 	}
 
-	pub(crate) fn set_opcode(mut self, opcode: fuse_kernel::Opcode) -> Self {
+	pub(crate) fn set_opcode(self, opcode: fuse_kernel::Opcode) -> Self {
 		self.set_header(|h| {
 			h.opcode = opcode;
 		})

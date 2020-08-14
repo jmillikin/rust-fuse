@@ -15,7 +15,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::internal::testutil::MessageBuilder;
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 use super::{LookupRequest, LookupResponse};
@@ -60,11 +59,11 @@ fn request_impl_debug() {
 #[test]
 fn response_v7p1() {
 	let mut response = LookupResponse::new();
-	let entry = response.entry_mut();
-	entry.set_node_id(node::NodeId::new(11).unwrap());
-	entry.set_generation(22);
-	entry.attr_mut().set_node_id(node::NodeId::new(11).unwrap());
-	entry.attr_mut().set_mode(node::NodeKind::REG | 0o644);
+	let node = response.node_mut();
+	node.set_id(NodeId::new(11).unwrap());
+	node.set_generation(22);
+	node.attr_mut().set_node_id(NodeId::new(11).unwrap());
+	node.attr_mut().set_mode(FileType::REG | 0o644);
 
 	let encoded = encode_response!(response, {
 		protocol_version: (7, 1),
@@ -103,11 +102,11 @@ fn response_v7p1() {
 #[test]
 fn response_v7p9() {
 	let mut response = LookupResponse::new();
-	let entry = response.entry_mut();
-	entry.set_node_id(node::NodeId::new(11).unwrap());
-	entry.set_generation(22);
-	entry.attr_mut().set_node_id(node::NodeId::new(11).unwrap());
-	entry.attr_mut().set_mode(node::NodeKind::REG | 0o644);
+	let node = response.node_mut();
+	node.set_id(NodeId::new(11).unwrap());
+	node.set_generation(22);
+	node.attr_mut().set_node_id(NodeId::new(11).unwrap());
+	node.attr_mut().set_mode(FileType::REG | 0o644);
 
 	let encoded = encode_response!(response, {
 		protocol_version: (7, 9),
@@ -194,21 +193,21 @@ fn response_noexist_v7p4() {
 #[test]
 fn response_impl_debug() {
 	let mut response = LookupResponse::new();
-	let entry = response.entry_mut();
-	entry.set_node_id(node::NodeId::new(11).unwrap());
-	entry.set_generation(22);
-	entry.attr_mut().set_node_id(node::NodeId::new(11).unwrap());
-	entry.attr_mut().set_mode(node::NodeKind::REG | 0o644);
+	let node = response.node_mut();
+	node.set_id(NodeId::new(11).unwrap());
+	node.set_generation(22);
+	node.attr_mut().set_node_id(NodeId::new(11).unwrap());
+	node.attr_mut().set_mode(FileType::REG | 0o644);
 
 	assert_eq!(
 		format!("{:#?}", response),
 		concat!(
 			"LookupResponse {\n",
-			"    entry: NodeEntry {\n",
-			"        node_id: Some(11),\n",
+			"    node: Node {\n",
+			"        id: Some(11),\n",
 			"        generation: 22,\n",
-			"        entry_timeout: 0ns,\n",
-			"        attr_timeout: 0ns,\n",
+			"        cache_timeout: 0ns,\n",
+			"        attr_cache_timeout: 0ns,\n",
 			"        attr: NodeAttr {\n",
 			"            node_id: Some(11),\n",
 			"            size: 0,\n",

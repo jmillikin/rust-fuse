@@ -15,7 +15,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::internal::testutil::MessageBuilder;
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 use super::{ReadlinkRequest, ReadlinkResponse};
@@ -36,12 +35,17 @@ fn request_empty() {
 fn request_impl_debug() {
 	let request = &ReadlinkRequest {
 		phantom: PhantomData,
-		node_id: node::NodeId::ROOT,
+		node_id: crate::ROOT_ID,
 	};
 
+	#[rustfmt::skip]
 	assert_eq!(
 		format!("{:#?}", request),
-		concat!("ReadlinkRequest {\n", "    node_id: 1,\n", "}",),
+		concat!(
+			"ReadlinkRequest {\n",
+			"    node_id: 1,\n",
+			"}",
+		),
 	);
 }
 

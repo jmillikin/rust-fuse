@@ -15,7 +15,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::internal::testutil::MessageBuilder;
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 use super::{RenameRequest, RenameResponse};
@@ -38,8 +37,8 @@ fn request_rename() {
 	let expect_new = CString::new("new").unwrap();
 	assert_eq!(req.old_name(), expect_old.as_ref());
 	assert_eq!(req.new_name(), expect_new.as_ref());
-	assert_eq!(req.old_dir(), node::NodeId::new(123).unwrap());
-	assert_eq!(req.new_dir(), node::NodeId::new(456).unwrap());
+	assert_eq!(req.old_dir(), NodeId::new(123).unwrap());
+	assert_eq!(req.new_dir(), NodeId::new(456).unwrap());
 	assert_eq!(req.exchange(), false);
 	assert_eq!(req.no_replace(), false);
 }
@@ -66,8 +65,8 @@ fn request_rename2() {
 	let expect_new = CString::new("new").unwrap();
 	assert_eq!(req.old_name(), expect_old.as_ref());
 	assert_eq!(req.new_name(), expect_new.as_ref());
-	assert_eq!(req.old_dir(), node::NodeId::new(123).unwrap());
-	assert_eq!(req.new_dir(), node::NodeId::new(456).unwrap());
+	assert_eq!(req.old_dir(), NodeId::new(123).unwrap());
+	assert_eq!(req.new_dir(), NodeId::new(456).unwrap());
 	assert_eq!(req.exchange(), true);
 	assert_eq!(req.no_replace(), true);
 }

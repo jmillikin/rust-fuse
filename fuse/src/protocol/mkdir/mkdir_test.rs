@@ -15,7 +15,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::internal::testutil::MessageBuilder;
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 use super::{MkdirRequest, MkdirResponse};
@@ -42,11 +41,11 @@ fn request() {
 #[test]
 fn response_v7p1() {
 	let mut resp = MkdirResponse::new();
-	resp.node_mut().set_node_id(node::NodeId::new(11).unwrap());
+	resp.node_mut().set_id(NodeId::new(11).unwrap());
 	resp.node_mut().set_generation(22);
 	resp.node_mut()
 		.attr_mut()
-		.set_node_id(node::NodeId::new(11).unwrap());
+		.set_node_id(NodeId::new(11).unwrap());
 
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 1),
@@ -84,11 +83,11 @@ fn response_v7p1() {
 #[test]
 fn response_v7p9() {
 	let mut resp = MkdirResponse::new();
-	resp.node_mut().set_node_id(node::NodeId::new(11).unwrap());
+	resp.node_mut().set_id(NodeId::new(11).unwrap());
 	resp.node_mut().set_generation(22);
 	resp.node_mut()
 		.attr_mut()
-		.set_node_id(node::NodeId::new(11).unwrap());
+		.set_node_id(NodeId::new(11).unwrap());
 
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 9),

@@ -15,7 +15,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::internal::testutil::MessageBuilder;
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 use super::{GetattrRequest, GetattrResponse};
@@ -82,7 +81,7 @@ fn request_v7p9_with_handle() {
 fn request_impl_debug() {
 	let request = &GetattrRequest {
 		phantom: PhantomData,
-		node_id: node::NodeId::ROOT,
+		node_id: crate::ROOT_ID,
 		handle: Some(123),
 	};
 
@@ -99,7 +98,7 @@ fn request_impl_debug() {
 
 #[test]
 fn response_v7p1() {
-	let node_id = node::NodeId::new(0xABCD).unwrap();
+	let node_id = NodeId::new(0xABCD).unwrap();
 	let mut resp = GetattrResponse::new();
 	resp.attr_mut().set_node_id(node_id);
 	let encoded = encode_response!(resp, {
@@ -134,7 +133,7 @@ fn response_v7p1() {
 
 #[test]
 fn response_v7p9() {
-	let node_id = node::NodeId::new(0xABCD).unwrap();
+	let node_id = NodeId::new(0xABCD).unwrap();
 	let mut resp = GetattrResponse::new();
 	resp.attr_mut().set_node_id(node_id);
 	resp.attr_mut().set_size(999);
@@ -169,11 +168,11 @@ fn response_v7p9() {
 
 #[test]
 fn response_impl_debug() {
-	let node_id = node::NodeId::new(11).unwrap();
+	let node_id = NodeId::new(11).unwrap();
 	let mut response = GetattrResponse::new();
 	response.attr_mut().set_node_id(node_id);
 	response.attr_mut().set_size(999);
-	response.attr_mut().set_mode(node::NodeKind::REG | 0o644);
+	response.attr_mut().set_mode(FileType::REG | 0o644);
 	response.set_attr_timeout(time::Duration::new(123, 456));
 
 	assert_eq!(

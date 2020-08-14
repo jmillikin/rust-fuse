@@ -24,7 +24,7 @@ use std::{fs, io};
 #[path = "syscalls.rs"]
 mod syscalls;
 
-/// **\[UNSTABLE\]**
+#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
 pub struct FuseMountOptions {
 	device_path: PathBuf,
 	mount_source: String,
@@ -115,7 +115,7 @@ impl FuseMountOptions {
 	}
 }
 
-/// **\[UNSTABLE\]**
+#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
 pub struct FuseMount {
 	mount_target: PathBuf,
 }

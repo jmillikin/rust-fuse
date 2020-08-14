@@ -14,8 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::common;
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 #[cfg(test)]
@@ -23,7 +21,6 @@ mod mkdir_test;
 
 // MkdirRequest {{{
 
-/// **\[UNSTABLE\]**
 pub struct MkdirRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	name: &'a CStr,
@@ -71,7 +68,6 @@ impl<'a> fuse_io::DecodeRequest<'a> for MkdirRequest<'a> {
 
 // MkdirResponse {{{
 
-/// **\[UNSTABLE\]**
 pub struct MkdirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_entry_out,
@@ -85,24 +81,19 @@ impl MkdirResponse<'_> {
 		}
 	}
 
-	pub fn node(&self) -> &node::NodeEntry {
-		node::NodeEntry::new_ref(&self.raw)
+	pub fn node(&self) -> &Node {
+		Node::new_ref(&self.raw)
 	}
 
-	pub fn node_mut(&mut self) -> &mut node::NodeEntry {
-		node::NodeEntry::new_ref_mut(&mut self.raw)
+	pub fn node_mut(&mut self) -> &mut Node {
+		Node::new_ref_mut(&mut self.raw)
 	}
-
-	entry_out_methods!(raw);
 }
 
 impl fmt::Debug for MkdirResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("MkdirResponse")
-			.field("node_id", &self.node_id())
-			.field("cache_duration", &self.cache_duration())
-			.field("attr", self.attr())
-			.field("attr_cache_duration", &self.attr_cache_duration())
+			.field("node", &self.node())
 			.finish()
 	}
 }
@@ -112,7 +103,7 @@ impl fuse_io::EncodeResponse for MkdirResponse<'_> {
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
 	) -> std::io::Result<()> {
-		common::encode_entry_out(enc, &self.raw)
+		self.node().encode_entry(enc)
 	}
 }
 

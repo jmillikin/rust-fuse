@@ -21,7 +21,6 @@ mod flush_test;
 
 // FlushRequest {{{
 
-/// **\[UNSTABLE\]**
 pub struct FlushRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	fh: u64,
@@ -62,7 +61,6 @@ impl<'a> fuse_io::DecodeRequest<'a> for FlushRequest<'a> {
 
 // FlushResponse {{{
 
-/// **\[UNSTABLE\]**
 pub struct FlushResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }

@@ -18,7 +18,6 @@ use crate::protocol::prelude::*;
 
 // IoctlRequest {{{
 
-/// **\[UNSTABLE\]**
 pub struct IoctlRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	raw: &'a fuse_kernel::fuse_ioctl_in,
@@ -74,7 +73,6 @@ enum OutBuf {
 	OutVec(Vec<u8>),
 }
 
-/// **\[UNSTABLE\]**
 pub struct IoctlResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_ioctl_out,

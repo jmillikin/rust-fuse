@@ -14,7 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 #[cfg(test)]
@@ -24,12 +23,12 @@ mod forget_test;
 
 #[derive(Debug)]
 pub struct ForgetRequestItem {
-	node_id: node::NodeId,
+	node_id: NodeId,
 	lookup_count: u64,
 }
 
 impl ForgetRequestItem {
-	pub fn node_id(&self) -> node::NodeId {
+	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 
@@ -129,7 +128,7 @@ impl Iterator for ForgetRequestIter<'_> {
 			Self::One(Some(item)) => {
 				let item = *item;
 				*self = Self::One(None);
-				match node::NodeId::new(item.nodeid) {
+				match NodeId::new(item.nodeid) {
 					Some(node_id) => {
 						return Some(ForgetRequestItem {
 							node_id,
@@ -154,7 +153,7 @@ fn next_batch_item(
 	loop {
 		match items.split_first() {
 			None => return (None, &[]),
-			Some((head, tail)) => match node::NodeId::new(head.nodeid) {
+			Some((head, tail)) => match NodeId::new(head.nodeid) {
 				None => {
 					items = tail;
 				},

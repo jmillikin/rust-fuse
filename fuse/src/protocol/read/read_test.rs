@@ -15,7 +15,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::internal::testutil::MessageBuilder;
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 use super::{ReadRequest, ReadResponse};
@@ -104,7 +103,7 @@ fn request_lock_owner() {
 fn request_impl_debug() {
 	let request = &ReadRequest {
 		phantom: PhantomData,
-		node_id: node::NodeId::ROOT,
+		node_id: crate::ROOT_ID,
 		size: 1,
 		offset: 2,
 		handle: 3,

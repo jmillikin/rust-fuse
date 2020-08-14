@@ -14,7 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 use crate::protocol::release::fuse_release_in_v7p1;
 
@@ -28,14 +27,14 @@ mod releasedir_test;
 /// [`FuseHandlers::releasedir`]: ../trait.FuseHandlers.html#method.releasedir
 pub struct ReleasedirRequest<'a> {
 	phantom: PhantomData<&'a ()>,
-	node_id: node::NodeId,
+	node_id: NodeId,
 	handle: u64,
 	lock_owner: Option<u64>,
 	flags: u32,
 }
 
 impl ReleasedirRequest<'_> {
-	pub fn node_id(&self) -> node::NodeId {
+	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 

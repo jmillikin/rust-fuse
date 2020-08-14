@@ -15,7 +15,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::internal::testutil::MessageBuilder;
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 use super::{ForgetRequest, ForgetRequestItem};
@@ -34,7 +33,7 @@ fn request_single() {
 
 	let items: Vec<ForgetRequestItem> = req.items().collect();
 	assert_eq!(items.len(), 1);
-	assert_eq!(items[0].node_id(), node::NodeId::new(123).unwrap());
+	assert_eq!(items[0].node_id(), NodeId::new(123).unwrap());
 	assert_eq!(items[0].lookup_count(), 456);
 }
 
@@ -57,9 +56,9 @@ fn request_batch() {
 
 	let items: Vec<ForgetRequestItem> = req.items().collect();
 	assert_eq!(items.len(), 2);
-	assert_eq!(items[0].node_id(), node::NodeId::new(12).unwrap());
+	assert_eq!(items[0].node_id(), NodeId::new(12).unwrap());
 	assert_eq!(items[0].lookup_count(), 34);
-	assert_eq!(items[1].node_id(), node::NodeId::new(56).unwrap());
+	assert_eq!(items[1].node_id(), NodeId::new(56).unwrap());
 	assert_eq!(items[1].lookup_count(), 78);
 }
 

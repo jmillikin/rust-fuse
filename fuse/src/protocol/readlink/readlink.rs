@@ -14,7 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 #[cfg(test)]
@@ -27,11 +26,11 @@ mod readlink_test;
 /// [`FuseHandlers::readlink`]: ../trait.FuseHandlers.html#method.readlink
 pub struct ReadlinkRequest<'a> {
 	phantom: PhantomData<&'a ()>,
-	node_id: node::NodeId,
+	node_id: NodeId,
 }
 
 impl ReadlinkRequest<'_> {
-	pub fn node_id(&self) -> node::NodeId {
+	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 }

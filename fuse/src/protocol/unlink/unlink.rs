@@ -21,7 +21,6 @@ mod unlink_test;
 
 // UnlinkRequest {{{
 
-/// **\[UNSTABLE\]**
 pub struct UnlinkRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	name: &'a CStr,
@@ -53,7 +52,6 @@ impl<'a> fuse_io::DecodeRequest<'a> for UnlinkRequest<'a> {
 
 // UnlinkResponse {{{
 
-/// **\[UNSTABLE\]**
 pub struct UnlinkResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }

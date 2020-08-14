@@ -21,7 +21,6 @@ mod rmdir_test;
 
 // RmdirRequest {{{
 
-/// **\[UNSTABLE\]**
 pub struct RmdirRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	name: &'a CStr,
@@ -53,7 +52,6 @@ impl<'a> fuse_io::DecodeRequest<'a> for RmdirRequest<'a> {
 
 // RmdirResponse {{{
 
-/// **\[UNSTABLE\]**
 pub struct RmdirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }

@@ -21,7 +21,6 @@ mod setxattr_test;
 
 // SetxattrRequest {{{
 
-/// **\[UNSTABLE\]**
 pub struct SetxattrRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	raw: &'a fuse_kernel::fuse_setxattr_in,
@@ -70,7 +69,6 @@ impl<'a> fuse_io::DecodeRequest<'a> for SetxattrRequest<'a> {
 
 // SetxattrResponse {{{
 
-/// **\[UNSTABLE\]**
 pub struct SetxattrResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }

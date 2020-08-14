@@ -21,7 +21,6 @@ mod fsync_test;
 
 // FsyncRequest {{{
 
-/// **\[UNSTABLE\]**
 pub struct FsyncRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	fh: u64,
@@ -62,7 +61,6 @@ impl<'a> fuse_io::DecodeRequest<'a> for FsyncRequest<'a> {
 
 // FsyncResponse {{{
 
-/// **\[UNSTABLE\]**
 pub struct FsyncResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }

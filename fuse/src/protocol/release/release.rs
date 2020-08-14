@@ -14,7 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 #[cfg(test)]
@@ -27,14 +26,14 @@ mod release_test;
 /// [`FuseHandlers::release`]: ../trait.FuseHandlers.html#method.release
 pub struct ReleaseRequest<'a> {
 	phantom: PhantomData<&'a ()>,
-	node_id: node::NodeId,
+	node_id: NodeId,
 	handle: u64,
 	lock_owner: Option<u64>,
 	flags: u32,
 }
 
 impl ReleaseRequest<'_> {
-	pub fn node_id(&self) -> node::NodeId {
+	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 

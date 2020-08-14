@@ -15,7 +15,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::internal::testutil::MessageBuilder;
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 use super::{OpendirFlags, OpendirRequest, OpendirResponse};
@@ -42,7 +41,7 @@ fn request() {
 fn request_impl_debug() {
 	let request = &OpendirRequest {
 		phantom: PhantomData,
-		node_id: node::NodeId::ROOT,
+		node_id: crate::ROOT_ID,
 		flags: 0x1,
 	};
 

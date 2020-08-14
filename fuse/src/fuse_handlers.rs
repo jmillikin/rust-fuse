@@ -42,7 +42,7 @@ pub trait FuseHandlers {
 		protocol::FuseInitResponse::for_request_impl(request)
 	}
 
-	/// **\[UNSTABLE\]** Check file access permissions
+	/// Check file access permissions
 	///
 	/// This will be called for the [`access(2)`] and [`chdir(2)`] system
 	/// calls.  If the `default_permissions` mount option is given,
@@ -68,8 +68,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-
-	/// **\[UNSTABLE\]** Map block index within file to block index within device
+	/// Map block index within file to block index within device
 	///
 	/// Note: This makes sense only for block device backed filesystems
 	/// mounted with the `blkdev` option
@@ -90,7 +89,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Create and open a file
+	/// Create and open a file
 	///
 	/// If the file does not exist, first create it with the specified
 	/// mode, and then open it.
@@ -121,14 +120,14 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	// **\[UNSTABLE\]** Allocate requested space. If this function returns success then
-	// subsequent writes to the specified range shall not fail due to the lack
-	// of free space on the file system storage media.
-	//
-	// If this request is answered with an error code of `ENOSYS`, this is
-	// treated as a permanent failure with error code `EOPNOTSUPP`, i.e. all
-	// future `fallocate()` requests will fail with `EOPNOTSUPP` without being
-	// send to the filesystem process.
+	/// Allocate requested space. If this function returns success then
+	/// subsequent writes to the specified range shall not fail due to the lack
+	/// of free space on the file system storage media.
+	///
+	/// If this request is answered with an error code of `ENOSYS`, this is
+	/// treated as a permanent failure with error code `EOPNOTSUPP`, i.e. all
+	/// future `fallocate()` requests will fail with `EOPNOTSUPP` without being
+	/// send to the filesystem process.
 	#[cfg(any(doc, feature = "unstable_fuse_fallocate"))]
 	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_fallocate")))]
 	fn fallocate(
@@ -141,7 +140,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Flush method
+	/// Flush method
 	///
 	/// This is called on each `close()` of the opened file.
 	///
@@ -226,7 +225,7 @@ pub trait FuseHandlers {
 		let _ = (ctx, request);
 	}
 
-	/// **\[UNSTABLE\]** Synchronize file contents
+	/// Synchronize file contents
 	///
 	/// If the datasync parameter is non-zero, then only the user data
 	/// should be flushed, not the meta data.
@@ -247,7 +246,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Synchronize directory contents
+	/// Synchronize directory contents
 	///
 	/// If the datasync parameter is non-zero, then only the directory
 	/// contents should be flushed, not the meta data.
@@ -292,7 +291,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Test for a POSIX file lock
+	/// Test for a POSIX file lock
 	#[cfg(any(doc, feature = "unstable_fuse_getlk"))]
 	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_getlk")))]
 	fn getlk(
@@ -305,7 +304,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Get an extended attribute
+	/// Get an extended attribute
 	///
 	/// If size is zero, the size of the value should be sent with
 	/// fuse_reply_xattr.
@@ -332,7 +331,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Ioctl
+	/// Ioctl
 	///
 	/// Note: For unrestricted ioctls (not allowed for FUSE
 	/// servers), data in and out areas can be discovered by giving
@@ -370,7 +369,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Create a hard link
+	/// Create a hard link
 	#[cfg(any(doc, feature = "unstable_fuse_link"))]
 	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_link")))]
 	fn link(
@@ -383,7 +382,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** List extended attribute names
+	/// List extended attribute names
 	///
 	/// If size is zero, the total size of the attribute list should be
 	/// sent with fuse_reply_xattr.
@@ -422,7 +421,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Find next data or hole after the specified offset
+	/// Find next data or hole after the specified offset
 	///
 	/// If this request is answered with an error code of ENOSYS, this is
 	/// treated as a permanent failure, i.e. all future lseek() requests will
@@ -440,7 +439,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Create a directory
+	/// Create a directory
 	#[cfg(any(doc, feature = "unstable_fuse_mkdir"))]
 	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_mkdir")))]
 	fn mkdir(
@@ -453,7 +452,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Create file node
+	/// Create file node
 	///
 	/// Create a regular file, character device, block device, fifo or
 	/// socket node.
@@ -702,7 +701,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Remove an extended attribute
+	/// Remove an extended attribute
 	///
 	/// If this request is answered with an error code of ENOSYS, this is
 	/// treated as a permanent failure with error code EOPNOTSUPP, i.e. all
@@ -720,7 +719,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Rename a file
+	/// Rename a file
 	///
 	/// If the target exists it should be atomically replaced. If
 	/// the target's inode's lookup count is non-zero, the file
@@ -751,7 +750,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Remove a directory
+	/// Remove a directory
 	///
 	/// If the directory's inode's lookup count is non-zero, the
 	/// file system is expected to postpone any removal of the
@@ -769,7 +768,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Set file attributes
+	/// Set file attributes
 	///
 	/// In the 'attr' argument only members indicated by the 'to_set'
 	/// bitmask contain valid values.  Other members contain undefined
@@ -797,7 +796,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Acquire, modify or release a POSIX file lock
+	/// Acquire, modify or release a POSIX file lock
 	///
 	/// For POSIX threads (NPTL) there's a 1-1 relation between pid and
 	/// owner, but otherwise this is not always the case.  For checking
@@ -820,7 +819,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Set an extended attribute
+	/// Set an extended attribute
 	///
 	/// If this request is answered with an error code of ENOSYS, this is
 	/// treated as a permanent failure with error code EOPNOTSUPP, i.e. all
@@ -838,7 +837,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Get file system statistics
+	/// Get file system statistics
 	#[cfg(any(doc, feature = "unstable_fuse_statfs"))]
 	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_statfs")))]
 	fn statfs(
@@ -851,7 +850,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Create a symbolic link
+	/// Create a symbolic link
 	#[cfg(any(doc, feature = "unstable_fuse_symlink"))]
 	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_symlink")))]
 	fn symlink(
@@ -864,7 +863,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Remove a file
+	/// Remove a file
 	///
 	/// If the file's inode's lookup count is non-zero, the file
 	/// system is expected to postpone any removal of the inode
@@ -882,7 +881,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Write data
+	/// Write data
 	///
 	/// Write should return exactly the number of bytes requested
 	/// except on error.  An exception to this is when the file has

@@ -21,7 +21,6 @@ mod fallocate_test;
 
 // FallocateRequest {{{
 
-/// **\[UNSTABLE\]**
 pub struct FallocateRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	raw: &'a fuse_kernel::fuse_fallocate_in,
@@ -64,7 +63,6 @@ impl<'a> fuse_io::DecodeRequest<'a> for FallocateRequest<'a> {
 
 // FallocateResponse {{{
 
-/// **\[UNSTABLE\]**
 pub struct FallocateResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }

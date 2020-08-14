@@ -15,7 +15,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::internal::errors;
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 #[cfg(test)]
@@ -28,16 +27,16 @@ mod lookup_test;
 /// [`FuseHandlers::lookup`]: ../trait.FuseHandlers.html#method.lookup
 #[derive(Debug)]
 pub struct LookupRequest<'a> {
-	parent_id: node::NodeId,
-	name: &'a node::NodeName,
+	parent_id: NodeId,
+	name: &'a Name,
 }
 
 impl LookupRequest<'_> {
-	pub fn parent_id(&self) -> node::NodeId {
+	pub fn parent_id(&self) -> NodeId {
 		self.parent_id
 	}
 
-	pub fn name(&self) -> &node::NodeName {
+	pub fn name(&self) -> &Name {
 		self.name
 	}
 }
@@ -51,7 +50,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for LookupRequest<'a> {
 
 		Ok(Self {
 			parent_id: try_node_id(header.nodeid)?,
-			name: node::NodeName::new(dec.next_nul_terminated_bytes()?),
+			name: Name::new(dec.next_nul_terminated_bytes()?),
 		})
 	}
 }
@@ -76,19 +75,19 @@ impl LookupResponse<'_> {
 		}
 	}
 
-	pub fn entry(&self) -> &node::NodeEntry {
-		node::NodeEntry::new_ref(&self.entry_out)
+	pub fn node(&self) -> &Node {
+		Node::new_ref(&self.entry_out)
 	}
 
-	pub fn entry_mut(&mut self) -> &mut node::NodeEntry {
-		node::NodeEntry::new_ref_mut(&mut self.entry_out)
+	pub fn node_mut(&mut self) -> &mut Node {
+		Node::new_ref_mut(&mut self.entry_out)
 	}
 }
 
 impl fmt::Debug for LookupResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("LookupResponse")
-			.field("entry", self.entry())
+			.field("node", self.node())
 			.finish()
 	}
 }
@@ -104,8 +103,7 @@ impl fuse_io::EncodeResponse for LookupResponse<'_> {
 		if self.entry_out.nodeid == 0 && enc.version().minor() < 4 {
 			return enc.encode_error(errors::ENOENT);
 		}
-
-		crate::protocol::common::encode_entry_out(enc, &self.entry_out)
+		self.node().encode_entry(enc)
 	}
 }
 

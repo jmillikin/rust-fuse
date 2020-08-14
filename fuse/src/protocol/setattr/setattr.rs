@@ -14,7 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 #[cfg(test)]
@@ -22,7 +21,6 @@ mod setattr_test;
 
 // SetattrRequest {{{
 
-/// **\[UNSTABLE\]**
 pub struct SetattrRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	raw: &'a fuse_kernel::fuse_setattr_in,
@@ -128,7 +126,6 @@ fn systime(seconds: u64, nanos: u32) -> time::SystemTime {
 
 // SetattrResponse {{{
 
-/// **\[UNSTABLE\]**
 pub struct SetattrResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_attr_out,
@@ -151,12 +148,12 @@ impl SetattrResponse<'_> {
 		}
 	}
 
-	pub fn attr(&self) -> &node::NodeAttr {
-		node::NodeAttr::new_ref(&self.raw.attr)
+	pub fn attr(&self) -> &NodeAttr {
+		NodeAttr::new_ref(&self.raw.attr)
 	}
 
-	pub fn attr_mut(&mut self) -> &mut node::NodeAttr {
-		node::NodeAttr::new_ref_mut(&mut self.raw.attr)
+	pub fn attr_mut(&mut self) -> &mut NodeAttr {
+		NodeAttr::new_ref_mut(&mut self.raw.attr)
 	}
 
 	pub fn cache_duration(&self) -> time::Duration {

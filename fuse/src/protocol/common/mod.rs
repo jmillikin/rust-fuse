@@ -14,41 +14,23 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#![cfg_attr(doc, feature(doc_cfg))]
-#![feature(asm)]
-
 #[macro_use]
-mod internal;
+mod bitflags;
 
-mod fuse_handlers;
-pub use self::fuse_handlers::*;
+mod debug;
+pub(crate) use self::debug::*;
 
-mod fuse_server;
-pub use self::fuse_server::*;
+mod file_type;
+pub use self::file_type::*;
 
-mod server;
-pub use self::server::*;
+mod name;
+pub use self::name::*;
 
-pub use crate::internal::types::ProtocolVersion;
+mod node;
+pub use self::node::*;
 
-pub mod os {
-	#[cfg(any(target_os = "linux", doc))]
-	#[cfg_attr(doc, doc(cfg(target_os = "linux")))]
-	pub mod linux {
-		mod linux_mount_options;
-		pub use self::linux_mount_options::*;
-	}
-}
+mod node_attr;
+pub use self::node_attr::*;
 
-pub mod protocol;
-pub use self::protocol::*;
-
-pub use self::protocol::common::{
-	FileType,
-	Name,
-	Node,
-	NodeAttr,
-	NodeId,
-	NAME_MAX,
-	ROOT_ID,
-};
+mod node_id;
+pub use self::node_id::*;

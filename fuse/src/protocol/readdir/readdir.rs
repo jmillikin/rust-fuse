@@ -16,7 +16,6 @@
 
 use core::num;
 
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 use crate::protocol::read::fuse_read_in_v7p1;
 
@@ -30,7 +29,7 @@ mod readdir_test;
 /// [`FuseHandlers::readdir`]: ../trait.FuseHandlers.html#method.readdir
 pub struct ReaddirRequest<'a> {
 	phantom: PhantomData<&'a ()>,
-	node_id: node::NodeId,
+	node_id: NodeId,
 	size: u32,
 	cursor: Option<num::NonZeroU64>,
 	handle: u64,
@@ -38,7 +37,7 @@ pub struct ReaddirRequest<'a> {
 }
 
 impl ReaddirRequest<'_> {
-	pub fn node_id(&self) -> node::NodeId {
+	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 
@@ -170,13 +169,12 @@ impl<'a> ReaddirResponse<'a> {
 	/// # Examples
 	///
 	/// ```
-	/// use core::mem::align_of;
-	///
+	/// # fn new_aligned_buf(_size: u32) -> Vec<u8> { Vec::new() }
 	/// fn readdir(
 	/// 	request: &fuse::ReaddirRequest,
 	/// 	respond: impl for<'a> fuse::RespondOnce<fuse::ReaddirResponse<'a>>,
 	/// ) {
-	/// 	let buf = new_aligned_buf(request.size());
+	/// 	let mut buf = new_aligned_buf(request.size());
 	/// 	let mut response = fuse::ReaddirResponse::with_capacity(&mut buf);
 	/// 	/* fill in response */
 	/// 	respond.ok(&response);
@@ -199,8 +197,8 @@ impl<'a> ReaddirResponse<'a> {
 
 	pub fn new_entry(
 		&mut self,
-		node_id: node::NodeId,
-		name: &node::NodeName,
+		node_id: NodeId,
+		name: &Name,
 		cursor: num::NonZeroU64,
 	) -> ReaddirEntry {
 		self.try_new_entry(node_id, name, cursor).unwrap()
@@ -208,8 +206,8 @@ impl<'a> ReaddirResponse<'a> {
 
 	pub fn try_new_entry(
 		&mut self,
-		node_id: node::NodeId,
-		name: &node::NodeName,
+		node_id: NodeId,
+		name: &Name,
 		cursor: num::NonZeroU64,
 	) -> Option<ReaddirEntry> {
 		let name = name.as_bytes();
@@ -327,8 +325,8 @@ pub struct ReaddirEntry<'a> {
 }
 
 impl ReaddirEntry<'_> {
-	pub fn node_id(&self) -> node::NodeId {
-		unsafe { node::NodeId::new_unchecked(self.dirent.ino) }
+	pub fn node_id(&self) -> NodeId {
+		unsafe { NodeId::new_unchecked(self.dirent.ino) }
 	}
 
 	pub fn name(&self) -> &[u8] {
@@ -339,12 +337,12 @@ impl ReaddirEntry<'_> {
 		unsafe { num::NonZeroU64::new_unchecked(self.dirent.off) }
 	}
 
-	pub fn kind(&self) -> node::NodeKind {
-		node::NodeKind::new(self.dirent.r#type)
+	pub fn file_type(&self) -> FileType {
+		FileType(self.dirent.r#type)
 	}
 
-	pub fn set_kind(&mut self, kind: node::NodeKind) -> &mut Self {
-		self.dirent.r#type = kind.raw();
+	pub fn set_file_type(&mut self, file_type: FileType) -> &mut Self {
+		self.dirent.r#type = file_type.0;
 		self
 	}
 }
@@ -365,7 +363,7 @@ fn dirent_fmt(
 	fmt.debug_struct("ReaddirEntry")
 		.field("node_id", &dirent.ino)
 		.field("cursor", &dirent.off)
-		.field("kind", &node::NodeKind::new(dirent.r#type))
+		.field("file_type", &FileType(dirent.r#type))
 		.field("name", &DebugBytesAsString(dirent_name(dirent)))
 		.finish()
 }

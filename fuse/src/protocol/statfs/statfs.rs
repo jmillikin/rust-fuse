@@ -21,7 +21,6 @@ mod statfs_test;
 
 // StatfsRequest {{{
 
-/// **\[UNSTABLE\]**
 pub struct StatfsRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 }
@@ -44,7 +43,6 @@ impl<'a> fuse_io::DecodeRequest<'a> for StatfsRequest<'a> {
 
 // StatfsResponse {{{
 
-/// **\[UNSTABLE\]**
 pub struct StatfsResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_statfs_out,

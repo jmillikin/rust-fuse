@@ -21,7 +21,6 @@ mod write_test;
 
 // WriteRequest {{{
 
-/// **\[UNSTABLE\]**
 pub struct WriteRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	handle: u64,
@@ -126,7 +125,6 @@ impl<'a> fuse_io::DecodeRequest<'a> for WriteRequest<'a> {
 
 // WriteResponse {{{
 
-/// **\[UNSTABLE\]**
 pub struct WriteResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_write_out,

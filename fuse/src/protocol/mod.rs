@@ -14,162 +14,64 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#![allow(unused_attributes)]
+#![rustfmt::skip]
+
 #[macro_use]
-mod common;
+pub(crate) mod common;
 
 mod prelude;
 
-#[cfg(any(doc, feature = "unstable_fuse_access"))]
-#[doc(cfg(feature = "unstable_fuse_access"))]
-#[path = "access/access.rs"]
-mod access;
-#[cfg(any(doc, feature = "unstable_fuse_access"))]
-#[doc(cfg(feature = "unstable_fuse_access"))]
-pub use self::access::*;
+macro_rules! op_mod {
+	($name:ident, $path:expr) => {
+		#[path = $path]
+		pub mod $name;
+		pub use self::$name::*;
+	};
+	($name:ident, $path:expr, $feature:expr) => {
+		#[cfg(any(doc, feature = $feature))]
+		#[cfg_attr(doc, doc(cfg(feature = $feature)))]
+		#[path = $path]
+		pub mod $name;
+		#[cfg(any(doc, feature = $feature))]
+		pub use self::$name::*;
+	};
+}
 
-#[path = "bmap/bmap.rs"]
-mod bmap;
-pub use self::bmap::*;
-
-#[path = "create/create.rs"]
-mod create;
-pub use self::create::*;
-
-#[path = "fallocate/fallocate.rs"]
-mod fallocate;
-pub use self::fallocate::*;
-
-#[path = "flush/flush.rs"]
-mod flush;
-pub use self::flush::*;
-
-#[path = "forget/forget.rs"]
-mod forget;
-pub use self::forget::*;
-
-#[path = "fsync/fsync.rs"]
-mod fsync;
-pub use self::fsync::*;
-
-#[path = "fsyncdir/fsyncdir.rs"]
-mod fsyncdir;
-pub use self::fsyncdir::*;
-
-#[path = "fuse_init/fuse_init.rs"]
-mod fuse_init;
-pub use self::fuse_init::*;
-
-#[path = "getattr/getattr.rs"]
-mod getattr;
-pub use self::getattr::*;
-
-#[path = "getlk/getlk.rs"]
-mod getlk;
-pub use self::getlk::*;
-
-#[path = "getxattr/getxattr.rs"]
-mod getxattr;
-pub use self::getxattr::*;
-
-#[path = "ioctl/ioctl.rs"]
-mod ioctl;
-pub use self::ioctl::*;
-
-#[path = "link/link.rs"]
-mod link;
-pub use self::link::*;
-
-#[path = "listxattr/listxattr.rs"]
-mod listxattr;
-pub use self::listxattr::*;
-
-#[path = "lookup/lookup.rs"]
-mod lookup;
-pub use self::lookup::*;
-
-#[path = "lseek/lseek.rs"]
-mod lseek;
-pub use self::lseek::*;
-
-#[path = "mkdir/mkdir.rs"]
-mod mkdir;
-pub use self::mkdir::*;
-
-#[path = "mknod/mknod.rs"]
-mod mknod;
-pub use self::mknod::*;
-
-#[path = "open/open.rs"]
-mod open;
-pub use self::open::*;
-
-#[path = "opendir/opendir.rs"]
-mod opendir;
-pub use self::opendir::*;
-
-#[path = "read/read.rs"]
-mod read;
-pub use self::read::*;
-
-#[path = "readdir/readdir.rs"]
-mod readdir;
-pub use self::readdir::*;
-
-#[path = "readlink/readlink.rs"]
-mod readlink;
-pub use self::readlink::*;
-
-#[path = "release/release.rs"]
-mod release;
-pub use self::release::*;
-
-#[path = "releasedir/releasedir.rs"]
-mod releasedir;
-pub use self::releasedir::*;
-
-#[path = "removexattr/removexattr.rs"]
-mod removexattr;
-pub use self::removexattr::*;
-
-#[path = "rename/rename.rs"]
-mod rename;
-pub use self::rename::*;
-
-#[path = "rmdir/rmdir.rs"]
-mod rmdir;
-pub use self::rmdir::*;
-
-#[path = "setattr/setattr.rs"]
-mod setattr;
-pub use self::setattr::*;
-
-#[path = "setlk/setlk.rs"]
-mod setlk;
-pub use self::setlk::*;
-
-#[path = "setxattr/setxattr.rs"]
-mod setxattr;
-pub use self::setxattr::*;
-
-#[path = "statfs/statfs.rs"]
-mod statfs;
-pub use self::statfs::*;
-
-#[path = "symlink/symlink.rs"]
-mod symlink;
-pub use self::symlink::*;
-
-#[path = "unlink/unlink.rs"]
-mod unlink;
-pub use self::unlink::*;
-
-#[path = "write/write.rs"]
-mod write;
-pub use self::write::*;
-
-mod node;
-pub use self::node::{NodeAttr, NodeEntry, NodeId, NodeKind, NodeName};
-
-#[path = "unknown/unknown.rs"]
-mod unknown;
-pub use self::unknown::*;
+op_mod!(access,      "access/access.rs",           "unstable_fuse_access");
+op_mod!(bmap,        "bmap/bmap.rs",               "unstable_fuse_bmap");
+op_mod!(create,      "create/create.rs",           "unstable_fuse_create");
+op_mod!(fallocate,   "fallocate/fallocate.rs",     "unstable_fuse_fallocate");
+op_mod!(flush,       "flush/flush.rs",             "unstable_fuse_flush");
+op_mod!(forget,      "forget/forget.rs");
+op_mod!(fsync,       "fsync/fsync.rs",             "unstable_fuse_fsync");
+op_mod!(fsyncdir,    "fsyncdir/fsyncdir.rs",       "unstable_fuse_fsyncdir");
+op_mod!(fuse_init,   "fuse_init/fuse_init.rs");
+op_mod!(getattr,     "getattr/getattr.rs");
+op_mod!(getlk,       "getlk/getlk.rs",             "unstable_fuse_getlk");
+op_mod!(getxattr,    "getxattr/getxattr.rs",       "unstable_fuse_getxattr");
+op_mod!(ioctl,       "ioctl/ioctl.rs",             "unstable_fuse_ioctl");
+op_mod!(link,        "link/link.rs",               "unstable_fuse_link");
+op_mod!(listxattr,   "listxattr/listxattr.rs",     "unstable_fuse_listxattr");
+op_mod!(lookup,      "lookup/lookup.rs");
+op_mod!(lseek,       "lseek/lseek.rs",             "unstable_fuse_lseek");
+op_mod!(mkdir,       "mkdir/mkdir.rs",             "unstable_fuse_mkdir");
+op_mod!(mknod,       "mknod/mknod.rs",             "unstable_fuse_mknod");
+op_mod!(open,        "open/open.rs");
+op_mod!(opendir,     "opendir/opendir.rs");
+op_mod!(read,        "read/read.rs");
+op_mod!(readdir,     "readdir/readdir.rs");
+op_mod!(readlink,    "readlink/readlink.rs");
+op_mod!(release,     "release/release.rs");
+op_mod!(releasedir,  "releasedir/releasedir.rs");
+op_mod!(removexattr, "removexattr/removexattr.rs", "unstable_fuse_removexattr");
+op_mod!(rename,      "rename/rename.rs",           "unstable_fuse_rename");
+op_mod!(rmdir,       "rmdir/rmdir.rs",             "unstable_fuse_rmdir");
+op_mod!(setattr,     "setattr/setattr.rs",         "unstable_fuse_setattr");
+op_mod!(setlk,       "setlk/setlk.rs",             "unstable_fuse_setlk");
+op_mod!(setxattr,    "setxattr/setxattr.rs",       "unstable_fuse_setxattr");
+op_mod!(statfs,      "statfs/statfs.rs",           "unstable_fuse_statfs");
+op_mod!(symlink,     "symlink/symlink.rs",         "unstable_fuse_symlink");
+op_mod!(unknown,     "unknown/unknown.rs");
+op_mod!(unlink,      "unlink/unlink.rs",           "unstable_fuse_unlink");
+op_mod!(write,       "write/write.rs",             "unstable_fuse_write");

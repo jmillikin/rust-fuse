@@ -14,7 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 #[cfg(test)]
@@ -25,17 +24,16 @@ mod rename_test;
 const RENAME_NOREPLACE: u32 = 1 << 0;
 const RENAME_EXCHANGE: u32 = 1 << 1;
 
-/// **\[UNSTABLE\]**
 pub struct RenameRequest<'a> {
 	flags: u32,
-	old_dir: node::NodeId,
+	old_dir: NodeId,
 	old_name: &'a CStr,
-	new_dir: node::NodeId,
+	new_dir: NodeId,
 	new_name: &'a CStr,
 }
 
 impl RenameRequest<'_> {
-	pub fn old_dir(&self) -> node::NodeId {
+	pub fn old_dir(&self) -> NodeId {
 		self.old_dir
 	}
 
@@ -43,7 +41,7 @@ impl RenameRequest<'_> {
 		self.old_name
 	}
 
-	pub fn new_dir(&self) -> node::NodeId {
+	pub fn new_dir(&self) -> NodeId {
 		self.new_dir
 	}
 
@@ -93,7 +91,6 @@ impl<'a> fuse_io::DecodeRequest<'a> for RenameRequest<'a> {
 
 // RenameResponse {{{
 
-/// **\[UNSTABLE\]**
 pub struct RenameResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }

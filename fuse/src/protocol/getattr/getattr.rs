@@ -14,7 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::node;
 use crate::protocol::prelude::*;
 
 #[cfg(test)]
@@ -27,12 +26,12 @@ mod getattr_test;
 /// [`FuseHandlers::getattr`]: ../trait.FuseHandlers.html#method.getattr
 pub struct GetattrRequest<'a> {
 	phantom: PhantomData<&'a ()>,
-	node_id: node::NodeId,
+	node_id: NodeId,
 	handle: Option<u64>,
 }
 
 impl GetattrRequest<'_> {
-	pub fn node_id(&self) -> node::NodeId {
+	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 
@@ -110,12 +109,12 @@ impl GetattrResponse<'_> {
 		self.raw.attr_valid_nsec = attr_timeout.subsec_nanos();
 	}
 
-	pub fn attr(&self) -> &node::NodeAttr {
-		node::NodeAttr::new_ref(&self.raw.attr)
+	pub fn attr(&self) -> &NodeAttr {
+		NodeAttr::new_ref(&self.raw.attr)
 	}
 
-	pub fn attr_mut(&mut self) -> &mut node::NodeAttr {
-		node::NodeAttr::new_ref_mut(&mut self.raw.attr)
+	pub fn attr_mut(&mut self) -> &mut NodeAttr {
+		NodeAttr::new_ref_mut(&mut self.raw.attr)
 	}
 }
 
