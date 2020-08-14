@@ -177,7 +177,7 @@ fn response_minor_mismatch() {
 				major: fuse_kernel::FUSE_KERNEL_VERSION,
 				minor: fuse_kernel::FUSE_KERNEL_MINOR_VERSION,
 				max_readahead: 4096,
-				flags: 0xFFFFFFFF,
+				flags: 0x003F9FFF,
 				max_background: 0,
 				congestion_threshold: 0,
 				max_write: 0,

@@ -168,10 +168,11 @@ impl FuseInitResponse {
 		let version = crate::ProtocolVersion::new(v_major, v_minor);
 		let mut response = FuseInitResponse::new(version);
 		response.set_max_readahead(request.max_readahead());
-		// TODO: only set flags that are known to this library.
-		let mut flags = request.flags();
+
+		let mut flags = FuseInitFlags(request.flags().0 & 0x3FFFFF);
 		flags.set_do_readdirplus(false);
 		flags.set_readdirplus_auto(false);
+
 		response.set_flags(flags);
 		response
 	}
