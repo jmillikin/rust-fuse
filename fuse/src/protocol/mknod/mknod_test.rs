@@ -66,7 +66,7 @@ fn request_v7p12() {
 #[test]
 fn response_v7p1() {
 	let mut resp = MknodResponse::new();
-	resp.node_mut().set_id(node::NodeId::new(11).unwrap());
+	resp.node_mut().set_node_id(node::NodeId::new(11).unwrap());
 	resp.node_mut().set_generation(22);
 
 	let encoded = encode_response!(resp, {
@@ -105,7 +105,7 @@ fn response_v7p1() {
 #[test]
 fn response_v7p9() {
 	let mut resp = MknodResponse::new();
-	resp.node_mut().set_id(node::NodeId::new(11).unwrap());
+	resp.node_mut().set_node_id(node::NodeId::new(11).unwrap());
 	resp.node_mut().set_generation(22);
 
 	let encoded = encode_response!(resp, {

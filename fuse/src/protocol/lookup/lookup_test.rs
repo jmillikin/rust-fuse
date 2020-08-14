@@ -59,11 +59,13 @@ fn request_impl_debug() {
 
 #[test]
 fn response_v7p1() {
-	let mut resp = LookupResponse::new();
-	resp.set_node_id(node::NodeId::new(11).unwrap());
-	resp.set_generation(22);
+	let mut response = LookupResponse::new();
+	let entry = response.entry_mut();
+	entry.set_node_id(node::NodeId::new(11).unwrap());
+	entry.set_generation(22);
+	entry.attr_mut().set_mode(node::NodeKind::REG | 0o644);
 
-	let encoded = encode_response!(resp, {
+	let encoded = encode_response!(response, {
 		protocol_version: (7, 1),
 	});
 
@@ -85,6 +87,7 @@ fn response_v7p1() {
 				attr_valid_nsec: 0,
 				attr: fuse_kernel::fuse_attr {
 					ino: 11,
+					mode: 0o100644,
 					..Default::default()
 				}
 			})
@@ -98,11 +101,13 @@ fn response_v7p1() {
 
 #[test]
 fn response_v7p9() {
-	let mut resp = LookupResponse::new();
-	resp.set_node_id(node::NodeId::new(11).unwrap());
-	resp.set_generation(22);
+	let mut response = LookupResponse::new();
+	let entry = response.entry_mut();
+	entry.set_node_id(node::NodeId::new(11).unwrap());
+	entry.set_generation(22);
+	entry.attr_mut().set_mode(node::NodeKind::REG | 0o644);
 
-	let encoded = encode_response!(resp, {
+	let encoded = encode_response!(response, {
 		protocol_version: (7, 9),
 	});
 
@@ -124,6 +129,7 @@ fn response_v7p9() {
 				attr_valid_nsec: 0,
 				attr: fuse_kernel::fuse_attr {
 					ino: 11,
+					mode: 0o100644,
 					..Default::default()
 				}
 			})
@@ -180,5 +186,41 @@ fn response_noexist_v7p4() {
 					- fuse_kernel::FUSE_COMPAT_ENTRY_OUT_SIZE
 			)
 			.build()
+	);
+}
+
+#[test]
+fn response_impl_debug() {
+	let mut response = LookupResponse::new();
+	let entry = response.entry_mut();
+	entry.set_node_id(node::NodeId::new(11).unwrap());
+	entry.set_generation(22);
+	entry.attr_mut().set_mode(node::NodeKind::REG | 0o644);
+
+	assert_eq!(
+		format!("{:#?}", response),
+		concat!(
+			"LookupResponse {\n",
+			"    entry: NodeEntry {\n",
+			"        node_id: Some(11),\n",
+			"        generation: 22,\n",
+			"        entry_timeout: 0ns,\n",
+			"        attr_timeout: 0ns,\n",
+			"        attr: NodeAttr {\n",
+			"            size: 0,\n",
+			"            blocks: 0,\n",
+			"            atime: 0ns,\n",
+			"            mtime: 0ns,\n",
+			"            ctime: 0ns,\n",
+			"            mode: 0o100644,\n",
+			"            nlink: 0,\n",
+			"            uid: 0,\n",
+			"            gid: 0,\n",
+			"            rdev: 0,\n",
+			"            blksize: 0,\n",
+			"        },\n",
+			"    },\n",
+			"}",
+		),
 	);
 }

@@ -109,12 +109,12 @@ impl MknodResponse<'_> {
 		}
 	}
 
-	pub fn node(&self) -> &node::Node {
-		node::Node::new_ref(&self.raw)
+	pub fn node(&self) -> &node::NodeEntry {
+		node::NodeEntry::new_ref(&self.raw)
 	}
 
-	pub fn node_mut(&mut self) -> &mut node::Node {
-		node::Node::new_ref_mut(&mut self.raw)
+	pub fn node_mut(&mut self) -> &mut node::NodeEntry {
+		node::NodeEntry::new_ref_mut(&mut self.raw)
 	}
 
 	entry_out_methods!(raw);

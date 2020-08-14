@@ -123,12 +123,12 @@ impl CreateResponse<'_> {
 		err -EIO
 	*/
 
-	pub fn node(&self) -> &node::Node {
-		node::Node::new_ref(&self.entry_out)
+	pub fn node(&self) -> &node::NodeEntry {
+		node::NodeEntry::new_ref(&self.entry_out)
 	}
 
-	pub fn node_mut(&mut self) -> &mut node::Node {
-		node::Node::new_ref_mut(&mut self.entry_out)
+	pub fn node_mut(&mut self) -> &mut node::NodeEntry {
+		node::NodeEntry::new_ref_mut(&mut self.entry_out)
 	}
 
 	pub fn set_handle(&mut self, handle: u64) {

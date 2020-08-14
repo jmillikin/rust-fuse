@@ -318,7 +318,6 @@ fn fuse_request_dispatch<Handlers: FuseHandlers>(
 		fuse_kernel::FUSE_LINK => do_dispatch!(link),
 		#[cfg(feature = "unstable_fuse_listxattr")]
 		fuse_kernel::FUSE_LISTXATTR => do_dispatch!(listxattr),
-		#[cfg(feature = "unstable_fuse_lookup")]
 		fuse_kernel::FUSE_LOOKUP => do_dispatch!(lookup),
 		#[cfg(feature = "unstable_fuse_lseek")]
 		fuse_kernel::FUSE_LSEEK => do_dispatch!(lseek),

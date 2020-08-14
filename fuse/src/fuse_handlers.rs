@@ -413,9 +413,7 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Look up a directory entry by name and get its attributes.
-	#[cfg(any(doc, feature = "unstable_fuse_lookup"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_lookup")))]
+	/// Look up a directory entry by name and get its attributes.
 	fn lookup(
 		&self,
 		ctx: server::ServerContext,

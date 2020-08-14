@@ -32,7 +32,7 @@ impl HelloTxt {
 	fn set_attr(&self, attr: &mut fuse::NodeAttr) {
 		attr.set_user_id(getuid());
 		attr.set_group_id(getgid());
-		attr.set_mode(libc::S_IFREG | 0o644);
+		attr.set_mode(fuse::NodeKind::REG | 0o644);
 		attr.set_size(HELLO_WORLD.len() as u64);
 		attr.set_nlink(1);
 	}
@@ -59,8 +59,9 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		}
 
 		let mut resp = fuse::LookupResponse::new();
-		resp.set_node_id(HELLO_TXT.node_id());
-		HELLO_TXT.set_attr(resp.attr_mut());
+		let entry = resp.entry_mut();
+		entry.set_node_id(HELLO_TXT.node_id());
+		HELLO_TXT.set_attr(entry.attr_mut());
 
 		respond.ok(&resp);
 	}
@@ -77,7 +78,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		if request.node_id() == fuse::NodeId::ROOT {
 			attr.set_user_id(getuid());
 			attr.set_group_id(getgid());
-			attr.set_mode(libc::S_IFDIR | 0o755);
+			attr.set_mode(fuse::NodeKind::DIR | 0o755);
 			attr.set_nlink(2);
 			respond.ok(&resp);
 			return;

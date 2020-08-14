@@ -195,6 +195,14 @@ impl NodeKind {
 	}
 }
 
+impl core::ops::BitOr<u32> for NodeKind {
+	type Output = u32;
+
+	fn bitor(self, rhs: u32) -> u32 {
+		(self.0 << 12) | rhs
+	}
+}
+
 impl fmt::Debug for NodeKind {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt::Display::fmt(self, fmt)
@@ -287,6 +295,10 @@ impl NodeAttr {
 		self.0.ctimensec = ctime.subsec_nanos();
 	}
 
+	pub fn mode(&self) -> u32 {
+		self.0.mode
+	}
+
 	pub fn set_mode(&mut self, mode: u32) {
 		self.0.mode = mode;
 	}
@@ -330,7 +342,7 @@ impl fmt::Debug for NodeAttr {
 			.field("atime", &self.atime())
 			.field("mtime", &self.mtime())
 			.field("ctime", &self.ctime())
-			.field("mode", &self.0.mode)
+			.field("mode", &format_args!("{:#o}", &self.0.mode))
 			.field("nlink", &self.0.nlink)
 			.field("uid", &self.0.uid)
 			.field("gid", &self.0.gid)
@@ -342,29 +354,33 @@ impl fmt::Debug for NodeAttr {
 
 // }}}
 
-// Node {{{
+// NodeEntry {{{
 
 /// **\[UNSTABLE\]**
-pub struct Node(fuse_kernel::fuse_entry_out);
+pub struct NodeEntry(fuse_kernel::fuse_entry_out);
 
-impl Node {
-	pub(crate) fn new_ref(raw: &fuse_kernel::fuse_entry_out) -> &Node {
-		unsafe { &*(raw as *const fuse_kernel::fuse_entry_out as *const Node) }
+impl NodeEntry {
+	pub(crate) fn new_ref(raw: &fuse_kernel::fuse_entry_out) -> &NodeEntry {
+		unsafe {
+			&*(raw as *const fuse_kernel::fuse_entry_out as *const NodeEntry)
+		}
 	}
 
 	pub(crate) fn new_ref_mut(
 		raw: &mut fuse_kernel::fuse_entry_out,
-	) -> &mut Node {
-		unsafe { &mut *(raw as *mut fuse_kernel::fuse_entry_out as *mut Node) }
+	) -> &mut NodeEntry {
+		unsafe {
+			&mut *(raw as *mut fuse_kernel::fuse_entry_out as *mut NodeEntry)
+		}
 	}
 
-	pub fn id(&self) -> Option<NodeId> {
+	pub fn node_id(&self) -> Option<NodeId> {
 		NodeId::new(self.0.nodeid)
 	}
 
-	pub fn set_id(&mut self, id: NodeId) {
-		self.0.nodeid = id.0.get();
-		self.0.attr.ino = id.0.get();
+	pub fn set_node_id(&mut self, node_id: NodeId) {
+		self.0.nodeid = node_id.get();
+		self.0.attr.ino = node_id.get();
 	}
 
 	pub fn generation(&self) -> u64 {
@@ -375,24 +391,22 @@ impl Node {
 		self.0.generation = generation;
 	}
 
-	pub fn kind(&self) -> NodeKind {
-		let mode = self.0.attr.mode;
-		NodeKind((mode >> 12) & 0xF)
-	}
-
-	pub fn set_kind(&mut self, kind: NodeKind) {
-		let old_mode = self.0.attr.mode;
-		let new_mode = (kind.0 & 0xF) << 12 | (old_mode & 0xFFF);
-		self.0.attr.mode = new_mode;
-	}
-
-	pub fn cache_timeout(&self) -> time::Duration {
+	pub fn entry_timeout(&self) -> time::Duration {
 		time::Duration::new(self.0.entry_valid, self.0.entry_valid_nsec)
 	}
 
-	pub fn set_cache_timeout(&mut self, cache_timeout: time::Duration) {
-		self.0.entry_valid = cache_timeout.as_secs();
-		self.0.entry_valid_nsec = cache_timeout.subsec_nanos();
+	pub fn set_entry_timeout(&mut self, entry_timeout: time::Duration) {
+		self.0.entry_valid = entry_timeout.as_secs();
+		self.0.entry_valid_nsec = entry_timeout.subsec_nanos();
+	}
+
+	pub fn attr_timeout(&self) -> time::Duration {
+		time::Duration::new(self.0.attr_valid, self.0.attr_valid_nsec)
+	}
+
+	pub fn set_attr_timeout(&mut self, attr_timeout: time::Duration) {
+		self.0.attr_valid = attr_timeout.as_secs();
+		self.0.attr_valid_nsec = attr_timeout.subsec_nanos();
 	}
 
 	pub fn attr(&self) -> &NodeAttr {
@@ -402,21 +416,16 @@ impl Node {
 	pub fn attr_mut(&mut self) -> &mut NodeAttr {
 		NodeAttr::new_ref_mut(&mut self.0.attr)
 	}
-
-	pub fn attr_cache_timeout(&self) -> time::Duration {
-		time::Duration::new(self.0.attr_valid, self.0.attr_valid_nsec)
-	}
-
-	pub fn set_attr_cache_timeout(&mut self, d: time::Duration) {
-		self.0.attr_valid = d.as_secs();
-		self.0.attr_valid_nsec = d.subsec_nanos();
-	}
 }
 
-impl fmt::Debug for Node {
+impl fmt::Debug for NodeEntry {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("Node")
-			.field("id", &self.0.nodeid)
+		fmt.debug_struct("NodeEntry")
+			.field("node_id", &format_args!("{:?}", &self.node_id()))
+			.field("generation", &self.generation())
+			.field("entry_timeout", &self.entry_timeout())
+			.field("attr_timeout", &self.attr_timeout())
+			.field("attr", self.attr())
 			.finish()
 	}
 }

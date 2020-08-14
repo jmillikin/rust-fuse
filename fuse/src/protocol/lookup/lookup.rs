@@ -60,40 +60,35 @@ impl<'a> fuse_io::DecodeRequest<'a> for LookupRequest<'a> {
 
 // LookupResponse {{{
 
-/// **\[UNSTABLE\]** Response type for [`FuseHandlers::lookup`].
+/// Response type for [`FuseHandlers::lookup`].
 ///
 /// [`FuseHandlers::lookup`]: ../trait.FuseHandlers.html#method.lookup
 pub struct LookupResponse<'a> {
 	phantom: PhantomData<&'a ()>,
-	raw: fuse_kernel::fuse_entry_out,
+	entry_out: fuse_kernel::fuse_entry_out,
 }
 
 impl LookupResponse<'_> {
 	pub fn new() -> Self {
 		Self {
 			phantom: PhantomData,
-			raw: fuse_kernel::fuse_entry_out {
-				nodeid: 0,
-				generation: 0,
-				entry_valid: 0,
-				attr_valid: 0,
-				entry_valid_nsec: 0,
-				attr_valid_nsec: 0,
-				attr: Default::default(),
-			},
+			entry_out: Default::default(),
 		}
 	}
 
-	entry_out_methods!(raw);
+	pub fn entry(&self) -> &node::NodeEntry {
+		node::NodeEntry::new_ref(&self.entry_out)
+	}
+
+	pub fn entry_mut(&mut self) -> &mut node::NodeEntry {
+		node::NodeEntry::new_ref_mut(&mut self.entry_out)
+	}
 }
 
 impl fmt::Debug for LookupResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("LookupResponse")
-			.field("node_id", &self.node_id())
-			.field("cache_duration", &self.cache_duration())
-			.field("attr", self.attr())
-			.field("attr_cache_duration", &self.attr_cache_duration())
+			.field("entry", self.entry())
 			.finish()
 	}
 }
@@ -106,11 +101,11 @@ impl fuse_io::EncodeResponse for LookupResponse<'_> {
 		// In early versions of FUSE, `fuse_entry_out::nodeid` was a required
 		// field and must be non-zero. FUSE v7.4 relaxed this so that a zero
 		// node ID was the same as returning ENOENT, but with a cache hint.
-		if self.raw.nodeid == 0 && enc.version().minor() < 4 {
+		if self.entry_out.nodeid == 0 && enc.version().minor() < 4 {
 			return enc.encode_error(errors::ENOENT);
 		}
 
-		crate::protocol::common::encode_entry_out(enc, &self.raw)
+		crate::protocol::common::encode_entry_out(enc, &self.entry_out)
 	}
 }
 
