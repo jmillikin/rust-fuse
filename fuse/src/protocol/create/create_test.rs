@@ -77,6 +77,9 @@ fn response_v7p1() {
 	let mut resp = CreateResponse::new();
 	resp.node_mut().set_node_id(node::NodeId::new(11).unwrap());
 	resp.node_mut().set_generation(22);
+	resp.node_mut()
+		.attr_mut()
+		.set_node_id(node::NodeId::new(11).unwrap());
 	resp.set_handle(123);
 	resp.set_flags(0xFE);
 
@@ -124,6 +127,9 @@ fn response_v7p9() {
 	let mut resp = CreateResponse::new();
 	resp.node_mut().set_node_id(node::NodeId::new(11).unwrap());
 	resp.node_mut().set_generation(22);
+	resp.node_mut()
+		.attr_mut()
+		.set_node_id(node::NodeId::new(11).unwrap());
 	resp.set_handle(123);
 	resp.set_flags(0xFE);
 

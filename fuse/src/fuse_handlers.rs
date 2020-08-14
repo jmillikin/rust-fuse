@@ -271,19 +271,17 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	/// **\[UNSTABLE\]** Get file attributes.
+	/// Get file attributes.
 	///
-	/// If writeback caching is enabled, the kernel may have a
-	/// better idea of a file's length than the FUSE file system
-	/// (eg if there has been a write that extended the file size,
-	/// but that has not yet been passed to the filesystem.
+	/// If writeback caching is enabled, the kernel may have a better idea of a
+	/// file's length than the FUSE file system (eg if there has been a write
+	/// that extended the file size, but that has not yet been passed to the
+	/// filesystem.
 	///
 	/// In this case, the [`NodeAttr::size`] value provided by the file system
 	/// will be ignored.
 	///
 	/// [`NodeAttr::size`]: protocol/struct.NodeAttr.html#method.size
-	#[cfg(any(doc, feature = "unstable_fuse_getattr"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_getattr")))]
 	fn getattr(
 		&self,
 		ctx: server::ServerContext,

@@ -440,7 +440,7 @@ pub struct fuse_getattr_in {
 pub const FUSE_COMPAT_ATTR_OUT_SIZE: usize = 96;
 
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct fuse_attr_out {
 	pub attr_valid:      u64, /* Cache timeout for the attributes */
 	pub attr_valid_nsec: u32,

@@ -22,15 +22,16 @@ mod getattr_test;
 
 // GetattrRequest {{{
 
-/// **\[UNSTABLE\]** Request type for [`FuseHandlers::getattr`].
+/// Request type for [`FuseHandlers::getattr`].
 ///
 /// [`FuseHandlers::getattr`]: ../trait.FuseHandlers.html#method.getattr
-pub struct GetattrRequest {
+pub struct GetattrRequest<'a> {
+	phantom: PhantomData<&'a ()>,
 	node_id: node::NodeId,
 	handle: Option<u64>,
 }
 
-impl GetattrRequest {
+impl GetattrRequest<'_> {
 	pub fn node_id(&self) -> node::NodeId {
 		self.node_id
 	}
@@ -40,7 +41,16 @@ impl GetattrRequest {
 	}
 }
 
-impl<'a> fuse_io::DecodeRequest<'a> for GetattrRequest {
+impl fmt::Debug for GetattrRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("GetattrRequest")
+			.field("node_id", &self.node_id)
+			.field("handle", &format_args!("{:?}", &self.handle))
+			.finish()
+	}
+}
+
+impl<'a> fuse_io::DecodeRequest<'a> for GetattrRequest<'a> {
 	fn decode_request(
 		mut dec: fuse_io::RequestDecoder<'a>,
 	) -> io::Result<Self> {
@@ -52,6 +62,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for GetattrRequest {
 		// FUSE versions before v7.9 had no request type for `getattr()`.
 		if dec.version().minor() < 9 {
 			return Ok(Self {
+				phantom: PhantomData,
 				node_id,
 				handle: None,
 			});
@@ -62,7 +73,11 @@ impl<'a> fuse_io::DecodeRequest<'a> for GetattrRequest {
 		if (raw.getattr_flags & fuse_kernel::FUSE_GETATTR_FH) > 0 {
 			handle = Some(raw.fh);
 		}
-		Ok(Self { node_id, handle })
+		Ok(Self {
+			phantom: PhantomData,
+			node_id,
+			handle,
+		})
 	}
 }
 
@@ -70,7 +85,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for GetattrRequest {
 
 // GetattrResponse {{{
 
-/// **\[UNSTABLE\]** Response type for [`FuseHandlers::getattr`].
+/// Response type for [`FuseHandlers::getattr`].
 ///
 /// [`FuseHandlers::getattr`]: ../trait.FuseHandlers.html#method.getattr
 pub struct GetattrResponse<'a> {
@@ -82,21 +97,17 @@ impl GetattrResponse<'_> {
 	pub fn new() -> Self {
 		GetattrResponse {
 			phantom: PhantomData,
-			raw: fuse_kernel::fuse_attr_out {
-				attr_valid: 0,
-				attr_valid_nsec: 0,
-				dummy: 0,
-				attr: Default::default(),
-			},
+			raw: Default::default(),
 		}
 	}
 
-	pub fn node_id(&self) -> Option<node::NodeId> {
-		node::NodeId::new(self.raw.attr.ino)
+	pub fn attr_timeout(&self) -> Duration {
+		Duration::new(self.raw.attr_valid, self.raw.attr_valid_nsec)
 	}
 
-	pub fn set_node_id(&mut self, node_id: node::NodeId) {
-		self.raw.attr.ino = node_id.get();
+	pub fn set_attr_timeout(&mut self, attr_timeout: Duration) {
+		self.raw.attr_valid = attr_timeout.as_secs();
+		self.raw.attr_valid_nsec = attr_timeout.subsec_nanos();
 	}
 
 	pub fn attr(&self) -> &node::NodeAttr {
@@ -106,22 +117,13 @@ impl GetattrResponse<'_> {
 	pub fn attr_mut(&mut self) -> &mut node::NodeAttr {
 		node::NodeAttr::new_ref_mut(&mut self.raw.attr)
 	}
-
-	pub fn cache_duration(&self) -> Duration {
-		Duration::new(self.raw.attr_valid, self.raw.attr_valid_nsec)
-	}
-
-	pub fn set_cache_duration(&mut self, cache_duration: Duration) {
-		self.raw.attr_valid = cache_duration.as_secs();
-		self.raw.attr_valid_nsec = cache_duration.subsec_nanos();
-	}
 }
 
 impl fmt::Debug for GetattrResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("GetattrResponse")
+			.field("attr_timeout", &self.attr_timeout())
 			.field("attr", self.attr())
-			.field("cache_duration", &self.cache_duration())
 			.finish()
 	}
 }

@@ -306,7 +306,6 @@ fn fuse_request_dispatch<Handlers: FuseHandlers>(
 		fuse_kernel::FUSE_FSYNC => do_dispatch!(fsync),
 		#[cfg(feature = "unstable_fuse_fsyncdir")]
 		fuse_kernel::FUSE_FSYNCDIR => do_dispatch!(fsyncdir),
-		#[cfg(feature = "unstable_fuse_getattr")]
 		fuse_kernel::FUSE_GETATTR => do_dispatch!(getattr),
 		#[cfg(feature = "unstable_fuse_getlk")]
 		fuse_kernel::FUSE_GETLK => do_dispatch!(getlk),

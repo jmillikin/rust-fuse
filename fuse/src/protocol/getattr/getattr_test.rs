@@ -79,10 +79,29 @@ fn request_v7p9_with_handle() {
 }
 
 #[test]
+fn request_impl_debug() {
+	let request = &GetattrRequest {
+		phantom: PhantomData,
+		node_id: node::NodeId::ROOT,
+		handle: Some(123),
+	};
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"GetattrRequest {\n",
+			"    node_id: 1,\n",
+			"    handle: Some(123),\n",
+			"}",
+		),
+	);
+}
+
+#[test]
 fn response_v7p1() {
 	let node_id = node::NodeId::new(0xABCD).unwrap();
 	let mut resp = GetattrResponse::new();
-	resp.set_node_id(node_id);
+	resp.attr_mut().set_node_id(node_id);
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 1),
 	});
@@ -117,9 +136,9 @@ fn response_v7p1() {
 fn response_v7p9() {
 	let node_id = node::NodeId::new(0xABCD).unwrap();
 	let mut resp = GetattrResponse::new();
-	resp.set_node_id(node_id);
+	resp.attr_mut().set_node_id(node_id);
 	resp.attr_mut().set_size(999);
-	resp.set_cache_duration(time::Duration::new(123, 456));
+	resp.set_attr_timeout(time::Duration::new(123, 456));
 
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 9),
@@ -145,5 +164,38 @@ fn response_v7p9() {
 				},
 			})
 			.build()
+	);
+}
+
+#[test]
+fn response_impl_debug() {
+	let node_id = node::NodeId::new(11).unwrap();
+	let mut response = GetattrResponse::new();
+	response.attr_mut().set_node_id(node_id);
+	response.attr_mut().set_size(999);
+	response.attr_mut().set_mode(node::NodeKind::REG | 0o644);
+	response.set_attr_timeout(time::Duration::new(123, 456));
+
+	assert_eq!(
+		format!("{:#?}", response),
+		concat!(
+			"GetattrResponse {\n",
+			"    attr_timeout: 123.000000456s,\n",
+			"    attr: NodeAttr {\n",
+			"        node_id: Some(11),\n",
+			"        size: 999,\n",
+			"        blocks: 0,\n",
+			"        atime: 0ns,\n",
+			"        mtime: 0ns,\n",
+			"        ctime: 0ns,\n",
+			"        mode: 0o100644,\n",
+			"        nlink: 0,\n",
+			"        uid: 0,\n",
+			"        gid: 0,\n",
+			"        rdev: 0,\n",
+			"        blksize: 0,\n",
+			"    },\n",
+			"}",
+		),
 	);
 }

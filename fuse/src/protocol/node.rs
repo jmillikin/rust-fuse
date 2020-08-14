@@ -252,6 +252,14 @@ impl fmt::UpperHex for NodeKind {
 pub struct NodeAttr(fuse_kernel::fuse_attr);
 
 impl NodeAttr {
+	pub fn node_id(&self) -> Option<NodeId> {
+		NodeId::new(self.0.ino)
+	}
+
+	pub fn set_node_id(&mut self, node_id: NodeId) {
+		self.0.ino = node_id.get();
+	}
+
 	pub fn size(&self) -> u64 {
 		self.0.size
 	}
@@ -337,6 +345,7 @@ impl NodeAttr {
 impl fmt::Debug for NodeAttr {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("NodeAttr")
+			.field("node_id", &format_args!("{:?}", &self.node_id()))
 			.field("size", &self.0.size)
 			.field("blocks", &self.0.blocks)
 			.field("atime", &self.atime())
@@ -380,7 +389,6 @@ impl NodeEntry {
 
 	pub fn set_node_id(&mut self, node_id: NodeId) {
 		self.0.nodeid = node_id.get();
-		self.0.attr.ino = node_id.get();
 	}
 
 	pub fn generation(&self) -> u64 {

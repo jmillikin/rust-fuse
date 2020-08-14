@@ -63,6 +63,7 @@ fn response_v7p1() {
 	let entry = response.entry_mut();
 	entry.set_node_id(node::NodeId::new(11).unwrap());
 	entry.set_generation(22);
+	entry.attr_mut().set_node_id(node::NodeId::new(11).unwrap());
 	entry.attr_mut().set_mode(node::NodeKind::REG | 0o644);
 
 	let encoded = encode_response!(response, {
@@ -105,6 +106,7 @@ fn response_v7p9() {
 	let entry = response.entry_mut();
 	entry.set_node_id(node::NodeId::new(11).unwrap());
 	entry.set_generation(22);
+	entry.attr_mut().set_node_id(node::NodeId::new(11).unwrap());
 	entry.attr_mut().set_mode(node::NodeKind::REG | 0o644);
 
 	let encoded = encode_response!(response, {
@@ -195,6 +197,7 @@ fn response_impl_debug() {
 	let entry = response.entry_mut();
 	entry.set_node_id(node::NodeId::new(11).unwrap());
 	entry.set_generation(22);
+	entry.attr_mut().set_node_id(node::NodeId::new(11).unwrap());
 	entry.attr_mut().set_mode(node::NodeKind::REG | 0o644);
 
 	assert_eq!(
@@ -207,6 +210,7 @@ fn response_impl_debug() {
 			"        entry_timeout: 0ns,\n",
 			"        attr_timeout: 0ns,\n",
 			"        attr: NodeAttr {\n",
+			"            node_id: Some(11),\n",
 			"            size: 0,\n",
 			"            blocks: 0,\n",
 			"            atime: 0ns,\n",

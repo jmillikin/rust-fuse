@@ -68,6 +68,9 @@ fn response_v7p1() {
 	let mut resp = MknodResponse::new();
 	resp.node_mut().set_node_id(node::NodeId::new(11).unwrap());
 	resp.node_mut().set_generation(22);
+	resp.node_mut()
+		.attr_mut()
+		.set_node_id(node::NodeId::new(11).unwrap());
 
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 1),
@@ -107,6 +110,9 @@ fn response_v7p9() {
 	let mut resp = MknodResponse::new();
 	resp.node_mut().set_node_id(node::NodeId::new(11).unwrap());
 	resp.node_mut().set_generation(22);
+	resp.node_mut()
+		.attr_mut()
+		.set_node_id(node::NodeId::new(11).unwrap());
 
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 9),

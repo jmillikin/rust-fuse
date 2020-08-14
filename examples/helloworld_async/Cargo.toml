@@ -12,8 +12,3 @@ path = "helloworld_async.rs"
 [dependencies]
 fuse = { version = "0.0.1", path = "../../fuse" }
 libc = "0.2"
-
-[features]
-default = [
-	"fuse/unstable_fuse_getattr",
-]
