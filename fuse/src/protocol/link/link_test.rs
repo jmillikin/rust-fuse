@@ -32,10 +32,34 @@ fn request() {
 
 	let req: LinkRequest = decode_request!(buf);
 
-	let expect = CString::new("hello.world!").unwrap();
-	assert_eq!(req.name(), expect.as_ref());
-	assert_eq!(req.node_id(), NodeId::new(100).unwrap());
-	assert_eq!(req.old_node_id(), NodeId::new(123).unwrap());
+	let expect: &[u8] = b"hello.world!";
+	assert_eq!(req.node_id(), NodeId::new(123).unwrap());
+	assert_eq!(req.new_parent_id(), NodeId::new(100).unwrap());
+	assert_eq!(req.new_name(), expect.as_ref());
+}
+
+#[test]
+fn request_impl_debug() {
+	let buf = MessageBuilder::new()
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_LINK;
+			h.nodeid = 100;
+		})
+		.push_sized(&fuse_kernel::fuse_link_in { oldnodeid: 123 })
+		.push_bytes(b"hello.world!\x00")
+		.build_aligned();
+	let request: LinkRequest = decode_request!(buf);
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"LinkRequest {\n",
+			"    node_id: 123,\n",
+			"    new_parent_id: 100,\n",
+			"    new_name: \"hello.world!\",\n",
+			"}",
+		),
+	);
 }
 
 #[test]
@@ -115,5 +139,43 @@ fn response_v7p9() {
 				}
 			})
 			.build()
+	);
+}
+
+#[test]
+fn response_impl_debug() {
+	let mut response = LinkResponse::new();
+	let node = response.node_mut();
+	node.set_id(NodeId::new(11).unwrap());
+	node.set_generation(22);
+	node.attr_mut().set_node_id(NodeId::new(11).unwrap());
+	node.attr_mut().set_mode(FileType::REG | 0o644);
+
+	assert_eq!(
+		format!("{:#?}", response),
+		concat!(
+			"LinkResponse {\n",
+			"    node: Node {\n",
+			"        id: Some(11),\n",
+			"        generation: 22,\n",
+			"        cache_timeout: 0ns,\n",
+			"        attr_cache_timeout: 0ns,\n",
+			"        attr: NodeAttr {\n",
+			"            node_id: Some(11),\n",
+			"            size: 0,\n",
+			"            blocks: 0,\n",
+			"            atime: 0ns,\n",
+			"            mtime: 0ns,\n",
+			"            ctime: 0ns,\n",
+			"            mode: 0o100644,\n",
+			"            nlink: 0,\n",
+			"            uid: 0,\n",
+			"            gid: 0,\n",
+			"            rdev: 0,\n",
+			"            blksize: 0,\n",
+			"        },\n",
+			"    },\n",
+			"}",
+		),
 	);
 }

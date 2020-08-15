@@ -51,8 +51,8 @@ fn request_impl_debug() {
 
 #[test]
 fn response() {
-	let name = CStr::from_bytes_with_nul(b"hello.world!\x00").unwrap();
-	let resp = ReadlinkResponse::from_cstr(name);
+	let name = NodeName::from_bytes(b"hello.world!").unwrap();
+	let resp = ReadlinkResponse::from_name(name);
 	let encoded = encode_response!(resp);
 
 	assert_eq!(
@@ -70,8 +70,8 @@ fn response() {
 
 #[test]
 fn response_impl_debug() {
-	let name = CStr::from_bytes_with_nul(b"hello.world!\x00").unwrap();
-	let response = ReadlinkResponse::from_cstr(name);
+	let name = NodeName::from_bytes(b"hello.world!").unwrap();
+	let response = ReadlinkResponse::from_name(name);
 
 	#[rustfmt::skip]
 	assert_eq!(

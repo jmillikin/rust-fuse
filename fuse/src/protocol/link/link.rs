@@ -21,12 +21,14 @@ mod link_test;
 
 // LinkRequest {{{
 
+/// Request type for [`FuseHandlers::link`].
+///
+/// [`FuseHandlers::link`]: ../trait.FuseHandlers.html#method.link
 #[derive(Debug)]
 pub struct LinkRequest<'a> {
-	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
-	name: &'a CStr,
-	old_node_id: NodeId,
+	new_parent_id: NodeId,
+	new_name: &'a NodeName,
 }
 
 impl LinkRequest<'_> {
@@ -34,13 +36,12 @@ impl LinkRequest<'_> {
 		self.node_id
 	}
 
-	pub fn name(&self) -> &CStr {
-		self.name
+	pub fn new_parent_id(&self) -> NodeId {
+		self.new_parent_id
 	}
 
-	// TODO: rename to "source_node_id"
-	pub fn old_node_id(&self) -> NodeId {
-		self.old_node_id
+	pub fn new_name(&self) -> &NodeName {
+		self.new_name
 	}
 }
 
@@ -52,12 +53,11 @@ impl<'a> fuse_io::DecodeRequest<'a> for LinkRequest<'a> {
 		debug_assert!(header.opcode == fuse_kernel::FUSE_LINK);
 
 		let raw: &fuse_kernel::fuse_link_in = dec.next_sized()?;
-		let name = dec.next_cstr()?;
+		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
 		Ok(Self {
-			phantom: PhantomData,
-			node_id: try_node_id(header.nodeid)?,
-			name,
-			old_node_id: try_node_id(raw.oldnodeid)?,
+			node_id: try_node_id(raw.oldnodeid)?,
+			new_parent_id: try_node_id(header.nodeid)?,
+			new_name: name,
 		})
 	}
 }
@@ -66,6 +66,9 @@ impl<'a> fuse_io::DecodeRequest<'a> for LinkRequest<'a> {
 
 // LinkResponse {{{
 
+/// Response type for [`FuseHandlers::link`].
+///
+/// [`FuseHandlers::link`]: ../trait.FuseHandlers.html#method.link
 pub struct LinkResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_entry_out,
