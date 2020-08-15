@@ -104,7 +104,7 @@ where
 	let mut read_buf = fuse_io::MinReadBuffer::new();
 
 	loop {
-		let request_size = channel.read(read_buf.get_mut())?;
+		let request_size = channel.receive(read_buf.get_mut())?;
 		let request_buf = fuse_io::aligned_slice(&read_buf, request_size);
 		let request_decoder = fuse_io::RequestDecoder::new(
 			request_buf,
@@ -237,17 +237,17 @@ impl<Handlers: FuseHandlers> FuseServerExecutor<Handlers> {
 	pub fn run(&mut self) -> Result<(), Error> {
 		let handlers = &*self.handlers;
 		loop {
-			let request_size = match self.channel.read(self.read_buf.get_mut())
-			{
-				Err(err) => {
-					if err == Error::new(ErrorCode::ENODEV) {
-						return Ok(());
-					} else {
-						return Err(err);
-					}
-				},
-				Ok(request_size) => request_size,
-			};
+			let request_size =
+				match self.channel.receive(self.read_buf.get_mut()) {
+					Err(err) => {
+						if err == Error::new(ErrorCode::ENODEV) {
+							return Ok(());
+						} else {
+							return Err(err);
+						}
+					},
+					Ok(request_size) => request_size,
+				};
 			let request_buf =
 				fuse_io::aligned_slice(&self.read_buf, request_size);
 			let decoder =

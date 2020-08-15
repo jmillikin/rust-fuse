@@ -14,11 +14,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::convert::TryInto;
 use core::mem::{align_of, size_of};
 use core::pin::Pin;
 use std::ffi::CStr;
-use std::io::{self, IoSlice, Read, Write};
 
 use crate::error::{Error, ErrorCode, ErrorKind};
 use crate::internal::fuse_kernel;
@@ -27,58 +25,7 @@ use crate::internal::fuse_kernel;
 #[path = "fuse_io_test.rs"]
 mod fuse_io_test;
 
-pub(crate) trait Channel {
-	fn read(&self, buf: &mut [u8]) -> Result<usize, Error>;
-	fn write(&self, buf: &[u8]) -> Result<(), Error>;
-	fn write_vectored(&self, bufs: &[io::IoSlice]) -> Result<(), Error>;
-}
-
-pub(crate) struct FileChannel {
-	file: std::fs::File,
-}
-
-impl FileChannel {
-	pub(crate) fn new(file: std::fs::File) -> Self {
-		Self { file }
-	}
-
-	pub(crate) fn try_clone(&self) -> Result<Self, Error> {
-		Ok(Self {
-			file: self.file.try_clone().map_err(convert_error)?,
-		})
-	}
-}
-
-impl Channel for FileChannel {
-	fn read(&self, buf: &mut [u8]) -> Result<usize, Error> {
-		Read::read(&mut &self.file, buf).map_err(convert_error)
-	}
-
-	fn write(&self, buf: &[u8]) -> Result<(), Error> {
-		let write_size =
-			Write::write(&mut &self.file, buf).map_err(convert_error)?;
-		// TODO: check if write_size < buf.len()
-		Ok(())
-	}
-
-	fn write_vectored(&self, bufs: &[io::IoSlice]) -> Result<(), Error> {
-		let write_size = Write::write_vectored(&mut &self.file, bufs)
-			.map_err(convert_error)?;
-		// TODO: check if write_size < bufs.sum(|x| x.len())
-		Ok(())
-	}
-}
-
-fn convert_error(err: io::Error) -> Error {
-	if let Some(os_err) = err.raw_os_error() {
-		if let Ok(os_err) = os_err.try_into() {
-			if let Some(err_code) = core::num::NonZeroU16::new(os_err) {
-				return Error::new(err_code.into());
-			}
-		}
-	}
-	Error(ErrorKind::Unknown)
-}
+pub(crate) use crate::channel::{Channel, FileChannel};
 
 pub(crate) trait AlignedBuffer {
 	fn get(&self) -> &[u8];
@@ -356,7 +303,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 			)
 		};
 
-		self.channel.write(out_hdr_buf)
+		self.channel.send(out_hdr_buf)
 	}
 
 	pub(crate) fn encode_sized<T: Sized>(self, t: &T) -> Result<(), Error> {
@@ -417,7 +364,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 			)
 		};
 
-		self.channel.write(out_hdr_buf)
+		self.channel.send(out_hdr_buf)
 	}
 
 	pub(crate) fn encode_bytes(self, bytes: &[u8]) -> Result<(), Error> {
@@ -445,8 +392,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 				size_of::<fuse_kernel::fuse_out_header>(),
 			)
 		};
-		self.channel
-			.write_vectored(&[IoSlice::new(out_hdr_buf), IoSlice::new(bytes)])
+		self.channel.send_vectored(&[out_hdr_buf, bytes])
 	}
 
 	pub(crate) fn encode_bytes_2(
@@ -482,10 +428,6 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 				size_of::<fuse_kernel::fuse_out_header>(),
 			)
 		};
-		self.channel.write_vectored(&[
-			IoSlice::new(out_hdr_buf),
-			IoSlice::new(bytes_1),
-			IoSlice::new(bytes_2),
-		])
+		self.channel.send_vectored(&[out_hdr_buf, bytes_1, bytes_2])
 	}
 }

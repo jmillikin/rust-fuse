@@ -15,10 +15,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #![cfg_attr(doc, feature(doc_cfg))]
+
+// For direct syscalls in `fuse/src/os/linux/syscalls.rs`.
 #![feature(asm)]
+
+// For `send_vectored` in `fuse/src/channel.rs`.
+#![allow(incomplete_features)]
+#![feature(const_generics)]
 
 #[macro_use]
 mod internal;
+
+mod channel;
+pub use self::channel::Channel;
 
 mod error;
 pub use self::error::{Error, ErrorCode};

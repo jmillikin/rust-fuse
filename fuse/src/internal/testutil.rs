@@ -122,11 +122,7 @@ impl FakeChannel {
 }
 
 impl fuse_io::Channel for FakeChannel {
-	fn read(&self, buf: &mut [u8]) -> Result<usize, Error> {
-		unimplemented!()
-	}
-
-	fn write(&self, buf: &[u8]) -> Result<(), Error> {
+	fn send(&self, buf: &[u8]) -> Result<(), Error> {
 		if self.write.borrow().is_some() {
 			panic!("expected exactly one write to FakeChannel");
 		}
@@ -134,12 +130,24 @@ impl fuse_io::Channel for FakeChannel {
 		Ok(())
 	}
 
-	fn write_vectored(&self, bufs: &[std::io::IoSlice]) -> Result<(), Error> {
+	fn send_vectored<const N: usize>(
+		&self,
+		bufs: &[&[u8]; N],
+	) -> Result<(), Error> {
 		let mut vec = Vec::new();
 		for buf in bufs {
 			vec.extend(buf.to_vec());
 		}
-		self.write(&vec)
+		self.send(&vec)
+	}
+
+	fn receive(&self, buf: &mut [u8]) -> Result<usize, Error> {
+		let _ = buf;
+		unimplemented!()
+	}
+
+	fn try_clone(&self) -> Result<Self, Error> {
+		unimplemented!()
 	}
 }
 

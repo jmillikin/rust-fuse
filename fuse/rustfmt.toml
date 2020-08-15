@@ -5,4 +5,5 @@ imports_layout = "HorizontalVertical"
 match_block_trailing_comma = true
 ignore = [
   "src/internal/fuse_kernel.rs",
+  "src/lib.rs",
 ]

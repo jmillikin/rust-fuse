@@ -23,6 +23,7 @@ pub struct Error(pub(crate) ErrorKind);
 pub(crate) enum ErrorKind {
 	Unknown,
 	InvalidInput,
+	IncompleteWrite,
 	UnexpectedEof,
 	ExpectedFuseInit,
 	Os(ErrorCode),
