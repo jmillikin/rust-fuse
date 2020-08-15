@@ -129,7 +129,7 @@ fn readdir_response_test_impl(resp: &mut ReaddirResponse) {
 		let node_id = NodeId::new(100).unwrap();
 		let name = NodeName::from_bytes(b"123456789ABCDEF").unwrap();
 		let cursor = num::NonZeroU64::new(1).unwrap();
-		let opt_dirent = resp.try_new_entry(node_id, name, cursor);
+		let opt_dirent = resp.try_add_entry(node_id, name, cursor);
 		assert!(opt_dirent.is_none());
 	}
 
@@ -138,7 +138,7 @@ fn readdir_response_test_impl(resp: &mut ReaddirResponse) {
 		let node_id = NodeId::new(100).unwrap();
 		let name = NodeName::from_bytes(b"123456789").unwrap();
 		let cursor = num::NonZeroU64::new(1).unwrap();
-		let opt_dirent = resp.try_new_entry(node_id, name, cursor);
+		let opt_dirent = resp.try_add_entry(node_id, name, cursor);
 		assert!(opt_dirent.is_none());
 	}
 
@@ -147,7 +147,7 @@ fn readdir_response_test_impl(resp: &mut ReaddirResponse) {
 		let node_id = NodeId::new(100).unwrap();
 		let name = NodeName::from_bytes(b"foobar").unwrap();
 		let cursor = num::NonZeroU64::new(1).unwrap();
-		let mut dirent = resp.try_new_entry(node_id, name, cursor).unwrap();
+		let mut dirent = resp.try_add_entry(node_id, name, cursor).unwrap();
 
 		assert_eq!(dirent.cursor(), cursor);
 		assert_eq!(dirent.file_type(), FileType::UNKNOWN);
@@ -188,7 +188,7 @@ fn response_impl_debug() {
 		let name = NodeName::from_bytes(b"hello.txt").unwrap();
 		let cursor = num::NonZeroU64::new(1).unwrap();
 		response
-			.new_entry(node_id, name, cursor)
+			.add_entry(node_id, name, cursor)
 			.set_file_type(FileType::REG);
 	}
 
@@ -197,7 +197,7 @@ fn response_impl_debug() {
 		let name = NodeName::from_bytes(b"world.txt").unwrap();
 		let cursor = num::NonZeroU64::new(2).unwrap();
 		response
-			.new_entry(node_id, name, cursor)
+			.add_entry(node_id, name, cursor)
 			.set_file_type(FileType::REG);
 	}
 

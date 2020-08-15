@@ -180,7 +180,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 			let mut resp = fuse::ReaddirResponse::with_max_size(request_size);
 
 			let node_offset = NonZeroU64::new(1).unwrap();
-			resp.new_entry(HELLO_TXT.node_id(), HELLO_TXT.name(), node_offset)
+			resp.add_entry(HELLO_TXT.node_id(), HELLO_TXT.name(), node_offset)
 				.set_file_type(fuse::FileType::REG);
 
 			respond.ok(&resp);

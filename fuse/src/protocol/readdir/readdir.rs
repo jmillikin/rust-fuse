@@ -195,16 +195,16 @@ impl<'a> ReaddirResponse<'a> {
 		}
 	}
 
-	pub fn new_entry(
+	pub fn add_entry(
 		&mut self,
 		node_id: NodeId,
 		name: &NodeName,
 		cursor: num::NonZeroU64,
 	) -> ReaddirEntry {
-		self.try_new_entry(node_id, name, cursor).unwrap()
+		self.try_add_entry(node_id, name, cursor).unwrap()
 	}
 
-	pub fn try_new_entry(
+	pub fn try_add_entry(
 		&mut self,
 		node_id: NodeId,
 		name: &NodeName,
@@ -214,7 +214,7 @@ impl<'a> ReaddirResponse<'a> {
 		let response_buf = self.buf.as_mut()?;
 		let dirent_buf = response_buf.try_alloc_dirent(name)?;
 
-		// From here on `try_new_entry()` must not fail, or the response buffer
+		// From here on `try_add_entry()` must not fail, or the response buffer
 		// would contain uninitialized bytes.
 
 		unsafe {
