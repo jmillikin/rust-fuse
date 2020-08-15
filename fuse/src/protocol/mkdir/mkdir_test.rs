@@ -22,20 +22,52 @@ use super::{MkdirRequest, MkdirResponse};
 #[test]
 fn request() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_MKDIR)
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_MKDIR;
+			h.nodeid = 100;
+		})
 		.push_sized(&fuse_kernel::fuse_mkdir_in {
-			mode: 11,
-			umask: 22,
+			mode: 0o755,
+			umask: 0o111,
 		})
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 
 	let req: MkdirRequest = decode_request!(buf);
 
-	let expect = CString::new("hello.world!").unwrap();
-	assert_eq!(req.name(), expect.as_ref());
-	assert_eq!(req.mode(), 11);
-	assert_eq!(req.umask(), 22);
+	let expect: &[u8] = b"hello.world!";
+	assert_eq!(req.parent_id(), NodeId::new(100).unwrap());
+	assert_eq!(req.name(), expect);
+	assert_eq!(req.mode(), 0o755);
+	assert_eq!(req.umask(), 0o111);
+}
+
+#[test]
+fn request_impl_debug() {
+	let buf = MessageBuilder::new()
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_MKDIR;
+			h.nodeid = 100;
+		})
+		.push_sized(&fuse_kernel::fuse_mkdir_in {
+			mode: 0o755,
+			umask: 0o111,
+		})
+		.push_bytes(b"hello.world!\x00")
+		.build_aligned();
+	let request: MkdirRequest = decode_request!(buf);
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"MkdirRequest {\n",
+			"    parent_id: 100,\n",
+			"    name: \"hello.world!\",\n",
+			"    mode: 0o755,\n",
+			"    umask: 0o111,\n",
+			"}",
+		),
+	);
 }
 
 #[test]
@@ -115,5 +147,43 @@ fn response_v7p9() {
 				}
 			})
 			.build()
+	);
+}
+
+#[test]
+fn response_impl_debug() {
+	let mut response = MkdirResponse::new();
+	let node = response.node_mut();
+	node.set_id(NodeId::new(11).unwrap());
+	node.set_generation(22);
+	node.attr_mut().set_node_id(NodeId::new(11).unwrap());
+	node.attr_mut().set_mode(FileType::REG | 0o644);
+
+	assert_eq!(
+		format!("{:#?}", response),
+		concat!(
+			"MkdirResponse {\n",
+			"    node: Node {\n",
+			"        id: Some(11),\n",
+			"        generation: 22,\n",
+			"        cache_timeout: 0ns,\n",
+			"        attr_cache_timeout: 0ns,\n",
+			"        attr: NodeAttr {\n",
+			"            node_id: Some(11),\n",
+			"            size: 0,\n",
+			"            blocks: 0,\n",
+			"            atime: 0ns,\n",
+			"            mtime: 0ns,\n",
+			"            ctime: 0ns,\n",
+			"            mode: 0o100644,\n",
+			"            nlink: 0,\n",
+			"            uid: 0,\n",
+			"            gid: 0,\n",
+			"            rdev: 0,\n",
+			"            blksize: 0,\n",
+			"        },\n",
+			"    },\n",
+			"}",
+		),
 	);
 }

@@ -237,7 +237,6 @@ where
 		fuse_kernel::FUSE_LOOKUP => do_dispatch!(lookup),
 		#[cfg(feature = "unstable_fuse_lseek")]
 		fuse_kernel::FUSE_LSEEK => do_dispatch!(lseek),
-		#[cfg(feature = "unstable_fuse_mkdir")]
 		fuse_kernel::FUSE_MKDIR => do_dispatch!(mkdir),
 		#[cfg(feature = "unstable_fuse_mknod")]
 		fuse_kernel::FUSE_MKNOD => do_dispatch!(mknod),

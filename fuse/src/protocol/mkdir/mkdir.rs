@@ -21,28 +21,41 @@ mod mkdir_test;
 
 // MkdirRequest {{{
 
+/// Request type for [`FuseHandlers::mkdir`].
+///
+/// [`FuseHandlers::mkdir`]: ../trait.FuseHandlers.html#method.mkdir
 pub struct MkdirRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	name: &'a CStr,
-	mode: u32,
-	umask: u32,
+	parent_id: NodeId,
+	name: &'a NodeName,
+	raw: fuse_kernel::fuse_mkdir_in,
 }
 
 impl MkdirRequest<'_> {
-	pub fn node_id(&self) -> u64 {
-		self.header.nodeid
+	pub fn parent_id(&self) -> NodeId {
+		self.parent_id
 	}
 
-	pub fn name(&self) -> &CStr {
+	pub fn name(&self) -> &NodeName {
 		self.name
 	}
 
 	pub fn mode(&self) -> u32 {
-		self.mode
+		self.raw.mode
 	}
 
 	pub fn umask(&self) -> u32 {
-		self.umask
+		self.raw.umask
+	}
+}
+
+impl fmt::Debug for MkdirRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("MkdirRequest")
+			.field("parent_id", &self.parent_id())
+			.field("name", &self.name())
+			.field("mode", &format_args!("{:#o}", &self.raw.mode))
+			.field("umask", &format_args!("{:#o}", &self.raw.umask))
+			.finish()
 	}
 }
 
@@ -54,12 +67,11 @@ impl<'a> fuse_io::DecodeRequest<'a> for MkdirRequest<'a> {
 		debug_assert!(header.opcode == fuse_kernel::FUSE_MKDIR);
 
 		let raw: &fuse_kernel::fuse_mkdir_in = dec.next_sized()?;
-		let name = dec.next_cstr()?;
+		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
 		Ok(Self {
-			header,
+			parent_id: try_node_id(header.nodeid)?,
 			name,
-			mode: raw.mode,
-			umask: raw.umask,
+			raw: *raw,
 		})
 	}
 }
@@ -68,6 +80,9 @@ impl<'a> fuse_io::DecodeRequest<'a> for MkdirRequest<'a> {
 
 // MkdirResponse {{{
 
+/// Response type for [`FuseHandlers::mkdir`].
+///
+/// [`FuseHandlers::mkdir`]: ../trait.FuseHandlers.html#method.mkdir
 pub struct MkdirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_entry_out,
