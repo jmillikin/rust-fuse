@@ -45,10 +45,10 @@ pub use self::protocol::*;
 
 pub use self::protocol::common::{
 	FileType,
-	Name,
 	Node,
 	NodeAttr,
 	NodeId,
+	NodeName,
 	NAME_MAX,
 	ROOT_ID,
 };

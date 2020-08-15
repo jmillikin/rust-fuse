@@ -22,8 +22,8 @@ const HELLO_WORLD: &[u8] = b"Hello, world!\n";
 struct HelloTxt {}
 
 impl HelloTxt {
-	fn name(&self) -> &[u8] {
-		b"hello.txt"
+	fn name(&self) -> &fuse::NodeName {
+		fuse::NodeName::from_bytes(b"hello.txt").unwrap()
 	}
 
 	fn node_id(&self) -> fuse::NodeId {
@@ -54,7 +54,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 			respond.err(err_not_found());
 			return;
 		}
-		if request.name().as_bytes() != HELLO_TXT.name() {
+		if request.name() != HELLO_TXT.name() {
 			respond.err(err_not_found());
 			return;
 		}
@@ -179,9 +179,8 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		thread::spawn(move || {
 			let mut resp = fuse::ReaddirResponse::with_max_size(request_size);
 
-			let node_name = fuse::Name::from_bytes(HELLO_TXT.name()).unwrap();
 			let node_offset = NonZeroU64::new(1).unwrap();
-			resp.new_entry(HELLO_TXT.node_id(), node_name, node_offset)
+			resp.new_entry(HELLO_TXT.node_id(), HELLO_TXT.name(), node_offset)
 				.set_file_type(fuse::FileType::REG);
 
 			respond.ok(&resp);

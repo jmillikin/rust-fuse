@@ -20,7 +20,7 @@ use crate::internal::fuse_io;
 
 #[derive(Hash)]
 #[repr(transparent)]
-pub struct Name {
+pub struct NodeName {
 	bytes: [u8],
 }
 
@@ -30,13 +30,15 @@ pub const NAME_MAX: usize = {
 	#[cfg(target_os = "freebsd")] {  255 }
 };
 
-impl Name {
-	pub(crate) fn new<'a>(bytes: fuse_io::NulTerminatedBytes<'a>) -> &'a Name {
+impl NodeName {
+	pub(crate) fn new<'a>(
+		bytes: fuse_io::NulTerminatedBytes<'a>,
+	) -> &'a NodeName {
 		let bytes = bytes.to_bytes_without_nul();
-		unsafe { &*(bytes as *const [u8] as *const Name) }
+		unsafe { &*(bytes as *const [u8] as *const NodeName) }
 	}
 
-	pub fn from_bytes<'a>(bytes: &'a [u8]) -> Option<&'a Name> {
+	pub fn from_bytes<'a>(bytes: &'a [u8]) -> Option<&'a NodeName> {
 		let len = bytes.len();
 		if len == 0 || len > NAME_MAX {
 			return None;
@@ -44,7 +46,7 @@ impl Name {
 		if bytes.contains(&b'/') {
 			return None;
 		}
-		Some(unsafe { &*(bytes as *const [u8] as *const Name) })
+		Some(unsafe { &*(bytes as *const [u8] as *const NodeName) })
 	}
 
 	pub fn as_bytes(&self) -> &[u8] {
@@ -52,47 +54,47 @@ impl Name {
 	}
 }
 
-impl fmt::Debug for Name {
+impl fmt::Debug for NodeName {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt::Display::fmt(self, fmt)
 	}
 }
 
-impl fmt::Display for Name {
+impl fmt::Display for NodeName {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		use core::fmt::Debug;
 		super::DebugBytesAsString(&self.bytes).fmt(fmt)
 	}
 }
 
-impl Eq for Name {}
+impl Eq for NodeName {}
 
-impl PartialEq for Name {
-	fn eq(&self, other: &Name) -> bool {
+impl PartialEq for NodeName {
+	fn eq(&self, other: &NodeName) -> bool {
 		self.as_bytes().eq(other.as_bytes())
 	}
 }
 
-impl PartialEq<[u8]> for Name {
+impl PartialEq<[u8]> for NodeName {
 	fn eq(&self, other: &[u8]) -> bool {
 		self.as_bytes().eq(other)
 	}
 }
 
-impl Ord for Name {
-	fn cmp(&self, other: &Name) -> cmp::Ordering {
+impl Ord for NodeName {
+	fn cmp(&self, other: &NodeName) -> cmp::Ordering {
 		self.as_bytes().cmp(&other.as_bytes())
 	}
 }
 
-impl PartialEq<Name> for [u8] {
-	fn eq(&self, other: &Name) -> bool {
+impl PartialEq<NodeName> for [u8] {
+	fn eq(&self, other: &NodeName) -> bool {
 		self.eq(other.as_bytes())
 	}
 }
 
-impl PartialOrd for Name {
-	fn partial_cmp(&self, other: &Name) -> Option<cmp::Ordering> {
+impl PartialOrd for NodeName {
+	fn partial_cmp(&self, other: &NodeName) -> Option<cmp::Ordering> {
 		self.as_bytes().partial_cmp(&other.as_bytes())
 	}
 }

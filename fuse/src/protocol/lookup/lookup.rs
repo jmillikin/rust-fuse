@@ -28,7 +28,7 @@ mod lookup_test;
 #[derive(Debug)]
 pub struct LookupRequest<'a> {
 	parent_id: NodeId,
-	name: &'a Name,
+	name: &'a NodeName,
 }
 
 impl LookupRequest<'_> {
@@ -36,7 +36,7 @@ impl LookupRequest<'_> {
 		self.parent_id
 	}
 
-	pub fn name(&self) -> &Name {
+	pub fn name(&self) -> &NodeName {
 		self.name
 	}
 }
@@ -50,7 +50,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for LookupRequest<'a> {
 
 		Ok(Self {
 			parent_id: try_node_id(header.nodeid)?,
-			name: Name::new(dec.next_nul_terminated_bytes()?),
+			name: NodeName::new(dec.next_nul_terminated_bytes()?),
 		})
 	}
 }

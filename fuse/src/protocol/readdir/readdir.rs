@@ -198,7 +198,7 @@ impl<'a> ReaddirResponse<'a> {
 	pub fn new_entry(
 		&mut self,
 		node_id: NodeId,
-		name: &Name,
+		name: &NodeName,
 		cursor: num::NonZeroU64,
 	) -> ReaddirEntry {
 		self.try_new_entry(node_id, name, cursor).unwrap()
@@ -207,7 +207,7 @@ impl<'a> ReaddirResponse<'a> {
 	pub fn try_new_entry(
 		&mut self,
 		node_id: NodeId,
-		name: &Name,
+		name: &NodeName,
 		cursor: num::NonZeroU64,
 	) -> Option<ReaddirEntry> {
 		let name = name.as_bytes();

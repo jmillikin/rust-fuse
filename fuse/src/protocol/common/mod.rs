@@ -23,9 +23,6 @@ pub(crate) use self::debug::*;
 mod file_type;
 pub use self::file_type::*;
 
-mod name;
-pub use self::name::*;
-
 mod node;
 pub use self::node::*;
 
@@ -34,3 +31,6 @@ pub use self::node_attr::*;
 
 mod node_id;
 pub use self::node_id::*;
+
+mod node_name;
+pub use self::node_name::*;

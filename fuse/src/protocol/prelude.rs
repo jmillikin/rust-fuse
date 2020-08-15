@@ -32,10 +32,10 @@ pub(super) use crate::protocol::common::{
 	DebugClosure,
 	DebugHexU32,
 	FileType,
-	Name,
 	Node,
 	NodeAttr,
 	NodeId,
+	NodeName,
 };
 
 pub(super) use crate::internal::fuse_io::{
