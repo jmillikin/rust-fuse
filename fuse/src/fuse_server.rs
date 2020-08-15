@@ -309,7 +309,6 @@ fn fuse_request_dispatch<Handlers: FuseHandlers>(
 		fuse_kernel::FUSE_GETATTR => do_dispatch!(getattr),
 		#[cfg(feature = "unstable_fuse_getlk")]
 		fuse_kernel::FUSE_GETLK => do_dispatch!(getlk),
-		#[cfg(feature = "unstable_fuse_getxattr")]
 		fuse_kernel::FUSE_GETXATTR => do_dispatch!(getxattr),
 		#[cfg(feature = "unstable_fuse_ioctl")]
 		fuse_kernel::FUSE_IOCTL => do_dispatch!(ioctl),

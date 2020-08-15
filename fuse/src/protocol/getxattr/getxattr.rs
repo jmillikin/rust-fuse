@@ -21,27 +21,36 @@ mod getxattr_test;
 
 // GetxattrRequest {{{
 
+/// Request type for [`FuseHandlers::getxattr`].
+///
+/// [`FuseHandlers::getxattr`]: ../trait.FuseHandlers.html#method.getxattr
 pub struct GetxattrRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	raw: &'a fuse_kernel::fuse_getxattr_in,
-	name: &'a CStr,
+	node_id: NodeId,
+	size: Option<num::NonZeroU32>,
+	name: &'a XattrName,
 }
 
 impl GetxattrRequest<'_> {
-	pub fn node_id(&self) -> u64 {
-		self.header.nodeid
+	pub fn node_id(&self) -> NodeId {
+		self.node_id
 	}
 
-	pub fn size(&self) -> Option<u32> {
-		if self.raw.size == 0 {
-			None
-		} else {
-			Some(self.raw.size)
-		}
+	pub fn size(&self) -> Option<num::NonZeroU32> {
+		self.size
 	}
 
-	pub fn name(&self) -> &CStr {
+	pub fn name(&self) -> &XattrName {
 		self.name
+	}
+}
+
+impl fmt::Debug for GetxattrRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("GetxattrRequest")
+			.field("node_id", &self.node_id)
+			.field("size", &format_args!("{:?}", &self.size))
+			.field("name", &self.name)
+			.finish()
 	}
 }
 
@@ -52,9 +61,12 @@ impl<'a> fuse_io::DecodeRequest<'a> for GetxattrRequest<'a> {
 		let header = dec.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_GETXATTR);
 
-		let raw = dec.next_sized()?;
-		let name = dec.next_cstr()?;
-		Ok(Self { header, raw, name })
+		let raw: &'a fuse_kernel::fuse_getxattr_in = dec.next_sized()?;
+		Ok(Self {
+			node_id: try_node_id(header.nodeid)?,
+			size: num::NonZeroU32::new(raw.size),
+			name: XattrName::new(dec.next_nul_terminated_bytes()?),
+		})
 	}
 }
 
@@ -62,56 +74,70 @@ impl<'a> fuse_io::DecodeRequest<'a> for GetxattrRequest<'a> {
 
 // GetxattrResponse {{{
 
+/// Response type for [`FuseHandlers::getxattr`].
+///
+/// [`FuseHandlers::getxattr`]: ../trait.FuseHandlers.html#method.getxattr
 pub struct GetxattrResponse<'a> {
-	request_size: u32,
+	request_size: Option<num::NonZeroU32>,
 	raw: fuse_kernel::fuse_getxattr_out,
-	buf: &'a [u8],
+	value: &'a [u8],
 }
 
 impl<'a> GetxattrResponse<'a> {
-	// TODO: this API is bad. user should construct with new() and then
-	// set the value to either a &[u8] or a Vec<u8>, via a Cow<>.
-	pub fn for_request(request: &GetxattrRequest) -> Self {
-		// Clamp the maximum response size to avoid caring about u32 overflow.
-		// This limit is far higher than existing kernel implementations support.
-		GetxattrResponse {
-			request_size: cmp::min(request.raw.size, 1 << 30),
+	pub fn for_request_size(
+		request_size: Option<num::NonZeroU32>,
+	) -> Self {
+		Self {
+			request_size,
 			raw: Default::default(),
-			buf: &[],
+			value: &[],
 		}
 	}
 
-	pub fn set_size(&mut self, size: u32) {
-		self.raw.size = size;
+	pub fn request_size(&self) -> Option<num::NonZeroU32> {
+		self.request_size
 	}
 
-	pub fn set_value(&mut self, value: &'a [u8]) -> io::Result<()> {
-		if value.len() > u32::MAX as usize {
-			return Err(io::Error::from_raw_os_error(
-				errors::ERANGE.get() as i32
-			));
+	pub fn value(&self) -> &[u8] {
+		self.value
+	}
+
+	pub fn set_value(&mut self, value: &'a [u8]) {
+		self.try_set_value(value).unwrap()
+	}
+
+	pub fn try_set_value(
+		&mut self,
+		value: &'a [u8],
+	) -> Option<()> { // TODO: Result
+		if value.len() > crate::XATTR_SIZE_MAX {
+			return None; // ERANGE
 		}
 		let value_len = value.len() as u32;
 
-		if self.request_size == 0 {
-			self.raw.size = value_len;
-			return Ok(());
+		match self.request_size {
+			None => {
+				self.raw.size = value_len;
+			},
+			Some(request_size) => {
+				if value_len > request_size.get() {
+					return None; // ERANGE
+				}
+				self.value = value;
+			}
 		}
-
-		if value_len > self.request_size {
-			return Err(io::Error::from_raw_os_error(
-				errors::ERANGE.get() as i32
-			));
-		}
-		self.raw.size = 0;
-		self.buf = value;
-		Ok(())
+		return Some(());
 	}
 }
 
 impl fmt::Debug for GetxattrResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("GetxattrResponse").finish()
+		let mut out = fmt.debug_struct("GetxattrResponse");
+		out.field("request_size", &format_args!("{:?}", &self.request_size));
+		if self.request_size.is_some() {
+			out.field("value", &DebugBytesAsString(&self.value));
+		}
+		out.finish()
 	}
 }
 
@@ -123,7 +149,7 @@ impl fuse_io::EncodeResponse for GetxattrResponse<'_> {
 		if self.raw.size != 0 {
 			enc.encode_sized(&self.raw)
 		} else {
-			enc.encode_bytes(&self.buf)
+			enc.encode_bytes(&self.value)
 		}
 	}
 }

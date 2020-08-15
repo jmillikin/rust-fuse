@@ -162,8 +162,6 @@ pub trait FuseHandlers {
 		respond.err(errors::ENOSYS);
 	}
 
-	#[cfg(any(doc, feature = "unstable_fuse_getxattr"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_getxattr")))]
 	fn getxattr(
 		&self,
 		ctx: server::ServerContext,

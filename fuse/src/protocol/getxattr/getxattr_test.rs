@@ -22,7 +22,10 @@ use super::{GetxattrRequest, GetxattrResponse};
 #[test]
 fn request_sized() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_GETXATTR)
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_GETXATTR;
+			h.nodeid = 123;
+		})
 		.push_sized(&fuse_kernel::fuse_getxattr_in {
 			size: 10,
 			..Default::default()
@@ -32,15 +35,18 @@ fn request_sized() {
 
 	let req: GetxattrRequest = decode_request!(buf);
 
-	let expect = CString::new("hello.world!").unwrap();
-	assert_eq!(req.size(), Some(10));
-	assert_eq!(req.name(), expect.as_ref());
+	let expect = XattrName::from_bytes(b"hello.world!").unwrap();
+	assert_eq!(req.size(), Some(num::NonZeroU32::new(10).unwrap()));
+	assert_eq!(req.name(), expect);
 }
 
 #[test]
 fn request_unsized() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_GETXATTR)
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_GETXATTR;
+			h.nodeid = 123;
+		})
 		.push_sized(&fuse_kernel::fuse_getxattr_in {
 			size: 0,
 			..Default::default()
@@ -50,36 +56,41 @@ fn request_unsized() {
 
 	let req: GetxattrRequest = decode_request!(buf);
 
-	let expect = CString::new("hello.world!").unwrap();
+	let expect = XattrName::from_bytes(b"hello.world!").unwrap();
 	assert_eq!(req.size(), None);
-	assert_eq!(req.name(), expect.as_ref());
+	assert_eq!(req.name(), expect);
+}
+
+#[test]
+fn request_impl_debug() {
+	let request = &GetxattrRequest {
+		node_id: crate::ROOT_ID,
+		size: num::NonZeroU32::new(11),
+		name: XattrName::from_bytes(b"hello.world!").unwrap(),
+	};
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"GetxattrRequest {\n",
+			"    node_id: 1,\n",
+			"    size: Some(11),\n",
+			"    name: \"hello.world!\",\n",
+			"}",
+		),
+	);
 }
 
 #[test]
 fn response_sized() {
-	let mut resp: GetxattrResponse<'static> = todo!();
-	/*
-	let mut resp = GetxattrRequest {
-		header: &HEADER,
-		raw: &fuse_kernel::fuse_getxattr_in {
-			size: 10,
-			..Default::default()
-		},
-		name: CStr::from_bytes_with_nul(b"\x00").unwrap(),
-		}.new_response();
-		*/
-	assert_eq!(resp.request_size, 10);
+	let request_size = num::NonZeroU32::new(10);
+	let mut resp = GetxattrResponse::for_request_size(request_size);
+	assert_eq!(resp.request_size(), request_size);
 
 	// value must fit in kernel buffer
-	{
-		let err = resp.set_value(&[255; 11]).unwrap_err();
-		assert_eq!(err.raw_os_error().unwrap(), errors::ERANGE.get() as i32);
+	assert!(resp.try_set_value(&[255; 11]).is_none());
 
-		assert!(resp.buf.is_empty());
-		assert_eq!(resp.raw.size, 0);
-	}
-
-	resp.set_value(&[255, 0, 255]).unwrap();
+	resp.set_value(&[255, 0, 255]);
 
 	let encoded = encode_response!(resp);
 
@@ -98,29 +109,17 @@ fn response_sized() {
 
 #[test]
 fn response_unsized() {
-	let mut resp: GetxattrResponse<'static> = todo!();
-	/*
-	header: &HEADER,
-	raw: &fuse_kernel::fuse_getxattr_in {
-		size: 0,
-		..Default::default()
-	},
-	name: CStr::from_bytes_with_nul(b"\x00").unwrap(),
-	}.new_response();
-	*/
-	assert_eq!(resp.request_size, 0);
+	let mut resp = GetxattrResponse::for_request_size(None);
+	assert_eq!(resp.request_size(), None);
+
+	// set_value() doesn't allow value sizes larger than XATTR_SIZE_MAX
+	assert!(resp.try_set_value(&[0; crate::XATTR_SIZE_MAX + 1]).is_none());
+	assert!(resp.value.is_empty());
+	assert_eq!(resp.raw.size, 0);
 
 	// set_value() doesn't store value bytes for unsized responses
-	resp.set_value(&[0, 0]).unwrap();
-	assert!(resp.buf.is_empty());
-	assert_eq!(resp.raw.size, 2);
-
-	resp.set_value(&[0, 0, 0]).unwrap();
-	assert!(resp.buf.is_empty());
-	assert_eq!(resp.raw.size, 3);
-
-	// size can also be set directly
-	resp.set_size(4);
+	resp.set_value(&[1, 2, 3, 4]);
+	assert!(resp.value.is_empty());
 	assert_eq!(resp.raw.size, 4);
 
 	let encoded = encode_response!(resp);
@@ -143,40 +142,18 @@ fn response_unsized() {
 }
 
 #[test]
-fn response_size_clamp() {
-	let mut resp: GetxattrResponse<'static> = todo!();
-	/*
-	let resp = GetxattrRequest {
-		header: &HEADER,
-		raw: &fuse_kernel::fuse_getxattr_in {
-			size: u32::MAX,
-			..Default::default()
-		},
-		name: CStr::from_bytes_with_nul(b"\x00").unwrap(),
-		}.new_response();
-		*/
-	assert_eq!(resp.request_size, 1 << 30);
-}
+fn response_impl_debug() {
+	let request_size = num::NonZeroU32::new(10);
+	let mut response = GetxattrResponse::for_request_size(request_size);
+	response.set_value(b"some\x00bytes");
 
-#[test]
-fn response_detect_overflow() {
-	let mut resp: GetxattrResponse<'static> = todo!();
-	/*
-	let mut resp = GetxattrRequest {
-		header: &HEADER,
-		raw: &fuse_kernel::fuse_getxattr_in {
-			size: 10,
-			..Default::default()
-		},
-		name: CStr::from_bytes_with_nul(b"\x00").unwrap(),
-		}.new_response();
-		*/
-
-	let mut buf = vec![0];
-	unsafe {
-		buf.set_len(u32::MAX as usize + 1)
-	};
-
-	let err = resp.set_value(&buf).unwrap_err();
-	assert_eq!(err.raw_os_error().unwrap(), errors::ERANGE.get() as i32);
+	assert_eq!(
+		format!("{:#?}", response),
+		concat!(
+			"GetxattrResponse {\n",
+			"    request_size: Some(10),\n",
+			"    value: \"some\\x00bytes\",\n",
+			"}",
+		),
+	);
 }

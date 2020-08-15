@@ -49,6 +49,10 @@ pub use self::protocol::common::{
 	NodeAttr,
 	NodeId,
 	NodeName,
-	NAME_MAX,
+	XattrName,
+	NODE_NAME_MAX,
 	ROOT_ID,
+	XATTR_LIST_MAX,
+	XATTR_NAME_MAX,
+	XATTR_SIZE_MAX,
 };

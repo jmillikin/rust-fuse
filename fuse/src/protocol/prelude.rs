@@ -20,7 +20,7 @@ pub(super) use core::cmp::min;
 pub(super) use core::marker::PhantomData;
 pub(super) use core::mem::size_of;
 pub(super) use core::time::Duration;
-pub(super) use core::{cmp, fmt, mem, ptr, slice};
+pub(super) use core::{cmp, fmt, mem, num, ptr, slice};
 pub(super) use std::ffi::{CStr, CString};
 pub(super) use std::{io, time};
 
@@ -36,6 +36,7 @@ pub(super) use crate::protocol::common::{
 	NodeAttr,
 	NodeId,
 	NodeName,
+	XattrName,
 };
 
 pub(super) use crate::internal::fuse_io::{

@@ -34,3 +34,6 @@ pub use self::node_id::*;
 
 mod node_name;
 pub use self::node_name::*;
+
+mod xattr;
+pub use self::xattr::*;

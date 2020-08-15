@@ -49,7 +49,7 @@ op_mod!(fsyncdir,    "fsyncdir/fsyncdir.rs",       "unstable_fuse_fsyncdir");
 op_mod!(fuse_init,   "fuse_init/fuse_init.rs");
 op_mod!(getattr,     "getattr/getattr.rs");
 op_mod!(getlk,       "getlk/getlk.rs",             "unstable_fuse_getlk");
-op_mod!(getxattr,    "getxattr/getxattr.rs",       "unstable_fuse_getxattr");
+op_mod!(getxattr,    "getxattr/getxattr.rs");
 op_mod!(ioctl,       "ioctl/ioctl.rs",             "unstable_fuse_ioctl");
 op_mod!(link,        "link/link.rs",               "unstable_fuse_link");
 op_mod!(listxattr,   "listxattr/listxattr.rs",     "unstable_fuse_listxattr");
