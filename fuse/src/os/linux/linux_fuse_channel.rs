@@ -26,6 +26,7 @@ use crate::channel::{self, Channel, FileChannel};
 #[path = "linux_syscalls.rs"]
 mod syscalls;
 
+#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
 pub struct FuseChannelBuilder {
 	device_path: PathBuf,
 	mount_source: String,
@@ -153,6 +154,7 @@ impl FuseChannelBuilder {
 	}
 }
 
+#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
 pub struct FuseChannel(FileChannel);
 
 impl channel::FuseChannel for FuseChannel {}

@@ -16,6 +16,8 @@
 
 use core::convert::TryInto;
 use core::mem::{self, MaybeUninit};
+
+#[cfg(not(feature = "no_std"))]
 use std::io::{self, IoSlice, Read, Write};
 
 pub trait Channel: Sized {
@@ -39,16 +41,19 @@ pub trait ChannelError: From<crate::Error> {
 	fn error_code(&self) -> Option<crate::ErrorCode>;
 }
 
+#[cfg(not(feature = "no_std"))]
 pub(crate) struct FileChannel {
 	file: std::fs::File,
 }
 
+#[cfg(not(feature = "no_std"))]
 impl FileChannel {
 	pub(crate) fn new(file: std::fs::File) -> Self {
 		Self { file }
 	}
 }
 
+#[cfg(not(feature = "no_std"))]
 impl Channel for FileChannel {
 	type Error = io::Error;
 
@@ -99,6 +104,8 @@ impl Channel for FileChannel {
 	}
 }
 
+#[cfg(not(feature = "no_std"))]
+#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
 impl ChannelError for io::Error {
 	fn error_code(&self) -> Option<crate::ErrorCode> {
 		if let Some(os_err) = self.raw_os_error() {

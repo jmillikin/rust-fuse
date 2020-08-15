@@ -79,6 +79,8 @@ pub struct ListxattrResponse<'a> {
 }
 
 impl<'a> ListxattrResponse<'a> {
+	#[cfg(not(feature = "no_std"))]
+	#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
 	pub fn new(request_size: Option<num::NonZeroU32>) -> ListxattrResponse<'a> {
 		Self {
 			request_size,
@@ -148,6 +150,7 @@ impl<'a> ListxattrResponse<'a> {
 				*size_ref = new_size;
 				name_buf
 			},
+			#[cfg(not(feature = "no_std"))]
 			ListxattrBuf::Owned { cap } => {
 				let current_size = cap.len();
 				let new_size = current_size + name_buf_len;
@@ -170,6 +173,7 @@ impl<'a> ListxattrResponse<'a> {
 }
 
 enum ListxattrBuf<'a> {
+	#[cfg(not(feature = "no_std"))]
 	Owned { cap: Vec<u8> },
 	Borrowed { cap: &'a mut [u8], size: usize },
 }
@@ -185,6 +189,7 @@ impl fmt::Debug for ListxattrResponse<'_> {
 				out.field("names", &names);
 			},
 			Some(_) => match &self.buf {
+				#[cfg(not(feature = "no_std"))]
 				ListxattrBuf::Owned { cap } => {
 					out.field("size", &cap.len());
 					out.field("names", &DebugListxattrNames(&cap));
@@ -225,6 +230,7 @@ impl fuse_io::EncodeResponse for ListxattrResponse<'_> {
 		}
 
 		match &self.buf {
+			#[cfg(not(feature = "no_std"))]
 			ListxattrBuf::Owned { cap } => enc.encode_bytes(&cap),
 			ListxattrBuf::Borrowed { cap, size } => {
 				let (bytes, _) = cap.split_at(*size);

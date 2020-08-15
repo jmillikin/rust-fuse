@@ -16,6 +16,8 @@
 
 use core::mem::{align_of, size_of};
 use core::pin::Pin;
+
+#[cfg(not(feature = "no_std"))]
 use std::ffi::CStr;
 
 use crate::error::{Error, ErrorCode};
@@ -81,12 +83,14 @@ impl<'a> AlignedSlice<'a> {
 	}
 }
 
+#[cfg(not(feature = "no_std"))]
 pub(crate) struct AlignedVec {
 	pinned: Pin<Box<[u8]>>,
 	offset: usize,
 	size: usize,
 }
 
+#[cfg(not(feature = "no_std"))]
 impl AlignedVec {
 	pub(crate) fn new(size: usize) -> Self {
 		let mut vec = Vec::with_capacity(size + 7);
@@ -101,6 +105,7 @@ impl AlignedVec {
 	}
 }
 
+#[cfg(not(feature = "no_std"))]
 impl AlignedBuffer for AlignedVec {
 	fn get(&self) -> &[u8] {
 		if self.offset == 0 {
@@ -245,6 +250,7 @@ impl<'a> RequestDecoder<'a> {
 		Err(Error::UnexpectedEof)
 	}
 
+	#[cfg(not(feature = "no_std"))]
 	pub(crate) fn next_cstr(&mut self) -> Result<&'a CStr, Error> {
 		for off in self.consumed..self.header.len {
 			if self.buf[off as usize] == 0 {
@@ -300,7 +306,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 			unique: self.request_id,
 		};
 		let out_hdr_buf: &[u8] = unsafe {
-			std::slice::from_raw_parts(
+			core::slice::from_raw_parts(
 				(&out_hdr as *const fuse_kernel::fuse_out_header) as *const u8,
 				size_of::<fuse_kernel::fuse_out_header>(),
 			)
@@ -314,7 +320,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 		t: &T,
 	) -> Result<(), Chan::Error> {
 		let bytes: &[u8] = unsafe {
-			std::slice::from_raw_parts(
+			core::slice::from_raw_parts(
 				(t as *const T) as *const u8,
 				size_of::<T>(),
 			)
@@ -328,7 +334,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 		t: &T,
 	) -> Result<(), Chan::Error> {
 		let bytes_2: &[u8] = unsafe {
-			std::slice::from_raw_parts(
+			core::slice::from_raw_parts(
 				(t as *const T) as *const u8,
 				size_of::<T>(),
 			)
@@ -342,13 +348,13 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 		t_2: &T2,
 	) -> Result<(), Chan::Error> {
 		let bytes_1: &[u8] = unsafe {
-			std::slice::from_raw_parts(
+			core::slice::from_raw_parts(
 				(t_1 as *const T1) as *const u8,
 				size_of::<T1>(),
 			)
 		};
 		let bytes_2: &[u8] = unsafe {
-			std::slice::from_raw_parts(
+			core::slice::from_raw_parts(
 				(t_2 as *const T2) as *const u8,
 				size_of::<T2>(),
 			)
@@ -364,7 +370,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 			unique: self.request_id,
 		};
 		let out_hdr_buf: &[u8] = unsafe {
-			std::slice::from_raw_parts(
+			core::slice::from_raw_parts(
 				(&out_hdr as *const fuse_kernel::fuse_out_header) as *const u8,
 				size_of::<fuse_kernel::fuse_out_header>(),
 			)
@@ -393,7 +399,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 			unique: self.request_id,
 		};
 		let out_hdr_buf: &[u8] = unsafe {
-			std::slice::from_raw_parts(
+			core::slice::from_raw_parts(
 				(&out_hdr as *const fuse_kernel::fuse_out_header) as *const u8,
 				size_of::<fuse_kernel::fuse_out_header>(),
 			)
@@ -429,7 +435,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 			unique: self.request_id,
 		};
 		let out_hdr_buf: &[u8] = unsafe {
-			std::slice::from_raw_parts(
+			core::slice::from_raw_parts(
 				(&out_hdr as *const fuse_kernel::fuse_out_header) as *const u8,
 				size_of::<fuse_kernel::fuse_out_header>(),
 			)

@@ -29,6 +29,7 @@ use crate::internal::fuse_kernel;
 use crate::protocol;
 use crate::server;
 
+#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
 pub struct FuseServer<Channel, Handlers> {
 	channel: Channel,
 	handlers: Arc<Handlers>,
@@ -127,6 +128,7 @@ fn fuse_handshake<C: FuseChannel, H: FuseHandlers>(
 	}
 }
 
+#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
 pub struct FuseServerExecutor<C, H> {
 	channel: Arc<C>,
 	handlers: Arc<H>,

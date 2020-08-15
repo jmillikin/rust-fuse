@@ -62,11 +62,11 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReadlinkRequest<'a> {
 ///
 /// [`FuseHandlers::readlink`]: ../trait.FuseHandlers.html#method.readlink
 pub struct ReadlinkResponse<'a> {
-	name: &'a CStr,
+	name: &'a NodeName,
 }
 
 impl<'a> ReadlinkResponse<'a> {
-	pub fn from_cstr(name: &'a CStr) -> ReadlinkResponse<'a> {
+	pub fn from_name(name: &'a NodeName) -> ReadlinkResponse<'a> {
 		Self { name }
 	}
 }
@@ -84,7 +84,7 @@ impl fuse_io::EncodeResponse for ReadlinkResponse<'_> {
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
 	) -> Result<(), Chan::Error> {
-		enc.encode_bytes(self.name.to_bytes_with_nul())
+		enc.encode_bytes_2(self.name.as_bytes(), &[0])
 	}
 }
 

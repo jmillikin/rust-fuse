@@ -9,6 +9,8 @@ edition = "2018"
 name = "fuse"
 
 [features]
+no_std = []
+
 unstable_fuse_access = []
 unstable_fuse_bmap = []
 unstable_fuse_create = []

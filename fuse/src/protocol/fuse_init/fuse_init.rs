@@ -268,12 +268,12 @@ impl fuse_io::EncodeResponse for FuseInitResponse {
 
 		if self.raw.minor >= 5 {
 			let compat: &'a fuse_init_out_v7p5 =
-				unsafe { std::mem::transmute(&self.raw) };
+				unsafe { core::mem::transmute(&self.raw) };
 			return enc.encode_sized(compat);
 		}
 
 		let compat: &'a fuse_init_out_v7p1 =
-			unsafe { std::mem::transmute(&self.raw) };
+			unsafe { core::mem::transmute(&self.raw) };
 		enc.encode_sized(compat)
 	}
 }

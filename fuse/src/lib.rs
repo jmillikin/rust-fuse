@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#![cfg_attr(feature = "no_std", no_std)]
+
 #![cfg_attr(doc, feature(doc_cfg))]
 
 // For direct syscalls in `fuse/src/os/linux/syscalls.rs`.
@@ -27,7 +29,7 @@
 mod internal;
 
 mod channel;
-pub use self::channel::{Channel, FuseChannel};
+pub use self::channel::{Channel, ChannelError, FuseChannel};
 
 mod error;
 pub use self::error::{Error, ErrorCode};
@@ -35,7 +37,9 @@ pub use self::error::{Error, ErrorCode};
 mod fuse_handlers;
 pub use self::fuse_handlers::*;
 
+#[cfg(not(feature = "no_std"))]
 mod fuse_server;
+#[cfg(not(feature = "no_std"))]
 pub use self::fuse_server::*;
 
 mod server;
@@ -47,7 +51,10 @@ pub mod os {
 	#[cfg(any(doc, target_os = "linux"))]
 	#[cfg_attr(doc, doc(cfg(target_os = "linux")))]
 	pub mod linux {
+		#[cfg(not(feature = "no_std"))]
 		mod linux_fuse_channel;
+
+		#[cfg(not(feature = "no_std"))]
 		pub use self::linux_fuse_channel::*;
 	}
 }

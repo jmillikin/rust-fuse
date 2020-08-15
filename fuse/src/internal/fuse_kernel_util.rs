@@ -20,7 +20,7 @@ pub struct Opcode(pub u32);
 
 macro_rules! enum_fuse_opcode {
     ($( $(#[$meta:meta])* $name:ident = $val:expr,)+ ) => {
-        use std::fmt;
+        use core::fmt;
         pub use crate::internal::fuse_kernel::Opcode;
         $(
             $(#[$meta])*

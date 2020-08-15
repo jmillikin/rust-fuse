@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#[cfg(not(feature = "no_std"))]
 use std::sync::Arc;
 
 use crate::internal::fuse_io;
@@ -54,10 +55,14 @@ pub trait RespondOnce<Response>: private::Sealed {
 	fn ok(self, response: &Response);
 	fn err(self, err: crate::ErrorCode);
 
+	#[cfg(not(feature = "no_std"))]
+	#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
 	fn into_box(self) -> Box<dyn RespondOnceBox<Response>>;
 }
 
 /// **\[SEALED\]**
+#[cfg(not(feature = "no_std"))]
+#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
 pub trait RespondOnceBox<Response>: private::Sealed + Send + 'static {
 	fn ok(self: Box<Self>, response: &Response);
 	fn err(self: Box<Self>, err: crate::ErrorCode);
@@ -65,12 +70,14 @@ pub trait RespondOnceBox<Response>: private::Sealed + Send + 'static {
 
 // RespondOnceImpl {{{
 
+#[cfg(not(feature = "no_std"))]
 pub(crate) struct RespondOnceImpl<'a, C> {
 	channel: &'a Arc<C>,
 	request_id: u64,
 	fuse_version: crate::ProtocolVersion,
 }
 
+#[cfg(not(feature = "no_std"))]
 impl<'a, C> RespondOnceImpl<'a, C>
 where
 	C: fuse_io::Channel,
@@ -96,8 +103,10 @@ where
 	}
 }
 
+#[cfg(not(feature = "no_std"))]
 impl<C> private::Sealed for RespondOnceImpl<'_, C> {}
 
+#[cfg(not(feature = "no_std"))]
 impl<C, Response> RespondOnce<Response> for RespondOnceImpl<'_, C>
 where
 	C: fuse_io::Channel + Send + Sync + 'static,
@@ -124,12 +133,14 @@ where
 
 // RespondOnceBoxImpl {{{
 
+#[cfg(not(feature = "no_std"))]
 struct RespondOnceBoxImpl<C> {
 	channel: Arc<C>,
 	request_id: u64,
 	fuse_version: crate::ProtocolVersion,
 }
 
+#[cfg(not(feature = "no_std"))]
 impl<C> RespondOnceBoxImpl<C>
 where
 	C: fuse_io::Channel,
@@ -143,8 +154,10 @@ where
 	}
 }
 
+#[cfg(not(feature = "no_std"))]
 impl<C> private::Sealed for RespondOnceBoxImpl<C> {}
 
+#[cfg(not(feature = "no_std"))]
 impl<C, Response> RespondOnceBox<Response> for RespondOnceBoxImpl<C>
 where
 	C: fuse_io::Channel + Send + Sync + 'static,
