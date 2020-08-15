@@ -20,14 +20,12 @@ use crate::internal::fuse_io;
 
 #[derive(Hash)]
 #[repr(transparent)]
-pub struct NodeName {
-	bytes: [u8],
-}
+pub struct NodeName([u8]);
 
 #[rustfmt::skip]
 pub const NAME_MAX: usize = {
-	#[cfg(target_os = "linux")]   { 1024 }
-	#[cfg(target_os = "freebsd")] {  255 }
+	#[cfg(target_os = "linux")]   { 255 }
+	#[cfg(target_os = "freebsd")] { 255 }
 };
 
 impl NodeName {
@@ -43,14 +41,14 @@ impl NodeName {
 		if len == 0 || len > NAME_MAX {
 			return None;
 		}
-		if bytes.contains(&b'/') {
+		if bytes.contains(&0) || bytes.contains(&b'/') {
 			return None;
 		}
 		Some(unsafe { &*(bytes as *const [u8] as *const NodeName) })
 	}
 
 	pub fn as_bytes(&self) -> &[u8] {
-		&self.bytes
+		&self.0
 	}
 }
 
@@ -63,7 +61,7 @@ impl fmt::Debug for NodeName {
 impl fmt::Display for NodeName {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		use core::fmt::Debug;
-		super::DebugBytesAsString(&self.bytes).fmt(fmt)
+		super::DebugBytesAsString(&self.0).fmt(fmt)
 	}
 }
 
