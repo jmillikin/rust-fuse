@@ -260,16 +260,16 @@ impl ReaddirBuf<'_> {
 		let entry_buf = match self {
 			ReaddirBuf::Borrowed {
 				cap,
-				size: size_mut,
+				size: size_ref,
 			} => {
-				let current_size: usize = *size_mut;
+				let current_size: usize = *size_ref;
 				let new_size = current_size.checked_add(entry_size)?;
 				if new_size > cap.len() {
 					return None;
 				}
 				let (_, remaining_cap) = cap.split_at_mut(current_size);
 				let (entry_buf, _) = remaining_cap.split_at_mut(entry_size);
-				*size_mut = new_size;
+				*size_ref = new_size;
 				entry_buf
 			},
 

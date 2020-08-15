@@ -22,7 +22,10 @@ use super::{ListxattrRequest, ListxattrResponse};
 #[test]
 fn request_sized() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_LISTXATTR)
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_LISTXATTR;
+			h.nodeid = 123;
+		})
 		.push_sized(&fuse_kernel::fuse_getxattr_in {
 			size: 10,
 			..Default::default()
@@ -31,13 +34,16 @@ fn request_sized() {
 
 	let req: ListxattrRequest = decode_request!(buf);
 
-	assert_eq!(req.size(), Some(10));
+	assert_eq!(req.size(), Some(num::NonZeroU32::new(10).unwrap()));
 }
 
 #[test]
 fn request_unsized() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_LISTXATTR)
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_LISTXATTR;
+			h.nodeid = 123;
+		})
 		.push_sized(&fuse_kernel::fuse_getxattr_in {
 			size: 0,
 			..Default::default()
@@ -50,38 +56,51 @@ fn request_unsized() {
 }
 
 #[test]
-fn response_sized() {
-	let mut resp: ListxattrResponse<'static> = todo!();
-	/*
-	let mut resp = ListxattrRequest {
-		header: &HEADER,
-		size: 10,
-		}.new_response();
-		*/
-	assert_eq!(resp.request_size, 10);
+fn request_impl_debug() {
+	let request = &ListxattrRequest {
+		phantom: PhantomData,
+		node_id: crate::ROOT_ID,
+		size: num::NonZeroU32::new(11),
+	};
 
-	// value must fit in kernel buffer
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"ListxattrRequest {\n",
+			"    node_id: 1,\n",
+			"    size: Some(11),\n",
+			"}",
+		),
+	);
+}
+
+#[test]
+fn response_sized_heap() {
+	let request_size = num::NonZeroU32::new(10);
+	let mut resp = ListxattrResponse::new(request_size);
+	response_sized_test_impl(&mut resp);
+}
+
+#[test]
+fn response_sized_stack() {
+	let request_size = num::NonZeroU32::new(10);
+	let mut buf = [0u8; 1024];
+	let mut resp = ListxattrResponse::with_capacity(request_size, &mut buf);
+	response_sized_test_impl(&mut resp);
+}
+
+fn response_sized_test_impl(resp: &mut ListxattrResponse) {
+	assert_eq!(resp.request_size(), num::NonZeroU32::new(10));
+
+	// response must fit in kernel buffer
 	{
-		let cstring = CString::new("12345678901").unwrap();
-		let err = resp.push(&cstring).unwrap_err();
-		assert_eq!(err.raw_os_error().unwrap(), errors::ERANGE.get() as i32);
-
-		assert!(resp.buf.is_empty());
-		assert_eq!(resp.raw.size, 0);
+		let name = XattrName::from_bytes(b"12345678901").unwrap();
+		assert!(resp.try_add_name(name).is_none());
 	}
 
-	// pushes append null-terminated xattr names
-	{
-		let cstring = CString::new("123").unwrap();
-		resp.push(&cstring).unwrap();
-		assert_eq!(resp.buf, vec![49, 50, 51, 0]);
-	}
-	{
-		let cstring = CString::new("456").unwrap();
-		resp.push(&cstring).unwrap();
-		assert_eq!(resp.buf, vec![49, 50, 51, 0, 52, 53, 54, 0]);
-	}
-	assert_eq!(resp.raw.size, 0);
+	// xattr names are NUL-terminated
+	resp.add_name(XattrName::from_bytes(b"123").unwrap());
+	resp.add_name(XattrName::from_bytes(b"456").unwrap());
 
 	let encoded = encode_response!(resp);
 
@@ -100,32 +119,15 @@ fn response_sized() {
 
 #[test]
 fn response_unsized() {
-	let mut resp: ListxattrResponse<'static> = todo!();
-	/*
-	let mut resp = ListxattrRequest {
-		header: &HEADER,
-		size: 0,
-		}.new_response();
-		*/
-	assert_eq!(resp.request_size, 0);
+	let mut resp = ListxattrResponse::new(None);
+	assert_eq!(resp.request_size(), None);
 
 	// set_value() doesn't store value bytes for unsized responses
-	{
-		let cstring = CString::new("123").unwrap();
-		resp.push(&cstring).unwrap();
-		assert!(resp.buf.is_empty());
-		assert_eq!(resp.raw.size, 4);
-	}
-	{
-		let cstring = CString::new("456").unwrap();
-		resp.push(&cstring).unwrap();
-		assert!(resp.buf.is_empty());
-		assert_eq!(resp.raw.size, 8);
-	}
+	resp.add_name(XattrName::from_bytes(b"123").unwrap());
+	assert_eq!(resp.raw.size, 4);
 
-	// size can also be set directly
-	resp.set_size(30);
-	assert_eq!(resp.raw.size, 30);
+	resp.add_name(XattrName::from_bytes(b"456").unwrap());
+	assert_eq!(resp.raw.size, 8);
 
 	let encoded = encode_response!(resp);
 
@@ -139,7 +141,7 @@ fn response_unsized() {
 				unique: 0,
 			})
 			.push_sized(&fuse_kernel::fuse_getxattr_out {
-				size: 30,
+				size: 8,
 				padding: 0,
 			})
 			.build()
@@ -147,18 +149,55 @@ fn response_unsized() {
 }
 
 #[test]
-fn response_detect_overflow() {
-	let mut resp: ListxattrResponse<'static> = todo!();
-	/*
-		let mut resp = ListxattrRequest {
-			header: &HEADER,
-			size: 10,
-		}.new_response();
-	*/
-	let big_buf =
-		unsafe { slice::from_raw_parts(0 as *const u8, u32::MAX as usize + 1) };
-	let big_cstr = unsafe { CStr::from_bytes_with_nul_unchecked(big_buf) };
+fn response_size_limit() {
+	// listxattr response size can't exceed XATTR_LIST_MAX
+	let mut resp = ListxattrResponse::new(None);
+	let name = XattrName::from_bytes(&[b'a'; 250]).unwrap();
+	for _ in 0..261 {
+		resp.add_name(name);
+	}
+	assert_eq!(resp.raw.size, 65511);
+	assert!(resp.try_add_name(name).is_none());
+}
 
-	let err = resp.push(&big_cstr).unwrap_err();
-	assert_eq!(err.raw_os_error().unwrap(), errors::ERANGE.get() as i32);
+#[test]
+fn response_sized_impl_debug() {
+	let request_size = num::NonZeroU32::new(10);
+	let mut response = ListxattrResponse::new(request_size);
+
+	response.add_name(XattrName::from_bytes(b"123").unwrap());
+	response.add_name(XattrName::from_bytes(b"456").unwrap());
+
+	assert_eq!(
+		format!("{:#?}", response),
+		concat!(
+			"ListxattrResponse {\n",
+			"    request_size: Some(10),\n",
+			"    size: 8,\n",
+			"    names: [\n",
+			"        \"123\",\n",
+			"        \"456\",\n",
+			"    ],\n",
+			"}",
+		),
+	);
+}
+
+#[test]
+fn response_unsized_impl_debug() {
+	let mut response = ListxattrResponse::new(None);
+
+	response.add_name(XattrName::from_bytes(b"123").unwrap());
+	response.add_name(XattrName::from_bytes(b"456").unwrap());
+
+	assert_eq!(
+		format!("{:#?}", response),
+		concat!(
+			"ListxattrResponse {\n",
+			"    request_size: None,\n",
+			"    size: 8,\n",
+			"    names: [],\n",
+			"}",
+		),
+	);
 }

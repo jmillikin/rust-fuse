@@ -84,7 +84,7 @@ fn request_impl_debug() {
 #[test]
 fn response_sized() {
 	let request_size = num::NonZeroU32::new(10);
-	let mut resp = GetxattrResponse::for_request_size(request_size);
+	let mut resp = GetxattrResponse::new(request_size);
 	assert_eq!(resp.request_size(), request_size);
 
 	// value must fit in kernel buffer
@@ -109,11 +109,14 @@ fn response_sized() {
 
 #[test]
 fn response_unsized() {
-	let mut resp = GetxattrResponse::for_request_size(None);
+	let mut resp = GetxattrResponse::new(None);
 	assert_eq!(resp.request_size(), None);
 
 	// set_value() doesn't allow value sizes larger than XATTR_SIZE_MAX
-	assert!(resp.try_set_value(&[0; crate::XATTR_SIZE_MAX + 1]).is_none());
+	assert!(
+		resp.try_set_value(&[0; crate::XATTR_SIZE_MAX + 1])
+			.is_none()
+	);
 	assert!(resp.value.is_empty());
 	assert_eq!(resp.raw.size, 0);
 
@@ -144,7 +147,7 @@ fn response_unsized() {
 #[test]
 fn response_impl_debug() {
 	let request_size = num::NonZeroU32::new(10);
-	let mut response = GetxattrResponse::for_request_size(request_size);
+	let mut response = GetxattrResponse::new(request_size);
 	response.set_value(b"some\x00bytes");
 
 	assert_eq!(

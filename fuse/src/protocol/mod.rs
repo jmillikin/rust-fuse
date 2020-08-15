@@ -52,7 +52,7 @@ op_mod!(getlk,       "getlk/getlk.rs",             "unstable_fuse_getlk");
 op_mod!(getxattr,    "getxattr/getxattr.rs");
 op_mod!(ioctl,       "ioctl/ioctl.rs",             "unstable_fuse_ioctl");
 op_mod!(link,        "link/link.rs",               "unstable_fuse_link");
-op_mod!(listxattr,   "listxattr/listxattr.rs",     "unstable_fuse_listxattr");
+op_mod!(listxattr,   "listxattr/listxattr.rs");
 op_mod!(lookup,      "lookup/lookup.rs");
 op_mod!(lseek,       "lseek/lseek.rs",             "unstable_fuse_lseek");
 op_mod!(mkdir,       "mkdir/mkdir.rs",             "unstable_fuse_mkdir");

@@ -84,9 +84,7 @@ pub struct GetxattrResponse<'a> {
 }
 
 impl<'a> GetxattrResponse<'a> {
-	pub fn for_request_size(
-		request_size: Option<num::NonZeroU32>,
-	) -> Self {
+	pub fn new(request_size: Option<num::NonZeroU32>) -> Self {
 		Self {
 			request_size,
 			raw: Default::default(),
@@ -106,10 +104,8 @@ impl<'a> GetxattrResponse<'a> {
 		self.try_set_value(value).unwrap()
 	}
 
-	pub fn try_set_value(
-		&mut self,
-		value: &'a [u8],
-	) -> Option<()> { // TODO: Result
+	pub fn try_set_value(&mut self, value: &'a [u8]) -> Option<()> {
+		// TODO: Result
 		if value.len() > crate::XATTR_SIZE_MAX {
 			return None; // ERANGE
 		}
@@ -124,7 +120,7 @@ impl<'a> GetxattrResponse<'a> {
 					return None; // ERANGE
 				}
 				self.value = value;
-			}
+			},
 		}
 		return Some(());
 	}

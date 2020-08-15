@@ -314,7 +314,6 @@ fn fuse_request_dispatch<Handlers: FuseHandlers>(
 		fuse_kernel::FUSE_IOCTL => do_dispatch!(ioctl),
 		#[cfg(feature = "unstable_fuse_link")]
 		fuse_kernel::FUSE_LINK => do_dispatch!(link),
-		#[cfg(feature = "unstable_fuse_listxattr")]
 		fuse_kernel::FUSE_LISTXATTR => do_dispatch!(listxattr),
 		fuse_kernel::FUSE_LOOKUP => do_dispatch!(lookup),
 		#[cfg(feature = "unstable_fuse_lseek")]
