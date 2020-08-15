@@ -24,7 +24,7 @@ pub(super) use core::{cmp, fmt, mem, num, ptr, slice};
 pub(super) use std::ffi::{CStr, CString};
 pub(super) use std::{io, time};
 
-pub(super) use crate::internal::errors;
+pub(super) use crate::error::{Error, ErrorCode};
 pub(super) use crate::internal::fuse_io;
 pub(super) use crate::internal::fuse_kernel;
 pub(super) use crate::protocol::common::{
@@ -46,7 +46,7 @@ pub(super) use crate::internal::fuse_io::{
 	ResponseEncoder,
 };
 
-pub(crate) fn try_node_id(raw: u64) -> io::Result<NodeId> {
+pub(crate) fn try_node_id(raw: u64) -> Result<NodeId, Error> {
 	match NodeId::new(raw) {
 		Some(x) => Ok(x),
 		None => todo!("failure path in try_node_id"),

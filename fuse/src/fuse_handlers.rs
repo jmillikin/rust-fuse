@@ -14,7 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::internal::errors;
 use crate::protocol;
 use crate::server;
 
@@ -26,11 +25,12 @@ use crate::server;
 /// to send the response.
 ///
 /// The default implementation for all async handlers is to respond with
-/// error code `ENOSYS`.
+/// [`ErrorCode::ENOSYS`].
 ///
 /// [`fuse_init`]: #method.fuse_init
 /// [`ServerContext`]: struct.ServerContext.html
 /// [`ServerResponseWriter`]: struct.ServerResponseWriter.html
+/// [`ErrorCode::ENOSYS`]: struct.ErrorCode.html#associatedconstant.ENOSYS
 pub trait FuseHandlers {
 	/// Initialize the FUSE connection parameters.
 	///
@@ -57,7 +57,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::AccessResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fuse_bmap"))]
@@ -69,7 +69,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::BmapResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fuse_create"))]
@@ -81,7 +81,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::CreateResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fuse_fallocate"))]
@@ -93,7 +93,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::FallocateResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fuse_flush"))]
@@ -105,7 +105,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::FlushResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	fn forget(
@@ -125,7 +125,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::FsyncResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fuse_fsyncdir"))]
@@ -137,7 +137,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::FsyncdirResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	fn getattr(
@@ -147,7 +147,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::GetattrResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fuse_getlk"))]
@@ -159,7 +159,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::GetlkResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	fn getxattr(
@@ -169,7 +169,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::GetxattrResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fuse_ioctl"))]
@@ -181,7 +181,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::IoctlResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fuse_link"))]
@@ -193,7 +193,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::LinkResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	fn listxattr(
@@ -203,7 +203,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::ListxattrResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	fn lookup(
@@ -213,7 +213,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::LookupResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fuse_lseek"))]
@@ -225,7 +225,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::LseekResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fuse_mkdir"))]
@@ -237,7 +237,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::MkdirResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fuse_mknod"))]
@@ -249,7 +249,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::MknodResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	fn open(
@@ -259,7 +259,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::OpenResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	fn opendir(
@@ -269,7 +269,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::OpendirResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	fn read(
@@ -279,7 +279,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::ReadResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	fn readdir(
@@ -289,7 +289,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::ReaddirResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	fn readlink(
@@ -299,7 +299,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::ReadlinkResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	fn release(
@@ -309,7 +309,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::ReleaseResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	fn releasedir(
@@ -319,7 +319,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::ReleasedirResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fuse_removexattr"))]
@@ -331,7 +331,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::RemovexattrResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fuse_rename"))]
@@ -343,7 +343,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::RenameResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fuse_rmdir"))]
@@ -355,7 +355,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::RmdirResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fuse_setattr"))]
@@ -367,7 +367,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::SetattrResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fuse_setlk"))]
@@ -379,7 +379,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::SetlkResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fuse_setxattr"))]
@@ -391,7 +391,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::SetxattrResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fuse_statfs"))]
@@ -403,7 +403,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::StatfsResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fuse_symlink"))]
@@ -415,7 +415,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::SymlinkResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fuse_unlink"))]
@@ -427,7 +427,7 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::UnlinkResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fuse_write"))]
@@ -439,6 +439,6 @@ pub trait FuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::WriteResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(errors::ENOSYS);
+		respond.err(crate::ErrorCode::ENOSYS);
 	}
 }

@@ -14,13 +14,15 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use std::io;
 use std::mem::size_of;
 
+use crate::error::{Error, ErrorKind};
 use crate::internal::fuse_kernel;
 use crate::internal::testutil::MessageBuilder;
 
 use super::RequestDecoder;
+
+const UNEXPECTED_EOF: Error = Error(ErrorKind::UnexpectedEof);
 
 #[test]
 fn request_decoder_new() {
@@ -52,16 +54,10 @@ fn request_decoder_eof_handling() {
 
 	// OK to read right up to the frame size.
 	decoder.next_bytes(8).unwrap();
-	assert_eq!(
-		decoder.next_bytes(1).map_err(|err| err.kind()),
-		Ok(&[90u8] as &[u8]),
-	);
+	assert_eq!(decoder.next_bytes(1), Ok(&[90u8] as &[u8]),);
 
 	// reading past the frame size is an error.
-	assert_eq!(
-		decoder.next_bytes(1).map_err(|err| err.kind()),
-		Err(std::io::ErrorKind::UnexpectedEof)
-	);
+	assert_eq!(decoder.next_bytes(1), Err(UNEXPECTED_EOF));
 }
 
 /*
@@ -86,13 +82,10 @@ fn frame_reader_u32_overflow() {
 	reader.consumed = u32::MAX - 1;
 
 	// OK to read right up to the frame size.
-	assert_eq!(reader.consume(1).map_err(|err| err.kind()), Ok(u32::MAX));
+	assert_eq!(reader.consume(1), Ok(u32::MAX));
 
 	// catch u32 overflow
-	assert_eq!(
-		reader.consume(2).map_err(|err| err.kind()),
-		Err(io::ErrorKind::UnexpectedEof)
-	);
+	assert_eq!(reader.consume(2), Err(UNEXPECTED_EOF));
 }
 */
 
@@ -116,10 +109,7 @@ fn request_decoder_sized() {
 	assert_eq!(did_read, &[5, 6, 7, 8]);
 
 	// [8 .. 12] hits EOF
-	assert_eq!(
-		decoder.next_sized::<u32>().map_err(|err| err.kind()),
-		Err(std::io::ErrorKind::UnexpectedEof)
-	);
+	assert_eq!(decoder.next_sized::<u32>(), Err(UNEXPECTED_EOF));
 }
 
 #[test]
@@ -142,10 +132,7 @@ fn frame_decoder_bytes() {
 	assert_eq!(did_read, &[5, 6, 7, 8]);
 
 	// [8 .. 12) hits EOF
-	assert_eq!(
-		decoder.next_bytes(4).map_err(|err| err.kind()),
-		Err(std::io::ErrorKind::UnexpectedEof)
-	);
+	assert_eq!(decoder.next_bytes(4), Err(UNEXPECTED_EOF));
 }
 
 #[test]
@@ -168,8 +155,5 @@ fn frame_reader_cstr() {
 	assert_eq!(did_read.to_bytes_with_nul(), &[5, 6, 7, 8, 0]);
 
 	// [10 .. 15) hits EOF
-	assert_eq!(
-		decoder.next_cstr().map_err(|err| err.kind()),
-		Err(io::ErrorKind::UnexpectedEof)
-	);
+	assert_eq!(decoder.next_cstr(), Err(UNEXPECTED_EOF));
 }

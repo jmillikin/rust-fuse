@@ -32,7 +32,7 @@ impl StatfsRequest<'_> {
 }
 
 impl<'a> fuse_io::DecodeRequest<'a> for StatfsRequest<'a> {
-	fn decode_request(dec: fuse_io::RequestDecoder<'a>) -> io::Result<Self> {
+	fn decode_request(dec: fuse_io::RequestDecoder<'a>) -> Result<Self, Error> {
 		let header = dec.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_STATFS);
 		Ok(Self { header })
@@ -67,7 +67,7 @@ impl fuse_io::EncodeResponse for StatfsResponse<'_> {
 	fn encode_response<'a, Chan: fuse_io::Channel>(
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
-	) -> std::io::Result<()> {
+	) -> Result<(), Error> {
 		enc.encode_sized(&self.raw)
 	}
 }

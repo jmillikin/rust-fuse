@@ -61,7 +61,7 @@ impl RenameRequest<'_> {
 impl<'a> fuse_io::DecodeRequest<'a> for RenameRequest<'a> {
 	fn decode_request(
 		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> io::Result<Self> {
+	) -> Result<Self, Error> {
 		let header = dec.header();
 
 		let mut flags = 0;
@@ -113,7 +113,7 @@ impl fuse_io::EncodeResponse for RenameResponse<'_> {
 	fn encode_response<'a, Chan: fuse_io::Channel>(
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
-	) -> std::io::Result<()> {
+	) -> Result<(), Error> {
 		enc.encode_header_only()
 	}
 }

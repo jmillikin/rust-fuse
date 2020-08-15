@@ -14,7 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::internal::errors;
 use crate::protocol::prelude::*;
 
 #[cfg(test)]
@@ -44,7 +43,7 @@ impl LookupRequest<'_> {
 impl<'a> fuse_io::DecodeRequest<'a> for LookupRequest<'a> {
 	fn decode_request(
 		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> io::Result<Self> {
+	) -> Result<Self, Error> {
 		let header = dec.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_LOOKUP);
 
@@ -96,12 +95,12 @@ impl fuse_io::EncodeResponse for LookupResponse<'_> {
 	fn encode_response<'a, Chan: fuse_io::Channel>(
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
-	) -> std::io::Result<()> {
+	) -> Result<(), Error> {
 		// In early versions of FUSE, `fuse_entry_out::nodeid` was a required
 		// field and must be non-zero. FUSE v7.4 relaxed this so that a zero
 		// node ID was the same as returning ENOENT, but with a cache hint.
 		if self.entry_out.nodeid == 0 && enc.version().minor() < 4 {
-			return enc.encode_error(errors::ENOENT);
+			return enc.encode_error(ErrorCode::ENOENT);
 		}
 		self.node().encode_entry(enc)
 	}

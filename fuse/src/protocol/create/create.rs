@@ -64,7 +64,7 @@ struct fuse_create_in_v7p1 {
 impl<'a> fuse_io::DecodeRequest<'a> for CreateRequest<'a> {
 	fn decode_request(
 		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> io::Result<Self> {
+	) -> Result<Self, Error> {
 		let header = dec.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_CREATE);
 
@@ -153,7 +153,7 @@ impl fuse_io::EncodeResponse for CreateResponse<'_> {
 	fn encode_response<'a, Chan: fuse_io::Channel>(
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
-	) -> std::io::Result<()> {
+	) -> Result<(), Error> {
 		self.node().encode_entry_sized(enc, &self.open_out)
 	}
 }

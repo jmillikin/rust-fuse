@@ -14,7 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-pub(crate) mod errors;
 pub(crate) mod fuse_io;
 pub(crate) mod types;
 

@@ -14,11 +14,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use std::io;
 use std::sync::{Arc, Mutex};
 
+use crate::error::{Error, ErrorCode, ErrorKind};
 use crate::fuse_handlers::FuseHandlers;
-use crate::internal::errors;
 use crate::internal::fuse_io::{
 	self,
 	AlignedBuffer,
@@ -48,7 +47,7 @@ where
 		fuse_device: fuse_io::FileChannel,
 		mount: Mount,
 		mut handlers: Handlers,
-	) -> std::io::Result<Self> {
+	) -> Result<Self, Error> {
 		let executor_channel = fuse_device.try_clone()?;
 		let init_response = fuse_handshake(&fuse_device, &mut handlers)?;
 		let fuse_version = init_response.version();
@@ -74,7 +73,7 @@ where
 	Mount: FuseMount,
 {
 	#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
-	pub fn unmount(self) -> io::Result<()> {
+	pub fn unmount(self) -> Result<(), Error> {
 		self.mount.unmount()
 	}
 }
@@ -86,7 +85,7 @@ impl<Handlers, Mount> FuseServer<Handlers, Mount> {
 	}
 
 	#[doc(hidden)]
-	pub fn new_executor(&self) -> io::Result<FuseServerExecutor<Handlers>> {
+	pub fn new_executor(&self) -> Result<FuseServerExecutor<Handlers>, Error> {
 		let _ = self.fuse_device;
 		let _ = self.handlers;
 		let _ = self.fuse_version;
@@ -97,7 +96,7 @@ impl<Handlers, Mount> FuseServer<Handlers, Mount> {
 fn fuse_handshake<Channel, Handlers>(
 	channel: &Channel,
 	handlers: &mut Handlers,
-) -> io::Result<protocol::FuseInitResponse>
+) -> Result<protocol::FuseInitResponse, Error>
 where
 	Channel: fuse_io::Channel,
 	Handlers: FuseHandlers,
@@ -114,13 +113,7 @@ where
 
 		let request_header = request_decoder.header();
 		if request_header.opcode != fuse_kernel::FUSE_INIT {
-			return Err(io::Error::new(
-				io::ErrorKind::InvalidData,
-				format!(
-					"Received bad opcode {:?} from kernel (expected FUSE_INIT)",
-					request_header.opcode
-				),
-			));
+			return Err(Error(ErrorKind::ExpectedFuseInit));
 		}
 
 		let request_id = request_header.unique;
@@ -163,10 +156,10 @@ pub trait FuseMount: Sized {
 	fn mount(
 		mount_target: &std::path::Path,
 		options: Option<Self::Options>,
-	) -> io::Result<(std::fs::File, Self)>;
+	) -> Result<(std::fs::File, Self), Error>;
 
 	#[doc(hidden)]
-	fn unmount(self) -> io::Result<()>;
+	fn unmount(self) -> Result<(), Error>;
 }
 
 #[cfg_attr(doc, doc(cfg(feature = "unstable")))]
@@ -198,7 +191,7 @@ where
 	pub fn mount<Mount, Path>(
 		self,
 		mount_target: Path,
-	) -> io::Result<FuseServer<Handlers, Mount>>
+	) -> Result<FuseServer<Handlers, Mount>, Error>
 	where
 		Path: AsRef<std::path::Path>,
 		Mount: FuseMount<Options = MountOptions>,
@@ -241,13 +234,13 @@ impl<Handlers: FuseHandlers> FuseServerExecutor<Handlers> {
 	}
 
 	#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
-	pub fn run(&mut self) -> io::Result<()> {
+	pub fn run(&mut self) -> Result<(), Error> {
 		let handlers = &*self.handlers;
 		loop {
 			let request_size = match self.channel.read(self.read_buf.get_mut())
 			{
 				Err(err) => {
-					if err.raw_os_error() == Some(errors::ENODEV.get() as i32) {
+					if err == Error::new(ErrorCode::ENODEV) {
 						return Ok(());
 					} else {
 						return Err(err);
@@ -269,7 +262,7 @@ fn fuse_request_dispatch<Handlers: FuseHandlers>(
 	handlers: &Handlers,
 	request_decoder: fuse_io::RequestDecoder,
 	channel: &Arc<fuse_io::FileChannel>,
-) -> std::io::Result<()> {
+) -> Result<(), Error> {
 	let header = request_decoder.header();
 
 	let fuse_version = request_decoder.version();
@@ -362,7 +355,7 @@ fn fuse_request_dispatch<Handlers: FuseHandlers>(
 			// handlers.unknown(ctx, &request);
 			// TODO: use ServerLogger to log the unknown request
 			let _ = request;
-			respond_once.encoder().encode_error(errors::ENOSYS);
+			respond_once.encoder().encode_error(ErrorCode::ENOSYS);
 		},
 	}
 	Ok(())

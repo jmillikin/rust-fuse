@@ -14,7 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::num::NonZeroU16;
 use std::sync::Arc;
 
 use crate::internal::fuse_io;
@@ -57,19 +56,17 @@ mod private {
 }
 
 /// **\[SEALED\]**
-#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
 pub trait RespondOnce<Response>: private::Sealed + Send {
 	fn ok(self, response: &Response);
-	fn err(self, err: NonZeroU16);
+	fn err(self, err: crate::ErrorCode);
 
 	fn into_box(self) -> Box<dyn RespondOnceBox<Response> + 'static>;
 }
 
 /// **\[SEALED\]**
-#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
 pub trait RespondOnceBox<Response>: private::Sealed + Send {
 	fn ok(self: Box<Self>, response: &Response);
-	fn err(self: Box<Self>, err: NonZeroU16);
+	fn err(self: Box<Self>, err: crate::ErrorCode);
 }
 
 // RespondOnceImpl {{{
@@ -114,7 +111,7 @@ where
 		response.encode_response(self.encoder());
 	}
 
-	fn err(self, err: NonZeroU16) {
+	fn err(self, err: crate::ErrorCode) {
 		self.encoder().encode_error(err);
 	}
 
@@ -157,7 +154,7 @@ where
 		response.encode_response(self.encoder());
 	}
 
-	fn err(self: Box<Self>, err: NonZeroU16) {
+	fn err(self: Box<Self>, err: crate::ErrorCode) {
 		self.encoder().encode_error(err);
 	}
 }

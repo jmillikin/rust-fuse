@@ -52,7 +52,7 @@ impl fmt::Debug for GetattrRequest<'_> {
 impl<'a> fuse_io::DecodeRequest<'a> for GetattrRequest<'a> {
 	fn decode_request(
 		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> io::Result<Self> {
+	) -> Result<Self, Error> {
 		let header = dec.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_GETATTR);
 
@@ -131,7 +131,7 @@ impl fuse_io::EncodeResponse for GetattrResponse<'_> {
 	fn encode_response<'a, Chan: fuse_io::Channel>(
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
-	) -> std::io::Result<()> {
+	) -> Result<(), Error> {
 		// The `fuse_attr::blksize` field was added in FUSE v7.9.
 		if enc.version().minor() < 9 {
 			let buf: &[u8] = unsafe {

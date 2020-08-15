@@ -20,6 +20,9 @@
 #[macro_use]
 mod internal;
 
+mod error;
+pub use self::error::{Error, ErrorCode};
+
 mod fuse_handlers;
 pub use self::fuse_handlers::*;
 

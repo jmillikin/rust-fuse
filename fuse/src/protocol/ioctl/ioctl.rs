@@ -44,7 +44,7 @@ impl IoctlRequest<'_> {
 impl<'a> fuse_io::DecodeRequest<'a> for IoctlRequest<'a> {
 	fn decode_request(
 		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> io::Result<Self> {
+	) -> Result<Self, Error> {
 		let header = dec.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_IOCTL);
 		let raw: &'a fuse_kernel::fuse_ioctl_in = dec.next_sized()?;
@@ -134,7 +134,7 @@ impl fuse_io::EncodeResponse for IoctlResponse<'_> {
 	fn encode_response<'a, Chan: fuse_io::Channel>(
 		&'a self,
 		_enc: fuse_io::ResponseEncoder<Chan>,
-	) -> std::io::Result<()> {
+	) -> Result<(), Error> {
 		todo!()
 		//w.append_sized(&self.raw);
 		//w.append_bytes(self.buf())

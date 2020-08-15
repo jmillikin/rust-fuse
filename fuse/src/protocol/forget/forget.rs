@@ -69,7 +69,7 @@ impl fmt::Debug for ForgetRequest<'_> {
 impl<'a> fuse_io::DecodeRequest<'a> for ForgetRequest<'a> {
 	fn decode_request(
 		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> io::Result<Self> {
+	) -> Result<Self, Error> {
 		let header = dec.header();
 		if header.opcode == fuse_kernel::FUSE_BATCH_FORGET {
 			let raw: &'a fuse_kernel::fuse_batch_forget_in =

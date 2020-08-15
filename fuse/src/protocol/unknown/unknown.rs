@@ -54,7 +54,7 @@ impl<'a> UnknownRequest<'a> {
 impl<'a> fuse_io::DecodeRequest<'a> for UnknownRequest<'a> {
 	fn decode_request(
 		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> io::Result<Self> {
+	) -> Result<Self, Error> {
 		let header = dec.header();
 		let body_offset = size_of::<fuse_kernel::fuse_in_header>() as u32;
 		let body = dec.next_bytes(header.len - body_offset)?;

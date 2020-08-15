@@ -14,12 +14,15 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::convert::TryInto;
 use std::ffi::{CString, OsStr, OsString};
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::MetadataExt;
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::PathBuf;
 use std::{fs, io};
+
+use crate::error::{Error, ErrorKind};
 
 #[path = "syscalls.rs"]
 mod syscalls;
@@ -82,7 +85,7 @@ impl FuseMountOptions {
 		return 6;
 	}
 
-	fn mount_source_cstr(&self) -> io::Result<CString> {
+	fn mount_source_cstr(&self) -> Result<CString, Error> {
 		let name = &self.mount_source;
 		if name == "" {
 			return Ok(CString::new("fuse").unwrap());
@@ -90,7 +93,7 @@ impl FuseMountOptions {
 		cstr_from_osstr(OsStr::new(&name))
 	}
 
-	fn mount_type_cstr(&self) -> io::Result<CString> {
+	fn mount_type_cstr(&self) -> Result<CString, Error> {
 		let subtype = &self.mount_subtype;
 		if subtype == "" {
 			return Ok(CString::new("fuse").unwrap());
@@ -101,7 +104,7 @@ impl FuseMountOptions {
 		cstr_from_osstr(&buf)
 	}
 
-	fn mount_data(&self, fd: RawFd, root_mode: u32) -> io::Result<CString> {
+	fn mount_data(&self, fd: RawFd, root_mode: u32) -> Result<CString, Error> {
 		let user_id = self.user_id.unwrap_or_else(|| syscalls::getuid());
 		let group_id = self.group_id.unwrap_or_else(|| syscalls::getgid());
 
@@ -127,7 +130,7 @@ impl crate::FuseMount for FuseMount {
 	fn mount(
 		mount_target: &std::path::Path,
 		options: Option<Self::Options>,
-	) -> io::Result<(std::fs::File, Self)> {
+	) -> Result<(std::fs::File, Self), Error> {
 		let options = match options {
 			Some(x) => x,
 			None => FuseMountOptions::new(),
@@ -141,7 +144,7 @@ impl crate::FuseMount for FuseMount {
 		let root_mode = match options.root_mode {
 			Some(mode) => mode,
 			None => {
-				let meta = fs::metadata(mount_target)?;
+				let meta = fs::metadata(mount_target).map_err(convert_error)?;
 				meta.mode()
 			},
 		};
@@ -149,7 +152,8 @@ impl crate::FuseMount for FuseMount {
 		let file = fs::OpenOptions::new()
 			.read(true)
 			.write(true)
-			.open(&options.device_path)?;
+			.open(&options.device_path)
+			.map_err(convert_error)?;
 		let fd = file.as_raw_fd();
 
 		let mount_data = options.mount_data(fd, root_mode)?;
@@ -159,7 +163,8 @@ impl crate::FuseMount for FuseMount {
 			&mount_type_cstr,
 			mount_flags,
 			mount_data.to_bytes_with_nul(),
-		)?;
+		)
+		.map_err(convert_error)?;
 
 		Ok((
 			file,
@@ -170,16 +175,27 @@ impl crate::FuseMount for FuseMount {
 	}
 
 	#[doc(hidden)]
-	fn unmount(self) -> io::Result<()> {
+	fn unmount(self) -> Result<(), Error> {
 		println!("Linux unmount not implemented yet");
 		let _ = self.mount_target;
 		Ok(())
 	}
 }
 
-fn cstr_from_osstr(x: &OsStr) -> io::Result<CString> {
+fn cstr_from_osstr(x: &OsStr) -> Result<CString, Error> {
 	match CString::new(x.as_bytes()) {
 		Ok(val) => Ok(val),
-		Err(err) => Err(io::Error::new(io::ErrorKind::InvalidInput, err)),
+		Err(_) => Err(Error(ErrorKind::InvalidInput)),
 	}
+}
+
+fn convert_error(err: io::Error) -> Error {
+	if let Some(os_err) = err.raw_os_error() {
+		if let Ok(os_err) = os_err.try_into() {
+			if let Some(err_code) = core::num::NonZeroU16::new(os_err) {
+				return Error::new(err_code.into());
+			}
+		}
+	}
+	Error(ErrorKind::Unknown)
 }

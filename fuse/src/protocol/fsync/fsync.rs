@@ -44,7 +44,7 @@ impl FsyncRequest<'_> {
 impl<'a> fuse_io::DecodeRequest<'a> for FsyncRequest<'a> {
 	fn decode_request(
 		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> io::Result<Self> {
+	) -> Result<Self, Error> {
 		let header = dec.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_FSYNC);
 
@@ -83,7 +83,7 @@ impl fuse_io::EncodeResponse for FsyncResponse<'_> {
 	fn encode_response<'a, Chan: fuse_io::Channel>(
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
-	) -> std::io::Result<()> {
+	) -> Result<(), Error> {
 		enc.encode_header_only()
 	}
 }

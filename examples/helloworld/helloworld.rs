@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use std::num::{NonZeroU16, NonZeroU64};
+use std::num::NonZeroU64;
 
 const HELLO_WORLD: &[u8] = b"Hello, world!\n";
 
@@ -50,11 +50,11 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		respond: impl for<'a> fuse::RespondOnce<fuse::LookupResponse<'a>>,
 	) {
 		if request.parent_id() != fuse::ROOT_ID {
-			respond.err(err_not_found());
+			respond.err(fuse::ErrorCode::ENOENT);
 			return;
 		}
 		if request.name() != HELLO_TXT.name() {
-			respond.err(err_not_found());
+			respond.err(fuse::ErrorCode::ENOENT);
 			return;
 		}
 
@@ -90,7 +90,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 			return;
 		}
 
-		respond.err(err_not_found());
+		respond.err(fuse::ErrorCode::ENOENT);
 	}
 
 	fn open(
@@ -100,7 +100,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		respond: impl for<'a> fuse::RespondOnce<fuse::OpenResponse<'a>>,
 	) {
 		if request.node_id() != HELLO_TXT.node_id() {
-			respond.err(err_not_found());
+			respond.err(fuse::ErrorCode::ENOENT);
 			return;
 		}
 
@@ -116,7 +116,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		respond: impl for<'a> fuse::RespondOnce<fuse::ReadResponse<'a>>,
 	) {
 		if request.handle() != 1001 {
-			respond.err(err_io());
+			respond.err(fuse::ErrorCode::EIO);
 			return;
 		}
 
@@ -131,7 +131,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		respond: impl for<'a> fuse::RespondOnce<fuse::OpendirResponse<'a>>,
 	) {
 		if request.node_id() != fuse::ROOT_ID {
-			respond.err(err_not_found());
+			respond.err(fuse::ErrorCode::ENOENT);
 			return;
 		}
 
@@ -147,7 +147,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		respond: impl for<'a> fuse::RespondOnce<fuse::ReaddirResponse<'a>>,
 	) {
 		if request.handle() != 1002 {
-			respond.err(err_io());
+			respond.err(fuse::ErrorCode::EIO);
 			return;
 		}
 
@@ -172,21 +172,13 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		respond: impl for<'a> fuse::RespondOnce<fuse::ReleasedirResponse<'a>>,
 	) {
 		if request.handle() != 1002 {
-			respond.err(err_io());
+			respond.err(fuse::ErrorCode::EIO);
 			return;
 		}
 
 		let resp = fuse::ReleasedirResponse::new();
 		respond.ok(&resp);
 	}
-}
-
-fn err_not_found() -> NonZeroU16 {
-	unsafe { NonZeroU16::new_unchecked(libc::ENOENT as u16) }
-}
-
-fn err_io() -> NonZeroU16 {
-	unsafe { NonZeroU16::new_unchecked(libc::EIO as u16) }
 }
 
 fn getuid() -> u32 {
