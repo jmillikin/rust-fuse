@@ -56,9 +56,9 @@ pub struct RemovexattrResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
 
-impl RemovexattrResponse<'_> {
-	pub fn new() -> Self {
-		RemovexattrResponse {
+impl<'a> RemovexattrResponse<'a> {
+	pub fn new() -> RemovexattrResponse<'a> {
+		Self {
 			phantom: PhantomData,
 		}
 	}

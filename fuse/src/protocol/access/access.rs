@@ -66,9 +66,9 @@ pub struct AccessResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
 
-impl AccessResponse<'_> {
-	pub fn new() -> Self {
-		AccessResponse {
+impl<'a> AccessResponse<'a> {
+	pub fn new() -> AccessResponse<'a> {
+		Self {
 			phantom: PhantomData,
 		}
 	}

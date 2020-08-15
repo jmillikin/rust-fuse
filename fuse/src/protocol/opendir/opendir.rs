@@ -80,9 +80,9 @@ pub struct OpendirResponse<'a> {
 	raw: fuse_kernel::fuse_open_out,
 }
 
-impl OpendirResponse<'_> {
-	pub fn new() -> Self {
-		OpendirResponse {
+impl<'a> OpendirResponse<'a> {
+	pub fn new() -> OpendirResponse<'a> {
+		Self {
 			phantom: PhantomData,
 			raw: fuse_kernel::fuse_open_out {
 				fh: 0,

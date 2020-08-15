@@ -66,9 +66,9 @@ pub struct LseekResponse<'a> {
 	raw: fuse_kernel::fuse_lseek_out,
 }
 
-impl LseekResponse<'_> {
-	pub fn new() -> Self {
-		LseekResponse {
+impl<'a> LseekResponse<'a> {
+	pub fn new() -> LseekResponse<'a> {
+		Self {
 			phantom: PhantomData,
 			raw: fuse_kernel::fuse_lseek_out { offset: 0 },
 		}

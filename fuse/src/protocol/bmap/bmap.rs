@@ -57,9 +57,9 @@ pub struct BmapResponse<'a> {
 	raw: fuse_kernel::fuse_bmap_out,
 }
 
-impl BmapResponse<'_> {
-	pub fn new() -> Self {
-		BmapResponse {
+impl<'a> BmapResponse<'a> {
+	pub fn new() -> BmapResponse<'a> {
+		Self {
 			phantom: PhantomData,
 			raw: Default::default(),
 		}

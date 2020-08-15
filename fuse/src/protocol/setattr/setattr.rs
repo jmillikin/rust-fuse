@@ -131,10 +131,10 @@ pub struct SetattrResponse<'a> {
 	raw: fuse_kernel::fuse_attr_out,
 }
 
-impl SetattrResponse<'_> {
+impl<'a> SetattrResponse<'a> {
 	// TODO: fix API
-	pub fn new(request: &SetattrRequest) -> Self {
-		SetattrResponse {
+	pub fn new(request: &SetattrRequest) -> SetattrResponse<'a> {
+		Self {
 			phantom: PhantomData,
 			raw: fuse_kernel::fuse_attr_out {
 				attr_valid: 0,

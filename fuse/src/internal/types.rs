@@ -29,7 +29,7 @@ impl ProtocolVersion {
 		minor: fuse_kernel::FUSE_KERNEL_MINOR_VERSION,
 	};
 
-	pub fn new(major: u32, minor: u32) -> Self {
+	pub fn new(major: u32, minor: u32) -> ProtocolVersion {
 		ProtocolVersion { major, minor }
 	}
 

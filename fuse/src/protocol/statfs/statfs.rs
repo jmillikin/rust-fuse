@@ -48,9 +48,9 @@ pub struct StatfsResponse<'a> {
 	raw: fuse_kernel::fuse_statfs_out,
 }
 
-impl StatfsResponse<'_> {
-	pub fn new() -> Self {
-		StatfsResponse {
+impl<'a> StatfsResponse<'a> {
+	pub fn new() -> StatfsResponse<'a> {
+		Self {
 			phantom: PhantomData,
 			raw: Default::default(),
 		}

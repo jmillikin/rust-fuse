@@ -147,9 +147,9 @@ impl<'a> ReaddirResponse<'a> {
 	/// 	respond.ok(&response);
 	/// }
 	/// ```
-	pub fn with_max_size(max_size: u32) -> Self {
+	pub fn with_max_size(max_size: u32) -> ReaddirResponse<'a> {
 		let max_size = max_size as usize;
-		ReaddirResponse {
+		Self {
 			buf: Some(ReaddirBuf::Owned {
 				cap: Vec::new(),
 				max_size,
@@ -180,14 +180,14 @@ impl<'a> ReaddirResponse<'a> {
 	/// 	respond.ok(&response);
 	/// }
 	/// ```
-	pub fn with_capacity(capacity: &'a mut [u8]) -> Self {
+	pub fn with_capacity(capacity: &'a mut [u8]) -> ReaddirResponse<'a> {
 		let offset = capacity.as_ptr().align_offset(mem::align_of::<u64>());
 		if offset != 0 {
 			panic!(
 				"ReaddirResponse::with_capacity() requires an 8-byte aligned buffer."
 			);
 		}
-		ReaddirResponse {
+		Self {
 			buf: Some(ReaddirBuf::Borrowed {
 				cap: capacity,
 				size: 0,

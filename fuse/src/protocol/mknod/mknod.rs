@@ -97,9 +97,9 @@ pub struct MknodResponse<'a> {
 	raw: fuse_kernel::fuse_entry_out,
 }
 
-impl MknodResponse<'_> {
-	pub fn new() -> Self {
-		MknodResponse {
+impl<'a> MknodResponse<'a> {
+	pub fn new() -> MknodResponse<'a> {
+		Self {
 			phantom: PhantomData,
 			raw: Default::default(),
 		}

@@ -71,9 +71,9 @@ pub struct LinkResponse<'a> {
 	raw: fuse_kernel::fuse_entry_out,
 }
 
-impl LinkResponse<'_> {
-	pub fn new() -> Self {
-		LinkResponse {
+impl<'a> LinkResponse<'a> {
+	pub fn new() -> LinkResponse<'a> {
+		Self {
 			phantom: PhantomData,
 			raw: Default::default(),
 		}

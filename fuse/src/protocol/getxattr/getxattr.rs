@@ -84,7 +84,7 @@ pub struct GetxattrResponse<'a> {
 }
 
 impl<'a> GetxattrResponse<'a> {
-	pub fn new(request_size: Option<num::NonZeroU32>) -> Self {
+	pub fn new(request_size: Option<num::NonZeroU32>) -> GetxattrResponse<'a> {
 		Self {
 			request_size,
 			raw: Default::default(),

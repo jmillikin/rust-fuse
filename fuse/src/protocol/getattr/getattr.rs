@@ -92,9 +92,9 @@ pub struct GetattrResponse<'a> {
 	raw: fuse_kernel::fuse_attr_out,
 }
 
-impl GetattrResponse<'_> {
-	pub fn new() -> Self {
-		GetattrResponse {
+impl<'a> GetattrResponse<'a> {
+	pub fn new() -> GetattrResponse<'a> {
+		Self {
 			phantom: PhantomData,
 			raw: Default::default(),
 		}

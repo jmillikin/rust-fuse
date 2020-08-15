@@ -78,21 +78,19 @@ pub struct ListxattrResponse<'a> {
 	buf: ListxattrBuf<'a>,
 }
 
-impl ListxattrResponse<'_> {
-	pub fn new(request_size: Option<num::NonZeroU32>) -> Self {
+impl<'a> ListxattrResponse<'a> {
+	pub fn new(request_size: Option<num::NonZeroU32>) -> ListxattrResponse<'a> {
 		Self {
 			request_size,
 			raw: Default::default(),
 			buf: ListxattrBuf::Owned { cap: Vec::new() },
 		}
 	}
-}
 
-impl<'a> ListxattrResponse<'a> {
 	pub fn with_capacity(
 		request_size: Option<num::NonZeroU32>,
 		capacity: &'a mut [u8],
-	) -> Self {
+	) -> ListxattrResponse<'a> {
 		Self {
 			request_size,
 			raw: Default::default(),
@@ -102,9 +100,7 @@ impl<'a> ListxattrResponse<'a> {
 			},
 		}
 	}
-}
 
-impl ListxattrResponse<'_> {
 	pub fn request_size(&self) -> Option<num::NonZeroU32> {
 		self.request_size
 	}

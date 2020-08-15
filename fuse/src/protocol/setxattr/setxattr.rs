@@ -73,9 +73,9 @@ pub struct SetxattrResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
 
-impl SetxattrResponse<'_> {
-	pub fn new() -> Self {
-		SetxattrResponse {
+impl<'a> SetxattrResponse<'a> {
+	pub fn new() -> SetxattrResponse<'a> {
+		Self {
 			phantom: PhantomData,
 		}
 	}

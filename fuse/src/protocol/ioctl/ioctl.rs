@@ -81,7 +81,7 @@ pub struct IoctlResponse<'a> {
 
 impl<'a> IoctlResponse<'a> {
 	// TODO: fix construction API
-	pub fn new(request: &IoctlRequest) -> Self {
+	pub fn new(request: &IoctlRequest) -> IoctlResponse<'a> {
 		let out_size = request.raw.out_size as usize;
 		let buf: OutBuf;
 		if out_size > PAGE_SIZE {
@@ -89,7 +89,7 @@ impl<'a> IoctlResponse<'a> {
 		} else {
 			buf = OutBuf::OutArr([0; 4096], out_size)
 		}
-		IoctlResponse {
+		Self {
 			phantom: PhantomData,
 			raw: Default::default(),
 			buf: buf,

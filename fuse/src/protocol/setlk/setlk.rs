@@ -73,9 +73,9 @@ pub struct SetlkResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
 
-impl SetlkResponse<'_> {
-	pub fn new() -> Self {
-		SetlkResponse {
+impl<'a> SetlkResponse<'a> {
+	pub fn new() -> SetlkResponse<'a> {
+		Self {
 			phantom: PhantomData,
 		}
 	}

@@ -56,9 +56,9 @@ pub struct UnlinkResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
 
-impl UnlinkResponse<'_> {
-	pub fn new() -> Self {
-		UnlinkResponse {
+impl<'a> UnlinkResponse<'a> {
+	pub fn new() -> UnlinkResponse<'a> {
+		Self {
 			phantom: PhantomData,
 		}
 	}

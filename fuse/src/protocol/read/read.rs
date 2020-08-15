@@ -143,7 +143,7 @@ pub struct ReadResponse<'a> {
 }
 
 impl<'a> ReadResponse<'a> {
-	pub fn from_bytes(bytes: &'a [u8]) -> Self {
+	pub fn from_bytes(bytes: &'a [u8]) -> ReadResponse<'a> {
 		Self { bytes }
 	}
 

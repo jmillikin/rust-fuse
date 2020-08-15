@@ -65,9 +65,9 @@ pub struct FsyncResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
 
-impl FsyncResponse<'_> {
-	pub fn new() -> Self {
-		FsyncResponse {
+impl<'a> FsyncResponse<'a> {
+	pub fn new() -> FsyncResponse<'a> {
+		Self {
 			phantom: PhantomData,
 		}
 	}

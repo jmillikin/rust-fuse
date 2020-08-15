@@ -65,9 +65,9 @@ pub struct FlushResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
 
-impl FlushResponse<'_> {
-	pub fn new() -> Self {
-		FlushResponse {
+impl<'a> FlushResponse<'a> {
+	pub fn new() -> FlushResponse<'a> {
+		Self {
 			phantom: PhantomData,
 		}
 	}

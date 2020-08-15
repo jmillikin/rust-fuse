@@ -95,9 +95,9 @@ pub struct RenameResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
 
-impl RenameResponse<'_> {
-	pub fn new() -> Self {
-		RenameResponse {
+impl<'a> RenameResponse<'a> {
+	pub fn new() -> RenameResponse<'a> {
+		Self {
 			phantom: PhantomData,
 		}
 	}

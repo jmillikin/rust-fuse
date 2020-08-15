@@ -130,9 +130,9 @@ pub struct WriteResponse<'a> {
 	raw: fuse_kernel::fuse_write_out,
 }
 
-impl WriteResponse<'_> {
-	pub fn new() -> Self {
-		WriteResponse {
+impl<'a> WriteResponse<'a> {
+	pub fn new() -> WriteResponse<'a> {
+		Self {
 			phantom: PhantomData,
 			raw: fuse_kernel::fuse_write_out {
 				size: 0,

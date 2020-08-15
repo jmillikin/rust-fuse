@@ -67,9 +67,9 @@ pub struct SymlinkResponse<'a> {
 	raw: fuse_kernel::fuse_entry_out,
 }
 
-impl SymlinkResponse<'_> {
-	pub fn new() -> Self {
-		SymlinkResponse {
+impl<'a> SymlinkResponse<'a> {
+	pub fn new() -> SymlinkResponse<'a> {
+		Self {
 			phantom: PhantomData,
 			raw: Default::default(),
 		}

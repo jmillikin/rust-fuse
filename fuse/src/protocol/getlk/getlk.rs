@@ -63,9 +63,9 @@ pub struct GetlkResponse<'a> {
 	raw: fuse_kernel::fuse_lk_out,
 }
 
-impl GetlkResponse<'_> {
-	pub fn new() -> Self {
-		GetlkResponse {
+impl<'a> GetlkResponse<'a> {
+	pub fn new() -> GetlkResponse<'a> {
+		Self {
 			phantom: PhantomData,
 			raw: Default::default(),
 		}

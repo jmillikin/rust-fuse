@@ -56,9 +56,9 @@ pub struct RmdirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
 
-impl RmdirResponse<'_> {
-	pub fn new() -> Self {
-		RmdirResponse {
+impl<'a> RmdirResponse<'a> {
+	pub fn new() -> RmdirResponse<'a> {
+		Self {
 			phantom: PhantomData,
 		}
 	}

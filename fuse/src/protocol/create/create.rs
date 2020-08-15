@@ -107,9 +107,9 @@ pub struct CreateResponse<'a> {
 	open_out: fuse_kernel::fuse_open_out,
 }
 
-impl CreateResponse<'_> {
-	pub fn new() -> Self {
-		CreateResponse {
+impl<'a> CreateResponse<'a> {
+	pub fn new() -> CreateResponse<'a> {
+		Self {
 			phantom: PhantomData,
 			entry_out: Default::default(),
 			open_out: Default::default(),

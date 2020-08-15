@@ -67,9 +67,9 @@ pub struct FallocateResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
 
-impl FallocateResponse<'_> {
-	pub fn new() -> Self {
-		FallocateResponse {
+impl<'a> FallocateResponse<'a> {
+	pub fn new() -> FallocateResponse<'a> {
+		Self {
 			phantom: PhantomData,
 		}
 	}

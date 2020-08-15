@@ -122,8 +122,8 @@ pub struct FuseInitResponse {
 }
 
 impl FuseInitResponse {
-	pub fn new(version: crate::ProtocolVersion) -> Self {
-		FuseInitResponse {
+	pub fn new(version: crate::ProtocolVersion) -> FuseInitResponse {
+		Self {
 			raw: fuse_kernel::fuse_init_out {
 				major: version.major(),
 				minor: version.minor(),
@@ -139,7 +139,7 @@ impl FuseInitResponse {
 	}
 
 	#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
-	pub fn for_request(request: &FuseInitRequest) -> Self {
+	pub fn for_request(request: &FuseInitRequest) -> FuseInitResponse {
 		Self::for_request_impl(request)
 	}
 

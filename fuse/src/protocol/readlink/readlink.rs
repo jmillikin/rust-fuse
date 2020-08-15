@@ -66,7 +66,7 @@ pub struct ReadlinkResponse<'a> {
 }
 
 impl<'a> ReadlinkResponse<'a> {
-	pub fn from_cstr(name: &'a CStr) -> Self {
+	pub fn from_cstr(name: &'a CStr) -> ReadlinkResponse<'a> {
 		Self { name }
 	}
 }

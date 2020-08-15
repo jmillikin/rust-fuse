@@ -73,9 +73,9 @@ pub struct MkdirResponse<'a> {
 	raw: fuse_kernel::fuse_entry_out,
 }
 
-impl MkdirResponse<'_> {
-	pub fn new() -> Self {
-		MkdirResponse {
+impl<'a> MkdirResponse<'a> {
+	pub fn new() -> MkdirResponse<'a> {
+		Self {
 			phantom: PhantomData,
 			raw: Default::default(),
 		}

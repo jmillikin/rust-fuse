@@ -119,9 +119,9 @@ pub struct ReleasedirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
 
-impl ReleasedirResponse<'_> {
-	pub fn new() -> Self {
-		ReleasedirResponse {
+impl<'a> ReleasedirResponse<'a> {
+	pub fn new() -> ReleasedirResponse<'a> {
+		Self {
 			phantom: PhantomData,
 		}
 	}

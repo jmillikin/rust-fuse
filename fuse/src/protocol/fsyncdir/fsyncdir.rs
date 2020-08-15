@@ -65,9 +65,9 @@ pub struct FsyncdirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
 
-impl FsyncdirResponse<'_> {
-	pub fn new() -> Self {
-		FsyncdirResponse {
+impl<'a> FsyncdirResponse<'a> {
+	pub fn new() -> FsyncdirResponse<'a> {
+		Self {
 			phantom: PhantomData,
 		}
 	}
