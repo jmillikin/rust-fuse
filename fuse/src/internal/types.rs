@@ -16,8 +16,7 @@
 
 use crate::internal::fuse_kernel;
 
-#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ProtocolVersion {
 	major: u32,
 	minor: u32,

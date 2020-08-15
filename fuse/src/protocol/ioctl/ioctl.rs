@@ -134,7 +134,7 @@ impl fuse_io::EncodeResponse for IoctlResponse<'_> {
 	fn encode_response<'a, Chan: fuse_io::Channel>(
 		&'a self,
 		_enc: fuse_io::ResponseEncoder<Chan>,
-	) -> Result<(), Error> {
+	) -> Result<(), Chan::Error> {
 		todo!()
 		//w.append_sized(&self.raw);
 		//w.append_bytes(self.buf())

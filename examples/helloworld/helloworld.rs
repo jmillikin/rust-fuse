@@ -192,14 +192,13 @@ fn getgid() -> u32 {
 fn main() {
 	let mount_target = std::env::args_os().nth(1).unwrap();
 
-	let srv = fuse::FuseServerBuilder::new(HelloWorldFS {})
-		.set_mount_options(
-			fuse::os::linux::FuseMountOptions::new()
-				.set_mount_source("helloworld")
-				.set_mount_subtype("helloworld"),
-		)
-		.mount(mount_target)
+	let handlers = HelloWorldFS {};
+	let channel = fuse::os::linux::FuseChannelBuilder::new()
+		.set_mount_source("helloworld")
+		.set_mount_subtype("helloworld")
+		.mount(&mount_target)
 		.unwrap();
+	let srv = fuse::FuseServer::new(channel, handlers).unwrap();
 
 	let executor_arc = srv.executor().clone();
 	let mut executor = executor_arc.lock().unwrap();

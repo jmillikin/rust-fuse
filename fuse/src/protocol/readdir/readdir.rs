@@ -400,7 +400,7 @@ impl fuse_io::EncodeResponse for ReaddirResponse<'_> {
 	fn encode_response<'a, Chan: fuse_io::Channel>(
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
-	) -> Result<(), Error> {
+	) -> Result<(), Chan::Error> {
 		let buf = match &self.buf {
 			None => return enc.encode_header_only(),
 			Some(x) => x,

@@ -18,19 +18,25 @@ use core::convert::TryInto;
 use core::mem::{self, MaybeUninit};
 use std::io::{self, IoSlice, Read, Write};
 
-use crate::error::{Error, ErrorKind};
-
 pub trait Channel: Sized {
-	fn send(&self, buf: &[u8]) -> Result<(), Error>;
+	type Error: ChannelError;
+
+	fn send(&self, buf: &[u8]) -> Result<(), Self::Error>;
 
 	fn send_vectored<const N: usize>(
 		&self,
 		bufs: &[&[u8]; N],
-	) -> Result<(), Error>;
+	) -> Result<(), Self::Error>;
 
-	fn receive(&self, buf: &mut [u8]) -> Result<usize, Error>;
+	fn receive(&self, buf: &mut [u8]) -> Result<usize, Self::Error>;
 
-	fn try_clone(&self) -> Result<Self, Error>;
+	fn try_clone(&self) -> Result<Self, Self::Error>;
+}
+
+pub trait FuseChannel: Channel {}
+
+pub trait ChannelError: From<crate::Error> {
+	fn error_code(&self) -> Option<crate::ErrorCode>;
 }
 
 pub(crate) struct FileChannel {
@@ -44,11 +50,15 @@ impl FileChannel {
 }
 
 impl Channel for FileChannel {
-	fn send(&self, buf: &[u8]) -> Result<(), Error> {
-		let write_size =
-			Write::write(&mut &self.file, buf).map_err(convert_error)?;
+	type Error = io::Error;
+
+	fn send(&self, buf: &[u8]) -> Result<(), io::Error> {
+		let write_size = Write::write(&mut &self.file, buf)?;
 		if write_size < buf.len() {
-			return Err(Error(ErrorKind::IncompleteWrite));
+			return Err(io::Error::new(
+				io::ErrorKind::Other,
+				"incomplete send",
+			));
 		}
 		Ok(())
 	}
@@ -56,7 +66,7 @@ impl Channel for FileChannel {
 	fn send_vectored<const N: usize>(
 		&self,
 		bufs: &[&[u8]; N],
-	) -> Result<(), Error> {
+	) -> Result<(), io::Error> {
 		let mut bufs_len: usize = 0;
 		let io_slices: &[IoSlice] = {
 			let mut uninit_bufs: [MaybeUninit<IoSlice>; N] =
@@ -68,32 +78,36 @@ impl Channel for FileChannel {
 			unsafe { mem::transmute::<_, &[IoSlice; N]>(&uninit_bufs) }
 		};
 
-		let write_size = Write::write_vectored(&mut &self.file, io_slices)
-			.map_err(convert_error)?;
+		let write_size = Write::write_vectored(&mut &self.file, io_slices)?;
 		if write_size < bufs_len {
-			return Err(Error(ErrorKind::IncompleteWrite));
+			return Err(io::Error::new(
+				io::ErrorKind::Other,
+				"incomplete send",
+			));
 		}
 		Ok(())
 	}
 
-	fn receive(&self, buf: &mut [u8]) -> Result<usize, Error> {
-		Read::read(&mut &self.file, buf).map_err(convert_error)
+	fn receive(&self, buf: &mut [u8]) -> Result<usize, io::Error> {
+		Read::read(&mut &self.file, buf)
 	}
 
-	fn try_clone(&self) -> Result<Self, Error> {
+	fn try_clone(&self) -> Result<Self, io::Error> {
 		Ok(Self {
-			file: self.file.try_clone().map_err(convert_error)?,
+			file: self.file.try_clone()?,
 		})
 	}
 }
 
-fn convert_error(err: io::Error) -> Error {
-	if let Some(os_err) = err.raw_os_error() {
-		if let Ok(os_err) = os_err.try_into() {
-			if let Some(err_code) = core::num::NonZeroU16::new(os_err) {
-				return Error::new(err_code.into());
+impl ChannelError for io::Error {
+	fn error_code(&self) -> Option<crate::ErrorCode> {
+		if let Some(os_err) = self.raw_os_error() {
+			if let Ok(os_err) = os_err.try_into() {
+				if let Some(err_code) = core::num::NonZeroU16::new(os_err) {
+					return Some(err_code.into());
+				}
 			}
 		}
+		None
 	}
-	Error(ErrorKind::Unknown)
 }

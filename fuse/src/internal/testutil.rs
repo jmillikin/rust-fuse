@@ -18,7 +18,6 @@ use std::cell::RefCell;
 use std::mem::size_of;
 use std::slice;
 
-use crate::error::Error;
 use crate::internal::fuse_io::{self, AlignedBuffer};
 use crate::internal::fuse_kernel;
 
@@ -122,7 +121,9 @@ impl FakeChannel {
 }
 
 impl fuse_io::Channel for FakeChannel {
-	fn send(&self, buf: &[u8]) -> Result<(), Error> {
+	type Error = std::io::Error;
+
+	fn send(&self, buf: &[u8]) -> Result<(), Self::Error> {
 		if self.write.borrow().is_some() {
 			panic!("expected exactly one write to FakeChannel");
 		}
@@ -133,7 +134,7 @@ impl fuse_io::Channel for FakeChannel {
 	fn send_vectored<const N: usize>(
 		&self,
 		bufs: &[&[u8]; N],
-	) -> Result<(), Error> {
+	) -> Result<(), Self::Error> {
 		let mut vec = Vec::new();
 		for buf in bufs {
 			vec.extend(buf.to_vec());
@@ -141,12 +142,12 @@ impl fuse_io::Channel for FakeChannel {
 		self.send(&vec)
 	}
 
-	fn receive(&self, buf: &mut [u8]) -> Result<usize, Error> {
+	fn receive(&self, buf: &mut [u8]) -> Result<usize, Self::Error> {
 		let _ = buf;
 		unimplemented!()
 	}
 
-	fn try_clone(&self) -> Result<Self, Error> {
+	fn try_clone(&self) -> Result<Self, Self::Error> {
 		unimplemented!()
 	}
 }

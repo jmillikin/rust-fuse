@@ -141,7 +141,7 @@ impl fuse_io::EncodeResponse for GetxattrResponse<'_> {
 	fn encode_response<'a, Chan: fuse_io::Channel>(
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
-	) -> Result<(), Error> {
+	) -> Result<(), Chan::Error> {
 		if self.raw.size != 0 {
 			enc.encode_sized(&self.raw)
 		} else {

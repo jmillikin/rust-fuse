@@ -16,12 +16,12 @@
 
 use std::sync::{Arc, Mutex};
 
-use crate::error::{Error, ErrorCode, ErrorKind};
+use crate::channel::FuseChannel;
+use crate::error::{Error, ErrorCode};
 use crate::fuse_handlers::FuseHandlers;
 use crate::internal::fuse_io::{
 	self,
 	AlignedBuffer,
-	Channel,
 	DecodeRequest,
 	EncodeResponse,
 };
@@ -29,78 +29,62 @@ use crate::internal::fuse_kernel;
 use crate::protocol;
 use crate::server;
 
-#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
-pub struct FuseServer<Handlers, Mount> {
-	fuse_device: fuse_io::FileChannel,
-	mount: Mount,
+pub struct FuseServer<Channel, Handlers> {
+	channel: Channel,
 	handlers: Arc<Handlers>,
-	executor: Arc<Mutex<FuseServerExecutor<Handlers>>>,
 	fuse_version: crate::ProtocolVersion,
+	read_buf_size: usize,
+	executor: Arc<Mutex<FuseServerExecutor<Channel, Handlers>>>,
 }
 
-impl<Handlers, Mount> FuseServer<Handlers, Mount>
+impl<C, H> FuseServer<C, H>
 where
-	Handlers: FuseHandlers,
-	Mount: FuseMount,
+	C: FuseChannel,
+	H: FuseHandlers,
 {
-	fn new(
-		fuse_device: fuse_io::FileChannel,
-		mount: Mount,
-		mut handlers: Handlers,
-	) -> Result<Self, Error> {
-		let executor_channel = fuse_device.try_clone()?;
-		let init_response = fuse_handshake(&fuse_device, &mut handlers)?;
+	pub fn new(
+		channel: C,
+		mut handlers: H,
+	) -> Result<FuseServer<C, H>, C::Error> {
+		let executor_channel = channel.try_clone()?;
+		let init_response = fuse_handshake(&channel, &mut handlers)?;
+		let read_buf_size = 1048576; /* 1 MiB; TODO compute from init_response */
 		let fuse_version = init_response.version();
 		let handlers_arc = Arc::new(handlers);
 		let executor_handlers = handlers_arc.clone();
 		Ok(Self {
-			fuse_device,
-			mount,
+			channel,
 			handlers: handlers_arc,
+			fuse_version,
+			read_buf_size,
 			executor: Arc::new(Mutex::new(FuseServerExecutor::new(
 				executor_channel,
 				executor_handlers,
-				1048576, /* 1 MiB; TODO read from init_response */
+				read_buf_size,
 				fuse_version,
 			))),
-			fuse_version,
 		})
 	}
-}
 
-impl<Handlers, Mount> FuseServer<Handlers, Mount>
-where
-	Mount: FuseMount,
-{
-	#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
-	pub fn unmount(self) -> Result<(), Error> {
-		self.mount.unmount()
-	}
-}
-
-impl<Handlers, Mount> FuseServer<Handlers, Mount> {
-	#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
-	pub fn executor(&self) -> &Arc<Mutex<FuseServerExecutor<Handlers>>> {
+	pub fn executor(&self) -> &Arc<Mutex<FuseServerExecutor<C, H>>> {
 		&self.executor
 	}
 
-	#[doc(hidden)]
-	pub fn new_executor(&self) -> Result<FuseServerExecutor<Handlers>, Error> {
-		let _ = self.fuse_device;
-		let _ = self.handlers;
-		let _ = self.fuse_version;
-		todo!("FuseServer::new_executor")
+	pub fn new_executor(&self) -> Result<FuseServerExecutor<C, H>, C::Error> {
+		let channel = self.channel.try_clone()?;
+		Ok(FuseServerExecutor::new(
+			channel,
+			self.handlers.clone(),
+			self.read_buf_size,
+			self.fuse_version,
+		))
 	}
 }
 
-fn fuse_handshake<Channel, Handlers>(
-	channel: &Channel,
-	handlers: &mut Handlers,
-) -> Result<protocol::FuseInitResponse, Error>
-where
-	Channel: fuse_io::Channel,
-	Handlers: FuseHandlers,
-{
+fn fuse_handshake<C: FuseChannel, H: FuseHandlers>(
+	channel: &C,
+	handlers: &mut H,
+) -> Result<protocol::FuseInitResponse, C::Error> {
 	let mut read_buf = fuse_io::MinReadBuffer::new();
 
 	loop {
@@ -113,7 +97,7 @@ where
 
 		let request_header = request_decoder.header();
 		if request_header.opcode != fuse_kernel::FUSE_INIT {
-			return Err(Error(ErrorKind::ExpectedFuseInit));
+			return Err(Error::UnexpectedOpcode(request_header.opcode.0).into());
 		}
 
 		let request_id = request_header.unique;
@@ -143,85 +127,17 @@ where
 	}
 }
 
-#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
-pub trait FuseMountOptions {
-	type Mount: FuseMount;
-}
-
-#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
-pub trait FuseMount: Sized {
-	type Options: FuseMountOptions;
-
-	#[doc(hidden)]
-	fn mount(
-		mount_target: &std::path::Path,
-		options: Option<Self::Options>,
-	) -> Result<(std::fs::File, Self), Error>;
-
-	#[doc(hidden)]
-	fn unmount(self) -> Result<(), Error>;
-}
-
-#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
-pub struct FuseServerBuilder<Handlers, MountOptions> {
-	handlers: Handlers,
-	mount_options: Option<MountOptions>,
-}
-
-impl<Handlers, MountOptions> FuseServerBuilder<Handlers, MountOptions>
-where
-	Handlers: FuseHandlers,
-	MountOptions: FuseMountOptions,
-{
-	#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
-	pub fn new(handlers: Handlers) -> Self {
-		Self {
-			mount_options: None,
-			handlers,
-		}
-	}
-
-	#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
-	pub fn set_mount_options(mut self, mount_options: MountOptions) -> Self {
-		self.mount_options = Some(mount_options);
-		self
-	}
-
-	#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
-	pub fn mount<Mount, Path>(
-		self,
-		mount_target: Path,
-	) -> Result<FuseServer<Handlers, Mount>, Error>
-	where
-		Path: AsRef<std::path::Path>,
-		Mount: FuseMount<Options = MountOptions>,
-		MountOptions: FuseMountOptions<Mount = Mount>,
-	{
-		let (fuse_device, mount) = <MountOptions::Mount as FuseMount>::mount(
-			mount_target.as_ref(),
-			self.mount_options,
-		)?;
-
-		FuseServer::new(
-			fuse_io::FileChannel::new(fuse_device),
-			mount,
-			self.handlers,
-		)
-	}
-}
-
-#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
-pub struct FuseServerExecutor<Handlers> {
-	channel: Arc<fuse_io::FileChannel>,
-	handlers: Arc<Handlers>,
+pub struct FuseServerExecutor<C, H> {
+	channel: Arc<C>,
+	handlers: Arc<H>,
 	read_buf: fuse_io::AlignedVec,
 	fuse_version: crate::ProtocolVersion,
 }
 
-impl<Handlers: FuseHandlers> FuseServerExecutor<Handlers> {
+impl<C, H> FuseServerExecutor<C, H> {
 	fn new(
-		channel: fuse_io::FileChannel,
-		handlers: Arc<Handlers>,
+		channel: C,
+		handlers: Arc<H>,
 		read_buf_size: usize,
 		fuse_version: crate::ProtocolVersion,
 	) -> Self {
@@ -232,19 +148,24 @@ impl<Handlers: FuseHandlers> FuseServerExecutor<Handlers> {
 			fuse_version,
 		}
 	}
+}
 
-	#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
-	pub fn run(&mut self) -> Result<(), Error> {
+impl<C, H> FuseServerExecutor<C, H>
+where
+	C: FuseChannel + Send + Sync + 'static,
+	H: FuseHandlers,
+{
+	pub fn run(&mut self) -> Result<(), C::Error> {
 		let handlers = &*self.handlers;
 		loop {
 			let request_size =
 				match self.channel.receive(self.read_buf.get_mut()) {
 					Err(err) => {
-						if err == Error::new(ErrorCode::ENODEV) {
+						use crate::channel::ChannelError;
+						if err.error_code() == Some(ErrorCode::ENODEV) {
 							return Ok(());
-						} else {
-							return Err(err);
 						}
+						return Err(err);
 					},
 					Ok(request_size) => request_size,
 				};
@@ -258,11 +179,15 @@ impl<Handlers: FuseHandlers> FuseServerExecutor<Handlers> {
 	}
 }
 
-fn fuse_request_dispatch<Handlers: FuseHandlers>(
-	handlers: &Handlers,
+fn fuse_request_dispatch<C, H>(
+	handlers: &H,
 	request_decoder: fuse_io::RequestDecoder,
-	channel: &Arc<fuse_io::FileChannel>,
-) -> Result<(), Error> {
+	channel: &Arc<C>,
+) -> Result<(), Error>
+where
+	C: FuseChannel + Send + Sync + 'static,
+	H: FuseHandlers,
+{
 	let header = request_decoder.header();
 
 	let fuse_version = request_decoder.version();

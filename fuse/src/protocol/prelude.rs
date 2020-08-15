@@ -49,6 +49,6 @@ pub(super) use crate::internal::fuse_io::{
 pub(crate) fn try_node_id(raw: u64) -> Result<NodeId, Error> {
 	match NodeId::new(raw) {
 		Some(x) => Ok(x),
-		None => todo!("failure path in try_node_id"),
+		None => Err(Error::MissingNodeId),
 	}
 }

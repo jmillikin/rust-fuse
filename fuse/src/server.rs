@@ -19,7 +19,6 @@ use std::sync::Arc;
 use crate::internal::fuse_io;
 use crate::internal::fuse_kernel;
 
-#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
 pub struct ServerContext {
 	header: fuse_kernel::fuse_in_header,
 }
@@ -44,11 +43,6 @@ impl<'a> ServerContext {
 	pub fn process_id(&self) -> u32 {
 		self.header.pid
 	}
-
-	#[doc(hidden)]
-	pub fn is_interrupted(&self) -> bool {
-		todo!("ServerContext::is_interrupted")
-	}
 }
 
 mod private {
@@ -56,30 +50,33 @@ mod private {
 }
 
 /// **\[SEALED\]**
-pub trait RespondOnce<Response>: private::Sealed + Send {
+pub trait RespondOnce<Response>: private::Sealed {
 	fn ok(self, response: &Response);
 	fn err(self, err: crate::ErrorCode);
 
-	fn into_box(self) -> Box<dyn RespondOnceBox<Response> + 'static>;
+	fn into_box(self) -> Box<dyn RespondOnceBox<Response>>;
 }
 
 /// **\[SEALED\]**
-pub trait RespondOnceBox<Response>: private::Sealed + Send {
+pub trait RespondOnceBox<Response>: private::Sealed + Send + 'static {
 	fn ok(self: Box<Self>, response: &Response);
 	fn err(self: Box<Self>, err: crate::ErrorCode);
 }
 
 // RespondOnceImpl {{{
 
-pub(crate) struct RespondOnceImpl<'a> {
-	channel: &'a Arc<fuse_io::FileChannel>,
+pub(crate) struct RespondOnceImpl<'a, C> {
+	channel: &'a Arc<C>,
 	request_id: u64,
 	fuse_version: crate::ProtocolVersion,
 }
 
-impl<'a> RespondOnceImpl<'a> {
+impl<'a, C> RespondOnceImpl<'a, C>
+where
+	C: fuse_io::Channel,
+{
 	pub(crate) fn new(
-		channel: &'a Arc<fuse_io::FileChannel>,
+		channel: &'a Arc<C>,
 		request_id: u64,
 		fuse_version: crate::ProtocolVersion,
 	) -> Self {
@@ -90,9 +87,7 @@ impl<'a> RespondOnceImpl<'a> {
 		}
 	}
 
-	pub(crate) fn encoder(
-		&self,
-	) -> fuse_io::ResponseEncoder<fuse_io::FileChannel> {
+	pub(crate) fn encoder(&self) -> fuse_io::ResponseEncoder<C> {
 		fuse_io::ResponseEncoder::new(
 			self.channel,
 			self.request_id,
@@ -101,10 +96,11 @@ impl<'a> RespondOnceImpl<'a> {
 	}
 }
 
-impl private::Sealed for RespondOnceImpl<'_> {}
+impl<C> private::Sealed for RespondOnceImpl<'_, C> {}
 
-impl<Response> RespondOnce<Response> for RespondOnceImpl<'_>
+impl<C, Response> RespondOnce<Response> for RespondOnceImpl<'_, C>
 where
+	C: fuse_io::Channel + Send + Sync + 'static,
 	Response: fuse_io::EncodeResponse,
 {
 	fn ok(self, response: &Response) {
@@ -115,7 +111,7 @@ where
 		self.encoder().encode_error(err);
 	}
 
-	fn into_box(self) -> Box<dyn RespondOnceBox<Response> + 'static> {
+	fn into_box(self) -> Box<dyn RespondOnceBox<Response>> {
 		Box::new(RespondOnceBoxImpl {
 			channel: self.channel.clone(),
 			request_id: self.request_id,
@@ -128,14 +124,17 @@ where
 
 // RespondOnceBoxImpl {{{
 
-struct RespondOnceBoxImpl {
-	channel: Arc<fuse_io::FileChannel>,
+struct RespondOnceBoxImpl<C> {
+	channel: Arc<C>,
 	request_id: u64,
 	fuse_version: crate::ProtocolVersion,
 }
 
-impl RespondOnceBoxImpl {
-	fn encoder(&self) -> fuse_io::ResponseEncoder<fuse_io::FileChannel> {
+impl<C> RespondOnceBoxImpl<C>
+where
+	C: fuse_io::Channel,
+{
+	fn encoder(&self) -> fuse_io::ResponseEncoder<C> {
 		fuse_io::ResponseEncoder::new(
 			self.channel.as_ref(),
 			self.request_id,
@@ -144,10 +143,11 @@ impl RespondOnceBoxImpl {
 	}
 }
 
-impl private::Sealed for RespondOnceBoxImpl {}
+impl<C> private::Sealed for RespondOnceBoxImpl<C> {}
 
-impl<Response> RespondOnceBox<Response> for RespondOnceBoxImpl
+impl<C, Response> RespondOnceBox<Response> for RespondOnceBoxImpl<C>
 where
+	C: fuse_io::Channel + Send + Sync + 'static,
 	Response: fuse_io::EncodeResponse,
 {
 	fn ok(self: Box<Self>, response: &Response) {

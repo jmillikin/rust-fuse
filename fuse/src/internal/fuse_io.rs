@@ -18,14 +18,14 @@ use core::mem::{align_of, size_of};
 use core::pin::Pin;
 use std::ffi::CStr;
 
-use crate::error::{Error, ErrorCode, ErrorKind};
+use crate::error::{Error, ErrorCode};
 use crate::internal::fuse_kernel;
 
 #[cfg(test)]
 #[path = "fuse_io_test.rs"]
 mod fuse_io_test;
 
-pub(crate) use crate::channel::{Channel, FileChannel};
+pub(crate) use crate::channel::Channel;
 
 pub(crate) trait AlignedBuffer {
 	fn get(&self) -> &[u8];
@@ -147,7 +147,7 @@ impl<'a> RequestDecoder<'a> {
 	) -> Result<Self, Error> {
 		let buf = buf.get();
 		if buf.len() < size_of::<fuse_kernel::fuse_in_header>() {
-			return Err(Error(ErrorKind::UnexpectedEof));
+			return Err(Error::UnexpectedEof);
 		}
 
 		let header: &'a fuse_kernel::fuse_in_header =
@@ -164,7 +164,7 @@ impl<'a> RequestDecoder<'a> {
 			buf_len = buf.len() as u32;
 		}
 		if buf_len < header.len {
-			return Err(Error(ErrorKind::UnexpectedEof));
+			return Err(Error::UnexpectedEof);
 		}
 
 		Ok(RequestDecoder {
@@ -197,7 +197,7 @@ impl<'a> RequestDecoder<'a> {
 			},
 		}
 		if eof {
-			return Err(Error(ErrorKind::UnexpectedEof));
+			return Err(Error::UnexpectedEof);
 		}
 		debug_assert!(new_consumed <= self.header.len);
 		Ok(new_consumed)
@@ -236,13 +236,13 @@ impl<'a> RequestDecoder<'a> {
 			if self.buf[off as usize] == 0 {
 				let len = off - self.consumed;
 				if len == 0 {
-					return Err(Error(ErrorKind::UnexpectedEof));
+					return Err(Error::UnexpectedEof);
 				}
 				let buf = self.next_bytes(len + 1)?;
 				return Ok(NulTerminatedBytes(buf));
 			}
 		}
-		Err(Error(ErrorKind::UnexpectedEof))
+		Err(Error::UnexpectedEof)
 	}
 
 	pub(crate) fn next_cstr(&mut self) -> Result<&'a CStr, Error> {
@@ -253,7 +253,7 @@ impl<'a> RequestDecoder<'a> {
 				return Ok(unsafe { CStr::from_bytes_with_nul_unchecked(buf) });
 			}
 		}
-		Err(Error(ErrorKind::UnexpectedEof))
+		Err(Error::UnexpectedEof)
 	}
 }
 
@@ -261,7 +261,7 @@ pub(crate) trait EncodeResponse {
 	fn encode_response<Chan: Channel>(
 		&self,
 		enc: ResponseEncoder<Chan>,
-	) -> Result<(), Error>;
+	) -> Result<(), Chan::Error>;
 }
 
 pub(crate) struct ResponseEncoder<'a, Chan> {
@@ -289,7 +289,10 @@ impl<'a, Chan> ResponseEncoder<'a, Chan> {
 }
 
 impl<Chan: Channel> ResponseEncoder<'_, Chan> {
-	pub(crate) fn encode_error(self, err: ErrorCode) -> Result<(), Error> {
+	pub(crate) fn encode_error(
+		self,
+		err: ErrorCode,
+	) -> Result<(), Chan::Error> {
 		let len = size_of::<fuse_kernel::fuse_out_header>();
 		let out_hdr = fuse_kernel::fuse_out_header {
 			len: len as u32,
@@ -306,7 +309,10 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 		self.channel.send(out_hdr_buf)
 	}
 
-	pub(crate) fn encode_sized<T: Sized>(self, t: &T) -> Result<(), Error> {
+	pub(crate) fn encode_sized<T: Sized>(
+		self,
+		t: &T,
+	) -> Result<(), Chan::Error> {
 		let bytes: &[u8] = unsafe {
 			std::slice::from_raw_parts(
 				(t as *const T) as *const u8,
@@ -320,7 +326,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 		self,
 		bytes_1: &[u8],
 		t: &T,
-	) -> Result<(), Error> {
+	) -> Result<(), Chan::Error> {
 		let bytes_2: &[u8] = unsafe {
 			std::slice::from_raw_parts(
 				(t as *const T) as *const u8,
@@ -334,7 +340,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 		self,
 		t_1: &T1,
 		t_2: &T2,
-	) -> Result<(), Error> {
+	) -> Result<(), Chan::Error> {
 		let bytes_1: &[u8] = unsafe {
 			std::slice::from_raw_parts(
 				(t_1 as *const T1) as *const u8,
@@ -350,7 +356,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 		self.encode_bytes_2(bytes_1, bytes_2)
 	}
 
-	pub(crate) fn encode_header_only(self) -> Result<(), Error> {
+	pub(crate) fn encode_header_only(self) -> Result<(), Chan::Error> {
 		let len = size_of::<fuse_kernel::fuse_out_header>();
 		let out_hdr = fuse_kernel::fuse_out_header {
 			len: len as u32,
@@ -367,7 +373,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 		self.channel.send(out_hdr_buf)
 	}
 
-	pub(crate) fn encode_bytes(self, bytes: &[u8]) -> Result<(), Error> {
+	pub(crate) fn encode_bytes(self, bytes: &[u8]) -> Result<(), Chan::Error> {
 		let mut len = size_of::<fuse_kernel::fuse_out_header>();
 
 		match len.checked_add(bytes.len()) {
@@ -399,7 +405,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 		self,
 		bytes_1: &[u8],
 		bytes_2: &[u8],
-	) -> Result<(), Error> {
+	) -> Result<(), Chan::Error> {
 		let mut len = size_of::<fuse_kernel::fuse_out_header>();
 
 		match len.checked_add(bytes_1.len()) {

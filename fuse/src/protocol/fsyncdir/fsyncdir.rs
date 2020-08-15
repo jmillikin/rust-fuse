@@ -83,7 +83,7 @@ impl fuse_io::EncodeResponse for FsyncdirResponse<'_> {
 	fn encode_response<'a, Chan: fuse_io::Channel>(
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
-	) -> Result<(), Error> {
+	) -> Result<(), Chan::Error> {
 		enc.encode_header_only()
 	}
 }

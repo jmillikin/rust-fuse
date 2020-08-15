@@ -27,7 +27,7 @@
 mod internal;
 
 mod channel;
-pub use self::channel::Channel;
+pub use self::channel::{Channel, FuseChannel};
 
 mod error;
 pub use self::error::{Error, ErrorCode};
@@ -44,11 +44,11 @@ pub use self::server::*;
 pub use crate::internal::types::ProtocolVersion;
 
 pub mod os {
-	#[cfg(any(target_os = "linux", doc))]
+	#[cfg(any(doc, target_os = "linux"))]
 	#[cfg_attr(doc, doc(cfg(target_os = "linux")))]
 	pub mod linux {
-		mod linux_mount_options;
-		pub use self::linux_mount_options::*;
+		mod linux_fuse_channel;
+		pub use self::linux_fuse_channel::*;
 	}
 }
 

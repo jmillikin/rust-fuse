@@ -16,7 +16,6 @@
 
 use core::{fmt, slice, time};
 
-use crate::error::Error;
 use crate::internal::fuse_io;
 use crate::internal::fuse_kernel;
 use crate::protocol::common::{NodeAttr, NodeId};
@@ -93,7 +92,7 @@ impl Node {
 	pub(crate) fn encode_entry<'a, Chan: fuse_io::Channel>(
 		&self,
 		enc: fuse_io::ResponseEncoder<Chan>,
-	) -> Result<(), Error> {
+	) -> Result<(), Chan::Error> {
 		// The `fuse_attr::blksize` field was added in FUSE v7.9.
 		if enc.version().minor() < 9 {
 			let buf: &[u8] = unsafe {
@@ -113,7 +112,7 @@ impl Node {
 		&self,
 		enc: fuse_io::ResponseEncoder<Chan>,
 		t: &T,
-	) -> Result<(), Error> {
+	) -> Result<(), Chan::Error> {
 		// The `fuse_attr::blksize` field was added in FUSE v7.9.
 		if enc.version().minor() < 9 {
 			let buf: &[u8] = unsafe {

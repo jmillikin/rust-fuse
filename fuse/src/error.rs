@@ -16,22 +16,33 @@
 
 use core::{fmt, num};
 
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub struct Error(pub(crate) ErrorKind);
+use crate::internal::fuse_kernel;
 
+#[non_exhaustive]
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub(crate) enum ErrorKind {
-	Unknown,
-	InvalidInput,
-	IncompleteWrite,
+pub enum Error {
+	MissingNodeId,
 	UnexpectedEof,
-	ExpectedFuseInit,
-	Os(ErrorCode),
+	UnexpectedOpcode(u32),
 }
 
-impl Error {
-	pub fn new(error_code: ErrorCode) -> Error {
-		Error(ErrorKind::Os(error_code))
+impl From<Error> for std::io::Error {
+	fn from(err: Error) -> std::io::Error {
+		use std::io;
+		match err {
+			Error::MissingNodeId => io::Error::new(
+				io::ErrorKind::InvalidData,
+				"Request field 'fuse_in_header::nodeid' is missing (expected non-zero)",
+			),
+			Error::UnexpectedEof => io::ErrorKind::UnexpectedEof.into(),
+			Error::UnexpectedOpcode(opcode) => io::Error::new(
+				io::ErrorKind::InvalidData,
+				format!(
+					"Received opcode {:?} from kernel (expected FUSE_INIT)",
+					fuse_kernel::Opcode(opcode),
+				),
+			),
+		}
 	}
 }
 

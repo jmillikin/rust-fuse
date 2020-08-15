@@ -261,7 +261,7 @@ impl fuse_io::EncodeResponse for FuseInitResponse {
 	fn encode_response<'a, Chan: fuse_io::Channel>(
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
-	) -> Result<(), Error> {
+	) -> Result<(), Chan::Error> {
 		if self.raw.minor >= 23 {
 			return enc.encode_sized(&self.raw);
 		}

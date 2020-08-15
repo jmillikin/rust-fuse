@@ -14,7 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::convert::TryInto;
 use std::ffi::{CString, OsStr, OsString};
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::MetadataExt;
@@ -22,13 +21,12 @@ use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::PathBuf;
 use std::{fs, io};
 
-use crate::error::{Error, ErrorKind};
+use crate::channel::{self, Channel, FileChannel};
 
-#[path = "syscalls.rs"]
+#[path = "linux_syscalls.rs"]
 mod syscalls;
 
-#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
-pub struct FuseMountOptions {
+pub struct FuseChannelBuilder {
 	device_path: PathBuf,
 	mount_source: String,
 	mount_subtype: String,
@@ -37,12 +35,8 @@ pub struct FuseMountOptions {
 	root_mode: Option<u32>,
 }
 
-impl crate::FuseMountOptions for FuseMountOptions {
-	type Mount = FuseMount;
-}
-
-impl FuseMountOptions {
-	pub fn new() -> Self {
+impl FuseChannelBuilder {
+	pub fn new() -> FuseChannelBuilder {
 		Self {
 			device_path: PathBuf::from("/dev/fuse"),
 			mount_source: "".to_string(),
@@ -53,12 +47,12 @@ impl FuseMountOptions {
 		}
 	}
 
-	pub fn set_mount_source(mut self, mount_source: &str) -> Self {
+	pub fn set_mount_source(&mut self, mount_source: &str) -> &mut Self {
 		self.mount_source = mount_source.to_string();
 		self
 	}
 
-	pub fn set_mount_subtype(mut self, mount_subtype: &str) -> Self {
+	pub fn set_mount_subtype(&mut self, mount_subtype: &str) -> &mut Self {
 		self.mount_subtype = mount_subtype.to_string();
 		self
 	}
@@ -78,6 +72,43 @@ impl FuseMountOptions {
 		self
 	}
 
+	pub fn mount<Path>(&mut self, mount_target: Path) -> io::Result<FuseChannel>
+	where
+		Path: AsRef<std::path::Path>,
+	{
+		let mount_target = mount_target.as_ref();
+
+		let mount_target_cstr = cstr_from_osstr(mount_target.as_os_str())?;
+		let mount_source_cstr = self.mount_source_cstr()?;
+		let mount_type_cstr = self.mount_type_cstr()?;
+		let mount_flags = self.mount_flags();
+
+		let root_mode = match self.root_mode {
+			Some(mode) => mode,
+			None => {
+				let meta = fs::metadata(mount_target)?;
+				meta.mode()
+			},
+		};
+
+		let file = fs::OpenOptions::new()
+			.read(true)
+			.write(true)
+			.open(&self.device_path)?;
+		let fd = file.as_raw_fd();
+
+		let mount_data = self.mount_data(fd, root_mode)?;
+		syscalls::mount(
+			&mount_source_cstr,
+			&mount_target_cstr,
+			&mount_type_cstr,
+			mount_flags,
+			mount_data.to_bytes_with_nul(),
+		)?;
+
+		Ok(FuseChannel(FileChannel::new(file)))
+	}
+
 	fn mount_flags(&self) -> u32 {
 		// int flags = MS_NOSUID | MS_NODEV;
 
@@ -85,7 +116,7 @@ impl FuseMountOptions {
 		return 6;
 	}
 
-	fn mount_source_cstr(&self) -> Result<CString, Error> {
+	fn mount_source_cstr(&self) -> Result<CString, io::Error> {
 		let name = &self.mount_source;
 		if name == "" {
 			return Ok(CString::new("fuse").unwrap());
@@ -93,7 +124,7 @@ impl FuseMountOptions {
 		cstr_from_osstr(OsStr::new(&name))
 	}
 
-	fn mount_type_cstr(&self) -> Result<CString, Error> {
+	fn mount_type_cstr(&self) -> Result<CString, io::Error> {
 		let subtype = &self.mount_subtype;
 		if subtype == "" {
 			return Ok(CString::new("fuse").unwrap());
@@ -104,7 +135,11 @@ impl FuseMountOptions {
 		cstr_from_osstr(&buf)
 	}
 
-	fn mount_data(&self, fd: RawFd, root_mode: u32) -> Result<CString, Error> {
+	fn mount_data(
+		&self,
+		fd: RawFd,
+		root_mode: u32,
+	) -> Result<CString, io::Error> {
 		let user_id = self.user_id.unwrap_or_else(|| syscalls::getuid());
 		let group_id = self.group_id.unwrap_or_else(|| syscalls::getgid());
 
@@ -118,84 +153,36 @@ impl FuseMountOptions {
 	}
 }
 
-#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
-pub struct FuseMount {
-	mount_target: PathBuf,
-}
+pub struct FuseChannel(FileChannel);
 
-impl crate::FuseMount for FuseMount {
-	type Options = FuseMountOptions;
+impl channel::FuseChannel for FuseChannel {}
 
-	#[doc(hidden)]
-	fn mount(
-		mount_target: &std::path::Path,
-		options: Option<Self::Options>,
-	) -> Result<(std::fs::File, Self), Error> {
-		let options = match options {
-			Some(x) => x,
-			None => FuseMountOptions::new(),
-		};
+impl Channel for FuseChannel {
+	type Error = io::Error;
 
-		let mount_target_cstr = cstr_from_osstr(mount_target.as_os_str())?;
-		let mount_source_cstr = options.mount_source_cstr()?;
-		let mount_type_cstr = options.mount_type_cstr()?;
-		let mount_flags = options.mount_flags();
-
-		let root_mode = match options.root_mode {
-			Some(mode) => mode,
-			None => {
-				let meta = fs::metadata(mount_target).map_err(convert_error)?;
-				meta.mode()
-			},
-		};
-
-		let file = fs::OpenOptions::new()
-			.read(true)
-			.write(true)
-			.open(&options.device_path)
-			.map_err(convert_error)?;
-		let fd = file.as_raw_fd();
-
-		let mount_data = options.mount_data(fd, root_mode)?;
-		syscalls::mount(
-			&mount_source_cstr,
-			&mount_target_cstr,
-			&mount_type_cstr,
-			mount_flags,
-			mount_data.to_bytes_with_nul(),
-		)
-		.map_err(convert_error)?;
-
-		Ok((
-			file,
-			Self {
-				mount_target: mount_target.to_path_buf(),
-			},
-		))
+	fn send(&self, buf: &[u8]) -> Result<(), io::Error> {
+		self.0.send(buf)
 	}
 
-	#[doc(hidden)]
-	fn unmount(self) -> Result<(), Error> {
-		println!("Linux unmount not implemented yet");
-		let _ = self.mount_target;
-		Ok(())
+	fn send_vectored<const N: usize>(
+		&self,
+		bufs: &[&[u8]; N],
+	) -> Result<(), io::Error> {
+		self.0.send_vectored(bufs)
+	}
+
+	fn receive(&self, buf: &mut [u8]) -> Result<usize, io::Error> {
+		self.0.receive(buf)
+	}
+
+	fn try_clone(&self) -> Result<Self, io::Error> {
+		Ok(FuseChannel(self.0.try_clone()?))
 	}
 }
 
-fn cstr_from_osstr(x: &OsStr) -> Result<CString, Error> {
+fn cstr_from_osstr(x: &OsStr) -> Result<CString, io::Error> {
 	match CString::new(x.as_bytes()) {
 		Ok(val) => Ok(val),
-		Err(_) => Err(Error(ErrorKind::InvalidInput)),
+		Err(err) => Err(io::Error::new(io::ErrorKind::InvalidInput, err)),
 	}
-}
-
-fn convert_error(err: io::Error) -> Error {
-	if let Some(os_err) = err.raw_os_error() {
-		if let Ok(os_err) = os_err.try_into() {
-			if let Some(err_code) = core::num::NonZeroU16::new(os_err) {
-				return Error::new(err_code.into());
-			}
-		}
-	}
-	Error(ErrorKind::Unknown)
 }

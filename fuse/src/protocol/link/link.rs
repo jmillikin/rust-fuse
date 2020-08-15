@@ -100,7 +100,7 @@ impl fuse_io::EncodeResponse for LinkResponse<'_> {
 	fn encode_response<'a, Chan: fuse_io::Channel>(
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
-	) -> Result<(), Error> {
+	) -> Result<(), Chan::Error> {
 		self.node().encode_entry(enc)
 	}
 }
