@@ -21,17 +21,21 @@ mod rmdir_test;
 
 // RmdirRequest {{{
 
+/// Request type for [`FuseHandlers::rmdir`].
+///
+/// [`FuseHandlers::rmdir`]: ../trait.FuseHandlers.html#method.rmdir
+#[derive(Debug)]
 pub struct RmdirRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	name: &'a CStr,
+	parent_id: NodeId,
+	name: &'a NodeName,
 }
 
 impl RmdirRequest<'_> {
-	pub fn node_id(&self) -> u64 {
-		self.header.nodeid
+	pub fn parent_id(&self) -> NodeId {
+		self.parent_id
 	}
 
-	pub fn name(&self) -> &CStr {
+	pub fn name(&self) -> &NodeName {
 		self.name
 	}
 }
@@ -43,8 +47,10 @@ impl<'a> fuse_io::DecodeRequest<'a> for RmdirRequest<'a> {
 		let header = dec.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_RMDIR);
 
-		let name = dec.next_cstr()?;
-		Ok(Self { header, name })
+		Ok(Self {
+			parent_id: try_node_id(header.nodeid)?,
+			name: NodeName::new(dec.next_nul_terminated_bytes()?),
+		})
 	}
 }
 
@@ -52,6 +58,9 @@ impl<'a> fuse_io::DecodeRequest<'a> for RmdirRequest<'a> {
 
 // RmdirResponse {{{
 
+/// Response type for [`FuseHandlers::rmdir`].
+///
+/// [`FuseHandlers::rmdir`]: ../trait.FuseHandlers.html#method.rmdir
 pub struct RmdirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }

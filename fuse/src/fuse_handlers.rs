@@ -340,8 +340,6 @@ pub trait FuseHandlers {
 		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
-	#[cfg(any(doc, feature = "unstable_fuse_rmdir"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_rmdir")))]
 	fn rmdir(
 		&self,
 		ctx: server::ServerContext,

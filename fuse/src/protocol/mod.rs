@@ -66,7 +66,7 @@ op_mod!(release,     "release/release.rs");
 op_mod!(releasedir,  "releasedir/releasedir.rs");
 op_mod!(removexattr, "removexattr/removexattr.rs", "unstable_fuse_removexattr");
 op_mod!(rename,      "rename/rename.rs",           "unstable_fuse_rename");
-op_mod!(rmdir,       "rmdir/rmdir.rs",             "unstable_fuse_rmdir");
+op_mod!(rmdir,       "rmdir/rmdir.rs");
 op_mod!(setattr,     "setattr/setattr.rs",         "unstable_fuse_setattr");
 op_mod!(setlk,       "setlk/setlk.rs",             "unstable_fuse_setlk");
 op_mod!(setxattr,    "setxattr/setxattr.rs",       "unstable_fuse_setxattr");

@@ -252,7 +252,6 @@ where
 		fuse_kernel::FUSE_RENAME => do_dispatch!(rename),
 		#[cfg(feature = "unstable_fuse_rename")]
 		fuse_kernel::FUSE_RENAME2 => do_dispatch!(rename),
-		#[cfg(feature = "unstable_fuse_rmdir")]
 		fuse_kernel::FUSE_RMDIR => do_dispatch!(rmdir),
 		#[cfg(feature = "unstable_fuse_setattr")]
 		fuse_kernel::FUSE_SETATTR => do_dispatch!(setattr),
