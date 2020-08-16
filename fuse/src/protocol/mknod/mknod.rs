@@ -88,7 +88,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for MknodRequest<'a> {
 			return Ok(Self {
 				parent_id,
 				name,
-				raw: fuse_kernel::fuse_mknod_in{
+				raw: fuse_kernel::fuse_mknod_in {
 					mode: raw.mode,
 					rdev: raw.rdev,
 					umask: 0,

@@ -174,8 +174,13 @@ impl<'a> ListxattrResponse<'a> {
 
 enum ListxattrBuf<'a> {
 	#[cfg(not(feature = "no_std"))]
-	Owned { cap: Vec<u8> },
-	Borrowed { cap: &'a mut [u8], size: usize },
+	Owned {
+		cap: Vec<u8>,
+	},
+	Borrowed {
+		cap: &'a mut [u8],
+		size: usize,
+	},
 }
 
 impl fmt::Debug for ListxattrResponse<'_> {

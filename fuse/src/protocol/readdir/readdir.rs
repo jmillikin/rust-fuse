@@ -248,8 +248,14 @@ impl<'a> ReaddirResponse<'a> {
 
 enum ReaddirBuf<'a> {
 	#[cfg(not(feature = "no_std"))]
-	Owned { cap: Vec<u8>, max_size: usize },
-	Borrowed { cap: &'a mut [u8], size: usize },
+	Owned {
+		cap: Vec<u8>,
+		max_size: usize,
+	},
+	Borrowed {
+		cap: &'a mut [u8],
+		size: usize,
+	},
 }
 
 impl ReaddirBuf<'_> {
