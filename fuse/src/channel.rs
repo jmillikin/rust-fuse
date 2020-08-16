@@ -35,6 +35,8 @@ pub trait Channel: Sized {
 	fn try_clone(&self) -> Result<Self, Self::Error>;
 }
 
+pub trait CuseChannel: Channel {}
+
 pub trait FuseChannel: Channel {}
 
 pub trait ChannelError: From<crate::Error> {

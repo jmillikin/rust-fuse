@@ -179,20 +179,20 @@ impl FuseInitResponse {
 		crate::ProtocolVersion::new(self.raw.major, self.raw.minor)
 	}
 
-	pub fn max_readahead(&self) -> u32 {
-		self.raw.max_readahead
-	}
-
-	pub fn set_max_readahead(&mut self, max_readahead: u32) {
-		self.raw.max_readahead = max_readahead;
-	}
-
 	pub fn flags(&self) -> &FuseInitFlags {
 		&self.flags
 	}
 
 	pub fn flags_mut(&mut self) -> &mut FuseInitFlags {
 		&mut self.flags
+	}
+
+	pub fn max_readahead(&self) -> u32 {
+		self.raw.max_readahead
+	}
+
+	pub fn set_max_readahead(&mut self, max_readahead: u32) {
+		self.raw.max_readahead = max_readahead;
 	}
 
 	pub fn max_background(&self) -> u16 {

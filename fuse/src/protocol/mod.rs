@@ -41,6 +41,7 @@ macro_rules! op_mod {
 op_mod!(access,      "access/access.rs",           "unstable_fuse_access");
 op_mod!(bmap,        "bmap/bmap.rs",               "unstable_fuse_bmap");
 op_mod!(create,      "create/create.rs",           "unstable_fuse_create");
+op_mod!(cuse_init,   "cuse_init/cuse_init.rs");
 op_mod!(fallocate,   "fallocate/fallocate.rs",     "unstable_fuse_fallocate");
 op_mod!(flush,       "flush/flush.rs",             "unstable_fuse_flush");
 op_mod!(forget,      "forget/forget.rs");

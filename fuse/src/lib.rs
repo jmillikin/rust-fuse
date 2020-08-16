@@ -29,10 +29,13 @@
 mod internal;
 
 mod channel;
-pub use self::channel::{Channel, ChannelError, FuseChannel};
+pub use self::channel::{Channel, ChannelError, CuseChannel, FuseChannel};
 
 mod error;
 pub use self::error::{Error, ErrorCode};
+
+mod cuse_handlers;
+pub use self::cuse_handlers::*;
 
 mod fuse_handlers;
 pub use self::fuse_handlers::*;
