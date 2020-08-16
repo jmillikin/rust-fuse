@@ -261,7 +261,6 @@ where
 		fuse_kernel::FUSE_SETXATTR => do_dispatch!(setxattr),
 		#[cfg(feature = "unstable_fuse_statfs")]
 		fuse_kernel::FUSE_STATFS => do_dispatch!(statfs),
-		#[cfg(feature = "unstable_fuse_symlink")]
 		fuse_kernel::FUSE_SYMLINK => do_dispatch!(symlink),
 		fuse_kernel::FUSE_UNLINK => do_dispatch!(unlink),
 		#[cfg(feature = "unstable_fuse_write")]

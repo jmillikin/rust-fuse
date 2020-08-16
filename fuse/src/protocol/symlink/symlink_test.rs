@@ -22,17 +22,44 @@ use super::{SymlinkRequest, SymlinkResponse};
 #[test]
 fn request() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_SYMLINK)
-		.push_bytes(b"old\x00")
-		.push_bytes(b"new\x00")
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_SYMLINK;
+			h.nodeid = 100;
+		})
+		.push_bytes(b"link content\x00")
+		.push_bytes(b"link name\x00")
 		.build_aligned();
+	let request: SymlinkRequest = decode_request!(buf);
 
-	let req: SymlinkRequest = decode_request!(buf);
+	let expect_content: &[u8] = b"link content";
+	let expect_name: &[u8] = b"link name";
+	assert_eq!(request.parent_id(), NodeId::new(100).unwrap());
+	assert_eq!(request.name(), expect_name);
+	assert_eq!(request.content(), expect_content);
+}
 
-	let expect_old = CString::new("old").unwrap();
-	let expect_new = CString::new("new").unwrap();
-	assert_eq!(req.old_name(), expect_old.as_ref());
-	assert_eq!(req.new_name(), expect_new.as_ref());
+#[test]
+fn request_impl_debug() {
+	let buf = MessageBuilder::new()
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_SYMLINK;
+			h.nodeid = 100;
+		})
+		.push_bytes(b"link content\x00")
+		.push_bytes(b"link name\x00")
+		.build_aligned();
+	let request: SymlinkRequest = decode_request!(buf);
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"SymlinkRequest {\n",
+			"    parent_id: 100,\n",
+			"    name: \"link name\",\n",
+			"    content: \"link content\",\n",
+			"}",
+		),
+	);
 }
 
 #[test]
@@ -112,5 +139,43 @@ fn response_v7p9() {
 				}
 			})
 			.build()
+	);
+}
+
+#[test]
+fn response_impl_debug() {
+	let mut response = SymlinkResponse::new();
+	let node = response.node_mut();
+	node.set_id(NodeId::new(11).unwrap());
+	node.set_generation(22);
+	node.attr_mut().set_node_id(NodeId::new(11).unwrap());
+	node.attr_mut().set_mode(FileType::REG | 0o644);
+
+	assert_eq!(
+		format!("{:#?}", response),
+		concat!(
+			"SymlinkResponse {\n",
+			"    node: Node {\n",
+			"        id: Some(11),\n",
+			"        generation: 22,\n",
+			"        cache_timeout: 0ns,\n",
+			"        attr_cache_timeout: 0ns,\n",
+			"        attr: NodeAttr {\n",
+			"            node_id: Some(11),\n",
+			"            size: 0,\n",
+			"            blocks: 0,\n",
+			"            atime: 0ns,\n",
+			"            mtime: 0ns,\n",
+			"            ctime: 0ns,\n",
+			"            mode: 0o100644,\n",
+			"            nlink: 0,\n",
+			"            uid: 0,\n",
+			"            gid: 0,\n",
+			"            rdev: 0,\n",
+			"            blksize: 0,\n",
+			"        },\n",
+			"    },\n",
+			"}",
+		),
 	);
 }

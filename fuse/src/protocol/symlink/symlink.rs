@@ -21,23 +21,36 @@ mod symlink_test;
 
 // SymlinkRequest {{{
 
+/// Request type for [`FuseHandlers::symlink`].
+///
+/// [`FuseHandlers::symlink`]: ../trait.FuseHandlers.html#method.symlink
 pub struct SymlinkRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	old_name: &'a CStr,
-	new_name: &'a CStr,
+	parent_id: NodeId,
+	name: &'a NodeName,
+	content: &'a [u8],
 }
 
 impl SymlinkRequest<'_> {
-	pub fn node_id(&self) -> u64 {
-		self.header.nodeid
+	pub fn parent_id(&self) -> NodeId {
+		self.parent_id
 	}
 
-	pub fn old_name(&self) -> &CStr {
-		self.old_name
+	pub fn name(&self) -> &NodeName {
+		self.name
 	}
 
-	pub fn new_name(&self) -> &CStr {
-		self.new_name
+	pub fn content(&self) -> &[u8] {
+		self.content
+	}
+}
+
+impl fmt::Debug for SymlinkRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("SymlinkRequest")
+			.field("parent_id", &self.parent_id)
+			.field("name", &self.name)
+			.field("content", &DebugBytesAsString(self.content))
+			.finish()
 	}
 }
 
@@ -48,12 +61,12 @@ impl<'a> fuse_io::DecodeRequest<'a> for SymlinkRequest<'a> {
 		let header = dec.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_SYMLINK);
 
-		let old_name = dec.next_cstr()?;
-		let new_name = dec.next_cstr()?;
+		let content = dec.next_nul_terminated_bytes()?.to_bytes_without_nul();
+		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
 		Ok(Self {
-			header,
-			old_name,
-			new_name,
+			parent_id: try_node_id(header.nodeid)?,
+			name,
+			content,
 		})
 	}
 }
@@ -62,6 +75,9 @@ impl<'a> fuse_io::DecodeRequest<'a> for SymlinkRequest<'a> {
 
 // SymlinkResponse {{{
 
+/// Response type for [`FuseHandlers::symlink`].
+///
+/// [`FuseHandlers::symlink`]: ../trait.FuseHandlers.html#method.symlink
 pub struct SymlinkResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_entry_out,
