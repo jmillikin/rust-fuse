@@ -236,8 +236,6 @@ pub trait FuseHandlers {
 		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
-	#[cfg(any(doc, feature = "unstable_fuse_mknod"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_mknod")))]
 	fn mknod(
 		&self,
 		ctx: server::ServerContext,

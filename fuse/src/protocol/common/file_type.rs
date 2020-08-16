@@ -41,6 +41,43 @@ impl FileType {
 	pub const LNK: FileType = FileType(DT_LNK);
 	pub const SOCK: FileType = FileType(DT_SOCK);
 	pub const WHT: FileType = FileType(DT_WHT);
+
+	pub fn from_mode(mode: u32) -> Option<FileType> {
+		match (mode >> 12) & 0xF {
+			DT_UNKNOWN => Some(Self::UNKNOWN),
+			DT_FIFO => Some(Self::FIFO),
+			DT_CHR => Some(Self::CHR),
+			DT_DIR => Some(Self::DIR),
+			DT_BLK => Some(Self::BLK),
+			DT_REG => Some(Self::REG),
+			DT_LNK => Some(Self::LNK),
+			DT_SOCK => Some(Self::SOCK),
+			DT_WHT => Some(Self::WHT),
+			_ => None,
+		}
+	}
+}
+
+impl core::ops::BitAnd<u32> for FileType {
+	type Output = Option<FileType>;
+
+	fn bitand(self, rhs: u32) -> Option<FileType> {
+		if rhs & (self.0 << 12) != 0 {
+			return Some(self);
+		}
+		None
+	}
+}
+
+impl core::ops::BitAnd<FileType> for u32 {
+	type Output = Option<FileType>;
+
+	fn bitand(self, rhs: FileType) -> Option<FileType> {
+		if self & (rhs.0 << 12) != 0 {
+			return Some(rhs);
+		}
+		None
+	}
 }
 
 impl core::ops::BitOr<u32> for FileType {

@@ -56,7 +56,7 @@ op_mod!(listxattr,   "listxattr/listxattr.rs");
 op_mod!(lookup,      "lookup/lookup.rs");
 op_mod!(lseek,       "lseek/lseek.rs",             "unstable_fuse_lseek");
 op_mod!(mkdir,       "mkdir/mkdir.rs");
-op_mod!(mknod,       "mknod/mknod.rs",             "unstable_fuse_mknod");
+op_mod!(mknod,       "mknod/mknod.rs");
 op_mod!(open,        "open/open.rs");
 op_mod!(opendir,     "opendir/opendir.rs");
 op_mod!(read,        "read/read.rs");

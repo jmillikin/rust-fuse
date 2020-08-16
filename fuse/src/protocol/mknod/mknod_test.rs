@@ -22,8 +22,14 @@ use super::{MknodRequest, MknodResponse};
 #[test]
 fn request_v7p1() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_MKNOD)
-		.push_sized(&super::fuse_mknod_in_v7p1 { mode: 11, rdev: 22 })
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_MKNOD;
+			h.nodeid = 100;
+		})
+		.push_sized(&super::fuse_mknod_in_v7p1 {
+			mode: 0o644,
+			rdev: 0,
+		})
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 
@@ -31,21 +37,25 @@ fn request_v7p1() {
 		protocol_version: (7, 1),
 	});
 
-	let expect = CString::new("hello.world!").unwrap();
-	assert_eq!(req.name(), expect.as_ref());
-	assert_eq!(req.mode(), 11);
-	assert_eq!(req.rdev(), 22);
+	let expect: &[u8] = b"hello.world!";
+	assert_eq!(req.parent_id(), NodeId::new(100).unwrap());
+	assert_eq!(req.name(), expect);
+	assert_eq!(req.mode(), 0o644);
 	assert_eq!(req.umask(), 0);
+	assert_eq!(req.device_number(), None);
 }
 
 #[test]
 fn request_v7p12() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_MKNOD)
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_MKNOD;
+			h.nodeid = 100;
+		})
 		.push_sized(&fuse_kernel::fuse_mknod_in {
-			mode: 11,
-			rdev: 22,
-			umask: 33,
+			mode: 0o644,
+			rdev: 0,
+			umask: 0o111,
 			padding: 0,
 		})
 		.push_bytes(b"hello.world!\x00")
@@ -55,11 +65,67 @@ fn request_v7p12() {
 		protocol_version: (7, 12),
 	});
 
-	let expect = CString::new("hello.world!").unwrap();
-	assert_eq!(req.name(), expect.as_ref());
-	assert_eq!(req.mode(), 11);
-	assert_eq!(req.rdev(), 22);
-	assert_eq!(req.umask(), 33);
+	let expect: &[u8] = b"hello.world!";
+	assert_eq!(req.parent_id(), NodeId::new(100).unwrap());
+	assert_eq!(req.name(), expect);
+	assert_eq!(req.mode(), 0o644);
+	assert_eq!(req.umask(), 0o111);
+	assert_eq!(req.device_number(), None);
+}
+
+#[test]
+fn request_device_number() {
+	let buf = MessageBuilder::new()
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_MKNOD;
+			h.nodeid = 100;
+		})
+		.push_sized(&fuse_kernel::fuse_mknod_in {
+			mode: FileType::BLK | 0o644,
+			rdev: 123,
+			umask: 0o111,
+			padding: 0,
+		})
+		.push_bytes(b"hello.world!\x00")
+		.build_aligned();
+
+	let req: MknodRequest = decode_request!(buf, {
+		protocol_version: (7, 12),
+	});
+
+	assert_eq!(req.mode(), FileType::BLK | 0o644);
+	assert_eq!(req.device_number(), Some(123));
+}
+
+#[test]
+fn request_impl_debug() {
+	let buf = MessageBuilder::new()
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_MKNOD;
+			h.nodeid = 100;
+		})
+		.push_sized(&fuse_kernel::fuse_mknod_in {
+			mode: FileType::BLK | 0o644,
+			rdev: 123,
+			umask: 0o111,
+			padding: 0,
+		})
+		.push_bytes(b"hello.world!\x00")
+		.build_aligned();
+	let request: MknodRequest = decode_request!(buf);
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"MknodRequest {\n",
+			"    parent_id: 100,\n",
+			"    name: \"hello.world!\",\n",
+			"    mode: 0o60644,\n",
+			"    umask: 0o111,\n",
+			"    device_number: Some(123),\n",
+			"}",
+		),
+	);
 }
 
 #[test]
@@ -139,5 +205,43 @@ fn response_v7p9() {
 				}
 			})
 			.build()
+	);
+}
+
+#[test]
+fn response_impl_debug() {
+	let mut response = MknodResponse::new();
+	let node = response.node_mut();
+	node.set_id(NodeId::new(11).unwrap());
+	node.set_generation(22);
+	node.attr_mut().set_node_id(NodeId::new(11).unwrap());
+	node.attr_mut().set_mode(FileType::REG | 0o644);
+
+	assert_eq!(
+		format!("{:#?}", response),
+		concat!(
+			"MknodResponse {\n",
+			"    node: Node {\n",
+			"        id: Some(11),\n",
+			"        generation: 22,\n",
+			"        cache_timeout: 0ns,\n",
+			"        attr_cache_timeout: 0ns,\n",
+			"        attr: NodeAttr {\n",
+			"            node_id: Some(11),\n",
+			"            size: 0,\n",
+			"            blocks: 0,\n",
+			"            atime: 0ns,\n",
+			"            mtime: 0ns,\n",
+			"            ctime: 0ns,\n",
+			"            mode: 0o100644,\n",
+			"            nlink: 0,\n",
+			"            uid: 0,\n",
+			"            gid: 0,\n",
+			"            rdev: 0,\n",
+			"            blksize: 0,\n",
+			"        },\n",
+			"    },\n",
+			"}",
+		),
 	);
 }

@@ -238,7 +238,6 @@ where
 		#[cfg(feature = "unstable_fuse_lseek")]
 		fuse_kernel::FUSE_LSEEK => do_dispatch!(lseek),
 		fuse_kernel::FUSE_MKDIR => do_dispatch!(mkdir),
-		#[cfg(feature = "unstable_fuse_mknod")]
 		fuse_kernel::FUSE_MKNOD => do_dispatch!(mknod),
 		fuse_kernel::FUSE_OPEN => do_dispatch!(open),
 		fuse_kernel::FUSE_OPENDIR => do_dispatch!(opendir),

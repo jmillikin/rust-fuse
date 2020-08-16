@@ -21,33 +21,49 @@ mod mknod_test;
 
 // MknodRequest {{{
 
+/// Request type for [`FuseHandlers::mknod`].
+///
+/// [`FuseHandlers::mknod`]: ../trait.FuseHandlers.html#method.mknod
 pub struct MknodRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	name: &'a CStr,
-	mode: u32,
-	rdev: u32,
-	umask: u32,
+	parent_id: NodeId,
+	name: &'a NodeName,
+	raw: fuse_kernel::fuse_mknod_in,
 }
 
 impl MknodRequest<'_> {
-	pub fn node_id(&self) -> u64 {
-		self.header.nodeid
+	pub fn parent_id(&self) -> NodeId {
+		self.parent_id
 	}
 
-	pub fn name(&self) -> &CStr {
+	pub fn name(&self) -> &NodeName {
 		self.name
 	}
 
 	pub fn mode(&self) -> u32 {
-		self.mode
-	}
-
-	pub fn rdev(&self) -> u32 {
-		self.rdev
+		self.raw.mode
 	}
 
 	pub fn umask(&self) -> u32 {
-		self.umask
+		self.raw.umask
+	}
+
+	pub fn device_number(&self) -> Option<u32> {
+		match FileType::from_mode(self.raw.mode) {
+			Some(FileType::CHR) | Some(FileType::BLK) => Some(self.raw.rdev),
+			_ => None,
+		}
+	}
+}
+
+impl fmt::Debug for MknodRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("MknodRequest")
+			.field("parent_id", &self.parent_id())
+			.field("name", &self.name())
+			.field("mode", &format_args!("{:#o}", &self.raw.mode))
+			.field("umask", &format_args!("{:#o}", &self.raw.umask))
+			.field("device_number", &format_args!("{:?}", self.device_number()))
+			.finish()
 	}
 }
 
@@ -64,26 +80,29 @@ impl<'a> fuse_io::DecodeRequest<'a> for MknodRequest<'a> {
 		let header = dec.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_MKNOD);
 
+		let parent_id = try_node_id(header.nodeid)?;
+
 		if dec.version().minor() < 12 {
 			let raw: &fuse_mknod_in_v7p1 = dec.next_sized()?;
-			let name = dec.next_cstr()?;
+			let name = NodeName::new(dec.next_nul_terminated_bytes()?);
 			return Ok(Self {
-				header,
+				parent_id,
 				name,
-				mode: raw.mode,
-				rdev: raw.rdev,
-				umask: 0,
+				raw: fuse_kernel::fuse_mknod_in{
+					mode: raw.mode,
+					rdev: raw.rdev,
+					umask: 0,
+					padding: 0,
+				},
 			});
 		}
 
 		let raw: &fuse_kernel::fuse_mknod_in = dec.next_sized()?;
-		let name = dec.next_cstr()?;
+		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
 		Ok(Self {
-			header,
+			parent_id,
 			name,
-			mode: raw.mode,
-			rdev: raw.rdev,
-			umask: raw.umask,
+			raw: *raw,
 		})
 	}
 }
@@ -92,6 +111,9 @@ impl<'a> fuse_io::DecodeRequest<'a> for MknodRequest<'a> {
 
 // MknodResponse {{{
 
+/// Response type for [`FuseHandlers::mknod`].
+///
+/// [`FuseHandlers::mknod`]: ../trait.FuseHandlers.html#method.mknod
 pub struct MknodResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_entry_out,
