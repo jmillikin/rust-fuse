@@ -30,7 +30,7 @@ pub struct ReleasedirRequest<'a> {
 	node_id: NodeId,
 	handle: u64,
 	lock_owner: Option<u64>,
-	flags: u32,
+	opendir_flags: u32,
 }
 
 impl ReleasedirRequest<'_> {
@@ -54,8 +54,8 @@ impl ReleasedirRequest<'_> {
 	///
 	/// [`FuseHandlers::opendir`]: ../trait.FuseHandlers.html#method.opendir
 	/// [`OpendirRequest::flags`]: struct.OpendirRequest.html#method.flags
-	pub fn flags(&self) -> u32 {
-		self.flags
+	pub fn opendir_flags(&self) -> u32 {
+		self.opendir_flags
 	}
 }
 
@@ -65,7 +65,7 @@ impl fmt::Debug for ReleasedirRequest<'_> {
 			.field("node_id", &self.node_id)
 			.field("handle", &self.handle)
 			.field("lock_owner", &self.lock_owner)
-			.field("flags", &DebugHexU32(self.flags))
+			.field("opendir_flags", &DebugHexU32(self.opendir_flags))
 			.finish()
 	}
 }
@@ -87,7 +87,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReleasedirRequest<'a> {
 				node_id,
 				handle: raw.fh,
 				lock_owner: None,
-				flags: raw.flags,
+				opendir_flags: raw.flags,
 			});
 		}
 
@@ -103,7 +103,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReleasedirRequest<'a> {
 			node_id,
 			handle: raw.fh,
 			lock_owner,
-			flags: raw.flags,
+			opendir_flags: raw.flags,
 		})
 	}
 }

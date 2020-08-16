@@ -44,7 +44,7 @@ fn request_v7p1() {
 	assert_eq!(req.offset(), 45);
 	assert_eq!(req.size(), 12);
 	assert_eq!(req.lock_owner(), None);
-	assert_eq!(req.flags(), 0);
+	assert_eq!(req.open_flags(), 0);
 }
 
 #[test]
@@ -73,7 +73,7 @@ fn request_v7p9() {
 	assert_eq!(req.offset(), 45);
 	assert_eq!(req.size(), 12);
 	assert_eq!(req.lock_owner(), None);
-	assert_eq!(req.flags(), 67);
+	assert_eq!(req.open_flags(), 67);
 }
 
 #[test]
@@ -108,7 +108,7 @@ fn request_impl_debug() {
 		offset: 2,
 		handle: 3,
 		lock_owner: None,
-		flags: 0x4,
+		open_flags: 0x4,
 	};
 
 	assert_eq!(
@@ -120,7 +120,7 @@ fn request_impl_debug() {
 			"    offset: 2,\n",
 			"    handle: 3,\n",
 			"    lock_owner: None,\n",
-			"    flags: 0x00000004,\n",
+			"    open_flags: 0x00000004,\n",
 			"}",
 		),
 	);

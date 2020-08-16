@@ -33,7 +33,7 @@ pub struct ReaddirRequest<'a> {
 	size: u32,
 	cursor: Option<num::NonZeroU64>,
 	handle: u64,
-	flags: u32,
+	opendir_flags: u32,
 }
 
 impl ReaddirRequest<'_> {
@@ -61,8 +61,8 @@ impl ReaddirRequest<'_> {
 	///
 	/// [`FuseHandlers::opendir`]: ../trait.FuseHandlers.html#method.opendir
 	/// [`OpendirRequest::flags`]: struct.OpendirRequest.html#method.flags
-	pub fn flags(&self) -> u32 {
-		self.flags
+	pub fn opendir_flags(&self) -> u32 {
+		self.opendir_flags
 	}
 }
 
@@ -73,7 +73,7 @@ impl fmt::Debug for ReaddirRequest<'_> {
 			.field("size", &self.size)
 			.field("cursor", &format_args!("{:?}", self.cursor))
 			.field("handle", &self.handle)
-			.field("flags", &DebugHexU32(self.flags))
+			.field("opendir_flags", &DebugHexU32(self.opendir_flags))
 			.finish()
 	}
 }
@@ -96,7 +96,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReaddirRequest<'a> {
 				size: raw.size,
 				cursor: num::NonZeroU64::new(raw.offset),
 				handle: raw.fh,
-				flags: 0,
+				opendir_flags: 0,
 			});
 		}
 
@@ -107,7 +107,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReaddirRequest<'a> {
 			size: raw.size,
 			cursor: num::NonZeroU64::new(raw.offset),
 			handle: raw.fh,
-			flags: raw.flags,
+			opendir_flags: raw.flags,
 		})
 	}
 }

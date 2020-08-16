@@ -29,7 +29,7 @@ pub struct ReleaseRequest<'a> {
 	node_id: NodeId,
 	handle: u64,
 	lock_owner: Option<u64>,
-	flags: u32,
+	open_flags: u32,
 }
 
 impl ReleaseRequest<'_> {
@@ -53,8 +53,8 @@ impl ReleaseRequest<'_> {
 	///
 	/// [`FuseHandlers::open`]: ../trait.FuseHandlers.html#method.open
 	/// [`OpenRequest::flags`]: struct.OpenRequest.html#method.flags
-	pub fn flags(&self) -> u32 {
-		self.flags
+	pub fn open_flags(&self) -> u32 {
+		self.open_flags
 	}
 }
 
@@ -64,7 +64,7 @@ impl fmt::Debug for ReleaseRequest<'_> {
 			.field("node_id", &self.node_id)
 			.field("handle", &self.handle)
 			.field("lock_owner", &self.lock_owner)
-			.field("flags", &DebugHexU32(self.flags))
+			.field("open_flags", &DebugHexU32(self.open_flags))
 			.finish()
 	}
 }
@@ -93,7 +93,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReleaseRequest<'a> {
 				node_id,
 				handle: raw.fh,
 				lock_owner: None,
-				flags: raw.flags,
+				open_flags: raw.flags,
 			});
 		}
 
@@ -109,7 +109,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReleaseRequest<'a> {
 			node_id,
 			handle: raw.fh,
 			lock_owner,
-			flags: raw.flags,
+			open_flags: raw.flags,
 		})
 	}
 }

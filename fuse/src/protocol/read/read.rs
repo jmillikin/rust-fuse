@@ -31,7 +31,7 @@ pub struct ReadRequest<'a> {
 	offset: u64,
 	handle: u64,
 	lock_owner: Option<u64>,
-	flags: u32,
+	open_flags: u32,
 }
 
 impl ReadRequest<'_> {
@@ -63,8 +63,8 @@ impl ReadRequest<'_> {
 	///
 	/// [`FuseHandlers::open`]: ../trait.FuseHandlers.html#method.open
 	/// [`OpenRequest::flags`]: struct.OpenRequest.html#method.flags
-	pub fn flags(&self) -> u32 {
-		self.flags
+	pub fn open_flags(&self) -> u32 {
+		self.open_flags
 	}
 }
 
@@ -76,7 +76,7 @@ impl fmt::Debug for ReadRequest<'_> {
 			.field("offset", &self.offset)
 			.field("handle", &self.handle)
 			.field("lock_owner", &self.lock_owner)
-			.field("flags", &DebugHexU32(self.flags))
+			.field("open_flags", &DebugHexU32(self.open_flags))
 			.finish()
 	}
 }
@@ -108,7 +108,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReadRequest<'a> {
 				offset: raw.offset,
 				handle: raw.fh,
 				lock_owner: None,
-				flags: 0,
+				open_flags: 0,
 			});
 		}
 
@@ -126,7 +126,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReadRequest<'a> {
 			offset: raw.offset,
 			handle: raw.fh,
 			lock_owner,
-			flags: raw.flags,
+			open_flags: raw.flags,
 		})
 	}
 }
