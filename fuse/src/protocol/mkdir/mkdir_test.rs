@@ -157,7 +157,7 @@ fn response_impl_debug() {
 	node.set_id(NodeId::new(11).unwrap());
 	node.set_generation(22);
 	node.attr_mut().set_node_id(NodeId::new(11).unwrap());
-	node.attr_mut().set_mode(FileType::REG | 0o644);
+	node.attr_mut().set_mode(FileType::Regular | 0o644);
 
 	assert_eq!(
 		format!("{:#?}", response),

@@ -229,7 +229,7 @@ impl<'a> ReaddirResponse<'a> {
 				ino: node_id.get(),
 				off: cursor.get(),
 				namelen: name.len() as u32,
-				r#type: 0,
+				r#type: FileType::Unknown.as_bits(),
 				name: [],
 			});
 
@@ -349,12 +349,21 @@ impl ReaddirEntry<'_> {
 	}
 
 	pub fn file_type(&self) -> FileType {
-		FileType(self.dirent.r#type)
+		dirent_type(self.dirent)
 	}
 
 	pub fn set_file_type(&mut self, file_type: FileType) -> &mut Self {
-		self.dirent.r#type = file_type.0;
+		self.dirent.r#type = file_type.as_bits();
 		self
+	}
+}
+
+fn dirent_type(dirent: &fuse_kernel::fuse_dirent) -> FileType {
+	match FileType::from_bits(dirent.r#type) {
+		Some(t) => t,
+		None => unsafe {
+			core::hint::unreachable_unchecked()
+		},
 	}
 }
 
@@ -374,7 +383,7 @@ fn dirent_fmt(
 	fmt.debug_struct("ReaddirEntry")
 		.field("node_id", &dirent.ino)
 		.field("cursor", &dirent.off)
-		.field("file_type", &FileType(dirent.r#type))
+		.field("file_type", &dirent_type(dirent))
 		.field("name", &DebugBytesAsString(dirent_name(dirent)))
 		.finish()
 }

@@ -14,77 +14,90 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#![rustfmt::skip]
+
 use core::fmt;
 
-#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
-#[repr(transparent)]
-#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct FileType(pub(crate) u32);
+use crate::protocol::common::FileMode;
 
-const DT_UNKNOWN: u32 = 0;
-const DT_FIFO: u32 = 1;
-const DT_CHR: u32 = 2;
-const DT_DIR: u32 = 4;
-const DT_BLK: u32 = 6;
-const DT_REG: u32 = 8;
-const DT_LNK: u32 = 10;
-const DT_SOCK: u32 = 12;
-const DT_WHT: u32 = 14;
+#[repr(u32)]
+#[non_exhaustive]
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum FileType {
+	/// `DT_UNKNOWN`
+	Unknown,
+
+	/// `DT_FIFO`
+	NamedPipe,
+
+	/// `DT_CHR`
+	CharDevice,
+
+	/// `DT_DIR`
+	Directory,
+
+	/// `DT_BLK`
+	BlockDevice,
+
+	/// `DT_REG`
+	Regular,
+
+	/// `DT_LNK`
+	Symlink,
+
+	/// `DT_SOCK`
+	Socket,
+
+	/// `DT_WHT`
+	Whiteout,
+}
+
+const DT_UNKNOWN : u32 =  0;
+const DT_FIFO    : u32 =  1;
+const DT_CHR     : u32 =  2;
+const DT_DIR     : u32 =  4;
+const DT_BLK     : u32 =  6;
+const DT_REG     : u32 =  8;
+const DT_LNK     : u32 = 10;
+const DT_SOCK    : u32 = 12;
+const DT_WHT     : u32 = 14;
 
 impl FileType {
-	pub const UNKNOWN: FileType = FileType(DT_UNKNOWN);
-	pub const FIFO: FileType = FileType(DT_FIFO);
-	pub const CHR: FileType = FileType(DT_CHR);
-	pub const DIR: FileType = FileType(DT_DIR);
-	pub const BLK: FileType = FileType(DT_BLK);
-	pub const REG: FileType = FileType(DT_REG);
-	pub const LNK: FileType = FileType(DT_LNK);
-	pub const SOCK: FileType = FileType(DT_SOCK);
-	pub const WHT: FileType = FileType(DT_WHT);
+	pub(crate) fn from_mode(mode: FileMode) -> Option<FileType> {
+		Self::from_bits((mode.0 >> 12) & 0xF)
+	}
 
-	pub fn from_mode(mode: u32) -> Option<FileType> {
-		match (mode >> 12) & 0xF {
-			DT_UNKNOWN => Some(Self::UNKNOWN),
-			DT_FIFO => Some(Self::FIFO),
-			DT_CHR => Some(Self::CHR),
-			DT_DIR => Some(Self::DIR),
-			DT_BLK => Some(Self::BLK),
-			DT_REG => Some(Self::REG),
-			DT_LNK => Some(Self::LNK),
-			DT_SOCK => Some(Self::SOCK),
-			DT_WHT => Some(Self::WHT),
-			_ => None,
+	pub(crate) fn from_bits(bits: u32) -> Option<FileType> {
+		match bits {
+			DT_UNKNOWN => Some(Self::Unknown),
+			DT_FIFO    => Some(Self::NamedPipe),
+			DT_CHR     => Some(Self::CharDevice),
+			DT_DIR     => Some(Self::Directory),
+			DT_BLK     => Some(Self::BlockDevice),
+			DT_REG     => Some(Self::Regular),
+			DT_LNK     => Some(Self::Symlink),
+			DT_SOCK    => Some(Self::Socket),
+			DT_WHT     => Some(Self::Whiteout),
+			_          => None,
 		}
 	}
-}
 
-impl core::ops::BitAnd<u32> for FileType {
-	type Output = Option<FileType>;
-
-	fn bitand(self, rhs: u32) -> Option<FileType> {
-		if rhs & (self.0 << 12) != 0 {
-			return Some(self);
+	pub(crate) fn as_bits(&self) -> u32 {
+		match *self {
+			FileType::Unknown     => DT_UNKNOWN,
+			FileType::NamedPipe   => DT_FIFO,
+			FileType::CharDevice  => DT_CHR,
+			FileType::Directory   => DT_DIR,
+			FileType::BlockDevice => DT_BLK,
+			FileType::Regular     => DT_REG,
+			FileType::Symlink     => DT_LNK,
+			FileType::Socket      => DT_SOCK,
+			FileType::Whiteout    => DT_WHT,
 		}
-		None
 	}
-}
 
-impl core::ops::BitAnd<FileType> for u32 {
-	type Output = Option<FileType>;
-
-	fn bitand(self, rhs: FileType) -> Option<FileType> {
-		if self & (rhs.0 << 12) != 0 {
-			return Some(rhs);
-		}
-		None
-	}
-}
-
-impl core::ops::BitOr<u32> for FileType {
-	type Output = u32;
-
-	fn bitor(self, rhs: u32) -> u32 {
-		(self.0 << 12) | rhs
+	pub(crate) fn mode_bits(&self) -> u32 {
+		self.as_bits() << 12
 	}
 }
 
@@ -97,34 +110,15 @@ impl fmt::Debug for FileType {
 impl fmt::Display for FileType {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		match *self {
-			FileType::UNKNOWN => fmt.write_str("UNKNOWN"),
-			FileType::FIFO => fmt.write_str("FIFO"),
-			FileType::CHR => fmt.write_str("CHR"),
-			FileType::DIR => fmt.write_str("DIR"),
-			FileType::BLK => fmt.write_str("BLK"),
-			FileType::REG => fmt.write_str("REG"),
-			FileType::LNK => fmt.write_str("LNK"),
-			FileType::SOCK => fmt.write_str("SOCK"),
-			FileType::WHT => fmt.write_str("WHT"),
-			_ => write!(fmt, "{:#010X}", self.0),
+			FileType::Unknown     => fmt.write_str("Unknown"),
+			FileType::NamedPipe   => fmt.write_str("NamedPipe"),
+			FileType::CharDevice  => fmt.write_str("CharDevice"),
+			FileType::Directory   => fmt.write_str("Directory"),
+			FileType::BlockDevice => fmt.write_str("BlockDevice"),
+			FileType::Regular     => fmt.write_str("Regular"),
+			FileType::Symlink     => fmt.write_str("Symlink"),
+			FileType::Socket      => fmt.write_str("Socket"),
+			FileType::Whiteout    => fmt.write_str("Whiteout"),
 		}
-	}
-}
-
-impl fmt::Binary for FileType {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		self.0.fmt(fmt)
-	}
-}
-
-impl fmt::LowerHex for FileType {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		self.0.fmt(fmt)
-	}
-}
-
-impl fmt::UpperHex for FileType {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		self.0.fmt(fmt)
 	}
 }

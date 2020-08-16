@@ -33,7 +33,7 @@ impl HelloTxt {
 	fn set_attr(&self, attr: &mut fuse::NodeAttr) {
 		attr.set_user_id(getuid());
 		attr.set_group_id(getgid());
-		attr.set_mode(fuse::FileType::REG | 0o644);
+		attr.set_mode(fuse::FileType::Regular | 0o644);
 		attr.set_size(HELLO_WORLD.len() as u64);
 		attr.set_nlink(1);
 	}
@@ -86,7 +86,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 			if node_id == fuse::ROOT_ID {
 				attr.set_user_id(getuid());
 				attr.set_group_id(getgid());
-				attr.set_mode(fuse::FileType::DIR | 0o755);
+				attr.set_mode(fuse::FileType::Directory | 0o755);
 				attr.set_nlink(2);
 				respond.ok(&resp);
 				return;
@@ -181,7 +181,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 
 			let node_offset = NonZeroU64::new(1).unwrap();
 			resp.add_entry(HELLO_TXT.node_id(), HELLO_TXT.name(), node_offset)
-				.set_file_type(fuse::FileType::REG);
+				.set_file_type(fuse::FileType::Regular);
 
 			respond.ok(&resp);
 		});

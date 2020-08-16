@@ -94,8 +94,8 @@ impl SetattrRequest<'_> {
 		)
 	}
 
-	pub fn mode(&self) -> Option<u32> {
-		self.get(fuse_kernel::FATTR_MODE, self.raw.mode)
+	pub fn mode(&self) -> Option<FileMode> {
+		self.get(fuse_kernel::FATTR_MODE, FileMode(self.raw.mode))
 	}
 
 	pub fn user_id(&self) -> Option<u32> {

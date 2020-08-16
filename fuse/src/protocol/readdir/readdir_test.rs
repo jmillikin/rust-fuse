@@ -150,9 +150,9 @@ fn readdir_response_test_impl(resp: &mut ReaddirResponse) {
 		let mut dirent = resp.try_add_entry(node_id, name, cursor).unwrap();
 
 		assert_eq!(dirent.cursor(), cursor);
-		assert_eq!(dirent.file_type(), FileType::UNKNOWN);
+		assert_eq!(dirent.file_type(), FileType::Unknown);
 
-		dirent.set_file_type(FileType::REG);
+		dirent.set_file_type(FileType::Regular);
 	}
 
 	let encoded = encode_response!(resp);
@@ -189,7 +189,7 @@ fn response_impl_debug() {
 		let cursor = num::NonZeroU64::new(1).unwrap();
 		response
 			.add_entry(node_id, name, cursor)
-			.set_file_type(FileType::REG);
+			.set_file_type(FileType::Regular);
 	}
 
 	{
@@ -198,7 +198,7 @@ fn response_impl_debug() {
 		let cursor = num::NonZeroU64::new(2).unwrap();
 		response
 			.add_entry(node_id, name, cursor)
-			.set_file_type(FileType::REG);
+			.set_file_type(FileType::Regular);
 	}
 
 	assert_eq!(
@@ -209,13 +209,13 @@ fn response_impl_debug() {
 			"        ReaddirEntry {\n",
 			"            node_id: 100,\n",
 			"            cursor: 1,\n",
-			"            file_type: REG,\n",
+			"            file_type: Regular,\n",
 			"            name: \"hello.txt\",\n",
 			"        },\n",
 			"        ReaddirEntry {\n",
 			"            node_id: 101,\n",
 			"            cursor: 2,\n",
-			"            file_type: REG,\n",
+			"            file_type: Regular,\n",
 			"            name: \"world.txt\",\n",
 			"        },\n",
 			"    ],\n",

@@ -17,7 +17,7 @@
 use core::{fmt, time};
 
 use crate::internal::fuse_kernel;
-use crate::protocol::common::NodeId;
+use crate::protocol::common::{FileMode, NodeId};
 
 #[derive(Clone, Copy)]
 #[repr(transparent)]
@@ -75,12 +75,12 @@ impl NodeAttr {
 		self.0.ctimensec = ctime.subsec_nanos();
 	}
 
-	pub fn mode(&self) -> u32 {
-		self.0.mode
+	pub fn mode(&self) -> FileMode {
+		FileMode(self.0.mode)
 	}
 
-	pub fn set_mode(&mut self, mode: u32) {
-		self.0.mode = mode;
+	pub fn set_mode(&mut self, mode: FileMode) {
+		self.0.mode = mode.0;
 	}
 
 	pub fn set_nlink(&mut self, nlink: u32) {

@@ -81,7 +81,7 @@ fn request_device_number() {
 			h.nodeid = 100;
 		})
 		.push_sized(&fuse_kernel::fuse_mknod_in {
-			mode: FileType::BLK | 0o644,
+			mode: u32::from(FileType::BlockDevice | 0o644),
 			rdev: 123,
 			umask: 0o111,
 			padding: 0,
@@ -93,7 +93,7 @@ fn request_device_number() {
 		protocol_version: (7, 12),
 	});
 
-	assert_eq!(req.mode(), FileType::BLK | 0o644);
+	assert_eq!(req.mode(), FileType::BlockDevice | 0o644);
 	assert_eq!(req.device_number(), Some(123));
 }
 
@@ -105,7 +105,7 @@ fn request_impl_debug() {
 			h.nodeid = 100;
 		})
 		.push_sized(&fuse_kernel::fuse_mknod_in {
-			mode: FileType::BLK | 0o644,
+			mode: u32::from(FileType::BlockDevice | 0o644),
 			rdev: 123,
 			umask: 0o111,
 			padding: 0,
@@ -215,7 +215,7 @@ fn response_impl_debug() {
 	node.set_id(NodeId::new(11).unwrap());
 	node.set_generation(22);
 	node.attr_mut().set_node_id(NodeId::new(11).unwrap());
-	node.attr_mut().set_mode(FileType::REG | 0o644);
+	node.attr_mut().set_mode(FileType::Regular | 0o644);
 
 	assert_eq!(
 		format!("{:#?}", response),

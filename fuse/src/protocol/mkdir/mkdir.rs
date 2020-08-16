@@ -39,8 +39,8 @@ impl MkdirRequest<'_> {
 		self.name
 	}
 
-	pub fn mode(&self) -> u32 {
-		self.raw.mode
+	pub fn mode(&self) -> FileMode {
+		FileMode(self.raw.mode)
 	}
 
 	pub fn umask(&self) -> u32 {
@@ -53,7 +53,7 @@ impl fmt::Debug for MkdirRequest<'_> {
 		fmt.debug_struct("MkdirRequest")
 			.field("parent_id", &self.parent_id())
 			.field("name", &self.name())
-			.field("mode", &format_args!("{:#o}", &self.raw.mode))
+			.field("mode", &self.mode())
 			.field("umask", &format_args!("{:#o}", &self.raw.umask))
 			.finish()
 	}

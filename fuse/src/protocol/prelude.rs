@@ -34,6 +34,7 @@ pub(super) use crate::protocol::common::{
 	DebugBytesAsString,
 	DebugClosure,
 	DebugHexU32,
+	FileMode,
 	FileType,
 	Node,
 	NodeAttr,

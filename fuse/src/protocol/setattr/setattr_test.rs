@@ -35,7 +35,7 @@ fn request() {
 			atimensec: 7,
 			mtimensec: 8,
 			ctimensec: 9,
-			mode: 10,
+			mode: u32::from(FileType::Regular | 0o644),
 			unused4: 11,
 			uid: 12,
 			gid: 13,
@@ -53,7 +53,7 @@ fn request() {
 	assert_eq!(req.mtime(), Some(super::systime(5, 8)));
 	assert_eq!(req.mtime_now(), true);
 	assert_eq!(req.ctime(), Some(super::systime(6, 9)));
-	assert_eq!(req.mode(), Some(10));
+	assert_eq!(req.mode(), Some(FileType::Regular | 0o644));
 	assert_eq!(req.user_id(), Some(12));
 	assert_eq!(req.group_id(), Some(13));
 }

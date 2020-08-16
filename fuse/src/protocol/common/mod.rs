@@ -20,6 +20,9 @@ mod bitflags;
 mod debug;
 pub(crate) use self::debug::*;
 
+mod file_mode;
+pub use self::file_mode::*;
+
 mod file_type;
 pub use self::file_type::*;
 

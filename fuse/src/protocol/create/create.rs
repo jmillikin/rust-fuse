@@ -46,8 +46,8 @@ impl CreateRequest<'_> {
 		self.flags
 	}
 
-	pub fn mode(&self) -> u32 {
-		self.mode
+	pub fn mode(&self) -> FileMode {
+		FileMode(self.mode)
 	}
 
 	pub fn umask(&self) -> u32 {

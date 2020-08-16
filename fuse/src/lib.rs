@@ -63,6 +63,7 @@ pub mod protocol;
 pub use self::protocol::*;
 
 pub use self::protocol::common::{
+	FileMode,
 	FileType,
 	Node,
 	NodeAttr,

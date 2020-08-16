@@ -39,8 +39,8 @@ impl MknodRequest<'_> {
 		self.name
 	}
 
-	pub fn mode(&self) -> u32 {
-		self.raw.mode
+	pub fn mode(&self) -> FileMode {
+		FileMode(self.raw.mode)
 	}
 
 	pub fn umask(&self) -> u32 {
@@ -48,8 +48,10 @@ impl MknodRequest<'_> {
 	}
 
 	pub fn device_number(&self) -> Option<u32> {
-		match FileType::from_mode(self.raw.mode) {
-			Some(FileType::CHR) | Some(FileType::BLK) => Some(self.raw.rdev),
+		match self.mode().file_type() {
+			Some(FileType::CharDevice) | Some(FileType::BlockDevice) => {
+				Some(self.raw.rdev)
+			},
 			_ => None,
 		}
 	}
@@ -60,7 +62,7 @@ impl fmt::Debug for MknodRequest<'_> {
 		fmt.debug_struct("MknodRequest")
 			.field("parent_id", &self.parent_id())
 			.field("name", &self.name())
-			.field("mode", &format_args!("{:#o}", &self.raw.mode))
+			.field("mode", &self.mode())
 			.field("umask", &format_args!("{:#o}", &self.raw.umask))
 			.field("device_number", &format_args!("{:?}", self.device_number()))
 			.finish()

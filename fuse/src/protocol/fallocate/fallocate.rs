@@ -43,8 +43,8 @@ impl FallocateRequest<'_> {
 		self.raw.length
 	}
 
-	pub fn mode(&self) -> u32 {
-		self.raw.mode
+	pub fn mode(&self) -> FileMode {
+		FileMode(self.raw.mode)
 	}
 }
 
