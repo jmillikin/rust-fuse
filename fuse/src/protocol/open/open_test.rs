@@ -17,7 +17,7 @@
 use crate::internal::testutil::MessageBuilder;
 use crate::protocol::prelude::*;
 
-use super::{OpenFlags, OpenRequest, OpenResponse};
+use super::{OpenRequest, OpenResponse, OpenResponseFlags};
 
 #[test]
 fn request() {
@@ -58,11 +58,11 @@ fn request_impl_debug() {
 
 #[test]
 fn response() {
-	let mut resp = OpenResponse::new();
-	resp.set_handle(123);
-	resp.set_flags(OpenFlags::from_bits(0xFE));
+	let mut response = OpenResponse::new();
+	response.set_handle(123);
+	response.flags_mut().keep_cache = true;
 
-	let encoded = encode_response!(resp);
+	let encoded = encode_response!(response);
 
 	assert_eq!(
 		encoded,
@@ -75,7 +75,7 @@ fn response() {
 			})
 			.push_sized(&fuse_kernel::fuse_open_out {
 				fh: 123,
-				open_flags: 0xFE,
+				open_flags: 0x2,
 				padding: 0,
 			})
 			.build()
@@ -86,14 +86,15 @@ fn response() {
 fn response_impl_debug() {
 	let mut response = OpenResponse::new();
 	response.set_handle(123);
-	response.set_flags(OpenFlags::from_bits(0x3));
+	response.flags_mut().direct_io = true;
+	response.flags_mut().keep_cache = true;
 
 	assert_eq!(
 		format!("{:#?}", response),
 		concat!(
 			"OpenResponse {\n",
 			"    handle: 123,\n",
-			"    flags: OpenFlags {\n",
+			"    flags: OpenResponseFlags {\n",
 			"        direct_io: true,\n",
 			"        keep_cache: true,\n",
 			"        nonseekable: false,\n",
@@ -108,9 +109,9 @@ fn open_flags() {
 	// Flag sets render as a struct, with unknown flags falling back
 	// to hex.
 	assert_eq!(
-		format!("{:#?}", OpenFlags::from_bits(0x3 | (1u32 << 31))),
+		format!("{:#?}", OpenResponseFlags::from_bits(0x3 | (1u32 << 31))),
 		concat!(
-			"OpenFlags {\n",
+			"OpenResponseFlags {\n",
 			"    direct_io: true,\n",
 			"    keep_cache: true,\n",
 			"    nonseekable: false,\n",

@@ -21,7 +21,7 @@ macro_rules! bitflags_struct {
 
 		$(
 			$( #[$item_doc:meta] )*
-			$item_mask:ident: $item_name:ident ,
+			$item_mask:path: $item_name:ident ,
 		)*
 	) => {
 		$( #[$struct_doc] )*
@@ -48,7 +48,7 @@ macro_rules! bitflags_struct {
 			fn known_field(&self, mask: u32) -> Option<(&'static str, bool)> {
 				match mask {
 					$(
-						fuse_kernel::$item_mask => Some((
+						$item_mask => Some((
 							stringify!($item_name),
 							self.$item_name,
 						)),
@@ -61,7 +61,7 @@ macro_rules! bitflags_struct {
 				Self {
 					bits,
 					$(
-						$item_name: (bits & fuse_kernel::$item_mask) > 0,
+						$item_name: (bits & $item_mask) > 0,
 					)*
 				}
 			}
@@ -70,7 +70,7 @@ macro_rules! bitflags_struct {
 				let mut out = 0;
 				$(
 					if self.$item_name {
-						out |= fuse_kernel::$item_mask;
+						out |= $item_mask;
 					}
 				)*
 				out | self.bits

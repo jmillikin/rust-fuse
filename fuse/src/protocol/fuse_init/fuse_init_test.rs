@@ -31,7 +31,7 @@ fn request_v7p1() {
 	assert_eq!(req.version().major(), 7);
 	assert_eq!(req.version().minor(), 1);
 	assert_eq!(req.max_readahead(), 0);
-	assert_eq!(req.flags(), FuseInitFlags::from_bits(0));
+	assert_eq!(*req.flags(), FuseInitFlags::from_bits(0));
 }
 
 #[test]
@@ -51,7 +51,7 @@ fn request_v7p6() {
 	assert_eq!(req.version().major(), 7);
 	assert_eq!(req.version().minor(), 6);
 	assert_eq!(req.max_readahead(), 9);
-	assert_eq!(req.flags(), FuseInitFlags::from_bits(0xFFFFFFFF));
+	assert_eq!(*req.flags(), FuseInitFlags::from_bits(0xFFFFFFFF));
 }
 
 #[test]
@@ -71,7 +71,7 @@ fn request_major_mismatch() {
 	assert_eq!(req.version().major(), 0xFF);
 	assert_eq!(req.version().minor(), 0xFF);
 	assert_eq!(req.max_readahead(), 0);
-	assert_eq!(req.flags(), FuseInitFlags::from_bits(0));
+	assert_eq!(*req.flags(), FuseInitFlags::from_bits(0));
 }
 
 #[test]
@@ -124,7 +124,7 @@ fn response_v7p5() {
 fn response_v7p23() {
 	let mut resp = FuseInitResponse::new(crate::ProtocolVersion::new(7, 23));
 	resp.set_max_readahead(4096);
-	resp.set_flags(FuseInitFlags::from_bits(0xFFFFFFFF));
+	*resp.flags_mut() = FuseInitFlags::from_bits(0xFFFFFFFF);
 	let encoded = encode_response!(resp);
 
 	assert_eq!(
@@ -315,7 +315,7 @@ fn response_impl_debug() {
 	response.set_max_background(10);
 	response.set_congestion_threshold(11);
 	response.set_time_granularity(100);
-	response.set_flags(FuseInitFlags::from_bits(0x1));
+	response.flags_mut().async_read = true;
 
 	assert_eq!(
 		format!("{:#?}", response),

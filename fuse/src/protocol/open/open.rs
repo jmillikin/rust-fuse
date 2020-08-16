@@ -77,42 +77,40 @@ impl<'a> fuse_io::DecodeRequest<'a> for OpenRequest<'a> {
 /// [`FuseHandlers::open`]: ../trait.FuseHandlers.html#method.open
 pub struct OpenResponse<'a> {
 	phantom: PhantomData<&'a ()>,
-	raw: fuse_kernel::fuse_open_out,
+	handle: u64,
+	flags: OpenResponseFlags,
 }
 
 impl<'a> OpenResponse<'a> {
 	pub fn new() -> OpenResponse<'a> {
 		Self {
 			phantom: PhantomData,
-			raw: fuse_kernel::fuse_open_out {
-				fh: 0,
-				open_flags: 0,
-				padding: 0,
-			},
+			handle: 0,
+			flags: OpenResponseFlags::new(),
 		}
 	}
 
 	pub fn handle(&self) -> u64 {
-		self.raw.fh
+		self.handle
 	}
 
 	pub fn set_handle(&mut self, handle: u64) {
-		self.raw.fh = handle;
+		self.handle = handle;
 	}
 
-	pub fn flags(&self) -> OpenFlags {
-		OpenFlags::from_bits(self.raw.open_flags)
+	pub fn flags(&self) -> &OpenResponseFlags {
+		&self.flags
 	}
 
-	pub fn set_flags(&mut self, flags: OpenFlags) {
-		self.raw.open_flags = flags.to_bits();
+	pub fn flags_mut(&mut self) -> &mut OpenResponseFlags {
+		&mut self.flags
 	}
 }
 
 impl fmt::Debug for OpenResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("OpenResponse")
-			.field("handle", &self.raw.fh)
+			.field("handle", &self.handle)
 			.field("flags", &self.flags())
 			.finish()
 	}
@@ -123,31 +121,35 @@ impl fuse_io::EncodeResponse for OpenResponse<'_> {
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
 	) -> Result<(), Chan::Error> {
-		enc.encode_sized(&self.raw)
+		enc.encode_sized(&fuse_kernel::fuse_open_out {
+			fh: self.handle,
+			open_flags: self.flags.to_bits(),
+			padding: 0,
+		})
 	}
 }
 
 // }}}
 
-// OpenFlags {{{
+// OpenResponseFlags {{{
 
 bitflags_struct! {
 	/// Optional flags set on [`OpenResponse`].
 	///
 	/// [`OpenResponse`]: struct.OpenResponse.html
-	pub struct OpenFlags(u32);
+	pub struct OpenResponseFlags(u32);
 
 	/// Use [page-based direct I/O][direct-io] on this file.
 	///
 	/// [direct-io]: https://lwn.net/Articles/348719/
-	FOPEN_DIRECT_IO: direct_io,
+	fuse_kernel::FOPEN_DIRECT_IO: direct_io,
 
 	/// Allow the kernel to preserve cached file data from the last time this
 	/// file was opened.
-	FOPEN_KEEP_CACHE: keep_cache,
+	fuse_kernel::FOPEN_KEEP_CACHE: keep_cache,
 
 	/// Tell the kernel this file is not seekable.
-	FOPEN_NONSEEKABLE: nonseekable,
+	fuse_kernel::FOPEN_NONSEEKABLE: nonseekable,
 }
 
 // }}}

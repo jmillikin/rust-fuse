@@ -17,7 +17,7 @@
 use crate::internal::testutil::MessageBuilder;
 use crate::protocol::prelude::*;
 
-use super::{OpendirFlags, OpendirRequest, OpendirResponse};
+use super::{OpendirRequest, OpendirResponse, OpendirResponseFlags};
 
 #[test]
 fn request() {
@@ -58,11 +58,11 @@ fn request_impl_debug() {
 
 #[test]
 fn response() {
-	let mut resp = OpendirResponse::new();
-	resp.set_handle(123);
-	resp.set_flags(OpendirFlags::from_bits(0xFE));
+	let mut response = OpendirResponse::new();
+	response.set_handle(123);
+	response.flags_mut().keep_cache = true;
 
-	let encoded = encode_response!(resp, {
+	let encoded = encode_response!(response, {
 		protocol_version: (7, 1),
 	});
 
@@ -77,7 +77,7 @@ fn response() {
 			})
 			.push_sized(&fuse_kernel::fuse_open_out {
 				fh: 123,
-				open_flags: 0xFE,
+				open_flags: 0x2,
 				padding: 0,
 			})
 			.build()
@@ -88,14 +88,14 @@ fn response() {
 fn response_impl_debug() {
 	let mut response = OpendirResponse::new();
 	response.set_handle(123);
-	response.set_flags(OpendirFlags::from_bits(0x2));
+	response.flags_mut().keep_cache = true;
 
 	assert_eq!(
 		format!("{:#?}", response),
 		concat!(
 			"OpendirResponse {\n",
 			"    handle: 123,\n",
-			"    flags: OpendirFlags {\n",
+			"    flags: OpendirResponseFlags {\n",
 			"        keep_cache: true,\n",
 			"        nonseekable: false,\n",
 			"    },\n",
@@ -109,9 +109,9 @@ fn open_flags() {
 	// Flag sets render as a struct, with unknown flags falling back
 	// to hex.
 	assert_eq!(
-		format!("{:#?}", OpendirFlags::from_bits(0x2 | (1u32 << 31))),
+		format!("{:#?}", OpendirResponseFlags::from_bits(0x2 | (1u32 << 31))),
 		concat!(
-			"OpendirFlags {\n",
+			"OpendirResponseFlags {\n",
 			"    keep_cache: true,\n",
 			"    nonseekable: false,\n",
 			"    0x80000000: true,\n",

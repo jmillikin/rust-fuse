@@ -77,42 +77,40 @@ impl<'a> fuse_io::DecodeRequest<'a> for OpendirRequest<'a> {
 /// [`FuseHandlers::opendir`]: ../trait.FuseHandlers.html#method.opendir
 pub struct OpendirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
-	raw: fuse_kernel::fuse_open_out,
+	handle: u64,
+	flags: OpendirResponseFlags,
 }
 
 impl<'a> OpendirResponse<'a> {
 	pub fn new() -> OpendirResponse<'a> {
 		Self {
 			phantom: PhantomData,
-			raw: fuse_kernel::fuse_open_out {
-				fh: 0,
-				open_flags: 0,
-				padding: 0,
-			},
+			handle: 0,
+			flags: OpendirResponseFlags::new(),
 		}
 	}
 
 	pub fn handle(&self) -> u64 {
-		self.raw.fh
+		self.handle
 	}
 
 	pub fn set_handle(&mut self, handle: u64) {
-		self.raw.fh = handle;
+		self.handle = handle;
 	}
 
-	pub fn flags(&self) -> OpendirFlags {
-		OpendirFlags::from_bits(self.raw.open_flags)
+	pub fn flags(&self) -> &OpendirResponseFlags {
+		&self.flags
 	}
 
-	pub fn set_flags(&mut self, flags: OpendirFlags) {
-		self.raw.open_flags = flags.to_bits();
+	pub fn flags_mut(&mut self) -> &mut OpendirResponseFlags {
+		&mut self.flags
 	}
 }
 
 impl fmt::Debug for OpendirResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("OpendirResponse")
-			.field("handle", &self.raw.fh)
+			.field("handle", &self.handle)
 			.field("flags", &self.flags())
 			.finish()
 	}
@@ -122,26 +120,30 @@ impl fuse_io::EncodeResponse for OpendirResponse<'_> {
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
 	) -> Result<(), Chan::Error> {
-		enc.encode_sized(&self.raw)
+		enc.encode_sized(&fuse_kernel::fuse_open_out {
+			fh: self.handle,
+			open_flags: self.flags.to_bits(),
+			padding: 0,
+		})
 	}
 }
 
 // }}}
 
-// OpendirFlags {{{
+// OpendirResponseFlags {{{
 
 bitflags_struct! {
 	/// Optional flags set on [`OpendirResponse`].
 	///
 	/// [`OpendirResponse`]: struct.OpendirResponse.html
-	pub struct OpendirFlags(u32);
+	pub struct OpendirResponseFlags(u32);
 
 	/// Allow the kernel to preserve cached directory entries from the last
 	/// time this directory was opened.
-	FOPEN_KEEP_CACHE: keep_cache,
+	fuse_kernel::FOPEN_KEEP_CACHE: keep_cache,
 
 	/// Tell the kernel this directory is not seekable.
-	FOPEN_NONSEEKABLE: nonseekable,
+	fuse_kernel::FOPEN_NONSEEKABLE: nonseekable,
 
 	// TODO: CACHE_DIR
 }
