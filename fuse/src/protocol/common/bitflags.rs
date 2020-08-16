@@ -36,6 +36,7 @@ macro_rules! bitflags_struct {
 		}
 
 		impl $struct_name {
+			#[allow(dead_code)]
 			pub fn new() -> $struct_name {
 				Self {
 					bits: 0,
@@ -57,6 +58,7 @@ macro_rules! bitflags_struct {
 				}
 			}
 
+			#[allow(dead_code)]
 			fn from_bits(bits: u32) -> $struct_name {
 				Self {
 					bits,
@@ -66,6 +68,7 @@ macro_rules! bitflags_struct {
 				}
 			}
 
+			#[allow(dead_code)]
 			fn to_bits(&self) -> u32 {
 				let mut out = 0;
 				$(

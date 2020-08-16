@@ -271,8 +271,6 @@ impl fuse_io::EncodeResponse for FuseInitResponse {
 		}
 
 		if self.raw.minor >= 5 {
-			let compat: &'a fuse_init_out_v7p5 =
-				unsafe { core::mem::transmute(&self.raw) };
 			return enc.encode_sized(&fuse_init_out_v7p5 {
 				major: self.raw.major,
 				minor: self.raw.minor,

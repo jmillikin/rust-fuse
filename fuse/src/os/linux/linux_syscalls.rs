@@ -25,8 +25,6 @@ pub(crate) fn getgid() -> u32 {
 	unsafe { target::getgid() as u32 }
 }
 
-const ERROR_MIN: usize = -4095isize as usize;
-
 pub(crate) fn mount(
 	source: &CStr,
 	target: &CStr,
