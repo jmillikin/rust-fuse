@@ -10,6 +10,7 @@ name = "fuse"
 
 [features]
 no_std = []
+run_local = []
 
 unstable_fuse_access = []
 unstable_fuse_bmap = []

@@ -14,9 +14,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
-use crate::channel::FuseChannel;
+use crate::channel::{Channel, ChannelError, FuseChannel};
 use crate::error::{Error, ErrorCode};
 use crate::fuse_handlers::FuseHandlers;
 use crate::internal::fuse_io::{
@@ -31,11 +31,10 @@ use crate::server;
 
 #[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
 pub struct FuseServer<Channel, Handlers> {
-	channel: Channel,
+	channel: Arc<Channel>,
 	handlers: Arc<Handlers>,
 	fuse_version: crate::ProtocolVersion,
 	read_buf_size: usize,
-	executor: Arc<Mutex<FuseServerExecutor<Channel, Handlers>>>,
 }
 
 impl<C, H> FuseServer<C, H>
@@ -47,38 +46,101 @@ where
 		channel: C,
 		mut handlers: H,
 	) -> Result<FuseServer<C, H>, C::Error> {
-		let executor_channel = channel.try_clone()?;
 		let init_response = fuse_handshake(&channel, &mut handlers)?;
 		let read_buf_size = 1048576; /* 1 MiB; TODO compute from init_response */
 		let fuse_version = init_response.version();
-		let handlers_arc = Arc::new(handlers);
-		let executor_handlers = handlers_arc.clone();
 		Ok(Self {
-			channel,
-			handlers: handlers_arc,
+			channel: Arc::new(channel),
+			handlers: Arc::new(handlers),
 			fuse_version,
 			read_buf_size,
-			executor: Arc::new(Mutex::new(FuseServerExecutor::new(
-				executor_channel,
-				executor_handlers,
-				read_buf_size,
-				fuse_version,
-			))),
 		})
 	}
 
-	pub fn executor(&self) -> &Arc<Mutex<FuseServerExecutor<C, H>>> {
-		&self.executor
+	pub fn run(&mut self) -> Result<(), C::Error>
+	where
+		C: Send + Sync + 'static,
+	{
+		fuse_main_loop::<C, H>(
+			&self.channel,
+			&*self.handlers,
+			self.read_buf_size,
+			self.fuse_version,
+		)
+	}
+
+	#[cfg(any(doc, feature = "run_local"))]
+	#[cfg_attr(doc, doc(cfg(feature = "run_local")))]
+	pub fn run_local(&mut self) -> Result<(), C::Error> {
+		fuse_main_loop::<C, H>(
+			&self.channel,
+			&*self.handlers,
+			self.read_buf_size,
+			self.fuse_version,
+		)
 	}
 
 	pub fn new_executor(&self) -> Result<FuseServerExecutor<C, H>, C::Error> {
 		let channel = self.channel.try_clone()?;
 		Ok(FuseServerExecutor::new(
-			channel,
+			Arc::new(channel),
 			self.handlers.clone(),
 			self.read_buf_size,
 			self.fuse_version,
 		))
+	}
+}
+
+#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
+pub struct FuseServerExecutor<C, H> {
+	channel: Arc<C>,
+	handlers: Arc<H>,
+	read_buf_size: usize,
+	fuse_version: crate::ProtocolVersion,
+}
+
+impl<C, H> FuseServerExecutor<C, H> {
+	fn new(
+		channel: Arc<C>,
+		handlers: Arc<H>,
+		read_buf_size: usize,
+		fuse_version: crate::ProtocolVersion,
+	) -> Self {
+		Self {
+			channel,
+			handlers,
+			read_buf_size,
+			fuse_version,
+		}
+	}
+}
+
+impl<C, H> FuseServerExecutor<C, H>
+where
+	C: FuseChannel,
+	H: FuseHandlers,
+{
+	pub fn run(&mut self) -> Result<(), C::Error>
+	where
+		C: Send + Sync + 'static,
+	{
+		fuse_main_loop::<C, H>(
+			&self.channel,
+			&*self.handlers,
+			self.read_buf_size,
+			self.fuse_version,
+		)
+	}
+
+	#[cfg(any(doc, feature = "run_local"))]
+	#[cfg_attr(doc, doc(cfg(feature = "run_local")))]
+	pub fn run_local(&mut self) -> Result<(), C::Error> {
+		fuse_main_loop::<C, H>(
+			&self.channel,
+			&*self.handlers,
+			self.read_buf_size,
+			self.fuse_version,
+		)
 	}
 }
 
@@ -128,66 +190,67 @@ fn fuse_handshake<C: FuseChannel, H: FuseHandlers>(
 	}
 }
 
-#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
-pub struct FuseServerExecutor<C, H> {
-	channel: Arc<C>,
-	handlers: Arc<H>,
-	read_buf: fuse_io::AlignedVec,
-	fuse_version: crate::ProtocolVersion,
+#[cfg(not(feature = "run_local"))]
+trait MaybeSendChannel {
+	type T: FuseChannel + Send + Sync + 'static;
 }
 
-impl<C, H> FuseServerExecutor<C, H> {
-	fn new(
-		channel: C,
-		handlers: Arc<H>,
-		read_buf_size: usize,
-		fuse_version: crate::ProtocolVersion,
-	) -> Self {
-		Self {
-			channel: Arc::new(channel),
-			handlers,
-			read_buf: fuse_io::AlignedVec::new(read_buf_size),
-			fuse_version,
-		}
-	}
-}
-
-impl<C, H> FuseServerExecutor<C, H>
+#[cfg(not(feature = "run_local"))]
+impl<C> MaybeSendChannel for C
 where
 	C: FuseChannel + Send + Sync + 'static,
+{
+	type T = C;
+}
+
+#[cfg(feature = "run_local")]
+trait MaybeSendChannel {
+	type T: FuseChannel;
+}
+
+#[cfg(feature = "run_local")]
+impl<C> MaybeSendChannel for C
+where
+	C: FuseChannel,
+{
+	type T = C;
+}
+
+fn fuse_main_loop<C, H>(
+	channel: &Arc<C::T>,
+	handlers: &H,
+	read_buf_size: usize,
+	fuse_version: crate::ProtocolVersion,
+) -> Result<(), <<C as MaybeSendChannel>::T as Channel>::Error>
+where
+	C: MaybeSendChannel,
 	H: FuseHandlers,
 {
-	pub fn run(&mut self) -> Result<(), C::Error> {
-		let handlers = &*self.handlers;
-		loop {
-			let request_size =
-				match self.channel.receive(self.read_buf.get_mut()) {
-					Err(err) => {
-						use crate::channel::ChannelError;
-						if err.error_code() == Some(ErrorCode::ENODEV) {
-							return Ok(());
-						}
-						return Err(err);
-					},
-					Ok(request_size) => request_size,
-				};
-			let request_buf =
-				fuse_io::aligned_slice(&self.read_buf, request_size);
-			let decoder =
-				fuse_io::RequestDecoder::new(request_buf, self.fuse_version)?;
+	let mut read_buf = fuse_io::AlignedVec::new(read_buf_size);
+	loop {
+		let request_size = match channel.receive(read_buf.get_mut()) {
+			Err(err) => {
+				if err.error_code() == Some(ErrorCode::ENODEV) {
+					return Ok(());
+				}
+				return Err(err);
+			},
+			Ok(request_size) => request_size,
+		};
+		let request_buf = fuse_io::aligned_slice(&read_buf, request_size);
+		let decoder = fuse_io::RequestDecoder::new(request_buf, fuse_version)?;
 
-			fuse_request_dispatch(handlers, decoder, &self.channel)?;
-		}
+		fuse_request_dispatch::<C, H>(handlers, decoder, &channel)?;
 	}
 }
 
 fn fuse_request_dispatch<C, H>(
 	handlers: &H,
 	request_decoder: fuse_io::RequestDecoder,
-	channel: &Arc<C>,
+	channel: &Arc<C::T>,
 ) -> Result<(), Error>
 where
-	C: FuseChannel + Send + Sync + 'static,
+	C: MaybeSendChannel,
 	H: FuseHandlers,
 {
 	let header = request_decoder.header();
@@ -195,14 +258,12 @@ where
 	let fuse_version = request_decoder.version();
 	let ctx = server::ServerContext::new(*header);
 
+	let respond_once =
+		server::RespondOnceImpl::new(channel, header.unique, fuse_version);
+
 	macro_rules! do_dispatch {
 		($handler:tt) => {{
 			let request = DecodeRequest::decode_request(request_decoder)?;
-			let respond_once = server::RespondOnceImpl::new(
-				channel,
-				header.unique,
-				fuse_version,
-			);
 			handlers.$handler(ctx, &request, respond_once);
 		}};
 	}

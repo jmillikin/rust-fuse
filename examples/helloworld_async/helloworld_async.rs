@@ -223,10 +223,6 @@ fn main() {
 		.set_mount_subtype("helloworld")
 		.mount(&mount_target)
 		.unwrap();
-	let srv = fuse::FuseServer::new(channel, handlers).unwrap();
-
-	let executor_arc = srv.executor().clone();
-	let mut executor = executor_arc.lock().unwrap();
-
-	executor.run().unwrap();
+	let mut srv = fuse::FuseServer::new(channel, handlers).unwrap();
+	srv.run().unwrap();
 }

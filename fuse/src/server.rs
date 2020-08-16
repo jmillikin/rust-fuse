@@ -55,14 +55,17 @@ pub trait RespondOnce<Response>: private::Sealed {
 	fn ok(self, response: &Response);
 	fn err(self, err: crate::ErrorCode);
 
-	#[cfg(not(feature = "no_std"))]
-	#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
+	#[cfg(not(any(feature = "no_std", feature = "run_local")))]
+	#[cfg_attr(
+		doc,
+		doc(cfg(not(any(feature = "no_std", feature = "run_local"))))
+	)]
 	fn into_box(self) -> Box<dyn RespondOnceBox<Response>>;
 }
 
 /// **\[SEALED\]**
-#[cfg(not(feature = "no_std"))]
-#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
+#[cfg(not(any(feature = "no_std", feature = "run_local")))]
+#[cfg_attr(doc, doc(cfg(not(any(feature = "no_std", feature = "run_local")))))]
 pub trait RespondOnceBox<Response>: private::Sealed + Send + 'static {
 	fn ok(self: Box<Self>, response: &Response);
 	fn err(self: Box<Self>, err: crate::ErrorCode);
@@ -106,7 +109,7 @@ where
 #[cfg(not(feature = "no_std"))]
 impl<C> private::Sealed for RespondOnceImpl<'_, C> {}
 
-#[cfg(not(feature = "no_std"))]
+#[cfg(all(not(feature = "no_std"), not(feature = "run_local"),))]
 impl<C, Response> RespondOnce<Response> for RespondOnceImpl<'_, C>
 where
 	C: fuse_io::Channel + Send + Sync + 'static,
@@ -129,18 +132,33 @@ where
 	}
 }
 
+#[cfg(all(not(feature = "no_std"), feature = "run_local",))]
+impl<C, Response> RespondOnce<Response> for RespondOnceImpl<'_, C>
+where
+	C: fuse_io::Channel,
+	Response: fuse_io::EncodeResponse,
+{
+	fn ok(self, response: &Response) {
+		response.encode_response(self.encoder());
+	}
+
+	fn err(self, err: crate::ErrorCode) {
+		self.encoder().encode_error(err);
+	}
+}
+
 // }}}
 
 // RespondOnceBoxImpl {{{
 
-#[cfg(not(feature = "no_std"))]
+#[cfg(not(any(feature = "no_std", feature = "run_local")))]
 struct RespondOnceBoxImpl<C> {
 	channel: Arc<C>,
 	request_id: u64,
 	fuse_version: crate::ProtocolVersion,
 }
 
-#[cfg(not(feature = "no_std"))]
+#[cfg(not(any(feature = "no_std", feature = "run_local")))]
 impl<C> RespondOnceBoxImpl<C>
 where
 	C: fuse_io::Channel,
@@ -154,10 +172,10 @@ where
 	}
 }
 
-#[cfg(not(feature = "no_std"))]
+#[cfg(not(any(feature = "no_std", feature = "run_local")))]
 impl<C> private::Sealed for RespondOnceBoxImpl<C> {}
 
-#[cfg(not(feature = "no_std"))]
+#[cfg(not(any(feature = "no_std", feature = "run_local")))]
 impl<C, Response> RespondOnceBox<Response> for RespondOnceBoxImpl<C>
 where
 	C: fuse_io::Channel + Send + Sync + 'static,
