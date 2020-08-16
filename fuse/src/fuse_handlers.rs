@@ -328,8 +328,6 @@ pub trait FuseHandlers {
 		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
-	#[cfg(any(doc, feature = "unstable_fuse_rename"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_rename")))]
 	fn rename(
 		&self,
 		ctx: server::ServerContext,

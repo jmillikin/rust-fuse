@@ -24,37 +24,58 @@ mod rename_test;
 const RENAME_NOREPLACE: u32 = 1 << 0;
 const RENAME_EXCHANGE: u32 = 1 << 1;
 
+/// Request type for [`FuseHandlers::rename`].
+///
+/// [`FuseHandlers::rename`]: ../trait.FuseHandlers.html#method.rename
 pub struct RenameRequest<'a> {
-	flags: u32,
-	old_dir: NodeId,
-	old_name: &'a CStr,
-	new_dir: NodeId,
-	new_name: &'a CStr,
+	old_directory_id: NodeId,
+	old_name: &'a NodeName,
+	new_directory_id: NodeId,
+	new_name: &'a NodeName,
+	flags: RenameRequestFlags,
 }
 
 impl RenameRequest<'_> {
-	pub fn old_dir(&self) -> NodeId {
-		self.old_dir
+	pub fn old_directory_id(&self) -> NodeId {
+		self.old_directory_id
 	}
 
-	pub fn old_name(&self) -> &CStr {
+	pub fn old_name(&self) -> &NodeName {
 		self.old_name
 	}
 
-	pub fn new_dir(&self) -> NodeId {
-		self.new_dir
+	pub fn new_directory_id(&self) -> NodeId {
+		self.new_directory_id
 	}
 
-	pub fn new_name(&self) -> &CStr {
+	pub fn new_name(&self) -> &NodeName {
 		self.new_name
 	}
 
-	pub fn exchange(&self) -> bool {
-		self.flags & RENAME_EXCHANGE > 0
+	pub fn flags(&self) -> &RenameRequestFlags {
+		&self.flags
 	}
+}
 
-	pub fn no_replace(&self) -> bool {
-		self.flags & RENAME_NOREPLACE > 0
+bitflags_struct! {
+	/// Optional flags set on [`RenameRequest`].
+	///
+	/// [`RenameRequest`]: struct.RenameRequest.html
+	pub struct RenameRequestFlags(u32);
+
+	RENAME_EXCHANGE: exchange,
+	RENAME_NOREPLACE: no_replace,
+}
+
+impl fmt::Debug for RenameRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("RenameRequest")
+			.field("old_directory_id", &self.old_directory_id)
+			.field("old_name", &self.old_name)
+			.field("new_directory_id", &self.new_directory_id)
+			.field("new_name", &self.new_name)
+			.field("flags", &self.flags)
+			.finish()
 	}
 }
 
@@ -75,14 +96,14 @@ impl<'a> fuse_io::DecodeRequest<'a> for RenameRequest<'a> {
 			let parsed: &fuse_kernel::fuse_rename_in = dec.next_sized()?;
 			new_dir = parsed.newdir;
 		}
-		let old_name = dec.next_cstr()?;
-		let new_name = dec.next_cstr()?;
+		let old_name = NodeName::new(dec.next_nul_terminated_bytes()?);
+		let new_name = NodeName::new(dec.next_nul_terminated_bytes()?);
 		Ok(Self {
-			flags,
-			old_dir: try_node_id(header.nodeid)?,
+			old_directory_id: try_node_id(header.nodeid)?,
 			old_name,
-			new_dir: try_node_id(new_dir)?,
+			new_directory_id: try_node_id(new_dir)?,
 			new_name,
+			flags: RenameRequestFlags::from_bits(flags),
 		})
 	}
 }
@@ -91,6 +112,9 @@ impl<'a> fuse_io::DecodeRequest<'a> for RenameRequest<'a> {
 
 // RenameResponse {{{
 
+/// Response type for [`FuseHandlers::rename`].
+///
+/// [`FuseHandlers::rename`]: ../trait.FuseHandlers.html#method.rename
 pub struct RenameResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }

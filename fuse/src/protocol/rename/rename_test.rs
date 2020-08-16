@@ -31,16 +31,16 @@ fn request_rename() {
 		.push_bytes(b"new\x00")
 		.build_aligned();
 
-	let req: RenameRequest = decode_request!(buf);
+	let request: RenameRequest = decode_request!(buf);
 
-	let expect_old = CString::new("old").unwrap();
-	let expect_new = CString::new("new").unwrap();
-	assert_eq!(req.old_name(), expect_old.as_ref());
-	assert_eq!(req.new_name(), expect_new.as_ref());
-	assert_eq!(req.old_dir(), NodeId::new(123).unwrap());
-	assert_eq!(req.new_dir(), NodeId::new(456).unwrap());
-	assert_eq!(req.exchange(), false);
-	assert_eq!(req.no_replace(), false);
+	let expect_old: &[u8] = b"old";
+	let expect_new: &[u8] = b"new";
+	assert_eq!(request.old_name(), expect_old);
+	assert_eq!(request.new_name(), expect_new);
+	assert_eq!(request.old_directory_id(), NodeId::new(123).unwrap());
+	assert_eq!(request.new_directory_id(), NodeId::new(456).unwrap());
+	assert_eq!(request.flags().exchange, false);
+	assert_eq!(request.flags().no_replace, false);
 }
 
 #[test]
@@ -52,29 +52,63 @@ fn request_rename2() {
 		})
 		.push_sized(&fuse_kernel::fuse_rename2_in {
 			newdir: 456,
-			flags: 0xFF,
+			flags: 0x3,
 			padding: 0,
 		})
 		.push_bytes(b"old\x00")
 		.push_bytes(b"new\x00")
 		.build_aligned();
 
-	let req: RenameRequest = decode_request!(buf);
+	let request: RenameRequest = decode_request!(buf);
 
-	let expect_old = CString::new("old").unwrap();
-	let expect_new = CString::new("new").unwrap();
-	assert_eq!(req.old_name(), expect_old.as_ref());
-	assert_eq!(req.new_name(), expect_new.as_ref());
-	assert_eq!(req.old_dir(), NodeId::new(123).unwrap());
-	assert_eq!(req.new_dir(), NodeId::new(456).unwrap());
-	assert_eq!(req.exchange(), true);
-	assert_eq!(req.no_replace(), true);
+	let expect_old: &[u8] = b"old";
+	let expect_new: &[u8] = b"new";
+	assert_eq!(request.old_name(), expect_old);
+	assert_eq!(request.new_name(), expect_new);
+	assert_eq!(request.old_directory_id(), NodeId::new(123).unwrap());
+	assert_eq!(request.new_directory_id(), NodeId::new(456).unwrap());
+	assert_eq!(request.flags().exchange, true);
+	assert_eq!(request.flags().no_replace, true);
+}
+
+#[test]
+fn request_impl_debug() {
+	let buf = MessageBuilder::new()
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_RENAME2;
+			h.nodeid = 123;
+		})
+		.push_sized(&fuse_kernel::fuse_rename2_in {
+			newdir: 456,
+			flags: 0x3,
+			padding: 0,
+		})
+		.push_bytes(b"old\x00")
+		.push_bytes(b"new\x00")
+		.build_aligned();
+	let request: RenameRequest = decode_request!(buf);
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"RenameRequest {\n",
+			"    old_directory_id: 123,\n",
+			"    old_name: \"old\",\n",
+			"    new_directory_id: 456,\n",
+			"    new_name: \"new\",\n",
+			"    flags: RenameRequestFlags {\n",
+			"        no_replace: true,\n",
+			"        exchange: true,\n",
+			"    },\n",
+			"}",
+		),
+	);
 }
 
 #[test]
 fn response_empty() {
-	let resp = RenameResponse::new();
-	let encoded = encode_response!(resp);
+	let response = RenameResponse::new();
+	let encoded = encode_response!(response);
 
 	assert_eq!(
 		encoded,
@@ -86,4 +120,10 @@ fn response_empty() {
 			})
 			.build()
 	);
+}
+
+#[test]
+fn response_impl_debug() {
+	let response = RenameResponse::new();
+	assert_eq!(format!("{:#?}", response), "RenameResponse");
 }
