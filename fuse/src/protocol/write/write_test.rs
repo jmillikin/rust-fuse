@@ -29,7 +29,10 @@ fn request_v7p1() {
 	);
 
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_WRITE)
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_WRITE;
+			h.nodeid = 123;
+		})
 		.push_sized(&super::fuse_write_in_v7p1 {
 			fh: 123,
 			offset: 45,
@@ -46,15 +49,18 @@ fn request_v7p1() {
 	assert_eq!(req.handle(), 123);
 	assert_eq!(req.offset(), 45);
 	assert_eq!(req.lock_owner(), None);
-	assert_eq!(req.page_cache(), false);
-	assert_eq!(req.flags(), 0);
+	assert_eq!(req.flags().write_cache, false);
+	assert_eq!(req.open_flags(), 0);
 	assert_eq!(req.value(), b"hello.world!");
 }
 
 #[test]
 fn request_v7p9() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_WRITE)
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_WRITE;
+			h.nodeid = 123;
+		})
 		.push_sized(&fuse_kernel::fuse_write_in {
 			fh: 123,
 			offset: 45,
@@ -74,15 +80,18 @@ fn request_v7p9() {
 	assert_eq!(req.handle(), 123);
 	assert_eq!(req.offset(), 45);
 	assert_eq!(req.lock_owner(), None);
-	assert_eq!(req.page_cache(), false);
-	assert_eq!(req.flags(), 67);
+	assert_eq!(req.flags().write_cache, false);
+	assert_eq!(req.open_flags(), 67);
 	assert_eq!(req.value(), b"hello.world!");
 }
 
 #[test]
 fn request_lock_owner() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_WRITE)
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_WRITE;
+			h.nodeid = 123;
+		})
 		.set_header(|h| {
 			h.opcode = fuse_kernel::FUSE_WRITE;
 		})
@@ -105,7 +114,10 @@ fn request_lock_owner() {
 #[test]
 fn request_page_cache() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_WRITE)
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_WRITE;
+			h.nodeid = 123;
+		})
 		.push_sized(&fuse_kernel::fuse_write_in {
 			fh: 0,
 			offset: 0,
@@ -119,7 +131,7 @@ fn request_page_cache() {
 
 	let req: WriteRequest = decode_request!(buf);
 
-	assert_eq!(req.page_cache(), true);
+	assert_eq!(req.flags().write_cache, true);
 }
 
 #[test]
@@ -143,5 +155,21 @@ fn response() {
 				padding: 0,
 			})
 			.build()
+	);
+}
+
+#[test]
+fn response_impl_debug() {
+	let mut response = WriteResponse::new();
+	response.set_size(123);
+
+	#[rustfmt::skip]
+	assert_eq!(
+		format!("{:#?}", response),
+		concat!(
+			"WriteResponse {\n",
+			"    size: 123,\n",
+			"}",
+		),
 	);
 }

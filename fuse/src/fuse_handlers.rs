@@ -416,8 +416,6 @@ pub trait FuseHandlers {
 		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
-	#[cfg(any(doc, feature = "unstable_fuse_write"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_write")))]
 	fn write(
 		&self,
 		ctx: server::ServerContext,

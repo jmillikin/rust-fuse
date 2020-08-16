@@ -21,59 +21,77 @@ mod write_test;
 
 // WriteRequest {{{
 
+/// Request type for [`FuseHandlers::write`].
+///
+/// [`FuseHandlers::write`]: ../trait.FuseHandlers.html#method.write
 pub struct WriteRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	handle: u64,
+	phantom: PhantomData<&'a ()>,
+	node_id: NodeId,
 	offset: u64,
-	write_flags: u32,
-	lock_owner: u64,
-	flags: u32,
+	handle: u64,
 	value: &'a [u8],
+	flags: WriteRequestFlags,
+	lock_owner: Option<u64>,
+	open_flags: u32,
 }
 
 impl WriteRequest<'_> {
-	pub fn node_id(&self) -> u64 {
-		self.header.nodeid
-	}
-
-	pub fn handle(&self) -> u64 {
-		self.handle
+	pub fn node_id(&self) -> NodeId {
+		self.node_id
 	}
 
 	pub fn offset(&self) -> u64 {
 		self.offset
 	}
 
+	/// The value passed to [`OpenResponse::set_handle`], or zero if not set.
+	///
+	/// [`OpenResponse::set_handle`]: struct.OpenResponse.html#method.set_handle
+	pub fn handle(&self) -> u64 {
+		self.handle
+	}
+
 	pub fn value(&self) -> &[u8] {
 		self.value
 	}
 
-	pub fn page_cache(&self) -> bool {
-		self.write_flags & fuse_kernel::FUSE_WRITE_CACHE != 0
+	pub fn flags(&self) -> &WriteRequestFlags {
+		&self.flags
 	}
 
 	pub fn lock_owner(&self) -> Option<u64> {
-		if self.write_flags & fuse_kernel::FUSE_WRITE_LOCKOWNER == 0 {
-			return None;
-		}
-		Some(self.lock_owner)
+		self.lock_owner
 	}
 
-	pub fn flags(&self) -> u32 {
-		self.flags
+	/// Platform-specific flags passed to [`FuseHandlers::open`]. See
+	/// [`OpenRequest::flags`] for details.
+	///
+	/// [`FuseHandlers::open`]: ../trait.FuseHandlers.html#method.open
+	/// [`OpenRequest::flags`]: struct.OpenRequest.html#method.flags
+	pub fn open_flags(&self) -> u32 {
+		self.open_flags
 	}
+}
+
+bitflags_struct! {
+	/// Optional flags set on [`WriteRequest`].
+	///
+	/// [`WriteRequest`]: struct.OpendirResponse.html
+	pub struct WriteRequestFlags(u32);
+
+	fuse_kernel::FUSE_WRITE_CACHE: write_cache,
 }
 
 impl fmt::Debug for WriteRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("WriteRequest")
-			.field("header", self.header)
-			.field("handle", &self.handle)
+			.field("node_id", &self.node_id)
 			.field("offset", &self.offset)
-			.field("lock_owner", &self.lock_owner())
-			.field("flags", &self.flags)
-			.field("page_cache", &self.page_cache())
+			.field("handle", &self.handle)
 			.field("value", &self.value)
+			.field("flags", &self.flags)
+			.field("lock_owner", &self.lock_owner())
+			.field("open_flags", &DebugHexU32(self.open_flags))
 			.finish()
 	}
 }
@@ -93,30 +111,40 @@ impl<'a> fuse_io::DecodeRequest<'a> for WriteRequest<'a> {
 		let header = dec.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_WRITE);
 
+		let node_id = try_node_id(header.nodeid)?;
+
 		if dec.version().minor() < 9 {
 			let raw: &'a fuse_write_in_v7p1 = dec.next_sized()?;
 			let value = dec.next_bytes(raw.size)?;
 			return Ok(Self {
-				header,
-				handle: raw.fh,
+				phantom: PhantomData,
+				node_id,
 				offset: raw.offset,
-				write_flags: raw.write_flags,
-				lock_owner: 0,
-				flags: 0,
+				handle: raw.fh,
 				value,
+				flags: WriteRequestFlags::from_bits(raw.write_flags),
+				lock_owner: None,
+				open_flags: 0,
 			});
 		}
 
 		let raw: &'a fuse_kernel::fuse_write_in = dec.next_sized()?;
 		let value = dec.next_bytes(raw.size)?;
+
+		let mut lock_owner = None;
+		if raw.write_flags & fuse_kernel::FUSE_WRITE_LOCKOWNER != 0 {
+			lock_owner = Some(raw.lock_owner)
+		}
+
 		Ok(Self {
-			header,
-			handle: raw.fh,
+			phantom: PhantomData,
+			node_id,
 			offset: raw.offset,
-			write_flags: raw.write_flags,
-			lock_owner: raw.lock_owner,
-			flags: raw.flags,
+			handle: raw.fh,
 			value,
+			flags: WriteRequestFlags::from_bits(raw.write_flags),
+			lock_owner,
+			open_flags: raw.flags,
 		})
 	}
 }
@@ -125,6 +153,9 @@ impl<'a> fuse_io::DecodeRequest<'a> for WriteRequest<'a> {
 
 // WriteResponse {{{
 
+/// Response type for [`FuseHandlers::write`].
+///
+/// [`FuseHandlers::write`]: ../trait.FuseHandlers.html#method.write
 pub struct WriteResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_write_out,

@@ -262,7 +262,6 @@ where
 		fuse_kernel::FUSE_STATFS => do_dispatch!(statfs),
 		fuse_kernel::FUSE_SYMLINK => do_dispatch!(symlink),
 		fuse_kernel::FUSE_UNLINK => do_dispatch!(unlink),
-		#[cfg(feature = "unstable_fuse_write")]
 		fuse_kernel::FUSE_WRITE => do_dispatch!(write),
 		_ => {
 			let request =
