@@ -412,8 +412,6 @@ pub trait FuseHandlers {
 		respond.err(crate::ErrorCode::ENOSYS);
 	}
 
-	#[cfg(any(doc, feature = "unstable_fuse_unlink"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_unlink")))]
 	fn unlink(
 		&self,
 		ctx: server::ServerContext,

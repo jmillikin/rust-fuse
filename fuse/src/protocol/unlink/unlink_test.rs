@@ -22,14 +22,39 @@ use super::{UnlinkRequest, UnlinkResponse};
 #[test]
 fn request() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_UNLINK)
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_UNLINK;
+			h.nodeid = 100;
+		})
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
+	let request: UnlinkRequest = decode_request!(buf);
 
-	let req: UnlinkRequest = decode_request!(buf);
+	let expect: &[u8] = b"hello.world!";
+	assert_eq!(request.parent_id(), NodeId::new(100).unwrap());
+	assert_eq!(request.name(), expect);
+}
 
-	let expect = CString::new("hello.world!").unwrap();
-	assert_eq!(req.name(), expect.as_ref());
+#[test]
+fn request_impl_debug() {
+	let buf = MessageBuilder::new()
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_UNLINK;
+			h.nodeid = 100;
+		})
+		.push_bytes(b"hello.world!\x00")
+		.build_aligned();
+	let request: UnlinkRequest = decode_request!(buf);
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"UnlinkRequest {\n",
+			"    parent_id: 100,\n",
+			"    name: \"hello.world!\",\n",
+			"}",
+		),
+	);
 }
 
 #[test]
@@ -47,4 +72,11 @@ fn response_empty() {
 			})
 			.build()
 	);
+}
+
+#[test]
+fn response_impl_debug() {
+	let response = UnlinkResponse::new();
+
+	assert_eq!(format!("{:#?}", response), "UnlinkResponse");
 }

@@ -73,5 +73,5 @@ op_mod!(setxattr,    "setxattr/setxattr.rs",       "unstable_fuse_setxattr");
 op_mod!(statfs,      "statfs/statfs.rs",           "unstable_fuse_statfs");
 op_mod!(symlink,     "symlink/symlink.rs",         "unstable_fuse_symlink");
 op_mod!(unknown,     "unknown/unknown.rs");
-op_mod!(unlink,      "unlink/unlink.rs",           "unstable_fuse_unlink");
+op_mod!(unlink,      "unlink/unlink.rs");
 op_mod!(write,       "write/write.rs",             "unstable_fuse_write");
