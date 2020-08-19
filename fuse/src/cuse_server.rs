@@ -327,7 +327,7 @@ fn cuse_request_dispatch<C, H>(
 	handlers: &H,
 	request_decoder: fuse_io::RequestDecoder,
 	channel: &Arc<C::T>,
-) -> Result<(), Error>
+) -> Result<(), <<C as MaybeSendChannel>::T as Channel>::Error>
 where
 	C: MaybeSendChannel,
 	H: CuseHandlers,
@@ -342,8 +342,14 @@ where
 
 	macro_rules! do_dispatch {
 		($handler:tt) => {{
-			let request = DecodeRequest::decode_request(request_decoder)?;
-			handlers.$handler(ctx, &request, respond_once);
+			match DecodeRequest::decode_request(request_decoder) {
+				Ok(request) => handlers.$handler(ctx, &request, respond_once),
+				Err(err) => {
+					// TODO: use ServerLogger to log the parse error
+					let _ = err;
+					respond_once.encoder().encode_error(ErrorCode::EIO)?;
+				},
+			}
 		}};
 	}
 
@@ -361,15 +367,10 @@ where
 		_ => {
 			let request =
 				protocol::UnknownRequest::decode_request(request_decoder)?;
-			let respond_once = server::RespondOnceImpl::new(
-				channel,
-				header.unique,
-				fuse_version,
-			);
 			// handlers.unknown(ctx, &request);
 			// TODO: use ServerLogger to log the unknown request
 			let _ = request;
-			respond_once.encoder().encode_error(ErrorCode::ENOSYS);
+			respond_once.encoder().encode_error(ErrorCode::ENOSYS)?;
 		},
 	}
 	Ok(())

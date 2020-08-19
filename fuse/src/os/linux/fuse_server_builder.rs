@@ -56,7 +56,10 @@ where
 
 	pub fn build(self) -> io::Result<FuseServer<FuseServerChannel, Handlers>> {
 		let file = self.mount.fuse_mount(&self.mount_target)?;
-		FuseServer::new(FuseServerChannel(FileChannel::new(file)), self.handlers)
+		FuseServer::new(
+			FuseServerChannel(FileChannel::new(file)),
+			self.handlers,
+		)
 	}
 }
 

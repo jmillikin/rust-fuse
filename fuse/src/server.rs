@@ -17,6 +17,7 @@
 #[cfg(not(feature = "no_std"))]
 use std::sync::Arc;
 
+use crate::error::ErrorCode;
 use crate::internal::fuse_io;
 use crate::internal::fuse_kernel;
 
@@ -116,11 +117,16 @@ where
 	Response: fuse_io::EncodeResponse,
 {
 	fn ok(self, response: &Response) {
-		response.encode_response(self.encoder());
+		if let Err(err) = response.encode_response(self.encoder()) {
+			// TODO: use ServerLogger to log the send error
+			let _ = err;
+			let _ = self.encoder().encode_error(ErrorCode::EIO);
+		}
 	}
 
 	fn err(self, err: crate::ErrorCode) {
-		self.encoder().encode_error(err);
+		// TODO: use ServerLogger to log the send error
+		let _ = self.encoder().encode_error(err);
 	}
 
 	fn into_box(self) -> Box<dyn RespondOnceBox<Response>> {
@@ -139,11 +145,16 @@ where
 	Response: fuse_io::EncodeResponse,
 {
 	fn ok(self, response: &Response) {
-		response.encode_response(self.encoder());
+		if let Err(err) = response.encode_response(self.encoder()) {
+			// TODO: use ServerLogger to log the send error
+			let _ = err;
+			let _ = self.encoder().encode_error(ErrorCode::EIO);
+		}
 	}
 
 	fn err(self, err: crate::ErrorCode) {
-		self.encoder().encode_error(err);
+		// TODO: use ServerLogger to log the send error
+		let _ = self.encoder().encode_error(err);
 	}
 }
 
@@ -182,11 +193,16 @@ where
 	Response: fuse_io::EncodeResponse,
 {
 	fn ok(self: Box<Self>, response: &Response) {
-		response.encode_response(self.encoder());
+		if let Err(err) = response.encode_response(self.encoder()) {
+			// TODO: use ServerLogger to log the send error
+			let _ = err;
+			let _ = self.encoder().encode_error(ErrorCode::EIO);
+		}
 	}
 
 	fn err(self: Box<Self>, err: crate::ErrorCode) {
-		self.encoder().encode_error(err);
+		// TODO: use ServerLogger to log the send error
+		let _ = self.encoder().encode_error(err);
 	}
 }
 
