@@ -20,6 +20,13 @@
 #[macro_use]
 pub(crate) mod common;
 
+pub use self::common::{
+	Opcode,
+	RequestHeader,
+	ResponseHeader,
+	UnknownRequest,
+};
+
 mod prelude;
 
 macro_rules! op_mod {

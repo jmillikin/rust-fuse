@@ -22,6 +22,7 @@ use std::ffi::CStr;
 
 use crate::error::{Error, ErrorCode};
 use crate::internal::fuse_kernel;
+use crate::internal::types::ProtocolVersion;
 
 #[cfg(test)]
 #[path = "fuse_io_test.rs"]
@@ -147,7 +148,7 @@ pub(crate) enum Semantics {
 pub(crate) struct RequestDecoder<'a> {
 	buf: &'a [u8],
 	header: &'a fuse_kernel::fuse_in_header,
-	version: crate::ProtocolVersion,
+	version: ProtocolVersion,
 	semantics: Semantics,
 	consumed: u32,
 }
@@ -155,7 +156,7 @@ pub(crate) struct RequestDecoder<'a> {
 impl<'a> RequestDecoder<'a> {
 	pub(crate) fn new(
 		buf: AlignedSlice<'a>,
-		version: crate::ProtocolVersion,
+		version: ProtocolVersion,
 		semantics: Semantics,
 	) -> Result<Self, Error> {
 		let buf = buf.get();
@@ -193,7 +194,7 @@ impl<'a> RequestDecoder<'a> {
 		self.header
 	}
 
-	pub(crate) fn version(&self) -> crate::ProtocolVersion {
+	pub(crate) fn version(&self) -> ProtocolVersion {
 		self.version
 	}
 
@@ -286,14 +287,14 @@ pub(crate) trait EncodeResponse {
 pub(crate) struct ResponseEncoder<'a, Chan> {
 	channel: &'a Chan,
 	request_id: u64,
-	version: crate::ProtocolVersion,
+	version: ProtocolVersion,
 }
 
 impl<'a, Chan> ResponseEncoder<'a, Chan> {
 	pub(crate) fn new(
 		channel: &'a Chan,
 		request_id: u64,
-		version: crate::ProtocolVersion,
+		version: ProtocolVersion,
 	) -> Self {
 		Self {
 			channel,
@@ -302,7 +303,7 @@ impl<'a, Chan> ResponseEncoder<'a, Chan> {
 		}
 	}
 
-	pub(crate) fn version(&self) -> crate::ProtocolVersion {
+	pub(crate) fn version(&self) -> ProtocolVersion {
 		self.version
 	}
 }

@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::internal::types::ProtocolVersion;
 use crate::protocol::prelude::*;
 
 #[cfg(test)]
@@ -26,12 +27,12 @@ mod cuse_init_test;
 /// [`CuseHandlers::cuse_init`]: ../../trait.CuseHandlers.html#method.cuse_init
 pub struct CuseInitRequest<'a> {
 	phantom: PhantomData<&'a ()>,
-	version: crate::ProtocolVersion,
+	version: ProtocolVersion,
 	flags: CuseInitFlags,
 }
 
 impl CuseInitRequest<'_> {
-	pub fn version(&self) -> crate::ProtocolVersion {
+	pub fn version(&self) -> ProtocolVersion {
 		self.version
 	}
 
@@ -62,7 +63,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for CuseInitRequest<'_> {
 		let raw: &'a fuse_kernel::cuse_init_in = dec.next_sized()?;
 		Ok(CuseInitRequest {
 			phantom: PhantomData,
-			version: crate::ProtocolVersion::new(raw.major, raw.minor),
+			version: ProtocolVersion::new(raw.major, raw.minor),
 			flags: CuseInitFlags::from_bits(raw.flags),
 		})
 	}
@@ -81,7 +82,7 @@ pub struct CuseInitResponse {
 }
 
 impl CuseInitResponse {
-	pub fn new(version: crate::ProtocolVersion) -> CuseInitResponse {
+	pub fn new(version: ProtocolVersion) -> CuseInitResponse {
 		Self {
 			raw: fuse_kernel::cuse_init_out {
 				major: version.major(),
@@ -120,12 +121,12 @@ impl CuseInitResponse {
 		}
 
 		let v_major = fuse_kernel::FUSE_KERNEL_VERSION;
-		let version = crate::ProtocolVersion::new(v_major, v_minor);
+		let version = ProtocolVersion::new(v_major, v_minor);
 		CuseInitResponse::new(version)
 	}
 
-	pub fn version(&self) -> crate::ProtocolVersion {
-		crate::ProtocolVersion::new(self.raw.major, self.raw.minor)
+	pub fn version(&self) -> ProtocolVersion {
+		ProtocolVersion::new(self.raw.major, self.raw.minor)
 	}
 
 	pub fn flags(&self) -> &CuseInitFlags {

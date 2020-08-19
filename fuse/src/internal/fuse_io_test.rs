@@ -19,6 +19,7 @@ use std::mem::size_of;
 use crate::error::Error;
 use crate::internal::fuse_kernel;
 use crate::internal::testutil::MessageBuilder;
+use crate::internal::types::ProtocolVersion;
 
 use super::{RequestDecoder, Semantics};
 
@@ -31,7 +32,7 @@ fn request_decoder_new() {
 
 	let decoder = RequestDecoder::new(
 		buf.borrow(),
-		crate::ProtocolVersion::LATEST,
+		ProtocolVersion::LATEST,
 		Semantics::FUSE,
 	)
 	.unwrap();
@@ -51,7 +52,7 @@ fn request_decoder_eof_handling() {
 
 	let mut decoder = RequestDecoder::new(
 		buf.borrow(),
-		crate::ProtocolVersion::LATEST,
+		ProtocolVersion::LATEST,
 		Semantics::FUSE,
 	)
 	.unwrap();
@@ -102,7 +103,7 @@ fn request_decoder_sized() {
 
 	let mut decoder = RequestDecoder::new(
 		buf.borrow(),
-		crate::ProtocolVersion::LATEST,
+		ProtocolVersion::LATEST,
 		Semantics::FUSE,
 	)
 	.unwrap();
@@ -128,7 +129,7 @@ fn frame_decoder_bytes() {
 
 	let mut decoder = RequestDecoder::new(
 		buf.borrow(),
-		crate::ProtocolVersion::LATEST,
+		ProtocolVersion::LATEST,
 		Semantics::FUSE,
 	)
 	.unwrap();
@@ -154,7 +155,7 @@ fn frame_reader_cstr() {
 
 	let mut decoder = RequestDecoder::new(
 		buf.borrow(),
-		crate::ProtocolVersion::LATEST,
+		ProtocolVersion::LATEST,
 		Semantics::FUSE,
 	)
 	.unwrap();

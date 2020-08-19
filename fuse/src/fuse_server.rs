@@ -26,6 +26,7 @@ use crate::internal::fuse_io::{
 	EncodeResponse,
 };
 use crate::internal::fuse_kernel;
+use crate::internal::types::ProtocolVersion;
 use crate::protocol;
 use crate::protocol::common::UnknownRequest;
 use crate::server;
@@ -38,7 +39,7 @@ pub trait FuseServerChannel: Channel {
 pub struct FuseServer<Channel, Handlers> {
 	channel: Arc<Channel>,
 	handlers: Arc<Handlers>,
-	fuse_version: crate::ProtocolVersion,
+	fuse_version: ProtocolVersion,
 	read_buf_size: usize,
 }
 
@@ -100,7 +101,7 @@ pub struct FuseServerExecutor<C, H> {
 	channel: Arc<C>,
 	handlers: Arc<H>,
 	read_buf_size: usize,
-	fuse_version: crate::ProtocolVersion,
+	fuse_version: ProtocolVersion,
 }
 
 impl<C, H> FuseServerExecutor<C, H> {
@@ -108,7 +109,7 @@ impl<C, H> FuseServerExecutor<C, H> {
 		channel: Arc<C>,
 		handlers: Arc<H>,
 		read_buf_size: usize,
-		fuse_version: crate::ProtocolVersion,
+		fuse_version: ProtocolVersion,
 	) -> Self {
 		Self {
 			channel,
@@ -159,7 +160,7 @@ fn fuse_handshake<C: FuseServerChannel, H: FuseHandlers>(
 		let request_buf = fuse_io::aligned_slice(&read_buf, request_size);
 		let request_decoder = fuse_io::RequestDecoder::new(
 			request_buf,
-			crate::ProtocolVersion::LATEST,
+			ProtocolVersion::LATEST,
 			fuse_io::Semantics::FUSE,
 		)?;
 
@@ -175,7 +176,7 @@ fn fuse_handshake<C: FuseServerChannel, H: FuseHandlers>(
 		let major_version = init_request.version().major();
 		if major_version != fuse_kernel::FUSE_KERNEL_VERSION {
 			let init_response =
-				protocol::FuseInitResponse::new(crate::ProtocolVersion::LATEST);
+				protocol::FuseInitResponse::new(ProtocolVersion::LATEST);
 			init_response.encode_response(fuse_io::ResponseEncoder::new(
 				channel,
 				request_id,
@@ -189,7 +190,7 @@ fn fuse_handshake<C: FuseServerChannel, H: FuseHandlers>(
 			channel,
 			request_id,
 			// FuseInitResponse always encodes with its own version
-			crate::ProtocolVersion::LATEST,
+			ProtocolVersion::LATEST,
 		))?;
 		return Ok(init_response);
 	}
@@ -225,7 +226,7 @@ fn fuse_main_loop<C, H>(
 	channel: &Arc<C::T>,
 	handlers: &H,
 	read_buf_size: usize,
-	fuse_version: crate::ProtocolVersion,
+	fuse_version: ProtocolVersion,
 ) -> Result<(), <<C as MaybeSendChannel>::T as Channel>::Error>
 where
 	C: MaybeSendChannel,

@@ -20,6 +20,7 @@ use std::slice;
 
 use crate::internal::fuse_io::{self, AlignedBuffer};
 use crate::internal::fuse_kernel;
+use crate::internal::types::ProtocolVersion;
 
 pub(crate) struct MessageBuilder {
 	header: Option<fuse_kernel::fuse_in_header>,
@@ -146,10 +147,6 @@ impl fuse_io::Channel for FakeChannel {
 		let _ = buf;
 		unimplemented!()
 	}
-
-	fn try_clone(&self) -> Result<Self, Self::Error> {
-		unimplemented!()
-	}
 }
 
 macro_rules! decode_request {
@@ -176,9 +173,9 @@ pub(crate) struct DecodeRequestOpts {
 }
 
 impl DecodeRequestOpts {
-	pub(crate) fn protocol_version(&self) -> crate::ProtocolVersion {
+	pub(crate) fn protocol_version(&self) -> ProtocolVersion {
 		let (major, minor) = self.protocol_version;
-		crate::ProtocolVersion::new(major, minor)
+		ProtocolVersion::new(major, minor)
 	}
 }
 
@@ -226,9 +223,9 @@ pub(crate) struct EncodeRequestOpts {
 }
 
 impl EncodeRequestOpts {
-	pub(crate) fn protocol_version(&self) -> crate::ProtocolVersion {
+	pub(crate) fn protocol_version(&self) -> ProtocolVersion {
 		let (major, minor) = self.protocol_version;
-		crate::ProtocolVersion::new(major, minor)
+		ProtocolVersion::new(major, minor)
 	}
 }
 

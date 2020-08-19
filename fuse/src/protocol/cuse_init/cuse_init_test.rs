@@ -15,6 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::internal::testutil::MessageBuilder;
+use crate::internal::types::ProtocolVersion;
 use crate::protocol::prelude::*;
 
 use super::{CuseInitFlags, CuseInitRequest, CuseInitResponse};
@@ -40,7 +41,7 @@ fn request() {
 
 #[test]
 fn request_impl_debug() {
-	let version = crate::ProtocolVersion::new(7, 1);
+	let version = ProtocolVersion::new(7, 1);
 	let request = &CuseInitRequest {
 		phantom: PhantomData,
 		version: version,
@@ -71,11 +72,8 @@ fn encode_response(
 
 	let request_id = 0;
 	let mut channel = crate::internal::testutil::FakeChannel::new();
-	let encoder = ResponseEncoder::new(
-		&mut channel,
-		request_id,
-		crate::ProtocolVersion::LATEST,
-	);
+	let encoder =
+		ResponseEncoder::new(&mut channel, request_id, ProtocolVersion::LATEST);
 	response
 		.encode_response(encoder, maybe_device_name)
 		.unwrap();
@@ -84,7 +82,7 @@ fn encode_response(
 
 #[test]
 fn response() {
-	let mut resp = CuseInitResponse::new(crate::ProtocolVersion::new(7, 23));
+	let mut resp = CuseInitResponse::new(ProtocolVersion::new(7, 23));
 	resp.set_max_write(4096);
 	*resp.flags_mut() = CuseInitFlags::from_bits(0xFFFFFFFF);
 	let encoded = encode_response(resp, Some(b"test-device"));
@@ -119,10 +117,7 @@ fn response() {
 fn response_minor_mismatch() {
 	let resp = CuseInitResponse::for_request_impl(&CuseInitRequest {
 		phantom: PhantomData,
-		version: crate::ProtocolVersion::new(
-			fuse_kernel::FUSE_KERNEL_VERSION,
-			0xFF,
-		),
+		version: ProtocolVersion::new(fuse_kernel::FUSE_KERNEL_VERSION, 0xFF),
 		flags: CuseInitFlags::from_bits(0xFFFFFFFF),
 	});
 	let encoded = encode_response(resp, Some(b"test-device"));
@@ -157,7 +152,7 @@ fn response_minor_mismatch() {
 fn response_major_mismatch() {
 	let resp = CuseInitResponse::for_request_impl(&CuseInitRequest {
 		phantom: PhantomData,
-		version: crate::ProtocolVersion::new(0xFF, 0xFF),
+		version: ProtocolVersion::new(0xFF, 0xFF),
 		flags: CuseInitFlags::from_bits(0),
 	});
 	let encoded = encode_response(resp, None);
@@ -188,7 +183,7 @@ fn response_major_mismatch() {
 
 #[test]
 fn response_impl_debug() {
-	let version = crate::ProtocolVersion::new(7, 1);
+	let version = ProtocolVersion::new(7, 1);
 	let mut response = CuseInitResponse::new(version);
 	response.set_max_read(4096);
 	response.set_max_write(8192);

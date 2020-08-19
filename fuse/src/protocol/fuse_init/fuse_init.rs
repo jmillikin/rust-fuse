@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::internal::types::ProtocolVersion;
 use crate::protocol::prelude::*;
 
 #[cfg(test)]
@@ -26,13 +27,13 @@ mod fuse_init_test;
 /// [`FuseHandlers::fuse_init`]: ../../trait.FuseHandlers.html#method.fuse_init
 pub struct FuseInitRequest<'a> {
 	phantom: PhantomData<&'a ()>,
-	version: crate::ProtocolVersion,
+	version: ProtocolVersion,
 	max_readahead: u32,
 	flags: FuseInitFlags,
 }
 
 impl FuseInitRequest<'_> {
-	pub fn version(&self) -> crate::ProtocolVersion {
+	pub fn version(&self) -> ProtocolVersion {
 		self.version
 	}
 
@@ -91,10 +92,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for FuseInitRequest<'_> {
 		{
 			return Ok(FuseInitRequest {
 				phantom: PhantomData,
-				version: crate::ProtocolVersion::new(
-					raw_v7p1.major,
-					raw_v7p1.minor,
-				),
+				version: ProtocolVersion::new(raw_v7p1.major, raw_v7p1.minor),
 				max_readahead: 0,
 				flags: FuseInitFlags::from_bits(0),
 			});
@@ -103,7 +101,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for FuseInitRequest<'_> {
 		let raw: &'a fuse_kernel::fuse_init_in = dec.next_sized()?;
 		Ok(FuseInitRequest {
 			phantom: PhantomData,
-			version: crate::ProtocolVersion::new(raw.major, raw.minor),
+			version: ProtocolVersion::new(raw.major, raw.minor),
 			max_readahead: raw.max_readahead,
 			flags: FuseInitFlags::from_bits(raw.flags),
 		})
@@ -123,7 +121,7 @@ pub struct FuseInitResponse {
 }
 
 impl FuseInitResponse {
-	pub fn new(version: crate::ProtocolVersion) -> FuseInitResponse {
+	pub fn new(version: ProtocolVersion) -> FuseInitResponse {
 		Self {
 			raw: fuse_kernel::fuse_init_out {
 				major: version.major(),
@@ -162,7 +160,7 @@ impl FuseInitResponse {
 		}
 
 		let v_major = fuse_kernel::FUSE_KERNEL_VERSION;
-		let version = crate::ProtocolVersion::new(v_major, v_minor);
+		let version = ProtocolVersion::new(v_major, v_minor);
 		let mut response = FuseInitResponse::new(version);
 		response.set_max_readahead(request.max_readahead());
 
@@ -175,8 +173,8 @@ impl FuseInitResponse {
 		response
 	}
 
-	pub fn version(&self) -> crate::ProtocolVersion {
-		crate::ProtocolVersion::new(self.raw.major, self.raw.minor)
+	pub fn version(&self) -> ProtocolVersion {
+		ProtocolVersion::new(self.raw.major, self.raw.minor)
 	}
 
 	pub fn flags(&self) -> &FuseInitFlags {

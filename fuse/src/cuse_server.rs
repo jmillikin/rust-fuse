@@ -22,6 +22,7 @@ use crate::cuse_handlers::CuseHandlers;
 use crate::error::{Error, ErrorCode};
 use crate::internal::fuse_io::{self, AlignedBuffer, DecodeRequest};
 use crate::internal::fuse_kernel;
+use crate::internal::types::ProtocolVersion;
 use crate::protocol;
 use crate::protocol::common::UnknownRequest;
 use crate::server;
@@ -36,7 +37,7 @@ pub trait CuseServerChannel: Channel {
 pub struct CuseServer<Channel, Handlers> {
 	channel: Arc<Channel>,
 	handlers: Arc<Handlers>,
-	fuse_version: crate::ProtocolVersion,
+	fuse_version: ProtocolVersion,
 	read_buf_size: usize,
 }
 
@@ -73,7 +74,7 @@ where
 			let request_buf = fuse_io::aligned_slice(&read_buf, request_size);
 			let request_decoder = fuse_io::RequestDecoder::new(
 				request_buf,
-				crate::ProtocolVersion::LATEST,
+				ProtocolVersion::LATEST,
 				fuse_io::Semantics::CUSE,
 			)?;
 
@@ -92,14 +93,13 @@ where
 				channel,
 				request_id,
 				// CuseInitResponse always encodes with its own version
-				crate::ProtocolVersion::LATEST,
+				ProtocolVersion::LATEST,
 			);
 
 			let major_version = init_request.version().major();
 			if major_version != fuse_kernel::FUSE_KERNEL_VERSION {
-				let init_response = protocol::CuseInitResponse::new(
-					crate::ProtocolVersion::LATEST,
-				);
+				let init_response =
+					protocol::CuseInitResponse::new(ProtocolVersion::LATEST);
 				init_response.encode_response(encoder, None)?;
 				continue;
 			}
@@ -220,7 +220,7 @@ pub struct CuseServerExecutor<C, H> {
 	channel: Arc<C>,
 	handlers: Arc<H>,
 	read_buf_size: usize,
-	fuse_version: crate::ProtocolVersion,
+	fuse_version: ProtocolVersion,
 }
 
 impl<C, H> CuseServerExecutor<C, H> {
@@ -228,7 +228,7 @@ impl<C, H> CuseServerExecutor<C, H> {
 		channel: Arc<C>,
 		handlers: Arc<H>,
 		read_buf_size: usize,
-		fuse_version: crate::ProtocolVersion,
+		fuse_version: ProtocolVersion,
 	) -> Self {
 		Self {
 			channel,
@@ -300,7 +300,7 @@ fn cuse_main_loop<C, H>(
 	channel: &Arc<C::T>,
 	handlers: &H,
 	read_buf_size: usize,
-	fuse_version: crate::ProtocolVersion,
+	fuse_version: ProtocolVersion,
 ) -> Result<(), <<C as MaybeSendChannel>::T as Channel>::Error>
 where
 	C: MaybeSendChannel,

@@ -20,6 +20,8 @@ use core::mem::{self, MaybeUninit};
 #[cfg(not(feature = "no_std"))]
 use std::io::{self, IoSlice, Read, Write};
 
+use crate::error::{Error, ErrorCode};
+
 pub trait Channel: Sized {
 	type Error: ChannelError;
 
@@ -33,8 +35,8 @@ pub trait Channel: Sized {
 	fn receive(&self, buf: &mut [u8]) -> Result<usize, Self::Error>;
 }
 
-pub trait ChannelError: From<crate::Error> {
-	fn error_code(&self) -> Option<crate::ErrorCode>;
+pub trait ChannelError: From<Error> {
+	fn error_code(&self) -> Option<ErrorCode>;
 }
 
 #[cfg(not(feature = "no_std"))]
@@ -103,7 +105,7 @@ impl Channel for FileChannel {
 #[cfg(not(feature = "no_std"))]
 #[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
 impl ChannelError for io::Error {
-	fn error_code(&self) -> Option<crate::ErrorCode> {
+	fn error_code(&self) -> Option<ErrorCode> {
 		if let Some(os_err) = self.raw_os_error() {
 			if let Ok(os_err) = os_err.try_into() {
 				if let Some(err_code) = core::num::NonZeroU16::new(os_err) {

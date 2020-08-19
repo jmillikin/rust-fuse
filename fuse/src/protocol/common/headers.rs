@@ -22,6 +22,7 @@ use crate::protocol::common::NodeId;
 
 pub use fuse_kernel::OpcodeEnum as Opcode;
 
+#[repr(transparent)]
 pub struct RequestHeader(fuse_kernel::fuse_in_header);
 
 impl RequestHeader {
@@ -79,6 +80,7 @@ impl fmt::Debug for RequestHeader {
 	}
 }
 
+#[repr(transparent)]
 pub struct ResponseHeader(fuse_kernel::fuse_out_header);
 
 impl ResponseHeader {

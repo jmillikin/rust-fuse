@@ -22,6 +22,7 @@ use std::sync::Arc;
 use crate::error::ErrorCode;
 use crate::internal::fuse_io;
 use crate::internal::fuse_kernel;
+use crate::internal::types::ProtocolVersion;
 
 pub struct ServerContext {
 	header: fuse_kernel::fuse_in_header,
@@ -74,7 +75,7 @@ mod private {
 /// **\[SEALED\]**
 pub trait RespondOnce<Response>: private::Sealed {
 	fn ok(self, response: &Response);
-	fn err(self, err: crate::ErrorCode);
+	fn err(self, err: ErrorCode);
 
 	#[cfg(not(any(feature = "no_std", feature = "run_local")))]
 	#[cfg_attr(
@@ -89,7 +90,7 @@ pub trait RespondOnce<Response>: private::Sealed {
 #[cfg_attr(doc, doc(cfg(not(any(feature = "no_std", feature = "run_local")))))]
 pub trait RespondOnceBox<Response>: private::Sealed + Send + 'static {
 	fn ok(self: Box<Self>, response: &Response);
-	fn err(self: Box<Self>, err: crate::ErrorCode);
+	fn err(self: Box<Self>, err: ErrorCode);
 }
 
 // RespondOnceImpl {{{
@@ -98,7 +99,7 @@ pub trait RespondOnceBox<Response>: private::Sealed + Send + 'static {
 pub(crate) struct RespondOnceImpl<'a, C> {
 	channel: &'a Arc<C>,
 	request_id: u64,
-	fuse_version: crate::ProtocolVersion,
+	fuse_version: ProtocolVersion,
 }
 
 #[cfg(not(feature = "no_std"))]
@@ -109,7 +110,7 @@ where
 	pub(crate) fn new(
 		channel: &'a Arc<C>,
 		request_id: u64,
-		fuse_version: crate::ProtocolVersion,
+		fuse_version: ProtocolVersion,
 	) -> Self {
 		Self {
 			channel,
@@ -144,7 +145,7 @@ where
 		}
 	}
 
-	fn err(self, err: crate::ErrorCode) {
+	fn err(self, err: ErrorCode) {
 		// TODO: use ServerLogger to log the send error
 		let _ = self.encoder().encode_error(err);
 	}
@@ -172,7 +173,7 @@ where
 		}
 	}
 
-	fn err(self, err: crate::ErrorCode) {
+	fn err(self, err: ErrorCode) {
 		// TODO: use ServerLogger to log the send error
 		let _ = self.encoder().encode_error(err);
 	}
@@ -186,7 +187,7 @@ where
 struct RespondOnceBoxImpl<C> {
 	channel: Arc<C>,
 	request_id: u64,
-	fuse_version: crate::ProtocolVersion,
+	fuse_version: ProtocolVersion,
 }
 
 #[cfg(not(any(feature = "no_std", feature = "run_local")))]
@@ -220,7 +221,7 @@ where
 		}
 	}
 
-	fn err(self: Box<Self>, err: crate::ErrorCode) {
+	fn err(self: Box<Self>, err: ErrorCode) {
 		// TODO: use ServerLogger to log the send error
 		let _ = self.encoder().encode_error(err);
 	}

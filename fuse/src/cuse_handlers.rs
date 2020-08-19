@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::error::ErrorCode;
 use crate::protocol;
 use crate::server;
 
@@ -35,7 +36,7 @@ pub trait CuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::FlushResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(crate::ErrorCode::ENOSYS);
+		respond.err(ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_cuse_fsync"))]
@@ -47,7 +48,7 @@ pub trait CuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::FsyncResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(crate::ErrorCode::ENOSYS);
+		respond.err(ErrorCode::ENOSYS);
 	}
 
 	#[cfg(any(doc, feature = "unstable_cuse_ioctl"))]
@@ -59,7 +60,7 @@ pub trait CuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::IoctlResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(crate::ErrorCode::ENOSYS);
+		respond.err(ErrorCode::ENOSYS);
 	}
 
 	fn open(
@@ -69,7 +70,7 @@ pub trait CuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::OpenResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(crate::ErrorCode::ENOSYS);
+		respond.err(ErrorCode::ENOSYS);
 	}
 
 	fn read(
@@ -79,7 +80,7 @@ pub trait CuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::ReadResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(crate::ErrorCode::ENOSYS);
+		respond.err(ErrorCode::ENOSYS);
 	}
 
 	fn release(
@@ -89,7 +90,7 @@ pub trait CuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::ReleaseResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(crate::ErrorCode::ENOSYS);
+		respond.err(ErrorCode::ENOSYS);
 	}
 
 	fn write(
@@ -99,6 +100,6 @@ pub trait CuseHandlers {
 		respond: impl for<'a> server::RespondOnce<protocol::WriteResponse<'a>>,
 	) {
 		let _ = (ctx, request);
-		respond.err(crate::ErrorCode::ENOSYS);
+		respond.err(ErrorCode::ENOSYS);
 	}
 }

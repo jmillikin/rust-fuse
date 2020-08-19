@@ -15,6 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::internal::testutil::MessageBuilder;
+use crate::internal::types::ProtocolVersion;
 use crate::protocol::prelude::*;
 
 use super::{FuseInitFlags, FuseInitRequest, FuseInitResponse};
@@ -76,7 +77,7 @@ fn request_major_mismatch() {
 
 #[test]
 fn response_v7p1() {
-	let resp = FuseInitResponse::new(crate::ProtocolVersion::new(7, 1));
+	let resp = FuseInitResponse::new(ProtocolVersion::new(7, 1));
 	let encoded = encode_response!(resp);
 
 	assert_eq!(
@@ -95,7 +96,7 @@ fn response_v7p1() {
 
 #[test]
 fn response_v7p5() {
-	let resp = FuseInitResponse::new(crate::ProtocolVersion::new(7, 5));
+	let resp = FuseInitResponse::new(ProtocolVersion::new(7, 5));
 	let encoded = encode_response!(resp);
 
 	assert_eq!(
@@ -122,7 +123,7 @@ fn response_v7p5() {
 
 #[test]
 fn response_v7p23() {
-	let mut resp = FuseInitResponse::new(crate::ProtocolVersion::new(7, 23));
+	let mut resp = FuseInitResponse::new(ProtocolVersion::new(7, 23));
 	resp.set_max_readahead(4096);
 	*resp.flags_mut() = FuseInitFlags::from_bits(0xFFFFFFFF);
 	let encoded = encode_response!(resp);
@@ -155,10 +156,7 @@ fn response_v7p23() {
 fn response_minor_mismatch() {
 	let resp = FuseInitResponse::for_request_impl(&FuseInitRequest {
 		phantom: PhantomData,
-		version: crate::ProtocolVersion::new(
-			fuse_kernel::FUSE_KERNEL_VERSION,
-			0xFF,
-		),
+		version: ProtocolVersion::new(fuse_kernel::FUSE_KERNEL_VERSION, 0xFF),
 		max_readahead: 4096,
 		flags: FuseInitFlags::from_bits(0xFFFFFFFF),
 	});
@@ -192,7 +190,7 @@ fn response_minor_mismatch() {
 fn response_major_mismatch() {
 	let resp = FuseInitResponse::for_request_impl(&FuseInitRequest {
 		phantom: PhantomData,
-		version: crate::ProtocolVersion::new(0xFF, 0xFF),
+		version: ProtocolVersion::new(0xFF, 0xFF),
 		max_readahead: 0,
 		flags: FuseInitFlags::from_bits(0),
 	});
@@ -260,7 +258,7 @@ fn init_flags() {
 
 #[test]
 fn request_impl_debug() {
-	let version = crate::ProtocolVersion::new(7, 1);
+	let version = ProtocolVersion::new(7, 1);
 	let request = &FuseInitRequest {
 		phantom: PhantomData,
 		version: version,
@@ -308,7 +306,7 @@ fn request_impl_debug() {
 
 #[test]
 fn response_impl_debug() {
-	let version = crate::ProtocolVersion::new(7, 1);
+	let version = ProtocolVersion::new(7, 1);
 	let mut response = FuseInitResponse::new(version);
 	response.set_max_readahead(4096);
 	response.set_max_write(8192);

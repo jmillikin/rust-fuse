@@ -29,31 +29,26 @@
 mod internal;
 
 mod channel;
-pub use self::channel::{Channel, ChannelError};
-
 mod error;
-pub use self::error::{Error, ErrorCode};
 
 mod cuse_handlers;
-pub use self::cuse_handlers::*;
+pub use self::cuse_handlers::CuseHandlers;
 
 #[cfg(not(feature = "no_std"))]
 mod cuse_server;
 #[cfg(not(feature = "no_std"))]
-pub use self::cuse_server::*;
+pub use self::cuse_server::{CuseDeviceName, CuseServer};
 
 mod fuse_handlers;
-pub use self::fuse_handlers::*;
+pub use self::fuse_handlers::FuseHandlers;
 
 #[cfg(not(feature = "no_std"))]
 mod fuse_server;
 #[cfg(not(feature = "no_std"))]
-pub use self::fuse_server::*;
+pub use self::fuse_server::FuseServer;
 
 mod server;
 pub use self::server::*;
-
-pub use crate::internal::types::ProtocolVersion;
 
 pub mod os {
 	#[cfg(any(doc, target_os = "linux"))]
@@ -61,8 +56,24 @@ pub mod os {
 	pub mod linux;
 }
 
+pub mod io {
+	pub use crate::internal::types::ProtocolVersion;
+	
+	pub use crate::channel::{Channel, ChannelError};
+	pub use crate::error::{Error, ErrorCode};
+	
+	#[cfg(not(feature = "no_std"))]
+	pub use crate::cuse_server::CuseServerChannel;
+
+	#[cfg(not(feature = "no_std"))]
+	pub use crate::fuse_server::FuseServerChannel;
+}
+
+#[doc(no_inline)]
+pub use crate::io::ErrorCode;
+
 pub mod protocol;
-pub use self::protocol::*;
+pub use crate::protocol::*;
 
 pub use self::protocol::common::{
 	FileMode,
@@ -71,10 +82,6 @@ pub use self::protocol::common::{
 	NodeAttr,
 	NodeId,
 	NodeName,
-	Opcode,
-	RequestHeader,
-	ResponseHeader,
-	UnknownRequest,
 	XattrName,
 	NODE_NAME_MAX,
 	ROOT_ID,

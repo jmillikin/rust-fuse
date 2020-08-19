@@ -12,6 +12,9 @@ name = "fuse"
 no_std = []
 run_local = []
 
+unstable_cuse_flush = []
+unstable_cuse_fsync = []
+unstable_cuse_ioctl = []
 unstable_fuse_access = []
 unstable_fuse_bmap = []
 unstable_fuse_create = []
