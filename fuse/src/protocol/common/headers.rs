@@ -17,6 +17,7 @@
 use core::fmt;
 use core::mem::size_of;
 
+use crate::error::ErrorCode;
 use crate::internal::fuse_kernel;
 use crate::protocol::common::NodeId;
 
@@ -88,8 +89,14 @@ impl ResponseHeader {
 		self.0.unique
 	}
 
-	pub fn error(&self) -> i32 {
-		self.0.error
+	pub fn error(&self) -> Option<ErrorCode> {
+		let code = core::num::NonZeroU16::new((-self.0.error) as u16)?;
+		Some(ErrorCode::new(code))
+	}
+
+	pub fn error_name(&self) -> Option<&'static str> {
+		let code = self.error()?;
+		code.name()
 	}
 
 	pub fn size(&self) -> u32 {
@@ -105,9 +112,10 @@ impl ResponseHeader {
 
 impl fmt::Debug for ResponseHeader {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("RequestHeader")
+		fmt.debug_struct("ResponseHeader")
 			.field("request_id", &self.0.unique)
-			.field("error", &self.0.error)
+			.field("error", &format_args!("{:?}", &self.error()))
+			.field("error_name", &format_args!("{:?}", &self.error_name()))
 			.field("size", &self.0.len)
 			.field("body_len", &self.body_len())
 			.finish()

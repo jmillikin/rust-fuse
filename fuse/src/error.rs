@@ -221,11 +221,20 @@ impl PartialEq<ErrorCode> for isize {
 }
 
 impl ErrorCode {
-	pub(crate) const ENODEV: ErrorCode = target::ENODEV;
-
 	pub const EIO: ErrorCode = target::EIO;
+	pub const ENODEV: ErrorCode = target::ENODEV;
 	pub const ENOENT: ErrorCode = target::ENOENT;
 	pub const ENOSYS: ErrorCode = target::ENOSYS;
+
+	pub fn name(&self) -> Option<&'static str> {
+		match *self {
+			Self::EIO => Some("EIO"),
+			Self::ENODEV => Some("ENODEV"),
+			Self::ENOENT => Some("ENOENT"),
+			Self::ENOSYS => Some("ENOSYS"),
+			_ => None,
+		}
+	}
 }
 
 macro_rules! target_error_codes {
