@@ -127,12 +127,13 @@ impl SyscallFuseMount {
 		let joined = CString::new(out.join(",")).unwrap();
 
 		let data_length = joined.as_bytes_with_nul().len();
-		if data_length > PAGE_SIZE {
+		if data_length >= PAGE_SIZE {
 			return Err(io::Error::new(
 				io::ErrorKind::InvalidInput,
 				format!(
-					"mount data length ({}) exceeds PAGE_SIZE ({})",
-					data_length, PAGE_SIZE
+					"mount data length ({}) exceeds PAGE_SIZE - 1 ({})",
+					data_length,
+					PAGE_SIZE - 1
 				),
 			));
 		}
