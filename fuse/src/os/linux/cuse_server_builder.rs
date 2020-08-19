@@ -17,9 +17,9 @@
 use std::os::unix::ffi::OsStrExt;
 use std::{ffi, fs, io, path};
 
-use crate::channel::{self, FileChannel};
+use super::DevCuseChannel;
 use crate::cuse_handlers::CuseHandlers;
-use crate::cuse_server::{self, CuseDeviceName, CuseServer};
+use crate::cuse_server::{CuseDeviceName, CuseServer};
 
 #[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
 pub struct CuseServerBuilder<Handlers> {
@@ -28,14 +28,14 @@ pub struct CuseServerBuilder<Handlers> {
 	handlers: Handlers,
 }
 
-impl<Handlers> CuseServerBuilder<Handlers>
+impl<H> CuseServerBuilder<H>
 where
-	Handlers: CuseHandlers,
+	H: CuseHandlers,
 {
 	pub fn new(
 		device_name: impl AsRef<ffi::OsStr>,
-		handlers: Handlers,
-	) -> CuseServerBuilder<Handlers> {
+		handlers: H,
+	) -> CuseServerBuilder<H> {
 		Self {
 			dev_cuse: path::PathBuf::from("/dev/cuse"),
 			device_name: ffi::OsString::from(device_name.as_ref()),
@@ -43,7 +43,7 @@ where
 		}
 	}
 
-	pub fn build(self) -> io::Result<CuseServer<CuseServerChannel, Handlers>> {
+	pub fn build(self) -> io::Result<CuseServer<DevCuseChannel, H>> {
 		let devname = self.device_name.as_bytes();
 		let device_name = match CuseDeviceName::from_bytes(devname) {
 			Some(x) => x,
@@ -70,38 +70,6 @@ where
 			.write(true)
 			.open(&self.dev_cuse)?;
 
-		CuseServer::new(
-			device_name,
-			CuseServerChannel(FileChannel::new(file)),
-			self.handlers,
-		)
-	}
-}
-
-#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
-pub struct CuseServerChannel(FileChannel);
-
-impl channel::Channel for CuseServerChannel {
-	type Error = io::Error;
-
-	fn send(&self, buf: &[u8]) -> Result<(), io::Error> {
-		self.0.send(buf)
-	}
-
-	fn send_vectored<const N: usize>(
-		&self,
-		bufs: &[&[u8]; N],
-	) -> Result<(), io::Error> {
-		self.0.send_vectored(bufs)
-	}
-
-	fn receive(&self, buf: &mut [u8]) -> Result<usize, io::Error> {
-		self.0.receive(buf)
-	}
-}
-
-impl cuse_server::CuseServerChannel for CuseServerChannel {
-	fn try_clone(&self) -> Result<Self, io::Error> {
-		Ok(CuseServerChannel(self.0.try_clone()?))
+		CuseServer::new(device_name, DevCuseChannel::new(file), self.handlers)
 	}
 }

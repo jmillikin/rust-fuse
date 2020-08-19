@@ -21,10 +21,18 @@ use std::os::unix::io::{AsRawFd, RawFd};
 use std::{fs, io, path};
 
 use super::linux_syscalls as syscalls;
+use super::DevFuseChannel;
+use crate::channel::Channel;
+use crate::fuse_server;
 
 #[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
 pub trait FuseMount {
-	fn fuse_mount(self, mount_target: &path::Path) -> io::Result<fs::File>;
+	type Channel: fuse_server::FuseServerChannel;
+
+	fn fuse_mount(
+		self,
+		mount_target: &path::Path,
+	) -> Result<Self::Channel, <Self::Channel as Channel>::Error>;
 }
 
 #[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
@@ -143,7 +151,12 @@ impl SyscallFuseMount {
 }
 
 impl FuseMount for SyscallFuseMount {
-	fn fuse_mount(self, mount_target: &path::Path) -> io::Result<fs::File> {
+	type Channel = DevFuseChannel;
+
+	fn fuse_mount(
+		self,
+		mount_target: &path::Path,
+	) -> io::Result<DevFuseChannel> {
 		let mount_target_cstr = cstr_from_osstr(mount_target.as_os_str())?;
 		let mount_source_cstr = self.mount_source_cstr()?;
 		let mount_type_cstr = self.mount_type_cstr()?;
@@ -171,7 +184,7 @@ impl FuseMount for SyscallFuseMount {
 			mount_data.to_bytes_with_nul(),
 		)?;
 
-		Ok(file)
+		Ok(DevFuseChannel::new(file))
 	}
 }
 

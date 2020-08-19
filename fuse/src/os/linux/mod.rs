@@ -14,20 +14,21 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#[cfg(not(feature = "no_std"))]
+#![cfg(not(feature = "no_std"))]
+
 mod linux_syscalls;
 
-#[cfg(not(feature = "no_std"))]
 mod cuse_server_builder;
-#[cfg(not(feature = "no_std"))]
 pub use self::cuse_server_builder::*;
 
-#[cfg(not(feature = "no_std"))]
+mod dev_cuse_channel;
+pub use self::dev_cuse_channel::*;
+
+mod dev_fuse_channel;
+pub use self::dev_fuse_channel::*;
+
 mod fuse_server_builder;
-#[cfg(not(feature = "no_std"))]
 pub use self::fuse_server_builder::*;
 
-#[cfg(not(feature = "no_std"))]
 mod fuse_mount;
-#[cfg(not(feature = "no_std"))]
 pub use self::fuse_mount::*;

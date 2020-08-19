@@ -14,12 +14,12 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use std::{io, path};
+use std::path;
 
 use super::fuse_mount::{FuseMount, SyscallFuseMount};
-use crate::channel::{self, FileChannel};
+use crate::channel::Channel;
 use crate::fuse_handlers::FuseHandlers;
-use crate::fuse_server::{self, FuseServer};
+use crate::fuse_server::FuseServer;
 
 #[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
 pub struct FuseServerBuilder<Mount, Handlers> {
@@ -28,14 +28,14 @@ pub struct FuseServerBuilder<Mount, Handlers> {
 	handlers: Handlers,
 }
 
-impl<Handlers> FuseServerBuilder<SyscallFuseMount, Handlers>
+impl<H> FuseServerBuilder<SyscallFuseMount, H>
 where
-	Handlers: FuseHandlers,
+	H: FuseHandlers,
 {
 	pub fn new(
 		mount_target: impl AsRef<path::Path>,
-		handlers: Handlers,
-	) -> FuseServerBuilder<SyscallFuseMount, Handlers> {
+		handlers: H,
+	) -> FuseServerBuilder<SyscallFuseMount, H> {
 		FuseServerBuilder {
 			mount_target: path::PathBuf::from(mount_target.as_ref()),
 			mount: SyscallFuseMount::new(),
@@ -44,49 +44,23 @@ where
 	}
 }
 
-impl<Mount, Handlers> FuseServerBuilder<Mount, Handlers>
+impl<M, H> FuseServerBuilder<M, H>
 where
-	Mount: FuseMount,
-	Handlers: FuseHandlers,
+	M: FuseMount,
+	H: FuseHandlers,
 {
-	pub fn set_mount(mut self, mount: Mount) -> Self {
+	pub fn set_mount(mut self, mount: M) -> Self {
 		self.mount = mount;
 		self
 	}
 
-	pub fn build(self) -> io::Result<FuseServer<FuseServerChannel, Handlers>> {
-		let file = self.mount.fuse_mount(&self.mount_target)?;
-		FuseServer::new(
-			FuseServerChannel(FileChannel::new(file)),
-			self.handlers,
-		)
-	}
-}
-
-#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
-pub struct FuseServerChannel(FileChannel);
-
-impl channel::Channel for FuseServerChannel {
-	type Error = io::Error;
-
-	fn send(&self, buf: &[u8]) -> Result<(), io::Error> {
-		self.0.send(buf)
-	}
-
-	fn send_vectored<const N: usize>(
-		&self,
-		bufs: &[&[u8]; N],
-	) -> Result<(), io::Error> {
-		self.0.send_vectored(bufs)
-	}
-
-	fn receive(&self, buf: &mut [u8]) -> Result<usize, io::Error> {
-		self.0.receive(buf)
-	}
-}
-
-impl fuse_server::FuseServerChannel for FuseServerChannel {
-	fn try_clone(&self) -> Result<Self, io::Error> {
-		Ok(FuseServerChannel(self.0.try_clone()?))
+	pub fn build(
+		self,
+	) -> Result<
+		FuseServer<M::Channel, H>,
+		<<M as FuseMount>::Channel as Channel>::Error,
+	> {
+		let channel = self.mount.fuse_mount(&self.mount_target)?;
+		FuseServer::new(channel, self.handlers)
 	}
 }
