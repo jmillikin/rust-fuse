@@ -27,6 +27,7 @@ use crate::internal::fuse_io::{
 };
 use crate::internal::fuse_kernel;
 use crate::protocol;
+use crate::protocol::common::UnknownRequest;
 use crate::server;
 
 pub trait FuseServerChannel: Channel {
@@ -339,8 +340,7 @@ where
 		fuse_kernel::FUSE_UNLINK => do_dispatch!(unlink),
 		fuse_kernel::FUSE_WRITE => do_dispatch!(write),
 		_ => {
-			let request =
-				protocol::UnknownRequest::decode_request(request_decoder)?;
+			let request = UnknownRequest::decode_request(request_decoder)?;
 			// handlers.unknown(ctx, &request);
 			// TODO: use ServerLogger to log the unknown request
 			let _ = request;

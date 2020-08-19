@@ -26,6 +26,9 @@ pub use self::file_mode::*;
 mod file_type;
 pub use self::file_type::*;
 
+mod headers;
+pub use self::headers::*;
+
 mod node;
 pub use self::node::*;
 
@@ -37,6 +40,9 @@ pub use self::node_id::*;
 
 mod node_name;
 pub use self::node_name::*;
+
+mod unknown_request;
+pub use self::unknown_request::*;
 
 mod xattr;
 pub use self::xattr::*;
