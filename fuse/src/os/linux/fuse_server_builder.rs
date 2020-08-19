@@ -54,18 +54,16 @@ where
 		self
 	}
 
-	pub fn build(self) -> io::Result<FuseServer<FuseChannel, Handlers>> {
+	pub fn build(self) -> io::Result<FuseServer<FuseServerChannel, Handlers>> {
 		let file = self.mount.fuse_mount(&self.mount_target)?;
-		FuseServer::new(FuseChannel(FileChannel::new(file)), self.handlers)
+		FuseServer::new(FuseServerChannel(FileChannel::new(file)), self.handlers)
 	}
 }
 
 #[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
-pub struct FuseChannel(FileChannel);
+pub struct FuseServerChannel(FileChannel);
 
-impl fuse_server::FuseChannel for FuseChannel {}
-
-impl channel::Channel for FuseChannel {
+impl channel::Channel for FuseServerChannel {
 	type Error = io::Error;
 
 	fn send(&self, buf: &[u8]) -> Result<(), io::Error> {
@@ -82,8 +80,10 @@ impl channel::Channel for FuseChannel {
 	fn receive(&self, buf: &mut [u8]) -> Result<usize, io::Error> {
 		self.0.receive(buf)
 	}
+}
 
+impl fuse_server::FuseServerChannel for FuseServerChannel {
 	fn try_clone(&self) -> Result<Self, io::Error> {
-		Ok(FuseChannel(self.0.try_clone()?))
+		Ok(FuseServerChannel(self.0.try_clone()?))
 	}
 }

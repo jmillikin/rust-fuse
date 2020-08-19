@@ -31,8 +31,6 @@ pub trait Channel: Sized {
 	) -> Result<(), Self::Error>;
 
 	fn receive(&self, buf: &mut [u8]) -> Result<usize, Self::Error>;
-
-	fn try_clone(&self) -> Result<Self, Self::Error>;
 }
 
 pub trait ChannelError: From<crate::Error> {
@@ -48,6 +46,12 @@ pub(crate) struct FileChannel {
 impl FileChannel {
 	pub(crate) fn new(file: std::fs::File) -> Self {
 		Self { file }
+	}
+
+	pub(crate) fn try_clone(&self) -> Result<Self, io::Error> {
+		Ok(Self {
+			file: self.file.try_clone()?,
+		})
 	}
 }
 
@@ -93,12 +97,6 @@ impl Channel for FileChannel {
 
 	fn receive(&self, buf: &mut [u8]) -> Result<usize, io::Error> {
 		Read::read(&mut &self.file, buf)
-	}
-
-	fn try_clone(&self) -> Result<Self, io::Error> {
-		Ok(Self {
-			file: self.file.try_clone()?,
-		})
 	}
 }
 

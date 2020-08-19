@@ -29,7 +29,9 @@ use crate::internal::fuse_kernel;
 use crate::protocol;
 use crate::server;
 
-pub trait FuseChannel: Channel {}
+pub trait FuseServerChannel: Channel {
+	fn try_clone(&self) -> Result<Self, Self::Error>;
+}
 
 #[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
 pub struct FuseServer<Channel, Handlers> {
@@ -41,7 +43,7 @@ pub struct FuseServer<Channel, Handlers> {
 
 impl<C, H> FuseServer<C, H>
 where
-	C: FuseChannel,
+	C: FuseServerChannel,
 	H: FuseHandlers,
 {
 	pub fn new(
@@ -119,7 +121,7 @@ impl<C, H> FuseServerExecutor<C, H> {
 
 impl<C, H> FuseServerExecutor<C, H>
 where
-	C: FuseChannel,
+	C: FuseServerChannel,
 	H: FuseHandlers,
 {
 	pub fn run(&mut self) -> Result<(), C::Error>
@@ -146,7 +148,7 @@ where
 	}
 }
 
-fn fuse_handshake<C: FuseChannel, H: FuseHandlers>(
+fn fuse_handshake<C: FuseServerChannel, H: FuseHandlers>(
 	channel: &C,
 	handlers: &mut H,
 ) -> Result<protocol::FuseInitResponse, C::Error> {
@@ -195,26 +197,26 @@ fn fuse_handshake<C: FuseChannel, H: FuseHandlers>(
 
 #[cfg(not(feature = "run_local"))]
 trait MaybeSendChannel {
-	type T: FuseChannel + Send + Sync + 'static;
+	type T: FuseServerChannel + Send + Sync + 'static;
 }
 
 #[cfg(not(feature = "run_local"))]
 impl<C> MaybeSendChannel for C
 where
-	C: FuseChannel + Send + Sync + 'static,
+	C: FuseServerChannel + Send + Sync + 'static,
 {
 	type T = C;
 }
 
 #[cfg(feature = "run_local")]
 trait MaybeSendChannel {
-	type T: FuseChannel;
+	type T: FuseServerChannel;
 }
 
 #[cfg(feature = "run_local")]
 impl<C> MaybeSendChannel for C
 where
-	C: FuseChannel,
+	C: FuseServerChannel,
 {
 	type T = C;
 }

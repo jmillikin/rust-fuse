@@ -43,7 +43,7 @@ where
 		}
 	}
 
-	pub fn build(self) -> io::Result<CuseServer<CuseChannel, Handlers>> {
+	pub fn build(self) -> io::Result<CuseServer<CuseServerChannel, Handlers>> {
 		let devname = self.device_name.as_bytes();
 		let device_name = match CuseDeviceName::from_bytes(devname) {
 			Some(x) => x,
@@ -72,18 +72,16 @@ where
 
 		CuseServer::new(
 			device_name,
-			CuseChannel(FileChannel::new(file)),
+			CuseServerChannel(FileChannel::new(file)),
 			self.handlers,
 		)
 	}
 }
 
 #[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
-pub struct CuseChannel(FileChannel);
+pub struct CuseServerChannel(FileChannel);
 
-impl cuse_server::CuseChannel for CuseChannel {}
-
-impl channel::Channel for CuseChannel {
+impl channel::Channel for CuseServerChannel {
 	type Error = io::Error;
 
 	fn send(&self, buf: &[u8]) -> Result<(), io::Error> {
@@ -100,8 +98,10 @@ impl channel::Channel for CuseChannel {
 	fn receive(&self, buf: &mut [u8]) -> Result<usize, io::Error> {
 		self.0.receive(buf)
 	}
+}
 
+impl cuse_server::CuseServerChannel for CuseServerChannel {
 	fn try_clone(&self) -> Result<Self, io::Error> {
-		Ok(CuseChannel(self.0.try_clone()?))
+		Ok(CuseServerChannel(self.0.try_clone()?))
 	}
 }

@@ -25,7 +25,9 @@ use crate::internal::fuse_kernel;
 use crate::protocol;
 use crate::server;
 
-pub trait CuseChannel: Channel {}
+pub trait CuseServerChannel: Channel {
+	fn try_clone(&self) -> Result<Self, Self::Error>;
+}
 
 // CuseServer {{{
 
@@ -39,7 +41,7 @@ pub struct CuseServer<Channel, Handlers> {
 
 impl<C, H> CuseServer<C, H>
 where
-	C: CuseChannel,
+	C: CuseServerChannel,
 	H: CuseHandlers,
 {
 	pub fn new(
@@ -239,7 +241,7 @@ impl<C, H> CuseServerExecutor<C, H> {
 
 impl<C, H> CuseServerExecutor<C, H>
 where
-	C: CuseChannel,
+	C: CuseServerChannel,
 	H: CuseHandlers,
 {
 	pub fn run(&mut self) -> Result<(), C::Error>
@@ -270,26 +272,26 @@ where
 
 #[cfg(not(feature = "run_local"))]
 trait MaybeSendChannel {
-	type T: CuseChannel + Send + Sync + 'static;
+	type T: CuseServerChannel + Send + Sync + 'static;
 }
 
 #[cfg(not(feature = "run_local"))]
 impl<C> MaybeSendChannel for C
 where
-	C: CuseChannel + Send + Sync + 'static,
+	C: CuseServerChannel + Send + Sync + 'static,
 {
 	type T = C;
 }
 
 #[cfg(feature = "run_local")]
 trait MaybeSendChannel {
-	type T: CuseChannel;
+	type T: CuseServerChannel;
 }
 
 #[cfg(feature = "run_local")]
 impl<C> MaybeSendChannel for C
 where
-	C: CuseChannel,
+	C: CuseServerChannel,
 {
 	type T = C;
 }
