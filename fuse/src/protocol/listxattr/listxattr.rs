@@ -23,7 +23,7 @@ mod listxattr_test;
 
 /// Request type for [`FuseHandlers::listxattr`].
 ///
-/// [`FuseHandlers::listxattr`]: ../trait.FuseHandlers.html#method.listxattr
+/// [`FuseHandlers::listxattr`]: ../../trait.FuseHandlers.html#method.listxattr
 pub struct ListxattrRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -71,7 +71,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for ListxattrRequest<'a> {
 
 /// Response type for [`FuseHandlers::listxattr`].
 ///
-/// [`FuseHandlers::listxattr`]: ../trait.FuseHandlers.html#method.listxattr
+/// [`FuseHandlers::listxattr`]: ../../trait.FuseHandlers.html#method.listxattr
 pub struct ListxattrResponse<'a> {
 	request_size: Option<num::NonZeroU32>,
 	raw: fuse_kernel::fuse_getxattr_out,

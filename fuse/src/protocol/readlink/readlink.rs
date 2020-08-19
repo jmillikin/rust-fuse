@@ -23,7 +23,7 @@ mod readlink_test;
 
 /// Request type for [`FuseHandlers::readlink`].
 ///
-/// [`FuseHandlers::readlink`]: ../trait.FuseHandlers.html#method.readlink
+/// [`FuseHandlers::readlink`]: ../../trait.FuseHandlers.html#method.readlink
 pub struct ReadlinkRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -60,7 +60,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReadlinkRequest<'a> {
 
 /// Response type for [`FuseHandlers::readlink`].
 ///
-/// [`FuseHandlers::readlink`]: ../trait.FuseHandlers.html#method.readlink
+/// [`FuseHandlers::readlink`]: ../../trait.FuseHandlers.html#method.readlink
 pub struct ReadlinkResponse<'a> {
 	name: &'a NodeName,
 }

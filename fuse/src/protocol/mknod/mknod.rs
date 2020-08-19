@@ -23,7 +23,7 @@ mod mknod_test;
 
 /// Request type for [`FuseHandlers::mknod`].
 ///
-/// [`FuseHandlers::mknod`]: ../trait.FuseHandlers.html#method.mknod
+/// [`FuseHandlers::mknod`]: ../../trait.FuseHandlers.html#method.mknod
 pub struct MknodRequest<'a> {
 	parent_id: NodeId,
 	name: &'a NodeName,
@@ -115,7 +115,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for MknodRequest<'a> {
 
 /// Response type for [`FuseHandlers::mknod`].
 ///
-/// [`FuseHandlers::mknod`]: ../trait.FuseHandlers.html#method.mknod
+/// [`FuseHandlers::mknod`]: ../../trait.FuseHandlers.html#method.mknod
 pub struct MknodResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_entry_out,

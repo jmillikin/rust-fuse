@@ -24,7 +24,7 @@ mod releasedir_test;
 
 /// Request type for [`FuseHandlers::releasedir`].
 ///
-/// [`FuseHandlers::releasedir`]: ../trait.FuseHandlers.html#method.releasedir
+/// [`FuseHandlers::releasedir`]: ../../trait.FuseHandlers.html#method.releasedir
 pub struct ReleasedirRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -52,7 +52,7 @@ impl ReleasedirRequest<'_> {
 	/// Platform-specific flags passed to [`FuseHandlers::opendir`]. See
 	/// [`OpendirRequest::flags`] for details.
 	///
-	/// [`FuseHandlers::opendir`]: ../trait.FuseHandlers.html#method.opendir
+	/// [`FuseHandlers::opendir`]: ../../trait.FuseHandlers.html#method.opendir
 	/// [`OpendirRequest::flags`]: struct.OpendirRequest.html#method.flags
 	pub fn opendir_flags(&self) -> u32 {
 		self.opendir_flags
@@ -114,7 +114,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReleasedirRequest<'a> {
 
 /// Response type for [`FuseHandlers::releasedir`].
 ///
-/// [`FuseHandlers::releasedir`]: ../trait.FuseHandlers.html#method.releasedir
+/// [`FuseHandlers::releasedir`]: ../../trait.FuseHandlers.html#method.releasedir
 pub struct ReleasedirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }

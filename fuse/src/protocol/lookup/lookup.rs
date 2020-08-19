@@ -23,7 +23,7 @@ mod lookup_test;
 
 /// Request type for [`FuseHandlers::lookup`].
 ///
-/// [`FuseHandlers::lookup`]: ../trait.FuseHandlers.html#method.lookup
+/// [`FuseHandlers::lookup`]: ../../trait.FuseHandlers.html#method.lookup
 #[derive(Debug)]
 pub struct LookupRequest<'a> {
 	parent_id: NodeId,
@@ -60,7 +60,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for LookupRequest<'a> {
 
 /// Response type for [`FuseHandlers::lookup`].
 ///
-/// [`FuseHandlers::lookup`]: ../trait.FuseHandlers.html#method.lookup
+/// [`FuseHandlers::lookup`]: ../../trait.FuseHandlers.html#method.lookup
 pub struct LookupResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	entry_out: fuse_kernel::fuse_entry_out,

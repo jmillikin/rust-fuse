@@ -23,7 +23,7 @@ mod link_test;
 
 /// Request type for [`FuseHandlers::link`].
 ///
-/// [`FuseHandlers::link`]: ../trait.FuseHandlers.html#method.link
+/// [`FuseHandlers::link`]: ../../trait.FuseHandlers.html#method.link
 #[derive(Debug)]
 pub struct LinkRequest<'a> {
 	node_id: NodeId,
@@ -68,7 +68,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for LinkRequest<'a> {
 
 /// Response type for [`FuseHandlers::link`].
 ///
-/// [`FuseHandlers::link`]: ../trait.FuseHandlers.html#method.link
+/// [`FuseHandlers::link`]: ../../trait.FuseHandlers.html#method.link
 pub struct LinkResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_entry_out,

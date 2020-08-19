@@ -23,7 +23,7 @@ mod getattr_test;
 
 /// Request type for [`FuseHandlers::getattr`].
 ///
-/// [`FuseHandlers::getattr`]: ../trait.FuseHandlers.html#method.getattr
+/// [`FuseHandlers::getattr`]: ../../trait.FuseHandlers.html#method.getattr
 pub struct GetattrRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -86,7 +86,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for GetattrRequest<'a> {
 
 /// Response type for [`FuseHandlers::getattr`].
 ///
-/// [`FuseHandlers::getattr`]: ../trait.FuseHandlers.html#method.getattr
+/// [`FuseHandlers::getattr`]: ../../trait.FuseHandlers.html#method.getattr
 pub struct GetattrResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_attr_out,

@@ -23,7 +23,7 @@ mod create_test;
 
 /// Request type for [`FuseHandlers::create`].
 ///
-/// [`FuseHandlers::create`]: ../trait.FuseHandlers.html#method.create
+/// [`FuseHandlers::create`]: ../../trait.FuseHandlers.html#method.create
 #[derive(Debug)]
 pub struct CreateRequest<'a> {
 	node_id: NodeId,
@@ -100,7 +100,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for CreateRequest<'a> {
 
 /// Response type for [`FuseHandlers::create`].
 ///
-/// [`FuseHandlers::create`]: ../trait.FuseHandlers.html#method.create
+/// [`FuseHandlers::create`]: ../../trait.FuseHandlers.html#method.create
 pub struct CreateResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	entry_out: fuse_kernel::fuse_entry_out,

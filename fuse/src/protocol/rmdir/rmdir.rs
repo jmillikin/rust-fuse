@@ -23,7 +23,7 @@ mod rmdir_test;
 
 /// Request type for [`FuseHandlers::rmdir`].
 ///
-/// [`FuseHandlers::rmdir`]: ../trait.FuseHandlers.html#method.rmdir
+/// [`FuseHandlers::rmdir`]: ../../trait.FuseHandlers.html#method.rmdir
 #[derive(Debug)]
 pub struct RmdirRequest<'a> {
 	parent_id: NodeId,
@@ -60,7 +60,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for RmdirRequest<'a> {
 
 /// Response type for [`FuseHandlers::rmdir`].
 ///
-/// [`FuseHandlers::rmdir`]: ../trait.FuseHandlers.html#method.rmdir
+/// [`FuseHandlers::rmdir`]: ../../trait.FuseHandlers.html#method.rmdir
 pub struct RmdirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }

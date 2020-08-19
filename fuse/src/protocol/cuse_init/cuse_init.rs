@@ -74,7 +74,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for CuseInitRequest<'_> {
 
 /// Response type for [`CuseHandlers::cuse_init`].
 ///
-/// [`CuseHandlers::cuse_init`]: ../trait.CuseHandlers.html#method.cuse_init
+/// [`CuseHandlers::cuse_init`]: ../../trait.CuseHandlers.html#method.cuse_init
 pub struct CuseInitResponse {
 	raw: fuse_kernel::cuse_init_out,
 	flags: CuseInitFlags,

@@ -23,7 +23,7 @@ mod read_test;
 
 /// Request type for [`FuseHandlers::read`].
 ///
-/// [`FuseHandlers::read`]: ../trait.FuseHandlers.html#method.read
+/// [`FuseHandlers::read`]: ../../trait.FuseHandlers.html#method.read
 pub struct ReadRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -61,7 +61,7 @@ impl ReadRequest<'_> {
 	/// Platform-specific flags passed to [`FuseHandlers::open`]. See
 	/// [`OpenRequest::flags`] for details.
 	///
-	/// [`FuseHandlers::open`]: ../trait.FuseHandlers.html#method.open
+	/// [`FuseHandlers::open`]: ../../trait.FuseHandlers.html#method.open
 	/// [`OpenRequest::flags`]: struct.OpenRequest.html#method.flags
 	pub fn open_flags(&self) -> u32 {
 		self.open_flags
@@ -141,7 +141,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReadRequest<'a> {
 
 /// Response type for [`FuseHandlers::read`].
 ///
-/// [`FuseHandlers::read`]: ../trait.FuseHandlers.html#method.read
+/// [`FuseHandlers::read`]: ../../trait.FuseHandlers.html#method.read
 pub struct ReadResponse<'a> {
 	bytes: &'a [u8],
 }

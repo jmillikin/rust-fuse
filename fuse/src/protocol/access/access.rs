@@ -23,7 +23,7 @@ mod access_test;
 
 /// Request type for [`FuseHandlers::access`].
 ///
-/// [`FuseHandlers::access`]: ../trait.FuseHandlers.html#method.access
+/// [`FuseHandlers::access`]: ../../trait.FuseHandlers.html#method.access
 #[derive(Debug)]
 pub struct AccessRequest {
 	node_id: NodeId,
@@ -61,7 +61,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for AccessRequest {
 
 /// Response type for [`FuseHandlers::access`].
 ///
-/// [`FuseHandlers::access`]: ../trait.FuseHandlers.html#method.access
+/// [`FuseHandlers::access`]: ../../trait.FuseHandlers.html#method.access
 pub struct AccessResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }

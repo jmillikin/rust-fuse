@@ -23,7 +23,7 @@ mod release_test;
 
 /// Request type for [`FuseHandlers::release`].
 ///
-/// [`FuseHandlers::release`]: ../trait.FuseHandlers.html#method.release
+/// [`FuseHandlers::release`]: ../../trait.FuseHandlers.html#method.release
 pub struct ReleaseRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -51,7 +51,7 @@ impl ReleaseRequest<'_> {
 	/// Platform-specific flags passed to [`FuseHandlers::open`]. See
 	/// [`OpenRequest::flags`] for details.
 	///
-	/// [`FuseHandlers::open`]: ../trait.FuseHandlers.html#method.open
+	/// [`FuseHandlers::open`]: ../../trait.FuseHandlers.html#method.open
 	/// [`OpenRequest::flags`]: struct.OpenRequest.html#method.flags
 	pub fn open_flags(&self) -> u32 {
 		self.open_flags
@@ -124,7 +124,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReleaseRequest<'a> {
 
 /// Response type for [`FuseHandlers::release`].
 ///
-/// [`FuseHandlers::release`]: ../trait.FuseHandlers.html#method.release
+/// [`FuseHandlers::release`]: ../../trait.FuseHandlers.html#method.release
 pub struct ReleaseResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }

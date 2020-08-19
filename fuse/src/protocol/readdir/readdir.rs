@@ -26,7 +26,7 @@ mod readdir_test;
 
 /// Request type for [`FuseHandlers::readdir`].
 ///
-/// [`FuseHandlers::readdir`]: ../trait.FuseHandlers.html#method.readdir
+/// [`FuseHandlers::readdir`]: ../../trait.FuseHandlers.html#method.readdir
 pub struct ReaddirRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -59,7 +59,7 @@ impl ReaddirRequest<'_> {
 	/// Platform-specific flags passed to [`FuseHandlers::opendir`]. See
 	/// [`OpendirRequest::flags`] for details.
 	///
-	/// [`FuseHandlers::opendir`]: ../trait.FuseHandlers.html#method.opendir
+	/// [`FuseHandlers::opendir`]: ../../trait.FuseHandlers.html#method.opendir
 	/// [`OpendirRequest::flags`]: struct.OpendirRequest.html#method.flags
 	pub fn opendir_flags(&self) -> u32 {
 		self.opendir_flags
@@ -118,7 +118,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReaddirRequest<'a> {
 
 /// Response type for [`FuseHandlers::readdir`].
 ///
-/// [`FuseHandlers::readdir`]: ../trait.FuseHandlers.html#method.readdir
+/// [`FuseHandlers::readdir`]: ../../trait.FuseHandlers.html#method.readdir
 pub struct ReaddirResponse<'a> {
 	buf: Option<ReaddirBuf<'a>>,
 }

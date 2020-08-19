@@ -23,7 +23,7 @@ mod mkdir_test;
 
 /// Request type for [`FuseHandlers::mkdir`].
 ///
-/// [`FuseHandlers::mkdir`]: ../trait.FuseHandlers.html#method.mkdir
+/// [`FuseHandlers::mkdir`]: ../../trait.FuseHandlers.html#method.mkdir
 pub struct MkdirRequest<'a> {
 	parent_id: NodeId,
 	name: &'a NodeName,
@@ -82,7 +82,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for MkdirRequest<'a> {
 
 /// Response type for [`FuseHandlers::mkdir`].
 ///
-/// [`FuseHandlers::mkdir`]: ../trait.FuseHandlers.html#method.mkdir
+/// [`FuseHandlers::mkdir`]: ../../trait.FuseHandlers.html#method.mkdir
 pub struct MkdirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_entry_out,

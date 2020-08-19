@@ -23,7 +23,7 @@ mod symlink_test;
 
 /// Request type for [`FuseHandlers::symlink`].
 ///
-/// [`FuseHandlers::symlink`]: ../trait.FuseHandlers.html#method.symlink
+/// [`FuseHandlers::symlink`]: ../../trait.FuseHandlers.html#method.symlink
 pub struct SymlinkRequest<'a> {
 	parent_id: NodeId,
 	name: &'a NodeName,
@@ -77,7 +77,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for SymlinkRequest<'a> {
 
 /// Response type for [`FuseHandlers::symlink`].
 ///
-/// [`FuseHandlers::symlink`]: ../trait.FuseHandlers.html#method.symlink
+/// [`FuseHandlers::symlink`]: ../../trait.FuseHandlers.html#method.symlink
 pub struct SymlinkResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_entry_out,

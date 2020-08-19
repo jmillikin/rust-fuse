@@ -26,7 +26,7 @@ const RENAME_EXCHANGE: u32 = 1 << 1;
 
 /// Request type for [`FuseHandlers::rename`].
 ///
-/// [`FuseHandlers::rename`]: ../trait.FuseHandlers.html#method.rename
+/// [`FuseHandlers::rename`]: ../../trait.FuseHandlers.html#method.rename
 pub struct RenameRequest<'a> {
 	old_directory_id: NodeId,
 	old_name: &'a NodeName,
@@ -114,7 +114,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for RenameRequest<'a> {
 
 /// Response type for [`FuseHandlers::rename`].
 ///
-/// [`FuseHandlers::rename`]: ../trait.FuseHandlers.html#method.rename
+/// [`FuseHandlers::rename`]: ../../trait.FuseHandlers.html#method.rename
 pub struct RenameResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }

@@ -23,7 +23,7 @@ mod getxattr_test;
 
 /// Request type for [`FuseHandlers::getxattr`].
 ///
-/// [`FuseHandlers::getxattr`]: ../trait.FuseHandlers.html#method.getxattr
+/// [`FuseHandlers::getxattr`]: ../../trait.FuseHandlers.html#method.getxattr
 pub struct GetxattrRequest<'a> {
 	node_id: NodeId,
 	size: Option<num::NonZeroU32>,
@@ -76,7 +76,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for GetxattrRequest<'a> {
 
 /// Response type for [`FuseHandlers::getxattr`].
 ///
-/// [`FuseHandlers::getxattr`]: ../trait.FuseHandlers.html#method.getxattr
+/// [`FuseHandlers::getxattr`]: ../../trait.FuseHandlers.html#method.getxattr
 pub struct GetxattrResponse<'a> {
 	request_size: Option<num::NonZeroU32>,
 	raw: fuse_kernel::fuse_getxattr_out,

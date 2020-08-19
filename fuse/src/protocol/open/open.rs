@@ -23,7 +23,7 @@ mod open_test;
 
 /// Request type for [`FuseHandlers::open`].
 ///
-/// [`FuseHandlers::open`]: ../trait.FuseHandlers.html#method.open
+/// [`FuseHandlers::open`]: ../../trait.FuseHandlers.html#method.open
 pub struct OpenRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -80,7 +80,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for OpenRequest<'a> {
 
 /// Response type for [`FuseHandlers::open`].
 ///
-/// [`FuseHandlers::open`]: ../trait.FuseHandlers.html#method.open
+/// [`FuseHandlers::open`]: ../../trait.FuseHandlers.html#method.open
 pub struct OpenResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	handle: u64,

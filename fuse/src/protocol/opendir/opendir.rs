@@ -23,7 +23,7 @@ mod opendir_test;
 
 /// Request type for [`FuseHandlers::opendir`].
 ///
-/// [`FuseHandlers::opendir`]: ../trait.FuseHandlers.html#method.opendir
+/// [`FuseHandlers::opendir`]: ../../trait.FuseHandlers.html#method.opendir
 pub struct OpendirRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -74,7 +74,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for OpendirRequest<'a> {
 
 /// Response type for [`FuseHandlers::opendir`].
 ///
-/// [`FuseHandlers::opendir`]: ../trait.FuseHandlers.html#method.opendir
+/// [`FuseHandlers::opendir`]: ../../trait.FuseHandlers.html#method.opendir
 pub struct OpendirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	handle: u64,

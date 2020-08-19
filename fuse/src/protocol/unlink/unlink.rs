@@ -23,7 +23,7 @@ mod unlink_test;
 
 /// Request type for [`FuseHandlers::unlink`].
 ///
-/// [`FuseHandlers::unlink`]: ../trait.FuseHandlers.html#method.unlink
+/// [`FuseHandlers::unlink`]: ../../trait.FuseHandlers.html#method.unlink
 #[derive(Debug)]
 pub struct UnlinkRequest<'a> {
 	parent_id: NodeId,
@@ -60,7 +60,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for UnlinkRequest<'a> {
 
 /// Response type for [`FuseHandlers::unlink`].
 ///
-/// [`FuseHandlers::unlink`]: ../trait.FuseHandlers.html#method.unlink
+/// [`FuseHandlers::unlink`]: ../../trait.FuseHandlers.html#method.unlink
 pub struct UnlinkResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }

@@ -39,7 +39,7 @@ impl ForgetRequestItem {
 
 /// Request type for [`FuseHandlers::forget`].
 ///
-/// [`FuseHandlers::forget`]: ../trait.FuseHandlers.html#method.forget
+/// [`FuseHandlers::forget`]: ../../trait.FuseHandlers.html#method.forget
 pub struct ForgetRequest<'a> {
 	forget: Option<fuse_kernel::fuse_forget_one>,
 	batch_forgets: &'a [fuse_kernel::fuse_forget_one],

@@ -23,7 +23,7 @@ mod write_test;
 
 /// Request type for [`FuseHandlers::write`].
 ///
-/// [`FuseHandlers::write`]: ../trait.FuseHandlers.html#method.write
+/// [`FuseHandlers::write`]: ../../trait.FuseHandlers.html#method.write
 pub struct WriteRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -66,7 +66,7 @@ impl WriteRequest<'_> {
 	/// Platform-specific flags passed to [`FuseHandlers::open`]. See
 	/// [`OpenRequest::flags`] for details.
 	///
-	/// [`FuseHandlers::open`]: ../trait.FuseHandlers.html#method.open
+	/// [`FuseHandlers::open`]: ../../trait.FuseHandlers.html#method.open
 	/// [`OpenRequest::flags`]: struct.OpenRequest.html#method.flags
 	pub fn open_flags(&self) -> u32 {
 		self.open_flags
@@ -159,7 +159,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for WriteRequest<'a> {
 
 /// Response type for [`FuseHandlers::write`].
 ///
-/// [`FuseHandlers::write`]: ../trait.FuseHandlers.html#method.write
+/// [`FuseHandlers::write`]: ../../trait.FuseHandlers.html#method.write
 pub struct WriteResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_write_out,

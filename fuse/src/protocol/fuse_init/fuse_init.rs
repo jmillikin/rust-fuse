@@ -23,7 +23,7 @@ mod fuse_init_test;
 
 /// Request type for [`FuseHandlers::fuse_init`].
 ///
-/// [`FuseHandlers::fuse_init`]: ../trait.FuseHandlers.html#method.fuse_init
+/// [`FuseHandlers::fuse_init`]: ../../trait.FuseHandlers.html#method.fuse_init
 pub struct FuseInitRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	version: crate::ProtocolVersion,
@@ -116,7 +116,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for FuseInitRequest<'_> {
 
 /// Response type for [`FuseHandlers::fuse_init`].
 ///
-/// [`FuseHandlers::fuse_init`]: ../trait.FuseHandlers.html#method.fuse_init
+/// [`FuseHandlers::fuse_init`]: ../../trait.FuseHandlers.html#method.fuse_init
 pub struct FuseInitResponse {
 	raw: fuse_kernel::fuse_init_out,
 	flags: FuseInitFlags,
