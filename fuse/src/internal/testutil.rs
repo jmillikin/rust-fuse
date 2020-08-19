@@ -164,6 +164,7 @@ macro_rules! decode_request {
 		let decoder = fuse_io::RequestDecoder::new(
 			$buf.borrow(),
 			opts.protocol_version(),
+			fuse_io::Semantics::FUSE,
 		)
 		.unwrap();
 		fuse_io::DecodeRequest::decode_request(decoder).unwrap()

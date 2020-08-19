@@ -111,7 +111,11 @@ impl<'a> fuse_io::DecodeRequest<'a> for WriteRequest<'a> {
 		let header = dec.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_WRITE);
 
-		let node_id = try_node_id(header.nodeid)?;
+		let node_id = if dec.is_cuse() {
+			crate::ROOT_ID
+		} else {
+			try_node_id(header.nodeid)?
+		};
 
 		if dec.version().minor() < 9 {
 			let raw: &'a fuse_write_in_v7p1 = dec.next_sized()?;

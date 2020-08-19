@@ -59,10 +59,16 @@ impl<'a> fuse_io::DecodeRequest<'a> for OpenRequest<'a> {
 		let header = dec.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_OPEN);
 
+		let node_id = if dec.is_cuse() {
+			crate::ROOT_ID
+		} else {
+			try_node_id(header.nodeid)?
+		};
+
 		let raw: &'a fuse_kernel::fuse_open_in = dec.next_sized()?;
 		Ok(Self {
 			phantom: PhantomData,
-			node_id: try_node_id(header.nodeid)?,
+			node_id,
 			flags: raw.flags,
 		})
 	}

@@ -29,13 +29,18 @@
 mod internal;
 
 mod channel;
-pub use self::channel::{Channel, ChannelError, CuseChannel, FuseChannel};
+pub use self::channel::{Channel, ChannelError};
 
 mod error;
 pub use self::error::{Error, ErrorCode};
 
 mod cuse_handlers;
 pub use self::cuse_handlers::*;
+
+#[cfg(not(feature = "no_std"))]
+mod cuse_server;
+#[cfg(not(feature = "no_std"))]
+pub use self::cuse_server::*;
 
 mod fuse_handlers;
 pub use self::fuse_handlers::*;
@@ -53,13 +58,7 @@ pub use crate::internal::types::ProtocolVersion;
 pub mod os {
 	#[cfg(any(doc, target_os = "linux"))]
 	#[cfg_attr(doc, doc(cfg(target_os = "linux")))]
-	pub mod linux {
-		#[cfg(not(feature = "no_std"))]
-		mod linux_fuse_channel;
-
-		#[cfg(not(feature = "no_std"))]
-		pub use self::linux_fuse_channel::*;
-	}
+	pub mod linux;
 }
 
 pub mod protocol;

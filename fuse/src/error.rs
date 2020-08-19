@@ -23,7 +23,8 @@ use crate::internal::fuse_kernel;
 pub enum Error {
 	MissingNodeId,
 	UnexpectedEof,
-	UnexpectedOpcode(u32),
+	ExpectedCuseInit(u32),
+	ExpectedFuseInit(u32),
 }
 
 #[cfg(not(feature = "no_std"))]
@@ -37,7 +38,14 @@ impl From<Error> for std::io::Error {
 				"Request field 'fuse_in_header::nodeid' is missing (expected non-zero)",
 			),
 			Error::UnexpectedEof => io::ErrorKind::UnexpectedEof.into(),
-			Error::UnexpectedOpcode(opcode) => io::Error::new(
+			Error::ExpectedCuseInit(opcode) => io::Error::new(
+				io::ErrorKind::InvalidData,
+				format!(
+					"Received opcode {:?} from kernel (expected CUSE_INIT)",
+					fuse_kernel::Opcode(opcode),
+				),
+			),
+			Error::ExpectedFuseInit(opcode) => io::Error::new(
 				io::ErrorKind::InvalidData,
 				format!(
 					"Received opcode {:?} from kernel (expected FUSE_INIT)",

@@ -22,6 +22,7 @@ use std::path::PathBuf;
 use std::{fs, io};
 
 use crate::channel::{self, Channel, FileChannel};
+use crate::fuse_server;
 
 #[path = "linux_syscalls.rs"]
 mod syscalls;
@@ -157,7 +158,7 @@ impl FuseChannelBuilder {
 #[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
 pub struct FuseChannel(FileChannel);
 
-impl channel::FuseChannel for FuseChannel {}
+impl fuse_server::FuseChannel for FuseChannel {}
 
 impl Channel for FuseChannel {
 	type Error = io::Error;

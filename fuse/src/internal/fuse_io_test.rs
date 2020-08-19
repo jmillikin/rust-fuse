@@ -20,7 +20,7 @@ use crate::error::Error;
 use crate::internal::fuse_kernel;
 use crate::internal::testutil::MessageBuilder;
 
-use super::RequestDecoder;
+use super::{RequestDecoder, Semantics};
 
 #[test]
 fn request_decoder_new() {
@@ -29,9 +29,12 @@ fn request_decoder_new() {
 		.push_bytes(&[1, 2, 3, 4, 5, 6, 7, 8, 9])
 		.build_aligned();
 
-	let decoder =
-		RequestDecoder::new(buf.borrow(), crate::ProtocolVersion::LATEST)
-			.unwrap();
+	let decoder = RequestDecoder::new(
+		buf.borrow(),
+		crate::ProtocolVersion::LATEST,
+		Semantics::FUSE,
+	)
+	.unwrap();
 
 	assert_eq!(
 		decoder.consumed,
@@ -46,9 +49,12 @@ fn request_decoder_eof_handling() {
 		.push_bytes(&[10, 20, 30, 40, 50, 60, 70, 80, 90])
 		.build_aligned();
 
-	let mut decoder =
-		RequestDecoder::new(buf.borrow(), crate::ProtocolVersion::LATEST)
-			.unwrap();
+	let mut decoder = RequestDecoder::new(
+		buf.borrow(),
+		crate::ProtocolVersion::LATEST,
+		Semantics::FUSE,
+	)
+	.unwrap();
 
 	// OK to read right up to the frame size.
 	decoder.next_bytes(8).unwrap();
@@ -94,9 +100,12 @@ fn request_decoder_sized() {
 		.push_bytes(&[1, 2, 3, 4, 5, 6, 7, 8, 9])
 		.build_aligned();
 
-	let mut decoder =
-		RequestDecoder::new(buf.borrow(), crate::ProtocolVersion::LATEST)
-			.unwrap();
+	let mut decoder = RequestDecoder::new(
+		buf.borrow(),
+		crate::ProtocolVersion::LATEST,
+		Semantics::FUSE,
+	)
+	.unwrap();
 
 	// [0 .. 4]
 	let did_read: &[u8; 4] = decoder.next_sized().unwrap();
@@ -117,9 +126,12 @@ fn frame_decoder_bytes() {
 		.push_bytes(&[1, 2, 3, 4, 5, 6, 7, 8, 9])
 		.build_aligned();
 
-	let mut decoder =
-		RequestDecoder::new(buf.borrow(), crate::ProtocolVersion::LATEST)
-			.unwrap();
+	let mut decoder = RequestDecoder::new(
+		buf.borrow(),
+		crate::ProtocolVersion::LATEST,
+		Semantics::FUSE,
+	)
+	.unwrap();
 
 	// [0 .. 4)
 	let did_read = decoder.next_bytes(4).unwrap();
@@ -140,9 +152,12 @@ fn frame_reader_cstr() {
 		.push_bytes(&[1, 2, 3, 4, 0, 5, 6, 7, 8, 0, 9])
 		.build_aligned();
 
-	let mut decoder =
-		RequestDecoder::new(buf.borrow(), crate::ProtocolVersion::LATEST)
-			.unwrap();
+	let mut decoder = RequestDecoder::new(
+		buf.borrow(),
+		crate::ProtocolVersion::LATEST,
+		Semantics::FUSE,
+	)
+	.unwrap();
 
 	// [0 .. 5)
 	let did_read = decoder.next_cstr().unwrap();

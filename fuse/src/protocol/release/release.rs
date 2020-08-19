@@ -83,7 +83,11 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReleaseRequest<'a> {
 		let header = dec.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_RELEASE);
 
-		let node_id = try_node_id(header.nodeid)?;
+		let node_id = if dec.is_cuse() {
+			crate::ROOT_ID
+		} else {
+			try_node_id(header.nodeid)?
+		};
 
 		// FUSE v7.8 added new fields to `fuse_release_in`.
 		if dec.version().minor() < 8 {

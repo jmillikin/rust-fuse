@@ -63,19 +63,39 @@ fn request_impl_debug() {
 	);
 }
 
+fn encode_response(
+	response: CuseInitResponse,
+	maybe_device_name: Option<&[u8]>,
+) -> Vec<u8> {
+	use crate::internal::fuse_io::ResponseEncoder;
+
+	let request_id = 0;
+	let mut channel = crate::internal::testutil::FakeChannel::new();
+	let encoder = ResponseEncoder::new(
+		&mut channel,
+		request_id,
+		crate::ProtocolVersion::LATEST,
+	);
+	response
+		.encode_response(encoder, maybe_device_name)
+		.unwrap();
+	channel.expect_write()
+}
+
 #[test]
 fn response() {
 	let mut resp = CuseInitResponse::new(crate::ProtocolVersion::new(7, 23));
 	resp.set_max_write(4096);
 	*resp.flags_mut() = CuseInitFlags::from_bits(0xFFFFFFFF);
-	let encoded = encode_response!(resp);
+	let encoded = encode_response(resp, Some(b"test-device"));
 
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
 			.push_sized(&fuse_kernel::fuse_out_header {
 				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ size_of::<fuse_kernel::cuse_init_out>()) as u32,
+					+ size_of::<fuse_kernel::cuse_init_out>()
+					+ b"DEVNAME=test-device\x00".len()) as u32,
 				error: 0,
 				unique: 0,
 			})
@@ -90,6 +110,7 @@ fn response() {
 				dev_minor: 0,
 				spare: [0; 10],
 			})
+			.push_bytes(b"DEVNAME=test-device\x00")
 			.build()
 	);
 }
@@ -104,14 +125,15 @@ fn response_minor_mismatch() {
 		),
 		flags: CuseInitFlags::from_bits(0xFFFFFFFF),
 	});
-	let encoded = encode_response!(resp);
+	let encoded = encode_response(resp, Some(b"test-device"));
 
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
 			.push_sized(&fuse_kernel::fuse_out_header {
 				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ size_of::<fuse_kernel::cuse_init_out>()) as u32,
+					+ size_of::<fuse_kernel::cuse_init_out>()
+					+ b"DEVNAME=test-device\x00".len()) as u32,
 				error: 0,
 				unique: 0,
 			})
@@ -119,13 +141,14 @@ fn response_minor_mismatch() {
 				major: fuse_kernel::FUSE_KERNEL_VERSION,
 				minor: fuse_kernel::FUSE_KERNEL_MINOR_VERSION,
 				unused: 0,
-				flags: 0x1,
+				flags: 0,
 				max_read: 0,
 				max_write: 0,
 				dev_major: 0,
 				dev_minor: 0,
 				spare: [0; 10],
 			})
+			.push_bytes(b"DEVNAME=test-device\x00")
 			.build()
 	);
 }
@@ -137,7 +160,7 @@ fn response_major_mismatch() {
 		version: crate::ProtocolVersion::new(0xFF, 0xFF),
 		flags: CuseInitFlags::from_bits(0),
 	});
-	let encoded = encode_response!(resp);
+	let encoded = encode_response(resp, None);
 
 	assert_eq!(
 		encoded,

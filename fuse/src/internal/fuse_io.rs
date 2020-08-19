@@ -138,10 +138,17 @@ pub(crate) trait DecodeRequest<'a>: Sized {
 	fn decode_request(decoder: RequestDecoder<'a>) -> Result<Self, Error>;
 }
 
+#[derive(Eq, PartialEq)]
+pub(crate) enum Semantics {
+	FUSE,
+	CUSE,
+}
+
 pub(crate) struct RequestDecoder<'a> {
 	buf: &'a [u8],
 	header: &'a fuse_kernel::fuse_in_header,
 	version: crate::ProtocolVersion,
+	semantics: Semantics,
 	consumed: u32,
 }
 
@@ -149,6 +156,7 @@ impl<'a> RequestDecoder<'a> {
 	pub(crate) fn new(
 		buf: AlignedSlice<'a>,
 		version: crate::ProtocolVersion,
+		semantics: Semantics,
 	) -> Result<Self, Error> {
 		let buf = buf.get();
 		if buf.len() < size_of::<fuse_kernel::fuse_in_header>() {
@@ -176,6 +184,7 @@ impl<'a> RequestDecoder<'a> {
 			buf,
 			header,
 			version,
+			semantics,
 			consumed: size_of::<fuse_kernel::fuse_in_header>() as u32,
 		})
 	}
@@ -186,6 +195,10 @@ impl<'a> RequestDecoder<'a> {
 
 	pub(crate) fn version(&self) -> crate::ProtocolVersion {
 		self.version
+	}
+
+	pub(crate) fn is_cuse(&self) -> bool {
+		self.semantics == Semantics::CUSE
 	}
 
 	fn consume(&self, len: u32) -> Result<u32, Error> {
@@ -441,5 +454,57 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 			)
 		};
 		self.channel.send_vectored(&[out_hdr_buf, bytes_1, bytes_2])
+	}
+
+	pub(crate) fn encode_bytes_4(
+		self,
+		bytes_1: &[u8],
+		bytes_2: &[u8],
+		bytes_3: &[u8],
+		bytes_4: &[u8],
+	) -> Result<(), Chan::Error> {
+		let mut len = size_of::<fuse_kernel::fuse_out_header>();
+
+		match len.checked_add(bytes_1.len()) {
+			Some(x) => len = x,
+			None => panic!("{} + {} overflows usize", len, bytes_1.len()),
+		}
+		match len.checked_add(bytes_2.len()) {
+			Some(x) => len = x,
+			None => panic!("{} + {} overflows usize", len, bytes_2.len()),
+		}
+		match len.checked_add(bytes_3.len()) {
+			Some(x) => len = x,
+			None => panic!("{} + {} overflows usize", len, bytes_3.len()),
+		}
+		match len.checked_add(bytes_4.len()) {
+			Some(x) => len = x,
+			None => panic!("{} + {} overflows usize", len, bytes_4.len()),
+		}
+
+		if size_of::<usize>() > size_of::<u32>() {
+			if len > u32::MAX as usize {
+				panic!("{} overflows u32", len);
+			}
+		}
+
+		let out_hdr = fuse_kernel::fuse_out_header {
+			len: len as u32,
+			error: 0,
+			unique: self.request_id,
+		};
+		let out_hdr_buf: &[u8] = unsafe {
+			core::slice::from_raw_parts(
+				(&out_hdr as *const fuse_kernel::fuse_out_header) as *const u8,
+				size_of::<fuse_kernel::fuse_out_header>(),
+			)
+		};
+		self.channel.send_vectored(&[
+			out_hdr_buf,
+			bytes_1,
+			bytes_2,
+			bytes_3,
+			bytes_4,
+		])
 	}
 }

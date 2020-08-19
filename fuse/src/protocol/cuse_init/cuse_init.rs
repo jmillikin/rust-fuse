@@ -121,13 +121,7 @@ impl CuseInitResponse {
 
 		let v_major = fuse_kernel::FUSE_KERNEL_VERSION;
 		let version = crate::ProtocolVersion::new(v_major, v_minor);
-		let mut response = CuseInitResponse::new(version);
-
-		let mut flags = *request.flags();
-		flags.bits = 0; // clear unknown flag bits
-
-		*response.flags_mut() = flags;
-		response
+		CuseInitResponse::new(version)
 	}
 
 	pub fn version(&self) -> crate::ProtocolVersion {
@@ -188,14 +182,28 @@ impl fmt::Debug for CuseInitResponse {
 	}
 }
 
-impl fuse_io::EncodeResponse for CuseInitResponse {
-	fn encode_response<'a, Chan: fuse_io::Channel>(
+// Not an implementation of fuse_io::EncodeResponse because the device name
+// must be provided as a parameter.
+impl CuseInitResponse {
+	pub(crate) fn encode_response<'a, Chan: fuse_io::Channel>(
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
+		maybe_device_name: Option<&[u8]>,
 	) -> Result<(), Chan::Error> {
 		let mut out = self.raw;
 		out.flags = self.flags.to_bits();
-		enc.encode_sized(&out)
+		let out_buf: &[u8] = unsafe {
+			slice::from_raw_parts(
+				(&out as *const fuse_kernel::cuse_init_out) as *const u8,
+				size_of::<fuse_kernel::cuse_init_out>(),
+			)
+		};
+		match maybe_device_name {
+			None => enc.encode_bytes(out_buf),
+			Some(device_name) => {
+				enc.encode_bytes_4(out_buf, b"DEVNAME=", device_name, b"\x00")
+			},
+		}
 	}
 }
 
