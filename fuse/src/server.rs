@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::cmp::max;
+
 #[cfg(not(feature = "no_std"))]
 use std::sync::Arc;
 
@@ -45,6 +47,24 @@ impl<'a> ServerContext {
 	pub fn process_id(&self) -> u32 {
 		self.header.pid
 	}
+}
+
+pub(crate) fn read_buf_size(max_write: u32) -> usize {
+	let max_write = max_write as usize;
+
+	// The read buffer is the maximum write size, plus a fixed overhead for
+	// request headers.
+	//
+	// When calculating the header overhead, the Linux kernel is permissive
+	// (allowing overheads as small as `size(fuse_in_header + fuse_write_in`) but
+	// libfuse is conservative (reserving 4 KiB).
+	//
+	// This code follows libfuse.
+	let header_overhead = 4096;
+	max(
+		header_overhead + max_write,
+		fuse_kernel::FUSE_MIN_READ_BUFFER,
+	)
 }
 
 mod private {

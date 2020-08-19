@@ -392,7 +392,7 @@ pub const FUSE_NOTIFY_DELETE:      u32 = 6;
 pub const FUSE_NOTIFY_CODE_MAX:    u32 = 7;
 
 /* The read buffer is required to be at least 8k, but may be much larger */
-pub const FUSE_MIN_READ_BUFFER: u32 = 8192;
+pub const FUSE_MIN_READ_BUFFER: usize = 8192;
 
 pub const FUSE_COMPAT_ENTRY_OUT_SIZE: usize = 120;
 

@@ -46,14 +46,14 @@ pub(crate) fn aligned_slice<Buf: AlignedBuffer>(
 
 pub(crate) struct MinReadBuffer {
 	_align: [u64; 0],
-	buf: [u8; fuse_kernel::FUSE_MIN_READ_BUFFER as usize],
+	buf: [u8; fuse_kernel::FUSE_MIN_READ_BUFFER],
 }
 
 impl MinReadBuffer {
 	pub(crate) fn new() -> Self {
 		Self {
 			_align: [0; 0],
-			buf: [0; fuse_kernel::FUSE_MIN_READ_BUFFER as usize],
+			buf: [0; fuse_kernel::FUSE_MIN_READ_BUFFER],
 		}
 	}
 

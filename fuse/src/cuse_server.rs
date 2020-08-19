@@ -51,13 +51,12 @@ where
 	) -> Result<CuseServer<C, H>, C::Error> {
 		let init_response =
 			Self::cuse_handshake(device_name, &channel, &mut handlers)?;
-		let read_buf_size = 1048576; /* 1 MiB; TODO compute from init_response */
 		let fuse_version = init_response.version();
 		Ok(Self {
 			channel: Arc::new(channel),
 			handlers: Arc::new(handlers),
 			fuse_version,
-			read_buf_size,
+			read_buf_size: server::read_buf_size(init_response.max_write()),
 		})
 	}
 
