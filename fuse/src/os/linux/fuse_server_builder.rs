@@ -16,7 +16,7 @@
 
 use std::path;
 
-use super::fuse_mount::{FuseMount, SyscallFuseMount};
+use super::fuse_mount::FuseMount;
 use crate::channel::Channel;
 use crate::fuse_handlers::FuseHandlers;
 use crate::fuse_server::{self, FuseServer};
@@ -28,18 +28,25 @@ pub struct FuseServerBuilder<Mount, Handlers> {
 	handlers: Handlers,
 }
 
-impl<H> FuseServerBuilder<SyscallFuseMount, H>
-where
-	H: FuseHandlers,
-{
+impl<H> FuseServerBuilder<(), H> {
 	pub fn new(
 		mount_target: impl AsRef<path::Path>,
 		handlers: H,
-	) -> FuseServerBuilder<SyscallFuseMount, H> {
+	) -> FuseServerBuilder<(), H> {
 		FuseServerBuilder {
 			mount_target: path::PathBuf::from(mount_target.as_ref()),
-			mount: SyscallFuseMount::new(),
+			mount: (),
 			handlers,
+		}
+	}
+}
+
+impl<_M, H> FuseServerBuilder<_M, H> {
+	pub fn set_mount<M>(self, mount: M) -> FuseServerBuilder<M, H> {
+		FuseServerBuilder {
+			mount_target: self.mount_target,
+			mount,
+			handlers: self.handlers,
 		}
 	}
 }
@@ -49,11 +56,6 @@ where
 	M: FuseMount,
 	H: FuseHandlers,
 {
-	pub fn set_mount(mut self, mount: M) -> Self {
-		self.mount = mount;
-		self
-	}
-
 	pub fn build(
 		self,
 	) -> Result<

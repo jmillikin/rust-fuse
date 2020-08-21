@@ -12,3 +12,6 @@ path = "helloworld.rs"
 [dependencies]
 fuse = { version = "0.0.1", path = "../../fuse" }
 libc = "0.2"
+
+[features]
+default = ["fuse/libc_fuse_mount"]

@@ -20,7 +20,7 @@ use core::cmp;
 #[cfg(feature = "std")]
 use std::sync::Arc;
 
-use crate::channel::{self, ChannelError};
+use crate::channel;
 use crate::error::{Error, ErrorCode};
 use crate::fuse_handlers::FuseHandlers;
 use crate::internal::fuse_io::{

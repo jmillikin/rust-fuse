@@ -29,6 +29,21 @@ impl DevFuseChannel {
 	}
 }
 
+#[cfg(not(feature = "nightly_impl_channel"))]
+impl channel::private::ChannelNoConstGenerics<io::Error> for DevFuseChannel {
+	fn send_vectored_2(&self, bufs: &[&[u8]; 2]) -> Result<(), io::Error> {
+		self.0.send_vectored_2(bufs)
+	}
+
+	fn send_vectored_3(&self, bufs: &[&[u8]; 3]) -> Result<(), io::Error> {
+		self.0.send_vectored_3(bufs)
+	}
+
+	fn send_vectored_5(&self, bufs: &[&[u8]; 5]) -> Result<(), io::Error> {
+		self.0.send_vectored_5(bufs)
+	}
+}
+
 impl channel::Channel for DevFuseChannel {
 	type Error = io::Error;
 
@@ -36,6 +51,7 @@ impl channel::Channel for DevFuseChannel {
 		self.0.send(buf)
 	}
 
+	#[cfg(feature = "nightly_impl_channel")]
 	fn send_vectored<const N: usize>(
 		&self,
 		bufs: &[&[u8]; N],

@@ -16,6 +16,7 @@
 
 #![cfg(feature = "std")]
 
+#[cfg(feature = "nightly_syscall_fuse_mount")]
 mod linux_syscalls;
 
 mod cuse_server_builder;

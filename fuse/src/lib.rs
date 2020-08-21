@@ -19,11 +19,14 @@
 #![cfg_attr(doc, feature(doc_cfg))]
 
 // For direct syscalls in `fuse/src/os/linux/syscalls.rs`.
-#![feature(asm)]
+#![cfg_attr(feature = "nightly_syscall_fuse_mount", feature(asm))]
 
 // For `send_vectored` in `fuse/src/channel.rs`.
 #![allow(incomplete_features)]
-#![feature(const_generics)]
+#![cfg_attr(feature = "nightly_impl_channel", feature(const_generics))]
+
+#[cfg(feature = "libc_fuse_mount")]
+extern crate libc;
 
 #[macro_use]
 mod internal;

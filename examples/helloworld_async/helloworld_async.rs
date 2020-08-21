@@ -221,7 +221,7 @@ fn main() {
 	let handlers = HelloWorldFS {};
 	let mut srv = linux::FuseServerBuilder::new(&mount_target, handlers)
 		.set_mount(
-			linux::SyscallFuseMount::new()
+			linux::LibcFuseMount::new()
 				.set_mount_source("helloworld")
 				.set_mount_subtype("helloworld"),
 		)

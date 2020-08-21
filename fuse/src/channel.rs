@@ -15,6 +15,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use core::convert::TryInto;
+
+#[cfg(feature = "nightly_impl_channel")]
 use core::mem::{self, MaybeUninit};
 
 #[cfg(feature = "std")]
@@ -22,6 +24,7 @@ use std::io::{self, IoSlice, Read, Write};
 
 use crate::error::{Error, ErrorCode};
 
+#[cfg(feature = "nightly_impl_channel")]
 pub trait Channel {
 	type Error: ChannelError;
 
@@ -31,6 +34,26 @@ pub trait Channel {
 		&self,
 		bufs: &[&[u8]; N],
 	) -> Result<(), Self::Error>;
+
+	fn receive(&self, buf: &mut [u8]) -> Result<usize, Self::Error>;
+}
+
+#[cfg(not(feature = "nightly_impl_channel"))]
+pub(crate) mod private {
+	pub trait ChannelNoConstGenerics<Error> {
+		fn send_vectored_2(&self, bufs: &[&[u8]; 2]) -> Result<(), Error>;
+		fn send_vectored_3(&self, bufs: &[&[u8]; 3]) -> Result<(), Error>;
+		fn send_vectored_5(&self, bufs: &[&[u8]; 5]) -> Result<(), Error>;
+	}
+}
+
+#[cfg(not(feature = "nightly_impl_channel"))]
+pub trait Channel:
+	private::ChannelNoConstGenerics<<Self as Channel>::Error>
+{
+	type Error: ChannelError;
+
+	fn send(&self, buf: &[u8]) -> Result<(), Self::Error>;
 
 	fn receive(&self, buf: &mut [u8]) -> Result<usize, Self::Error>;
 }
@@ -57,6 +80,73 @@ impl FileChannel {
 	}
 }
 
+#[cfg(not(feature = "nightly_impl_channel"))]
+impl private::ChannelNoConstGenerics<io::Error> for FileChannel {
+	fn send_vectored_2(&self, bufs: &[&[u8]; 2]) -> Result<(), io::Error> {
+		let mut bufs_len: usize = 0;
+		for buf in bufs {
+			bufs_len += buf.len();
+		}
+		let write_size = Write::write_vectored(
+			&mut &self.file,
+			&[IoSlice::new(bufs[0]), IoSlice::new(bufs[1])],
+		)?;
+		if write_size < bufs_len {
+			return Err(io::Error::new(
+				io::ErrorKind::Other,
+				"incomplete send",
+			));
+		}
+		Ok(())
+	}
+
+	fn send_vectored_3(&self, bufs: &[&[u8]; 3]) -> Result<(), io::Error> {
+		let mut bufs_len: usize = 0;
+		for buf in bufs {
+			bufs_len += buf.len();
+		}
+		let write_size = Write::write_vectored(
+			&mut &self.file,
+			&[
+				IoSlice::new(bufs[0]),
+				IoSlice::new(bufs[1]),
+				IoSlice::new(bufs[2]),
+			],
+		)?;
+		if write_size < bufs_len {
+			return Err(io::Error::new(
+				io::ErrorKind::Other,
+				"incomplete send",
+			));
+		}
+		Ok(())
+	}
+
+	fn send_vectored_5(&self, bufs: &[&[u8]; 5]) -> Result<(), io::Error> {
+		let mut bufs_len: usize = 0;
+		for buf in bufs {
+			bufs_len += buf.len();
+		}
+		let write_size = Write::write_vectored(
+			&mut &self.file,
+			&[
+				IoSlice::new(bufs[0]),
+				IoSlice::new(bufs[1]),
+				IoSlice::new(bufs[2]),
+				IoSlice::new(bufs[3]),
+				IoSlice::new(bufs[4]),
+			],
+		)?;
+		if write_size < bufs_len {
+			return Err(io::Error::new(
+				io::ErrorKind::Other,
+				"incomplete send",
+			));
+		}
+		Ok(())
+	}
+}
+
 #[cfg(feature = "std")]
 impl Channel for FileChannel {
 	type Error = io::Error;
@@ -72,6 +162,7 @@ impl Channel for FileChannel {
 		Ok(())
 	}
 
+	#[cfg(feature = "nightly_impl_channel")]
 	fn send_vectored<const N: usize>(
 		&self,
 		bufs: &[&[u8]; N],
