@@ -31,6 +31,7 @@ use crate::internal::fuse_io::{
 };
 use crate::internal::fuse_kernel;
 use crate::internal::types::ProtocolVersion;
+#[cfg(feature = "std")]
 use crate::protocol::common::UnknownRequest;
 use crate::protocol::{FuseInitRequest, FuseInitResponse};
 use crate::server;
@@ -44,6 +45,8 @@ pub trait FuseServerChannel: server::ServerChannel {}
 pub struct FuseServerBuilder<Channel, Handlers> {
 	channel: Channel,
 	handlers: Handlers,
+	#[cfg(feature = "std")]
+	hooks: Option<Box<dyn server::ServerHooks>>,
 }
 
 impl<C, H> FuseServerBuilder<C, H>
@@ -52,12 +55,30 @@ where
 	H: FuseHandlers,
 {
 	pub fn new(channel: C, handlers: H) -> FuseServerBuilder<C, H> {
-		Self { channel, handlers }
+		Self {
+			channel,
+			handlers,
+			#[cfg(feature = "std")]
+			hooks: None,
+		}
+	}
+
+	#[cfg(feature = "std")]
+	#[cfg_attr(doc, doc(cfg(feature = "std")))]
+	pub fn set_hooks(mut self, hooks: Box<dyn server::ServerHooks>) -> Self {
+		self.hooks = Some(hooks);
+		self
 	}
 
 	pub fn build(mut self) -> Result<FuseServer<C, H>, C::Error> {
 		let init_response = self.fuse_handshake()?;
-		FuseServer::new(self.channel, self.handlers, &init_response)
+		FuseServer::new(
+			self.channel,
+			self.handlers,
+			#[cfg(feature = "std")]
+			self.hooks,
+			&init_response,
+		)
 	}
 
 	fn fuse_handshake(&mut self) -> Result<FuseInitResponse, C::Error> {
@@ -127,6 +148,7 @@ pub struct FuseServer<Channel, Handlers> {
 
 	channel: Arc<Channel>,
 	handlers: Arc<Handlers>,
+	hooks: Option<Arc<dyn server::ServerHooks>>,
 	version: ProtocolVersion,
 	read_buf_size: usize,
 }
@@ -145,16 +167,19 @@ where
 	fn new(
 		channel: C,
 		handlers: H,
+		hooks: Option<Box<dyn server::ServerHooks>>,
 		init_response: &FuseInitResponse,
 	) -> Result<FuseServer<C, H>, C::Error> {
 		let channel = Arc::new(channel);
 		let handlers = Arc::new(handlers);
+		let hooks = hooks.map(|h| Arc::from(h));
 		let version = init_response.version();
 		let read_buf_size = server::read_buf_size(init_response.max_write());
 
 		let executor = FuseServerExecutor {
 			channel: channel.clone(),
 			handlers: handlers.clone(),
+			hooks: hooks.clone(),
 			version,
 			read_buf_size,
 		};
@@ -163,6 +188,7 @@ where
 			executor,
 			channel,
 			handlers,
+			hooks,
 			version,
 			read_buf_size,
 		})
@@ -194,6 +220,7 @@ where
 		Ok(FuseServerExecutor {
 			channel: Arc::new(channel),
 			handlers: self.handlers.clone(),
+			hooks: self.hooks.as_ref().map(|h| h.clone()),
 			version: self.version,
 			read_buf_size: self.read_buf_size,
 		})
@@ -208,6 +235,7 @@ where
 pub struct FuseServerExecutor<Channel, Handlers> {
 	channel: Arc<Channel>,
 	handlers: Arc<Handlers>,
+	hooks: Option<Arc<dyn server::ServerHooks>>,
 	version: ProtocolVersion,
 	read_buf_size: usize,
 }
@@ -240,7 +268,7 @@ where
 				self.version,
 				&self.channel,
 			);
-			fuse_request_dispatch::<C, H>(dec, handlers, respond)
+			fuse_request_dispatch::<C, H>(dec, handlers, respond, &self.hooks)
 		})
 	}
 
@@ -273,6 +301,7 @@ fn fuse_request_dispatch<C, H>(
 	request_decoder: fuse_io::RequestDecoder,
 	handlers: &H,
 	respond: server::RespondRef<C::T>,
+	#[cfg(feature = "std")] hooks: &Option<Arc<dyn server::ServerHooks>>,
 ) -> Result<(), <<C as server::MaybeSendChannel>::T as channel::Channel>::Error>
 where
 	C: server::MaybeSendChannel,
@@ -280,6 +309,11 @@ where
 {
 	let header = request_decoder.header();
 	let ctx = server::ServerContext::new(*header);
+
+	#[cfg(feature = "std")]
+	if let Some(hooks) = hooks {
+		hooks.on_request(ctx.request_header());
+	}
 
 	macro_rules! do_dispatch {
 		($handler:tt) => {{
@@ -351,10 +385,11 @@ where
 		fuse_kernel::FUSE_UNLINK => do_dispatch!(unlink),
 		fuse_kernel::FUSE_WRITE => do_dispatch!(write),
 		_ => {
-			let request = UnknownRequest::decode_request(request_decoder)?;
-			// handlers.unknown(ctx, &request);
-			// TODO: use ServerLogger to log the unknown request
-			let _ = request;
+			#[cfg(feature = "std")]
+			if let Some(hooks) = hooks {
+				let request = UnknownRequest::decode_request(request_decoder)?;
+				hooks.on_unknown(&request);
+			}
 			respond.encoder().encode_error(ErrorCode::ENOSYS)?;
 		},
 	}

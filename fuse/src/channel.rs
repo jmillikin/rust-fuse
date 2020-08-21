@@ -165,7 +165,6 @@ impl Channel for FileChannel {
 	}
 
 	#[cfg(any(doc, feature = "nightly_impl_channel"))]
-	
 	fn send_vectored<const N: usize>(
 		&self,
 		bufs: &[&[u8]; N],

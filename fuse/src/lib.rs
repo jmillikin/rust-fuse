@@ -61,6 +61,7 @@ pub use self::fuse_server::{
 mod server;
 pub use self::server::{
 	ServerContext,
+	ServerHooks,
 	Respond,
 };
 

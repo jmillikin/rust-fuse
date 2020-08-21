@@ -24,7 +24,7 @@ use crate::error::ErrorCode;
 use crate::internal::fuse_io;
 use crate::internal::fuse_kernel;
 use crate::internal::types::ProtocolVersion;
-use crate::protocol::common::RequestHeader;
+use crate::protocol::common::{RequestHeader, UnknownRequest};
 
 pub trait ServerChannel: channel::Channel {
 	fn try_clone(&self) -> Result<Self, Self::Error>
@@ -44,6 +44,12 @@ impl<'a> ServerContext {
 	pub fn request_header(&self) -> &RequestHeader {
 		RequestHeader::new_ref(&self.header)
 	}
+}
+
+#[allow(unused_variables)]
+pub trait ServerHooks {
+	fn on_request(&self, request_header: &RequestHeader) {}
+	fn on_unknown(&self, request: &UnknownRequest) {}
 }
 
 // When calculating the header overhead, the Linux kernel is permissive
