@@ -140,7 +140,7 @@ impl<'a> ReaddirResponse<'a> {
 	/// ```
 	/// fn readdir(
 	/// 	request: &fuse::ReaddirRequest,
-	/// 	respond: impl for<'a> fuse::RespondOnce<fuse::ReaddirResponse<'a>>,
+	/// 	respond: impl for<'a> fuse::Respond<fuse::ReaddirResponse<'a>>,
 	/// ) {
 	/// 	let mut response = fuse::ReaddirResponse::with_max_size(request.size());
 	/// 	/* fill in response */
@@ -174,7 +174,7 @@ impl<'a> ReaddirResponse<'a> {
 	/// # fn new_aligned_buf(_size: u32) -> Vec<u8> { Vec::new() }
 	/// fn readdir(
 	/// 	request: &fuse::ReaddirRequest,
-	/// 	respond: impl for<'a> fuse::RespondOnce<fuse::ReaddirResponse<'a>>,
+	/// 	respond: impl for<'a> fuse::Respond<fuse::ReaddirResponse<'a>>,
 	/// ) {
 	/// 	let mut buf = new_aligned_buf(request.size());
 	/// 	let mut response = fuse::ReaddirResponse::with_capacity(&mut buf);

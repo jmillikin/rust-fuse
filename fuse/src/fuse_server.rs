@@ -234,7 +234,7 @@ where
 		let mut buf = fuse_io::AlignedVec::new(self.read_buf_size);
 		server::main_loop(channel, &mut buf, self.version, FUSE, |dec| {
 			let request_id = dec.header().unique;
-			let respond = server::RespondOnceRef::new(
+			let respond = server::RespondRef::new(
 				channel,
 				request_id,
 				self.version,
@@ -261,7 +261,7 @@ where
 		server::main_loop(channel, &mut buf, self.version, FUSE, |dec| {
 			let request_id = dec.header().unique;
 			let respond =
-				server::RespondOnceRef::new(channel, request_id, self.version);
+				server::RespondRef::new(channel, request_id, self.version);
 			fuse_request_dispatch::<C, H>(dec, handlers, respond)
 		})
 	}
@@ -272,7 +272,7 @@ where
 fn fuse_request_dispatch<C, H>(
 	request_decoder: fuse_io::RequestDecoder,
 	handlers: &H,
-	respond: server::RespondOnceRef<C::T>,
+	respond: server::RespondRef<C::T>,
 ) -> Result<(), <<C as server::MaybeSendChannel>::T as channel::Channel>::Error>
 where
 	C: server::MaybeSendChannel,

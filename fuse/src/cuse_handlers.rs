@@ -33,7 +33,7 @@ pub trait CuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::FlushRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::FlushResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::FlushResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -45,7 +45,7 @@ pub trait CuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::FsyncRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::FsyncResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::FsyncResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -57,7 +57,7 @@ pub trait CuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::IoctlRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::IoctlResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::IoctlResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -67,7 +67,7 @@ pub trait CuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::OpenRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::OpenResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::OpenResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -77,7 +77,7 @@ pub trait CuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::ReadRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::ReadResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::ReadResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -87,7 +87,7 @@ pub trait CuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::ReleaseRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::ReleaseResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::ReleaseResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -97,7 +97,7 @@ pub trait CuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::WriteRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::WriteResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::WriteResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);

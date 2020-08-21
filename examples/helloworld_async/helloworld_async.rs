@@ -48,7 +48,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		&self,
 		_ctx: fuse::ServerContext,
 		request: &fuse::LookupRequest,
-		respond: impl for<'a> fuse::RespondOnce<fuse::LookupResponse<'a>>,
+		respond: impl for<'a> fuse::Respond<fuse::LookupResponse<'a>>,
 	) {
 		if request.parent_id() != fuse::ROOT_ID {
 			respond.err(fuse::ErrorCode::ENOENT);
@@ -74,7 +74,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		&self,
 		_ctx: fuse::ServerContext,
 		request: &fuse::GetattrRequest,
-		respond: impl for<'a> fuse::RespondOnce<fuse::GetattrResponse<'a>>,
+		respond: impl for<'a> fuse::Respond<fuse::GetattrResponse<'a>>,
 	) {
 		let node_id = request.node_id();
 
@@ -106,7 +106,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		&self,
 		_ctx: fuse::ServerContext,
 		request: &fuse::OpenRequest,
-		respond: impl for<'a> fuse::RespondOnce<fuse::OpenResponse<'a>>,
+		respond: impl for<'a> fuse::Respond<fuse::OpenResponse<'a>>,
 	) {
 		if request.node_id() != HELLO_TXT.node_id() {
 			respond.err(fuse::ErrorCode::ENOENT);
@@ -125,7 +125,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		&self,
 		_ctx: fuse::ServerContext,
 		request: &fuse::ReadRequest,
-		respond: impl for<'a> fuse::RespondOnce<fuse::ReadResponse<'a>>,
+		respond: impl for<'a> fuse::Respond<fuse::ReadResponse<'a>>,
 	) {
 		if request.handle() != 1001 {
 			respond.err(fuse::ErrorCode::EIO);
@@ -143,7 +143,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		&self,
 		_ctx: fuse::ServerContext,
 		request: &fuse::OpendirRequest,
-		respond: impl for<'a> fuse::RespondOnce<fuse::OpendirResponse<'a>>,
+		respond: impl for<'a> fuse::Respond<fuse::OpendirResponse<'a>>,
 	) {
 		if request.node_id() != fuse::ROOT_ID {
 			respond.err(fuse::ErrorCode::ENOENT);
@@ -162,7 +162,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		&self,
 		_ctx: fuse::ServerContext,
 		request: &fuse::ReaddirRequest,
-		respond: impl for<'a> fuse::RespondOnce<fuse::ReaddirResponse<'a>>,
+		respond: impl for<'a> fuse::Respond<fuse::ReaddirResponse<'a>>,
 	) {
 		if request.handle() != 1002 {
 			respond.err(fuse::ErrorCode::EIO);
@@ -191,7 +191,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		&self,
 		_ctx: fuse::ServerContext,
 		request: &fuse::ReleasedirRequest,
-		respond: impl for<'a> fuse::RespondOnce<fuse::ReleasedirResponse<'a>>,
+		respond: impl for<'a> fuse::Respond<fuse::ReleasedirResponse<'a>>,
 	) {
 		if request.handle() != 1002 {
 			respond.err(fuse::ErrorCode::EIO);

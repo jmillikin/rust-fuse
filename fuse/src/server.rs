@@ -140,7 +140,7 @@ mod private {
 }
 
 /// **\[SEALED\]**
-pub trait RespondOnce<R>: private::Sealed {
+pub trait Respond<R>: private::Sealed {
 	fn ok(self, response: &R);
 	fn err(self, err: ErrorCode);
 
@@ -149,7 +149,7 @@ pub trait RespondOnce<R>: private::Sealed {
 	fn into_async(self) -> RespondAsync<R>;
 }
 
-pub(crate) struct RespondOnceRef<'a, C> {
+pub(crate) struct RespondRef<'a, C> {
 	channel: &'a C,
 	request_id: u64,
 	fuse_version: ProtocolVersion,
@@ -158,7 +158,7 @@ pub(crate) struct RespondOnceRef<'a, C> {
 	channel_arc: &'a Arc<C>,
 }
 
-impl<'a, C> RespondOnceRef<'a, C>
+impl<'a, C> RespondRef<'a, C>
 where
 	C: channel::Channel,
 {
@@ -202,10 +202,10 @@ where
 	}
 }
 
-impl<C> private::Sealed for RespondOnceRef<'_, C> {}
+impl<C> private::Sealed for RespondRef<'_, C> {}
 
 #[cfg(feature = "std")]
-impl<C, R> RespondOnce<R> for RespondOnceRef<'_, C>
+impl<C, R> Respond<R> for RespondRef<'_, C>
 where
 	C: channel::Channel + Send + Sync + 'static,
 	R: fuse_io::EncodeResponse,
@@ -224,7 +224,7 @@ where
 }
 
 #[cfg(not(feature = "std"))]
-impl<C, R> RespondOnce<R> for RespondOnceRef<'_, C>
+impl<C, R> Respond<R> for RespondRef<'_, C>
 where
 	C: channel::Channel,
 	R: fuse_io::EncodeResponse,
@@ -300,7 +300,7 @@ where
 }
 
 #[cfg(feature = "std")]
-impl<'a, C> RespondOnceRef<'a, C>
+impl<'a, C> RespondRef<'a, C>
 where
 	C: channel::Channel + Send + Sync + 'static,
 {

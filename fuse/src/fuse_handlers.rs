@@ -55,7 +55,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::AccessRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::AccessResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::AccessResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -67,7 +67,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::BmapRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::BmapResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::BmapResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -79,7 +79,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::CreateRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::CreateResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::CreateResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -91,7 +91,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::FallocateRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::FallocateResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::FallocateResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -103,7 +103,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::FlushRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::FlushResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::FlushResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -123,7 +123,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::FsyncRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::FsyncResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::FsyncResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -135,7 +135,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::FsyncdirRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::FsyncdirResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::FsyncdirResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -145,7 +145,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::GetattrRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::GetattrResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::GetattrResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -157,7 +157,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::GetlkRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::GetlkResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::GetlkResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -167,7 +167,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::GetxattrRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::GetxattrResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::GetxattrResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -179,7 +179,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::IoctlRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::IoctlResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::IoctlResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -189,7 +189,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::LinkRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::LinkResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::LinkResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -199,7 +199,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::ListxattrRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::ListxattrResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::ListxattrResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -209,7 +209,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::LookupRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::LookupResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::LookupResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -221,7 +221,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::LseekRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::LseekResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::LseekResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -231,7 +231,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::MkdirRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::MkdirResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::MkdirResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -241,7 +241,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::MknodRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::MknodResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::MknodResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -251,7 +251,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::OpenRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::OpenResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::OpenResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -261,7 +261,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::OpendirRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::OpendirResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::OpendirResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -271,7 +271,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::ReadRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::ReadResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::ReadResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -281,7 +281,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::ReaddirRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::ReaddirResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::ReaddirResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -291,7 +291,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::ReadlinkRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::ReadlinkResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::ReadlinkResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -301,7 +301,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::ReleaseRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::ReleaseResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::ReleaseResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -311,7 +311,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::ReleasedirRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::ReleasedirResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::ReleasedirResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -323,7 +323,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::RemovexattrRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::RemovexattrResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::RemovexattrResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -333,7 +333,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::RenameRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::RenameResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::RenameResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -343,7 +343,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::RmdirRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::RmdirResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::RmdirResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -355,7 +355,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::SetattrRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::SetattrResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::SetattrResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -367,7 +367,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::SetlkRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::SetlkResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::SetlkResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -379,7 +379,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::SetxattrRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::SetxattrResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::SetxattrResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -391,7 +391,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::StatfsRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::StatfsResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::StatfsResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -401,7 +401,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::SymlinkRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::SymlinkResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::SymlinkResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -411,7 +411,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::UnlinkRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::UnlinkResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::UnlinkResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
@@ -421,7 +421,7 @@ pub trait FuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::WriteRequest,
-		respond: impl for<'a> server::RespondOnce<protocol::WriteResponse<'a>>,
+		respond: impl for<'a> server::Respond<protocol::WriteResponse<'a>>,
 	) {
 		let _ = (ctx, request);
 		respond.err(ErrorCode::ENOSYS);
