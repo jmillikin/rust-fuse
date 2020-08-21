@@ -19,7 +19,7 @@ use core::cmp::max;
 #[cfg(feature = "std")]
 use std::sync::Arc;
 
-use crate::channel;
+use crate::channel::{self, ChannelError};
 use crate::error::ErrorCode;
 use crate::internal::fuse_io;
 use crate::internal::fuse_kernel;
@@ -88,7 +88,14 @@ where
 {
 	loop {
 		let request_size = match channel.receive(read_buf.get_mut()) {
-			Err(err) => return Err(err),
+			Err(err) => {
+				if semantics == fuse_io::Semantics::FUSE {
+					if err.error_code() == Some(ErrorCode::ENODEV) {
+						return Ok(());
+					}
+				}
+				return Err(err);
+			},
 			Ok(request_size) => request_size,
 		};
 		let request_buf = fuse_io::aligned_slice(read_buf, request_size);
