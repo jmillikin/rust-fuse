@@ -80,6 +80,7 @@ impl FileChannel {
 	}
 }
 
+#[cfg(feature = "std")]
 #[cfg(not(feature = "nightly_impl_channel"))]
 impl private::ChannelNoConstGenerics<io::Error> for FileChannel {
 	fn send_vectored_2(&self, bufs: &[&[u8]; 2]) -> Result<(), io::Error> {
