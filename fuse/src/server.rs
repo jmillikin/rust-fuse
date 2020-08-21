@@ -24,6 +24,7 @@ use crate::error::ErrorCode;
 use crate::internal::fuse_io;
 use crate::internal::fuse_kernel;
 use crate::internal::types::ProtocolVersion;
+use crate::protocol::common::RequestHeader;
 
 pub trait ServerChannel: channel::Channel {
 	fn try_clone(&self) -> Result<Self, Self::Error>
@@ -40,20 +41,8 @@ impl<'a> ServerContext {
 		Self { header }
 	}
 
-	pub fn request_id(&self) -> u64 {
-		self.header.unique
-	}
-
-	pub fn user_id(&self) -> u32 {
-		self.header.uid
-	}
-
-	pub fn group_id(&self) -> u32 {
-		self.header.gid
-	}
-
-	pub fn process_id(&self) -> u32 {
-		self.header.pid
+	pub fn request_header(&self) -> &RequestHeader {
+		RequestHeader::new_ref(&self.header)
 	}
 }
 

@@ -31,10 +31,7 @@ enum UnknownBody<'a> {
 
 impl<'a> UnknownRequest<'a> {
 	pub fn header(&self) -> &RequestHeader {
-		unsafe {
-			&*(self.header as *const fuse_kernel::fuse_in_header
-				as *const RequestHeader)
-		}
+		RequestHeader::new_ref(&self.header)
 	}
 
 	pub fn body(&self) -> Result<&'a [u8], Error> {

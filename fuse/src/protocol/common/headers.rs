@@ -27,6 +27,13 @@ pub use fuse_kernel::OpcodeEnum as Opcode;
 pub struct RequestHeader(fuse_kernel::fuse_in_header);
 
 impl RequestHeader {
+	pub(crate) fn new_ref(raw: &fuse_kernel::fuse_in_header) -> &Self {
+		unsafe {
+			&*(raw as *const fuse_kernel::fuse_in_header
+				as *const RequestHeader)
+		}
+	}
+
 	pub fn opcode(&self) -> u32 {
 		self.0.opcode.0
 	}
