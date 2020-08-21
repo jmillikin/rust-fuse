@@ -15,137 +15,21 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use core::{cmp, fmt};
+
+#[cfg(feature = "std")]
 use std::sync::Arc;
 
-use crate::channel::Channel;
+use crate::channel;
 use crate::cuse_handlers::CuseHandlers;
 use crate::error::{Error, ErrorCode};
 use crate::internal::fuse_io::{self, AlignedBuffer, DecodeRequest};
 use crate::internal::fuse_kernel;
 use crate::internal::types::ProtocolVersion;
-use crate::protocol;
-use crate::protocol::common::UnknownRequest;
+use crate::protocol::common::{DebugBytesAsString, UnknownRequest};
+use crate::protocol::{CuseInitRequest, CuseInitResponse};
 use crate::server;
 
-pub trait CuseServerChannel: Channel {
-	fn try_clone(&self) -> Result<Self, Self::Error>;
-}
-
-// CuseServer {{{
-
-#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
-pub struct CuseServer<Channel, Handlers> {
-	channel: Arc<Channel>,
-	handlers: Arc<Handlers>,
-	fuse_version: ProtocolVersion,
-	read_buf_size: usize,
-}
-
-impl<C, H> CuseServer<C, H>
-where
-	C: CuseServerChannel,
-	H: CuseHandlers,
-{
-	pub fn new(
-		device_name: &CuseDeviceName,
-		channel: C,
-		mut handlers: H,
-	) -> Result<CuseServer<C, H>, C::Error> {
-		let init_response =
-			Self::cuse_handshake(device_name, &channel, &mut handlers)?;
-		let fuse_version = init_response.version();
-		Ok(Self {
-			channel: Arc::new(channel),
-			handlers: Arc::new(handlers),
-			fuse_version,
-			read_buf_size: server::read_buf_size(init_response.max_write()),
-		})
-	}
-
-	fn cuse_handshake(
-		device_name: &CuseDeviceName,
-		channel: &C,
-		handlers: &mut H,
-	) -> Result<protocol::CuseInitResponse, C::Error> {
-		let mut read_buf = fuse_io::MinReadBuffer::new();
-
-		loop {
-			let request_size = channel.receive(read_buf.get_mut())?;
-			let request_buf = fuse_io::aligned_slice(&read_buf, request_size);
-			let request_decoder = fuse_io::RequestDecoder::new(
-				request_buf,
-				ProtocolVersion::LATEST,
-				fuse_io::Semantics::CUSE,
-			)?;
-
-			let request_header = request_decoder.header();
-			if request_header.opcode != fuse_kernel::CUSE_INIT {
-				return Err(
-					Error::ExpectedCuseInit(request_header.opcode.0).into()
-				);
-			}
-
-			let request_id = request_header.unique;
-			let init_request =
-				protocol::CuseInitRequest::decode_request(request_decoder)?;
-
-			let encoder = fuse_io::ResponseEncoder::new(
-				channel,
-				request_id,
-				// CuseInitResponse always encodes with its own version
-				ProtocolVersion::LATEST,
-			);
-
-			let major_version = init_request.version().major();
-			if major_version != fuse_kernel::FUSE_KERNEL_VERSION {
-				let init_response =
-					protocol::CuseInitResponse::new(ProtocolVersion::LATEST);
-				init_response.encode_response(encoder, None)?;
-				continue;
-			}
-
-			let init_response = handlers.cuse_init(&init_request);
-			init_response
-				.encode_response(encoder, Some(device_name.as_bytes()))?;
-			return Ok(init_response);
-		}
-	}
-
-	pub fn run(&mut self) -> Result<(), C::Error>
-	where
-		C: Send + Sync + 'static,
-	{
-		cuse_main_loop::<C, H>(
-			&self.channel,
-			&*self.handlers,
-			self.read_buf_size,
-			self.fuse_version,
-		)
-	}
-
-	#[cfg(any(doc, feature = "run_local"))]
-	#[cfg_attr(doc, doc(cfg(feature = "run_local")))]
-	pub fn run_local(&mut self) -> Result<(), C::Error> {
-		cuse_main_loop::<C, H>(
-			&self.channel,
-			&*self.handlers,
-			self.read_buf_size,
-			self.fuse_version,
-		)
-	}
-
-	pub fn new_executor(&self) -> Result<CuseServerExecutor<C, H>, C::Error> {
-		let channel = self.channel.try_clone()?;
-		Ok(CuseServerExecutor::new(
-			Arc::new(channel),
-			self.handlers.clone(),
-			self.read_buf_size,
-			self.fuse_version,
-		))
-	}
-}
-
-// }}}
+const CUSE: fuse_io::Semantics = fuse_io::Semantics::CUSE;
 
 // CuseDeviceName {{{
 
@@ -175,7 +59,7 @@ impl fmt::Debug for CuseDeviceName {
 impl fmt::Display for CuseDeviceName {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		use core::fmt::Debug;
-		crate::protocol::common::DebugBytesAsString(&self.0).fmt(fmt)
+		DebugBytesAsString(&self.0).fmt(fmt)
 	}
 }
 
@@ -213,30 +97,192 @@ impl PartialOrd for CuseDeviceName {
 
 // }}}
 
-// CuseServerExecutor {{{
+// CuseServerBuilder {{{
 
-#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
-pub struct CuseServerExecutor<C, H> {
-	channel: Arc<C>,
-	handlers: Arc<H>,
-	read_buf_size: usize,
-	fuse_version: ProtocolVersion,
+pub trait CuseServerChannel: server::ServerChannel {}
+
+pub struct CuseServerBuilder<'a, Channel, Handlers> {
+	device_name: &'a CuseDeviceName,
+	channel: Channel,
+	handlers: Handlers,
 }
 
-impl<C, H> CuseServerExecutor<C, H> {
-	fn new(
-		channel: Arc<C>,
-		handlers: Arc<H>,
-		read_buf_size: usize,
-		fuse_version: ProtocolVersion,
-	) -> Self {
+impl<'a, C, H> CuseServerBuilder<'a, C, H>
+where
+	C: CuseServerChannel,
+	H: CuseHandlers,
+{
+	pub fn new(
+		device_name: &'a CuseDeviceName,
+		channel: C,
+		handlers: H,
+	) -> CuseServerBuilder<'a, C, H> {
 		Self {
+			device_name,
 			channel,
 			handlers,
-			read_buf_size,
-			fuse_version,
 		}
 	}
+
+	pub fn build(mut self) -> Result<CuseServer<C, H>, C::Error> {
+		let init_response = self.cuse_handshake()?;
+		CuseServer::new(self.channel, self.handlers, &init_response)
+	}
+
+	fn cuse_handshake(&mut self) -> Result<CuseInitResponse, C::Error> {
+		let mut read_buf = fuse_io::MinReadBuffer::new();
+
+		loop {
+			let request_size = self.channel.receive(read_buf.get_mut())?;
+			let request_buf = fuse_io::aligned_slice(&read_buf, request_size);
+			let request_decoder = fuse_io::RequestDecoder::new(
+				request_buf,
+				ProtocolVersion::LATEST,
+				CUSE,
+			)?;
+
+			let request_header = request_decoder.header();
+			if request_header.opcode != fuse_kernel::CUSE_INIT {
+				return Err(
+					Error::ExpectedCuseInit(request_header.opcode.0).into()
+				);
+			}
+
+			let request_id = request_header.unique;
+			let init_request =
+				CuseInitRequest::decode_request(request_decoder)?;
+
+			let encoder = fuse_io::ResponseEncoder::new(
+				&self.channel,
+				request_id,
+				// CuseInitResponse always encodes with its own version
+				ProtocolVersion::LATEST,
+			);
+
+			let major_version = init_request.version().major();
+			if major_version != fuse_kernel::FUSE_KERNEL_VERSION {
+				let init_response =
+					CuseInitResponse::new(ProtocolVersion::LATEST);
+				init_response.encode_response(encoder, None)?;
+				continue;
+			}
+
+			#[allow(unused_mut)]
+			let mut init_response = self.handlers.cuse_init(&init_request);
+
+			#[cfg(not(feature = "std"))]
+			init_response.set_max_write(cmp::min(
+				init_response.max_write(),
+				server::capped_max_write(),
+			));
+
+			init_response
+				.encode_response(encoder, Some(self.device_name.as_bytes()))?;
+			return Ok(init_response);
+		}
+	}
+}
+
+// }}}
+
+// CuseServer {{{
+
+#[cfg(feature = "std")]
+pub struct CuseServer<Channel, Handlers> {
+	executor: CuseServerExecutor<Channel, Handlers>,
+
+	channel: Arc<Channel>,
+	handlers: Arc<Handlers>,
+	version: ProtocolVersion,
+	read_buf_size: usize,
+}
+
+#[cfg(not(feature = "std"))]
+pub struct CuseServer<Channel, Handlers> {
+	executor: CuseServerExecutor<Channel, Handlers>,
+}
+
+impl<C, H> CuseServer<C, H>
+where
+	C: CuseServerChannel,
+	H: CuseHandlers,
+{
+	#[cfg(feature = "std")]
+	fn new(
+		channel: C,
+		handlers: H,
+		init_response: &CuseInitResponse,
+	) -> Result<CuseServer<C, H>, C::Error> {
+		let channel = Arc::new(channel);
+		let handlers = Arc::new(handlers);
+		let version = init_response.version();
+		let read_buf_size = server::read_buf_size(init_response.max_write());
+
+		let executor = CuseServerExecutor {
+			channel: channel.clone(),
+			handlers: handlers.clone(),
+			version,
+			read_buf_size,
+		};
+
+		Ok(Self {
+			executor,
+			channel,
+			handlers,
+			version,
+			read_buf_size,
+		})
+	}
+
+	#[cfg(not(feature = "std"))]
+	fn new(
+		channel: C,
+		handlers: H,
+		init_response: &CuseInitResponse,
+	) -> Result<CuseServer<C, H>, C::Error> {
+		Ok(Self {
+			executor: CuseServerExecutor {
+				channel,
+				handlers,
+				version: init_response.version(),
+			},
+		})
+	}
+
+	pub fn executor_mut(&mut self) -> &mut CuseServerExecutor<C, H> {
+		&mut self.executor
+	}
+
+	#[cfg(feature = "std")]
+	#[cfg_attr(doc, doc(cfg(feature = "std")))]
+	pub fn new_executor(&self) -> Result<CuseServerExecutor<C, H>, C::Error> {
+		let channel = self.channel.as_ref().try_clone()?;
+		Ok(CuseServerExecutor {
+			channel: Arc::new(channel),
+			handlers: self.handlers.clone(),
+			version: self.version,
+			read_buf_size: self.read_buf_size,
+		})
+	}
+}
+
+// }}}
+
+// CuseServerExecutor {{{
+
+#[cfg(feature = "std")]
+pub struct CuseServerExecutor<Channel, Handlers> {
+	channel: Arc<Channel>,
+	handlers: Arc<Handlers>,
+	version: ProtocolVersion,
+	read_buf_size: usize,
+}
+
+#[cfg(not(feature = "std"))]
+pub struct CuseServerExecutor<Channel, Handlers> {
+	channel: Channel,
+	handlers: Handlers,
+	version: ProtocolVersion,
 }
 
 impl<C, H> CuseServerExecutor<C, H>
@@ -244,110 +290,71 @@ where
 	C: CuseServerChannel,
 	H: CuseHandlers,
 {
+	#[cfg(feature = "std")]
 	pub fn run(&mut self) -> Result<(), C::Error>
 	where
 		C: Send + Sync + 'static,
 	{
-		cuse_main_loop::<C, H>(
-			&self.channel,
-			&*self.handlers,
-			self.read_buf_size,
-			self.fuse_version,
-		)
+		let channel = self.channel.as_ref();
+		let handlers = self.handlers.as_ref();
+		let mut buf = fuse_io::AlignedVec::new(self.read_buf_size);
+		server::main_loop(channel, &mut buf, self.version, CUSE, |dec| {
+			let request_id = dec.header().unique;
+			let respond = server::RespondOnceRef::new(
+				channel,
+				request_id,
+				self.version,
+				&self.channel,
+			);
+			cuse_request_dispatch::<C, H>(dec, handlers, respond)
+		})
 	}
 
-	#[cfg(any(doc, feature = "run_local"))]
-	#[cfg_attr(doc, doc(cfg(feature = "run_local")))]
+	#[cfg(not(feature = "std"))]
+	pub fn run(&mut self) -> Result<(), C::Error>
+	where
+		C: Send + Sync + 'static,
+	{
+		self.run_local()
+	}
+
+	#[cfg(any(doc, not(feature = "std")))]
+	#[cfg_attr(doc, doc(cfg(not(feature = "std"))))]
 	pub fn run_local(&mut self) -> Result<(), C::Error> {
-		cuse_main_loop::<C, H>(
-			&self.channel,
-			&*self.handlers,
-			self.read_buf_size,
-			self.fuse_version,
-		)
+		let channel = &self.channel;
+		let handlers = &self.handlers;
+		let mut buf = fuse_io::MinReadBuffer::new();
+		server::main_loop(channel, &mut buf, self.version, CUSE, |dec| {
+			let request_id = dec.header().unique;
+			let respond =
+				server::RespondOnceRef::new(channel, request_id, self.version);
+			cuse_request_dispatch::<C, H>(dec, handlers, respond)
+		})
 	}
 }
 
 // }}}
 
-#[cfg(not(feature = "run_local"))]
-trait MaybeSendChannel {
-	type T: CuseServerChannel + Send + Sync + 'static;
-}
-
-#[cfg(not(feature = "run_local"))]
-impl<C> MaybeSendChannel for C
-where
-	C: CuseServerChannel + Send + Sync + 'static,
-{
-	type T = C;
-}
-
-#[cfg(feature = "run_local")]
-trait MaybeSendChannel {
-	type T: CuseServerChannel;
-}
-
-#[cfg(feature = "run_local")]
-impl<C> MaybeSendChannel for C
-where
-	C: CuseServerChannel,
-{
-	type T = C;
-}
-
-fn cuse_main_loop<C, H>(
-	channel: &Arc<C::T>,
-	handlers: &H,
-	read_buf_size: usize,
-	fuse_version: ProtocolVersion,
-) -> Result<(), <<C as MaybeSendChannel>::T as Channel>::Error>
-where
-	C: MaybeSendChannel,
-	H: CuseHandlers,
-{
-	let mut read_buf = fuse_io::AlignedVec::new(read_buf_size);
-	loop {
-		let request_size = match channel.receive(read_buf.get_mut()) {
-			Err(err) => return Err(err),
-			Ok(request_size) => request_size,
-		};
-		let request_buf = fuse_io::aligned_slice(&read_buf, request_size);
-		let decoder = fuse_io::RequestDecoder::new(
-			request_buf,
-			fuse_version,
-			fuse_io::Semantics::CUSE,
-		)?;
-
-		cuse_request_dispatch::<C, H>(handlers, decoder, &channel)?;
-	}
-}
-
 fn cuse_request_dispatch<C, H>(
-	handlers: &H,
 	request_decoder: fuse_io::RequestDecoder,
-	channel: &Arc<C::T>,
-) -> Result<(), <<C as MaybeSendChannel>::T as Channel>::Error>
+	handlers: &H,
+	respond: server::RespondOnceRef<C::T>,
+) -> Result<(), <<C as server::MaybeSendChannel>::T as channel::Channel>::Error>
 where
-	C: MaybeSendChannel,
+	C: server::MaybeSendChannel,
 	H: CuseHandlers,
 {
 	let header = request_decoder.header();
-
-	let fuse_version = request_decoder.version();
 	let ctx = server::ServerContext::new(*header);
-
-	let respond_once =
-		server::RespondOnceImpl::new(channel, header.unique, fuse_version);
 
 	macro_rules! do_dispatch {
 		($handler:tt) => {{
 			match DecodeRequest::decode_request(request_decoder) {
-				Ok(request) => handlers.$handler(ctx, &request, respond_once),
+				Ok(request) => handlers.$handler(ctx, &request, respond),
 				Err(err) => {
 					// TODO: use ServerLogger to log the parse error
 					let _ = err;
-					respond_once.encoder().encode_error(ErrorCode::EIO)?;
+					respond.encoder().encode_error(ErrorCode::EIO)?;
 				},
 			}
 		}};
@@ -369,7 +376,7 @@ where
 			// handlers.unknown(ctx, &request);
 			// TODO: use ServerLogger to log the unknown request
 			let _ = request;
-			respond_once.encoder().encode_error(ErrorCode::ENOSYS)?;
+			respond.encoder().encode_error(ErrorCode::ENOSYS)?;
 		},
 	}
 	Ok(())

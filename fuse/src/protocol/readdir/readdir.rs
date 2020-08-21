@@ -147,8 +147,8 @@ impl<'a> ReaddirResponse<'a> {
 	/// 	respond.ok(&response);
 	/// }
 	/// ```
-	#[cfg(not(feature = "no_std"))]
-	#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
+	#[cfg(feature = "std")]
+	#[cfg_attr(doc, doc(cfg(feature = "std")))]
 	pub fn with_max_size(max_size: u32) -> ReaddirResponse<'a> {
 		let max_size = max_size as usize;
 		Self {
@@ -247,7 +247,7 @@ impl<'a> ReaddirResponse<'a> {
 }
 
 enum ReaddirBuf<'a> {
-	#[cfg(not(feature = "no_std"))]
+	#[cfg(feature = "std")]
 	Owned {
 		cap: Vec<u8>,
 		max_size: usize,
@@ -282,7 +282,7 @@ impl ReaddirBuf<'_> {
 				entry_buf
 			},
 
-			#[cfg(not(feature = "no_std"))]
+			#[cfg(feature = "std")]
 			Self::Owned { cap, max_size } => {
 				let current_size = cap.len();
 				let new_size = current_size.checked_add(entry_size)?;
@@ -309,7 +309,7 @@ impl ReaddirBuf<'_> {
 		F: FnMut(&fuse_kernel::fuse_dirent),
 	{
 		let mut buf = match &self {
-			#[cfg(not(feature = "no_std"))]
+			#[cfg(feature = "std")]
 			Self::Owned { cap, .. } => cap.as_slice(),
 			Self::Borrowed { cap, size } => {
 				let (used, _) = cap.split_at(*size);
@@ -426,7 +426,7 @@ impl fuse_io::EncodeResponse for ReaddirResponse<'_> {
 			Some(x) => x,
 		};
 		match buf {
-			#[cfg(not(feature = "no_std"))]
+			#[cfg(feature = "std")]
 			ReaddirBuf::Owned { cap, .. } => enc.encode_bytes(&cap),
 			ReaddirBuf::Borrowed { cap, size } => {
 				let (bytes, _) = cap.split_at(*size);

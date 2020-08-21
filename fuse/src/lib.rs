@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#![cfg_attr(feature = "no_std", no_std)]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 #![cfg_attr(doc, feature(doc_cfg))]
 
@@ -34,21 +34,32 @@ mod error;
 mod cuse_handlers;
 pub use self::cuse_handlers::CuseHandlers;
 
-#[cfg(not(feature = "no_std"))]
 mod cuse_server;
-#[cfg(not(feature = "no_std"))]
-pub use self::cuse_server::{CuseDeviceName, CuseServer};
+pub use self::cuse_server::{
+	CuseDeviceName,
+	CuseServer,
+	CuseServerBuilder,
+	CuseServerExecutor,
+};
 
 mod fuse_handlers;
 pub use self::fuse_handlers::FuseHandlers;
 
-#[cfg(not(feature = "no_std"))]
 mod fuse_server;
-#[cfg(not(feature = "no_std"))]
-pub use self::fuse_server::FuseServer;
+pub use self::fuse_server::{
+	FuseServer,
+	FuseServerBuilder,
+	FuseServerExecutor,
+};
 
 mod server;
-pub use self::server::*;
+pub use self::server::{
+	ServerContext,
+	RespondOnce,
+};
+
+#[cfg(feature = "std")]
+pub use self::server::RespondAsync;
 
 pub mod os {
 	#[cfg(any(doc, target_os = "linux"))]
@@ -61,11 +72,9 @@ pub mod io {
 	
 	pub use crate::channel::{Channel, ChannelError};
 	pub use crate::error::{Error, ErrorCode};
-	
-	#[cfg(not(feature = "no_std"))]
-	pub use crate::cuse_server::CuseServerChannel;
+	pub use crate::server::ServerChannel;
 
-	#[cfg(not(feature = "no_std"))]
+	pub use crate::cuse_server::CuseServerChannel;
 	pub use crate::fuse_server::FuseServerChannel;
 }
 

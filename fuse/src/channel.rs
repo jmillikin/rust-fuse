@@ -17,12 +17,12 @@
 use core::convert::TryInto;
 use core::mem::{self, MaybeUninit};
 
-#[cfg(not(feature = "no_std"))]
+#[cfg(feature = "std")]
 use std::io::{self, IoSlice, Read, Write};
 
 use crate::error::{Error, ErrorCode};
 
-pub trait Channel: Sized {
+pub trait Channel {
 	type Error: ChannelError;
 
 	fn send(&self, buf: &[u8]) -> Result<(), Self::Error>;
@@ -39,12 +39,12 @@ pub trait ChannelError: From<Error> {
 	fn error_code(&self) -> Option<ErrorCode>;
 }
 
-#[cfg(not(feature = "no_std"))]
+#[cfg(feature = "std")]
 pub(crate) struct FileChannel {
 	file: std::fs::File,
 }
 
-#[cfg(not(feature = "no_std"))]
+#[cfg(feature = "std")]
 impl FileChannel {
 	pub(crate) fn new(file: std::fs::File) -> Self {
 		Self { file }
@@ -57,7 +57,7 @@ impl FileChannel {
 	}
 }
 
-#[cfg(not(feature = "no_std"))]
+#[cfg(feature = "std")]
 impl Channel for FileChannel {
 	type Error = io::Error;
 
@@ -102,8 +102,8 @@ impl Channel for FileChannel {
 	}
 }
 
-#[cfg(not(feature = "no_std"))]
-#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
+#[cfg(feature = "std")]
+#[cfg_attr(doc, doc(cfg(feature = "std")))]
 impl ChannelError for io::Error {
 	fn error_code(&self) -> Option<ErrorCode> {
 		if let Some(os_err) = self.raw_os_error() {

@@ -27,8 +27,8 @@ pub enum Error {
 	ExpectedFuseInit(u32),
 }
 
-#[cfg(not(feature = "no_std"))]
-#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
+#[cfg(feature = "std")]
+#[cfg_attr(doc, doc(cfg(feature = "std")))]
 impl From<Error> for std::io::Error {
 	fn from(err: Error) -> std::io::Error {
 		use std::io;

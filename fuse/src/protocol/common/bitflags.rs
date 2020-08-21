@@ -93,9 +93,9 @@ macro_rules! bitflags_struct {
 							let is_set = self.bits & mask > 0;
 							if is_set {
 								// TODO: support no_std
-								#[cfg(not(feature = "no_std"))]
+								#[cfg(feature = "std")]
 								out.field(&format!("{:#010X}", mask), &is_set);
-								#[cfg(feature = "no_std")]
+								#[cfg(not(feature = "std"))]
 								out.field("[unknown]", &is_set);
 							}
 						},

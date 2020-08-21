@@ -19,9 +19,9 @@ use std::path;
 use super::fuse_mount::{FuseMount, SyscallFuseMount};
 use crate::channel::Channel;
 use crate::fuse_handlers::FuseHandlers;
-use crate::fuse_server::FuseServer;
+use crate::fuse_server::{self, FuseServer};
 
-#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
+#[cfg_attr(doc, doc(cfg(feature = "std")))]
 pub struct FuseServerBuilder<Mount, Handlers> {
 	mount_target: path::PathBuf,
 	mount: Mount,
@@ -61,6 +61,6 @@ where
 		<<M as FuseMount>::Channel as Channel>::Error,
 	> {
 		let channel = self.mount.fuse_mount(&self.mount_target)?;
-		FuseServer::new(channel, self.handlers)
+		fuse_server::FuseServerBuilder::new(channel, self.handlers).build()
 	}
 }

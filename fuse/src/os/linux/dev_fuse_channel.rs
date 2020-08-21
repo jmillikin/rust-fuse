@@ -18,8 +18,9 @@ use std::{fs, io};
 
 use crate::channel;
 use crate::fuse_server;
+use crate::server;
 
-#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
+#[cfg_attr(doc, doc(cfg(feature = "std")))]
 pub struct DevFuseChannel(channel::FileChannel);
 
 impl DevFuseChannel {
@@ -47,8 +48,10 @@ impl channel::Channel for DevFuseChannel {
 	}
 }
 
-impl fuse_server::FuseServerChannel for DevFuseChannel {
+impl server::ServerChannel for DevFuseChannel {
 	fn try_clone(&self) -> Result<Self, io::Error> {
 		Ok(DevFuseChannel(self.0.try_clone()?))
 	}
 }
+
+impl fuse_server::FuseServerChannel for DevFuseChannel {}

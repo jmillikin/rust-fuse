@@ -14,9 +14,13 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#[cfg(not(feature = "std"))]
+use core::cmp;
+
+#[cfg(feature = "std")]
 use std::sync::Arc;
 
-use crate::channel::{Channel, ChannelError};
+use crate::channel::{self, ChannelError};
 use crate::error::{Error, ErrorCode};
 use crate::fuse_handlers::FuseHandlers;
 use crate::internal::fuse_io::{
@@ -27,20 +31,109 @@ use crate::internal::fuse_io::{
 };
 use crate::internal::fuse_kernel;
 use crate::internal::types::ProtocolVersion;
-use crate::protocol;
 use crate::protocol::common::UnknownRequest;
+use crate::protocol::{FuseInitRequest, FuseInitResponse};
 use crate::server;
 
-pub trait FuseServerChannel: Channel {
-	fn try_clone(&self) -> Result<Self, Self::Error>;
+const FUSE: fuse_io::Semantics = fuse_io::Semantics::FUSE;
+
+// FuseServerBuilder {{{
+
+pub trait FuseServerChannel: server::ServerChannel {}
+
+pub struct FuseServerBuilder<Channel, Handlers> {
+	channel: Channel,
+	handlers: Handlers,
 }
 
-#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
+impl<C, H> FuseServerBuilder<C, H>
+where
+	C: FuseServerChannel,
+	H: FuseHandlers,
+{
+	pub fn new(channel: C, handlers: H) -> FuseServerBuilder<C, H> {
+		Self { channel, handlers }
+	}
+
+	pub fn build(mut self) -> Result<FuseServer<C, H>, C::Error> {
+		let init_response = self.fuse_handshake()?;
+		FuseServer::new(self.channel, self.handlers, &init_response)
+	}
+
+	fn fuse_handshake(&mut self) -> Result<FuseInitResponse, C::Error> {
+		let mut read_buf = fuse_io::MinReadBuffer::new();
+
+		loop {
+			let request_size = self.channel.receive(read_buf.get_mut())?;
+			let request_buf = fuse_io::aligned_slice(&read_buf, request_size);
+			let request_decoder = fuse_io::RequestDecoder::new(
+				request_buf,
+				ProtocolVersion::LATEST,
+				FUSE,
+			)?;
+
+			let request_header = request_decoder.header();
+			if request_header.opcode != fuse_kernel::FUSE_INIT {
+				return Err(
+					Error::ExpectedFuseInit(request_header.opcode.0).into()
+				);
+			}
+
+			let request_id = request_header.unique;
+			let init_request =
+				FuseInitRequest::decode_request(request_decoder)?;
+
+			let major_version = init_request.version().major();
+			if major_version != fuse_kernel::FUSE_KERNEL_VERSION {
+				let init_response =
+					FuseInitResponse::new(ProtocolVersion::LATEST);
+				init_response.encode_response(
+					fuse_io::ResponseEncoder::new(
+						&self.channel,
+						request_id,
+						init_response.version(),
+					),
+				)?;
+				continue;
+			}
+
+			#[allow(unused_mut)]
+			let mut init_response = self.handlers.fuse_init(&init_request);
+
+			#[cfg(not(feature = "std"))]
+			init_response.set_max_write(cmp::min(
+				init_response.max_write(),
+				server::capped_max_write(),
+			));
+
+			init_response.encode_response(fuse_io::ResponseEncoder::new(
+				&self.channel,
+				request_id,
+				// FuseInitResponse always encodes with its own version
+				ProtocolVersion::LATEST,
+			))?;
+			return Ok(init_response);
+		}
+	}
+}
+
+// }}}
+
+// FuseServer {{{
+
+#[cfg(feature = "std")]
 pub struct FuseServer<Channel, Handlers> {
+	executor: FuseServerExecutor<Channel, Handlers>,
+
 	channel: Arc<Channel>,
 	handlers: Arc<Handlers>,
-	fuse_version: ProtocolVersion,
+	version: ProtocolVersion,
 	read_buf_size: usize,
+}
+
+#[cfg(not(feature = "std"))]
+pub struct FuseServer<Channel, Handlers> {
+	executor: FuseServerExecutor<Channel, Handlers>,
 }
 
 impl<C, H> FuseServer<C, H>
@@ -48,76 +141,82 @@ where
 	C: FuseServerChannel,
 	H: FuseHandlers,
 {
-	pub fn new(
+	#[cfg(feature = "std")]
+	fn new(
 		channel: C,
-		mut handlers: H,
+		handlers: H,
+		init_response: &FuseInitResponse,
 	) -> Result<FuseServer<C, H>, C::Error> {
-		let init_response = fuse_handshake(&channel, &mut handlers)?;
-		let fuse_version = init_response.version();
+		let channel = Arc::new(channel);
+		let handlers = Arc::new(handlers);
+		let version = init_response.version();
+		let read_buf_size = server::read_buf_size(init_response.max_write());
+
+		let executor = FuseServerExecutor {
+			channel: channel.clone(),
+			handlers: handlers.clone(),
+			version,
+			read_buf_size,
+		};
+
 		Ok(Self {
-			channel: Arc::new(channel),
-			handlers: Arc::new(handlers),
-			fuse_version,
-			read_buf_size: server::read_buf_size(init_response.max_write()),
+			executor,
+			channel,
+			handlers,
+			version,
+			read_buf_size,
 		})
 	}
 
-	pub fn run(&mut self) -> Result<(), C::Error>
-	where
-		C: Send + Sync + 'static,
-	{
-		fuse_main_loop::<C, H>(
-			&self.channel,
-			&*self.handlers,
-			self.read_buf_size,
-			self.fuse_version,
-		)
-	}
-
-	#[cfg(any(doc, feature = "run_local"))]
-	#[cfg_attr(doc, doc(cfg(feature = "run_local")))]
-	pub fn run_local(&mut self) -> Result<(), C::Error> {
-		fuse_main_loop::<C, H>(
-			&self.channel,
-			&*self.handlers,
-			self.read_buf_size,
-			self.fuse_version,
-		)
-	}
-
-	pub fn new_executor(&self) -> Result<FuseServerExecutor<C, H>, C::Error> {
-		let channel = self.channel.try_clone()?;
-		Ok(FuseServerExecutor::new(
-			Arc::new(channel),
-			self.handlers.clone(),
-			self.read_buf_size,
-			self.fuse_version,
-		))
-	}
-}
-
-#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
-pub struct FuseServerExecutor<C, H> {
-	channel: Arc<C>,
-	handlers: Arc<H>,
-	read_buf_size: usize,
-	fuse_version: ProtocolVersion,
-}
-
-impl<C, H> FuseServerExecutor<C, H> {
+	#[cfg(not(feature = "std"))]
 	fn new(
-		channel: Arc<C>,
-		handlers: Arc<H>,
-		read_buf_size: usize,
-		fuse_version: ProtocolVersion,
-	) -> Self {
-		Self {
-			channel,
-			handlers,
-			read_buf_size,
-			fuse_version,
-		}
+		channel: C,
+		handlers: H,
+		init_response: &FuseInitResponse,
+	) -> Result<FuseServer<C, H>, C::Error> {
+		Ok(Self {
+			executor: FuseServerExecutor {
+				channel,
+				handlers,
+				version: init_response.version(),
+			},
+		})
 	}
+
+	pub fn executor_mut(&mut self) -> &mut FuseServerExecutor<C, H> {
+		&mut self.executor
+	}
+
+	#[cfg(feature = "std")]
+	#[cfg_attr(doc, doc(cfg(feature = "std")))]
+	pub fn new_executor(&self) -> Result<FuseServerExecutor<C, H>, C::Error> {
+		let channel = self.channel.as_ref().try_clone()?;
+		Ok(FuseServerExecutor {
+			channel: Arc::new(channel),
+			handlers: self.handlers.clone(),
+			version: self.version,
+			read_buf_size: self.read_buf_size,
+		})
+	}
+}
+
+// }}}
+
+// FuseServerExecutor {{{
+
+#[cfg(feature = "std")]
+pub struct FuseServerExecutor<Channel, Handlers> {
+	channel: Arc<Channel>,
+	handlers: Arc<Handlers>,
+	version: ProtocolVersion,
+	read_buf_size: usize,
+}
+
+#[cfg(not(feature = "std"))]
+pub struct FuseServerExecutor<Channel, Handlers> {
+	channel: Channel,
+	handlers: Handlers,
+	version: ProtocolVersion,
 }
 
 impl<C, H> FuseServerExecutor<C, H>
@@ -125,160 +224,71 @@ where
 	C: FuseServerChannel,
 	H: FuseHandlers,
 {
+	#[cfg(feature = "std")]
 	pub fn run(&mut self) -> Result<(), C::Error>
 	where
 		C: Send + Sync + 'static,
 	{
-		fuse_main_loop::<C, H>(
-			&self.channel,
-			&*self.handlers,
-			self.read_buf_size,
-			self.fuse_version,
-		)
-	}
-
-	#[cfg(any(doc, feature = "run_local"))]
-	#[cfg_attr(doc, doc(cfg(feature = "run_local")))]
-	pub fn run_local(&mut self) -> Result<(), C::Error> {
-		fuse_main_loop::<C, H>(
-			&self.channel,
-			&*self.handlers,
-			self.read_buf_size,
-			self.fuse_version,
-		)
-	}
-}
-
-fn fuse_handshake<C: FuseServerChannel, H: FuseHandlers>(
-	channel: &C,
-	handlers: &mut H,
-) -> Result<protocol::FuseInitResponse, C::Error> {
-	let mut read_buf = fuse_io::MinReadBuffer::new();
-
-	loop {
-		let request_size = channel.receive(read_buf.get_mut())?;
-		let request_buf = fuse_io::aligned_slice(&read_buf, request_size);
-		let request_decoder = fuse_io::RequestDecoder::new(
-			request_buf,
-			ProtocolVersion::LATEST,
-			fuse_io::Semantics::FUSE,
-		)?;
-
-		let request_header = request_decoder.header();
-		if request_header.opcode != fuse_kernel::FUSE_INIT {
-			return Err(Error::ExpectedFuseInit(request_header.opcode.0).into());
-		}
-
-		let request_id = request_header.unique;
-		let init_request =
-			protocol::FuseInitRequest::decode_request(request_decoder)?;
-
-		let major_version = init_request.version().major();
-		if major_version != fuse_kernel::FUSE_KERNEL_VERSION {
-			let init_response =
-				protocol::FuseInitResponse::new(ProtocolVersion::LATEST);
-			init_response.encode_response(fuse_io::ResponseEncoder::new(
+		let channel = self.channel.as_ref();
+		let handlers = self.handlers.as_ref();
+		let mut buf = fuse_io::AlignedVec::new(self.read_buf_size);
+		server::main_loop(channel, &mut buf, self.version, FUSE, |dec| {
+			let request_id = dec.header().unique;
+			let respond = server::RespondOnceRef::new(
 				channel,
 				request_id,
-				init_response.version(),
-			))?;
-			continue;
-		}
+				self.version,
+				&self.channel,
+			);
+			fuse_request_dispatch::<C, H>(dec, handlers, respond)
+		})
+	}
 
-		let init_response = handlers.fuse_init(&init_request);
-		init_response.encode_response(fuse_io::ResponseEncoder::new(
-			channel,
-			request_id,
-			// FuseInitResponse always encodes with its own version
-			ProtocolVersion::LATEST,
-		))?;
-		return Ok(init_response);
+	#[cfg(not(feature = "std"))]
+	pub fn run(&mut self) -> Result<(), C::Error>
+	where
+		C: Send + Sync + 'static,
+	{
+		self.run_local()
+	}
+
+	#[cfg(any(doc, not(feature = "std")))]
+	#[cfg_attr(doc, doc(cfg(not(feature = "std"))))]
+	pub fn run_local(&mut self) -> Result<(), C::Error> {
+		let channel = &self.channel;
+		let handlers = &self.handlers;
+		let mut buf = fuse_io::MinReadBuffer::new();
+		server::main_loop(channel, &mut buf, self.version, FUSE, |dec| {
+			let request_id = dec.header().unique;
+			let respond =
+				server::RespondOnceRef::new(channel, request_id, self.version);
+			fuse_request_dispatch::<C, H>(dec, handlers, respond)
+		})
 	}
 }
 
-#[cfg(not(feature = "run_local"))]
-trait MaybeSendChannel {
-	type T: FuseServerChannel + Send + Sync + 'static;
-}
-
-#[cfg(not(feature = "run_local"))]
-impl<C> MaybeSendChannel for C
-where
-	C: FuseServerChannel + Send + Sync + 'static,
-{
-	type T = C;
-}
-
-#[cfg(feature = "run_local")]
-trait MaybeSendChannel {
-	type T: FuseServerChannel;
-}
-
-#[cfg(feature = "run_local")]
-impl<C> MaybeSendChannel for C
-where
-	C: FuseServerChannel,
-{
-	type T = C;
-}
-
-fn fuse_main_loop<C, H>(
-	channel: &Arc<C::T>,
-	handlers: &H,
-	read_buf_size: usize,
-	fuse_version: ProtocolVersion,
-) -> Result<(), <<C as MaybeSendChannel>::T as Channel>::Error>
-where
-	C: MaybeSendChannel,
-	H: FuseHandlers,
-{
-	let mut read_buf = fuse_io::AlignedVec::new(read_buf_size);
-	loop {
-		let request_size = match channel.receive(read_buf.get_mut()) {
-			Err(err) => {
-				if err.error_code() == Some(ErrorCode::ENODEV) {
-					return Ok(());
-				}
-				return Err(err);
-			},
-			Ok(request_size) => request_size,
-		};
-		let request_buf = fuse_io::aligned_slice(&read_buf, request_size);
-		let decoder = fuse_io::RequestDecoder::new(
-			request_buf,
-			fuse_version,
-			fuse_io::Semantics::FUSE,
-		)?;
-
-		fuse_request_dispatch::<C, H>(handlers, decoder, &channel)?;
-	}
-}
+// }}}
 
 fn fuse_request_dispatch<C, H>(
-	handlers: &H,
 	request_decoder: fuse_io::RequestDecoder,
-	channel: &Arc<C::T>,
-) -> Result<(), <<C as MaybeSendChannel>::T as Channel>::Error>
+	handlers: &H,
+	respond: server::RespondOnceRef<C::T>,
+) -> Result<(), <<C as server::MaybeSendChannel>::T as channel::Channel>::Error>
 where
-	C: MaybeSendChannel,
+	C: server::MaybeSendChannel,
 	H: FuseHandlers,
 {
 	let header = request_decoder.header();
-
-	let fuse_version = request_decoder.version();
 	let ctx = server::ServerContext::new(*header);
-
-	let respond_once =
-		server::RespondOnceImpl::new(channel, header.unique, fuse_version);
 
 	macro_rules! do_dispatch {
 		($handler:tt) => {{
 			match DecodeRequest::decode_request(request_decoder) {
-				Ok(request) => handlers.$handler(ctx, &request, respond_once),
+				Ok(request) => handlers.$handler(ctx, &request, respond),
 				Err(err) => {
 					// TODO: use ServerLogger to log the parse error
 					let _ = err;
-					respond_once.encoder().encode_error(ErrorCode::EIO)?;
+					respond.encoder().encode_error(ErrorCode::EIO)?;
 				},
 			}
 		}};
@@ -345,7 +355,7 @@ where
 			// handlers.unknown(ctx, &request);
 			// TODO: use ServerLogger to log the unknown request
 			let _ = request;
-			respond_once.encoder().encode_error(ErrorCode::ENOSYS)?;
+			respond.encoder().encode_error(ErrorCode::ENOSYS)?;
 		},
 	}
 	Ok(())

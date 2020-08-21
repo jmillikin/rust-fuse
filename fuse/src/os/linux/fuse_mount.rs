@@ -25,7 +25,7 @@ use super::DevFuseChannel;
 use crate::channel::Channel;
 use crate::fuse_server;
 
-#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
+#[cfg_attr(doc, doc(cfg(feature = "std")))]
 pub trait FuseMount {
 	type Channel: fuse_server::FuseServerChannel;
 
@@ -35,7 +35,7 @@ pub trait FuseMount {
 	) -> Result<Self::Channel, <Self::Channel as Channel>::Error>;
 }
 
-#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
+#[cfg_attr(doc, doc(cfg(feature = "std")))]
 pub struct SyscallFuseMount {
 	dev_fuse: path::PathBuf,
 	mount_source: OsString,

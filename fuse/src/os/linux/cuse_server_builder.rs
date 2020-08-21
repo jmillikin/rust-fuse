@@ -19,9 +19,9 @@ use std::{ffi, fs, io, path};
 
 use super::DevCuseChannel;
 use crate::cuse_handlers::CuseHandlers;
-use crate::cuse_server::{CuseDeviceName, CuseServer};
+use crate::cuse_server::{self, CuseDeviceName, CuseServer};
 
-#[cfg_attr(doc, doc(cfg(not(feature = "no_std"))))]
+#[cfg_attr(doc, doc(cfg(feature = "std")))]
 pub struct CuseServerBuilder<Handlers> {
 	dev_cuse: path::PathBuf,
 	device_name: ffi::OsString,
@@ -70,6 +70,11 @@ where
 			.write(true)
 			.open(&self.dev_cuse)?;
 
-		CuseServer::new(device_name, DevCuseChannel::new(file), self.handlers)
+		cuse_server::CuseServerBuilder::new(
+			device_name,
+			DevCuseChannel::new(file),
+			self.handlers,
+		)
+		.build()
 	}
 }

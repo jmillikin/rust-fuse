@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#![cfg(not(feature = "no_std"))]
+#![cfg(feature = "std")]
 
 mod linux_syscalls;
 

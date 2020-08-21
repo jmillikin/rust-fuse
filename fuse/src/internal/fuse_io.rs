@@ -17,7 +17,7 @@
 use core::mem::{align_of, size_of};
 use core::pin::Pin;
 
-#[cfg(not(feature = "no_std"))]
+#[cfg(feature = "std")]
 use std::ffi::CStr;
 
 use crate::error::{Error, ErrorCode};
@@ -84,14 +84,14 @@ impl<'a> AlignedSlice<'a> {
 	}
 }
 
-#[cfg(not(feature = "no_std"))]
+#[cfg(feature = "std")]
 pub(crate) struct AlignedVec {
 	pinned: Pin<Box<[u8]>>,
 	offset: usize,
 	size: usize,
 }
 
-#[cfg(not(feature = "no_std"))]
+#[cfg(feature = "std")]
 impl AlignedVec {
 	pub(crate) fn new(size: usize) -> Self {
 		let mut vec = Vec::with_capacity(size + 7);
@@ -106,7 +106,7 @@ impl AlignedVec {
 	}
 }
 
-#[cfg(not(feature = "no_std"))]
+#[cfg(feature = "std")]
 impl AlignedBuffer for AlignedVec {
 	fn get(&self) -> &[u8] {
 		if self.offset == 0 {
@@ -139,7 +139,7 @@ pub(crate) trait DecodeRequest<'a>: Sized {
 	fn decode_request(decoder: RequestDecoder<'a>) -> Result<Self, Error>;
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub(crate) enum Semantics {
 	FUSE,
 	CUSE,
@@ -264,7 +264,7 @@ impl<'a> RequestDecoder<'a> {
 		Err(Error::UnexpectedEof)
 	}
 
-	#[cfg(not(feature = "no_std"))]
+	#[cfg(feature = "std")]
 	pub(crate) fn next_cstr(&mut self) -> Result<&'a CStr, Error> {
 		for off in self.consumed..self.header.len {
 			if self.buf[off as usize] == 0 {

@@ -22,9 +22,9 @@ pub(super) use core::mem::size_of;
 pub(super) use core::time::Duration;
 pub(super) use core::{cmp, fmt, mem, num, ptr, slice};
 
-#[cfg(not(feature = "no_std"))]
+#[cfg(feature = "std")]
 pub(super) use std::ffi::{CStr, CString};
-#[cfg(not(feature = "no_std"))]
+#[cfg(feature = "std")]
 pub(super) use std::{io, time};
 
 pub(super) use crate::error::{Error, ErrorCode};

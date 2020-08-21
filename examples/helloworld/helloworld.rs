@@ -202,5 +202,5 @@ fn main() {
 		)
 		.build()
 		.unwrap();
-	srv.run().unwrap();
+	srv.executor_mut().run().unwrap();
 }

@@ -9,8 +9,8 @@ edition = "2018"
 name = "fuse"
 
 [features]
-no_std = []
-run_local = []
+default = ["std"]
+std = []
 
 unstable_cuse_flush = []
 unstable_cuse_fsync = []
