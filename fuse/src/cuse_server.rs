@@ -361,11 +361,11 @@ where
 	}
 
 	match header.opcode {
-		#[cfg(feature = "unstable_fuse_flush")]
+		#[cfg(feature = "unstable_flush")]
 		fuse_kernel::FUSE_FLUSH => do_dispatch!(flush),
-		#[cfg(feature = "unstable_fuse_fsync")]
+		#[cfg(feature = "unstable_fsync")]
 		fuse_kernel::FUSE_FSYNC => do_dispatch!(fsync),
-		#[cfg(feature = "unstable_fuse_ioctl")]
+		#[cfg(feature = "unstable_ioctl")]
 		fuse_kernel::FUSE_IOCTL => do_dispatch!(ioctl),
 		fuse_kernel::FUSE_OPEN => do_dispatch!(open),
 		fuse_kernel::FUSE_READ => do_dispatch!(read),

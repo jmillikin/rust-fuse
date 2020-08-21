@@ -27,8 +27,8 @@ pub trait CuseHandlers {
 		protocol::CuseInitResponse::for_request_impl(request)
 	}
 
-	#[cfg(any(doc, feature = "unstable_cuse_flush"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_cuse_flush")))]
+	#[cfg(any(doc, feature = "unstable_flush"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_flush")))]
 	fn flush(
 		&self,
 		ctx: server::ServerContext,
@@ -39,8 +39,8 @@ pub trait CuseHandlers {
 		respond.err(ErrorCode::ENOSYS);
 	}
 
-	#[cfg(any(doc, feature = "unstable_cuse_fsync"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_cuse_fsync")))]
+	#[cfg(any(doc, feature = "unstable_fsync"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fsync")))]
 	fn fsync(
 		&self,
 		ctx: server::ServerContext,
@@ -51,8 +51,8 @@ pub trait CuseHandlers {
 		respond.err(ErrorCode::ENOSYS);
 	}
 
-	#[cfg(any(doc, feature = "unstable_cuse_ioctl"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_cuse_ioctl")))]
+	#[cfg(any(doc, feature = "unstable_ioctl"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_ioctl")))]
 	fn ioctl(
 		&self,
 		ctx: server::ServerContext,

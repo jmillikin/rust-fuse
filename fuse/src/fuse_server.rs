@@ -295,34 +295,34 @@ where
 	}
 
 	match header.opcode {
-		#[cfg(feature = "unstable_fuse_access")]
+		#[cfg(feature = "unstable_access")]
 		fuse_kernel::FUSE_ACCESS => do_dispatch!(access),
-		#[cfg(feature = "unstable_fuse_bmap")]
+		#[cfg(feature = "unstable_bmap")]
 		fuse_kernel::FUSE_BMAP => do_dispatch!(bmap),
-		#[cfg(feature = "unstable_fuse_create")]
+		#[cfg(feature = "unstable_create")]
 		fuse_kernel::FUSE_CREATE => do_dispatch!(create),
-		#[cfg(feature = "unstable_fuse_fallocate")]
+		#[cfg(feature = "unstable_fallocate")]
 		fuse_kernel::FUSE_FALLOCATE => do_dispatch!(fallocate),
-		#[cfg(feature = "unstable_fuse_flush")]
+		#[cfg(feature = "unstable_flush")]
 		fuse_kernel::FUSE_FLUSH => do_dispatch!(flush),
 		fuse_kernel::FUSE_FORGET | fuse_kernel::FUSE_BATCH_FORGET => {
 			let request = DecodeRequest::decode_request(request_decoder)?;
 			handlers.forget(ctx, &request);
 		},
-		#[cfg(feature = "unstable_fuse_fsync")]
+		#[cfg(feature = "unstable_fsync")]
 		fuse_kernel::FUSE_FSYNC => do_dispatch!(fsync),
-		#[cfg(feature = "unstable_fuse_fsyncdir")]
+		#[cfg(feature = "unstable_fsyncdir")]
 		fuse_kernel::FUSE_FSYNCDIR => do_dispatch!(fsyncdir),
 		fuse_kernel::FUSE_GETATTR => do_dispatch!(getattr),
-		#[cfg(feature = "unstable_fuse_getlk")]
+		#[cfg(feature = "unstable_getlk")]
 		fuse_kernel::FUSE_GETLK => do_dispatch!(getlk),
 		fuse_kernel::FUSE_GETXATTR => do_dispatch!(getxattr),
-		#[cfg(feature = "unstable_fuse_ioctl")]
+		#[cfg(feature = "unstable_ioctl")]
 		fuse_kernel::FUSE_IOCTL => do_dispatch!(ioctl),
 		fuse_kernel::FUSE_LINK => do_dispatch!(link),
 		fuse_kernel::FUSE_LISTXATTR => do_dispatch!(listxattr),
 		fuse_kernel::FUSE_LOOKUP => do_dispatch!(lookup),
-		#[cfg(feature = "unstable_fuse_lseek")]
+		#[cfg(feature = "unstable_lseek")]
 		fuse_kernel::FUSE_LSEEK => do_dispatch!(lseek),
 		fuse_kernel::FUSE_MKDIR => do_dispatch!(mkdir),
 		fuse_kernel::FUSE_MKNOD => do_dispatch!(mknod),
@@ -333,19 +333,19 @@ where
 		fuse_kernel::FUSE_READLINK => do_dispatch!(readlink),
 		fuse_kernel::FUSE_RELEASE => do_dispatch!(release),
 		fuse_kernel::FUSE_RELEASEDIR => do_dispatch!(releasedir),
-		#[cfg(feature = "unstable_fuse_removexattr")]
+		#[cfg(feature = "unstable_removexattr")]
 		fuse_kernel::FUSE_REMOVEXATTR => do_dispatch!(removexattr),
 		fuse_kernel::FUSE_RENAME | fuse_kernel::FUSE_RENAME2 => {
 			do_dispatch!(rename)
 		},
 		fuse_kernel::FUSE_RMDIR => do_dispatch!(rmdir),
-		#[cfg(feature = "unstable_fuse_setattr")]
+		#[cfg(feature = "unstable_setattr")]
 		fuse_kernel::FUSE_SETATTR => do_dispatch!(setattr),
-		#[cfg(feature = "unstable_fuse_setlk")]
+		#[cfg(feature = "unstable_setlk")]
 		fuse_kernel::FUSE_SETLK => do_dispatch!(setlk),
-		#[cfg(feature = "unstable_fuse_setxattr")]
+		#[cfg(feature = "unstable_setxattr")]
 		fuse_kernel::FUSE_SETXATTR => do_dispatch!(setxattr),
-		#[cfg(feature = "unstable_fuse_statfs")]
+		#[cfg(feature = "unstable_statfs")]
 		fuse_kernel::FUSE_STATFS => do_dispatch!(statfs),
 		fuse_kernel::FUSE_SYMLINK => do_dispatch!(symlink),
 		fuse_kernel::FUSE_UNLINK => do_dispatch!(unlink),

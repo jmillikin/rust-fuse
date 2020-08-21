@@ -49,8 +49,8 @@ pub trait FuseHandlers {
 		protocol::FuseInitResponse::for_request_impl(request)
 	}
 
-	#[cfg(any(doc, feature = "unstable_fuse_access"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_access")))]
+	#[cfg(any(doc, feature = "unstable_access"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_access")))]
 	fn access(
 		&self,
 		ctx: server::ServerContext,
@@ -61,8 +61,8 @@ pub trait FuseHandlers {
 		respond.err(ErrorCode::ENOSYS);
 	}
 
-	#[cfg(any(doc, feature = "unstable_fuse_bmap"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_bmap")))]
+	#[cfg(any(doc, feature = "unstable_bmap"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_bmap")))]
 	fn bmap(
 		&self,
 		ctx: server::ServerContext,
@@ -73,8 +73,8 @@ pub trait FuseHandlers {
 		respond.err(ErrorCode::ENOSYS);
 	}
 
-	#[cfg(any(doc, feature = "unstable_fuse_create"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_create")))]
+	#[cfg(any(doc, feature = "unstable_create"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_create")))]
 	fn create(
 		&self,
 		ctx: server::ServerContext,
@@ -85,8 +85,8 @@ pub trait FuseHandlers {
 		respond.err(ErrorCode::ENOSYS);
 	}
 
-	#[cfg(any(doc, feature = "unstable_fuse_fallocate"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_fallocate")))]
+	#[cfg(any(doc, feature = "unstable_fallocate"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fallocate")))]
 	fn fallocate(
 		&self,
 		ctx: server::ServerContext,
@@ -97,8 +97,8 @@ pub trait FuseHandlers {
 		respond.err(ErrorCode::ENOSYS);
 	}
 
-	#[cfg(any(doc, feature = "unstable_fuse_flush"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_flush")))]
+	#[cfg(any(doc, feature = "unstable_flush"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_flush")))]
 	fn flush(
 		&self,
 		ctx: server::ServerContext,
@@ -117,8 +117,8 @@ pub trait FuseHandlers {
 		let _ = (ctx, request);
 	}
 
-	#[cfg(any(doc, feature = "unstable_fuse_fsync"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_fsync")))]
+	#[cfg(any(doc, feature = "unstable_fsync"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fsync")))]
 	fn fsync(
 		&self,
 		ctx: server::ServerContext,
@@ -129,8 +129,8 @@ pub trait FuseHandlers {
 		respond.err(ErrorCode::ENOSYS);
 	}
 
-	#[cfg(any(doc, feature = "unstable_fuse_fsyncdir"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_fsyncdir")))]
+	#[cfg(any(doc, feature = "unstable_fsyncdir"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_fsyncdir")))]
 	fn fsyncdir(
 		&self,
 		ctx: server::ServerContext,
@@ -151,8 +151,8 @@ pub trait FuseHandlers {
 		respond.err(ErrorCode::ENOSYS);
 	}
 
-	#[cfg(any(doc, feature = "unstable_fuse_getlk"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_getlk")))]
+	#[cfg(any(doc, feature = "unstable_getlk"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_getlk")))]
 	fn getlk(
 		&self,
 		ctx: server::ServerContext,
@@ -173,8 +173,8 @@ pub trait FuseHandlers {
 		respond.err(ErrorCode::ENOSYS);
 	}
 
-	#[cfg(any(doc, feature = "unstable_fuse_ioctl"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_ioctl")))]
+	#[cfg(any(doc, feature = "unstable_ioctl"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_ioctl")))]
 	fn ioctl(
 		&self,
 		ctx: server::ServerContext,
@@ -215,8 +215,8 @@ pub trait FuseHandlers {
 		respond.err(ErrorCode::ENOSYS);
 	}
 
-	#[cfg(any(doc, feature = "unstable_fuse_lseek"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_lseek")))]
+	#[cfg(any(doc, feature = "unstable_lseek"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_lseek")))]
 	fn lseek(
 		&self,
 		ctx: server::ServerContext,
@@ -317,8 +317,8 @@ pub trait FuseHandlers {
 		respond.err(ErrorCode::ENOSYS);
 	}
 
-	#[cfg(any(doc, feature = "unstable_fuse_removexattr"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_removexattr")))]
+	#[cfg(any(doc, feature = "unstable_removexattr"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_removexattr")))]
 	fn removexattr(
 		&self,
 		ctx: server::ServerContext,
@@ -349,8 +349,8 @@ pub trait FuseHandlers {
 		respond.err(ErrorCode::ENOSYS);
 	}
 
-	#[cfg(any(doc, feature = "unstable_fuse_setattr"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_setattr")))]
+	#[cfg(any(doc, feature = "unstable_setattr"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_setattr")))]
 	fn setattr(
 		&self,
 		ctx: server::ServerContext,
@@ -361,8 +361,8 @@ pub trait FuseHandlers {
 		respond.err(ErrorCode::ENOSYS);
 	}
 
-	#[cfg(any(doc, feature = "unstable_fuse_setlk"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_setlk")))]
+	#[cfg(any(doc, feature = "unstable_setlk"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_setlk")))]
 	fn setlk(
 		&self,
 		ctx: server::ServerContext,
@@ -373,8 +373,8 @@ pub trait FuseHandlers {
 		respond.err(ErrorCode::ENOSYS);
 	}
 
-	#[cfg(any(doc, feature = "unstable_fuse_setxattr"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_setxattr")))]
+	#[cfg(any(doc, feature = "unstable_setxattr"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_setxattr")))]
 	fn setxattr(
 		&self,
 		ctx: server::ServerContext,
@@ -385,8 +385,8 @@ pub trait FuseHandlers {
 		respond.err(ErrorCode::ENOSYS);
 	}
 
-	#[cfg(any(doc, feature = "unstable_fuse_statfs"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fuse_statfs")))]
+	#[cfg(any(doc, feature = "unstable_statfs"))]
+	#[cfg_attr(doc, doc(cfg(feature = "unstable_statfs")))]
 	fn statfs(
 		&self,
 		ctx: server::ServerContext,
