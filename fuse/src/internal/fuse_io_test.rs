@@ -62,7 +62,7 @@ fn request_decoder_eof_handling() {
 	assert_eq!(decoder.next_bytes(1), Ok(&[90u8] as &[u8]),);
 
 	// reading past the frame size is an error.
-	assert_eq!(decoder.next_bytes(1), Err(Error::UnexpectedEof));
+	assert_eq!(decoder.next_bytes(1), Err(Error::unexpected_eof()));
 }
 
 /*
@@ -90,7 +90,7 @@ fn frame_reader_u32_overflow() {
 	assert_eq!(reader.consume(1), Ok(u32::MAX));
 
 	// catch u32 overflow
-	assert_eq!(reader.consume(2), Err(Error::UnexpectedEof));
+	assert_eq!(reader.consume(2), Err(Error::unexpected_eof()));
 }
 */
 
@@ -117,7 +117,7 @@ fn request_decoder_sized() {
 	assert_eq!(did_read, &[5, 6, 7, 8]);
 
 	// [8 .. 12] hits EOF
-	assert_eq!(decoder.next_sized::<u32>(), Err(Error::UnexpectedEof));
+	assert_eq!(decoder.next_sized::<u32>(), Err(Error::unexpected_eof()));
 }
 
 #[test]
@@ -143,7 +143,7 @@ fn frame_decoder_bytes() {
 	assert_eq!(did_read, &[5, 6, 7, 8]);
 
 	// [8 .. 12) hits EOF
-	assert_eq!(decoder.next_bytes(4), Err(Error::UnexpectedEof));
+	assert_eq!(decoder.next_bytes(4), Err(Error::unexpected_eof()));
 }
 
 #[test]
@@ -169,5 +169,5 @@ fn frame_reader_cstr() {
 	assert_eq!(did_read.to_bytes_with_nul(), &[5, 6, 7, 8, 0]);
 
 	// [10 .. 15) hits EOF
-	assert_eq!(decoder.next_cstr(), Err(Error::UnexpectedEof));
+	assert_eq!(decoder.next_cstr(), Err(Error::unexpected_eof()));
 }

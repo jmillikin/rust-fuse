@@ -96,7 +96,7 @@ where
 			let request_header = request_decoder.header();
 			if request_header.opcode != fuse_kernel::FUSE_INIT {
 				return Err(
-					Error::ExpectedFuseInit(request_header.opcode.0).into()
+					Error::expected_fuse_init(request_header.opcode.0).into()
 				);
 			}
 

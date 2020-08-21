@@ -18,34 +18,73 @@ use core::{fmt, num};
 
 use crate::internal::fuse_kernel;
 
-#[non_exhaustive]
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub enum Error {
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct Error {
+	kind: ErrorKind,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ErrorKind {
 	MissingNodeId,
 	UnexpectedEof,
 	ExpectedCuseInit(u32),
 	ExpectedFuseInit(u32),
 }
 
+impl Error {
+	pub(crate) fn expected_cuse_init(opcode: u32) -> Error {
+		Error {
+			kind: ErrorKind::ExpectedCuseInit(opcode),
+		}
+	}
+
+	pub(crate) fn expected_fuse_init(opcode: u32) -> Error {
+		Error {
+			kind: ErrorKind::ExpectedFuseInit(opcode),
+		}
+	}
+
+	pub(crate) fn missing_node_id() -> Error {
+		Error {
+			kind: ErrorKind::MissingNodeId,
+		}
+	}
+
+	pub(crate) fn unexpected_eof() -> Error {
+		Error {
+			kind: ErrorKind::UnexpectedEof,
+		}
+	}
+}
+
+impl fmt::Display for Error {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+		fmt::Debug::fmt(self, fmt)
+	}
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for Error {}
+
 #[cfg(feature = "std")]
 #[cfg_attr(doc, doc(cfg(feature = "std")))]
 impl From<Error> for std::io::Error {
 	fn from(err: Error) -> std::io::Error {
 		use std::io;
-		match err {
-			Error::MissingNodeId => io::Error::new(
+		match err.kind {
+			ErrorKind::MissingNodeId => io::Error::new(
 				io::ErrorKind::InvalidData,
 				"Request field 'fuse_in_header::nodeid' is missing (expected non-zero)",
 			),
-			Error::UnexpectedEof => io::ErrorKind::UnexpectedEof.into(),
-			Error::ExpectedCuseInit(opcode) => io::Error::new(
+			ErrorKind::UnexpectedEof => io::ErrorKind::UnexpectedEof.into(),
+			ErrorKind::ExpectedCuseInit(opcode) => io::Error::new(
 				io::ErrorKind::InvalidData,
 				format!(
 					"Received opcode {:?} from kernel (expected CUSE_INIT)",
 					fuse_kernel::Opcode(opcode),
 				),
 			),
-			Error::ExpectedFuseInit(opcode) => io::Error::new(
+			ErrorKind::ExpectedFuseInit(opcode) => io::Error::new(
 				io::ErrorKind::InvalidData,
 				format!(
 					"Received opcode {:?} from kernel (expected FUSE_INIT)",

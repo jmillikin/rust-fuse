@@ -161,7 +161,7 @@ impl<'a> RequestDecoder<'a> {
 	) -> Result<Self, Error> {
 		let buf = buf.get();
 		if buf.len() < size_of::<fuse_kernel::fuse_in_header>() {
-			return Err(Error::UnexpectedEof);
+			return Err(Error::unexpected_eof());
 		}
 
 		let header: &'a fuse_kernel::fuse_in_header =
@@ -178,7 +178,7 @@ impl<'a> RequestDecoder<'a> {
 			buf_len = buf.len() as u32;
 		}
 		if buf_len < header.len {
-			return Err(Error::UnexpectedEof);
+			return Err(Error::unexpected_eof());
 		}
 
 		Ok(RequestDecoder {
@@ -216,7 +216,7 @@ impl<'a> RequestDecoder<'a> {
 			},
 		}
 		if eof {
-			return Err(Error::UnexpectedEof);
+			return Err(Error::unexpected_eof());
 		}
 		debug_assert!(new_consumed <= self.header.len);
 		Ok(new_consumed)
@@ -255,13 +255,13 @@ impl<'a> RequestDecoder<'a> {
 			if self.buf[off as usize] == 0 {
 				let len = off - self.consumed;
 				if len == 0 {
-					return Err(Error::UnexpectedEof);
+					return Err(Error::unexpected_eof());
 				}
 				let buf = self.next_bytes(len + 1)?;
 				return Ok(NulTerminatedBytes(buf));
 			}
 		}
-		Err(Error::UnexpectedEof)
+		Err(Error::unexpected_eof())
 	}
 
 	#[cfg(feature = "std")]
@@ -273,7 +273,7 @@ impl<'a> RequestDecoder<'a> {
 				return Ok(unsafe { CStr::from_bytes_with_nul_unchecked(buf) });
 			}
 		}
-		Err(Error::UnexpectedEof)
+		Err(Error::unexpected_eof())
 	}
 }
 

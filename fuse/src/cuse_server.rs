@@ -163,7 +163,7 @@ where
 			let request_header = request_decoder.header();
 			if request_header.opcode != fuse_kernel::CUSE_INIT {
 				return Err(
-					Error::ExpectedCuseInit(request_header.opcode.0).into()
+					Error::expected_cuse_init(request_header.opcode.0).into()
 				);
 			}
 

@@ -53,6 +53,6 @@ pub(super) use crate::internal::fuse_io::{
 pub(crate) fn try_node_id(raw: u64) -> Result<NodeId, Error> {
 	match NodeId::new(raw) {
 		Some(x) => Ok(x),
-		None => Err(Error::MissingNodeId),
+		None => Err(Error::missing_node_id()),
 	}
 }
