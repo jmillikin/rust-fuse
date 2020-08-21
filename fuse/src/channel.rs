@@ -24,12 +24,13 @@ use std::io::{self, IoSlice, Read, Write};
 
 use crate::error::{Error, ErrorCode};
 
-#[cfg(feature = "nightly_impl_channel")]
+#[cfg(any(doc, feature = "nightly_impl_channel"))]
 pub trait Channel {
 	type Error: ChannelError;
 
 	fn send(&self, buf: &[u8]) -> Result<(), Self::Error>;
 
+	#[cfg_attr(doc, doc(cfg(feature = "nightly_impl_channel")))]
 	fn send_vectored<const N: usize>(
 		&self,
 		bufs: &[&[u8]; N],
@@ -47,7 +48,7 @@ pub(crate) mod private {
 	}
 }
 
-#[cfg(not(feature = "nightly_impl_channel"))]
+#[cfg(not(any(doc, feature = "nightly_impl_channel")))]
 pub trait Channel:
 	private::ChannelNoConstGenerics<<Self as Channel>::Error>
 {
@@ -163,7 +164,8 @@ impl Channel for FileChannel {
 		Ok(())
 	}
 
-	#[cfg(feature = "nightly_impl_channel")]
+	#[cfg(any(doc, feature = "nightly_impl_channel"))]
+	
 	fn send_vectored<const N: usize>(
 		&self,
 		bufs: &[&[u8]; N],
