@@ -78,15 +78,13 @@ pub mod io {
 	pub use crate::internal::types::ProtocolVersion;
 	
 	pub use crate::channel::{Channel, ChannelError};
-	pub use crate::error::{Error, ErrorCode};
 	pub use crate::server::ServerChannel;
 
 	pub use crate::cuse_server::CuseServerChannel;
 	pub use crate::fuse_server::FuseServerChannel;
 }
 
-#[doc(no_inline)]
-pub use crate::io::ErrorCode;
+pub use crate::error::{Error, ErrorCode};
 
 pub mod protocol;
 pub use crate::protocol::*;

@@ -25,6 +25,7 @@ pub use self::common::{
 	RequestHeader,
 	ResponseHeader,
 	UnknownRequest,
+	XattrError,
 };
 
 mod prelude;

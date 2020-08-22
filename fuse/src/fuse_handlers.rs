@@ -37,6 +37,7 @@ pub trait FuseHandlers {
 		&mut self,
 		request: &protocol::FuseInitRequest,
 	) -> protocol::FuseInitResponse {
+		let _ = request;
 		protocol::FuseInitResponse::new()
 	}
 

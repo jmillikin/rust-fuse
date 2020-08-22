@@ -25,9 +25,11 @@ use crate::error::{Error, ErrorCode};
 use crate::internal::fuse_io::{self, AlignedBuffer, DecodeRequest};
 use crate::internal::fuse_kernel;
 use crate::internal::types::ProtocolVersion;
-use crate::protocol::common::DebugBytesAsString;
-#[cfg(feature = "std")]
-use crate::protocol::common::UnknownRequest;
+use crate::protocol::common::{
+	DebugBytesAsString,
+	RequestHeader,
+	UnknownRequest,
+};
 use crate::protocol::{CuseInitRequest, CuseInitResponse};
 use crate::server;
 
@@ -103,49 +105,40 @@ impl PartialOrd for CuseDeviceName {
 
 pub trait CuseServerChannel: server::ServerChannel {}
 
-pub struct CuseServerBuilder<'a, Channel, Handlers> {
+pub struct CuseServerBuilder<'a, Channel, Handlers, Hooks> {
 	device_name: &'a CuseDeviceName,
 	channel: Channel,
 	handlers: Handlers,
-	#[cfg(feature = "std")]
-	hooks: Option<Box<dyn server::ServerHooks>>,
+	hooks: Option<Hooks>,
 }
 
-impl<'a, C, H> CuseServerBuilder<'a, C, H>
+impl<'a, C, Handlers, Hooks> CuseServerBuilder<'a, C, Handlers, Hooks>
 where
 	C: CuseServerChannel,
-	H: CuseHandlers,
+	Handlers: CuseHandlers,
+	Hooks: server::ServerHooks,
 {
 	pub fn new(
 		device_name: &'a CuseDeviceName,
 		channel: C,
-		handlers: H,
-	) -> CuseServerBuilder<'a, C, H> {
+		handlers: Handlers,
+	) -> CuseServerBuilder<'a, C, Handlers, Hooks> {
 		Self {
 			device_name,
 			channel,
 			handlers,
-			#[cfg(feature = "std")]
 			hooks: None,
 		}
 	}
 
-	#[cfg(feature = "std")]
-	#[cfg_attr(doc, doc(cfg(feature = "std")))]
-	pub fn set_hooks(mut self, hooks: Box<dyn server::ServerHooks>) -> Self {
+	pub fn set_hooks(mut self, hooks: Hooks) -> Self {
 		self.hooks = Some(hooks);
 		self
 	}
 
-	pub fn build(mut self) -> Result<CuseServer<C, H>, C::Error> {
+	pub fn build(mut self) -> Result<CuseServer<C, Handlers, Hooks>, C::Error> {
 		let init_response = self.cuse_handshake()?;
-		CuseServer::new(
-			self.channel,
-			self.handlers,
-			#[cfg(feature = "std")]
-			self.hooks,
-			&init_response,
-		)
+		CuseServer::new(self.channel, self.handlers, self.hooks, &init_response)
 	}
 
 	fn cuse_handshake(&mut self) -> Result<CuseInitResponse, C::Error> {
@@ -211,36 +204,37 @@ where
 // CuseServer {{{
 
 #[cfg(feature = "std")]
-pub struct CuseServer<Channel, Handlers> {
-	executor: CuseServerExecutor<Channel, Handlers>,
+pub struct CuseServer<Channel, Handlers, Hooks> {
+	executor: CuseServerExecutor<Channel, Handlers, Hooks>,
 
 	channel: Arc<Channel>,
 	handlers: Arc<Handlers>,
-	hooks: Option<Arc<dyn server::ServerHooks>>,
+	hooks: Option<Arc<Hooks>>,
 	version: ProtocolVersion,
 	read_buf_size: usize,
 }
 
 #[cfg(not(feature = "std"))]
-pub struct CuseServer<Channel, Handlers> {
-	executor: CuseServerExecutor<Channel, Handlers>,
+pub struct CuseServer<Channel, Handlers, Hooks> {
+	executor: CuseServerExecutor<Channel, Handlers, Hooks>,
 }
 
-impl<C, H> CuseServer<C, H>
+impl<C, Handlers, Hooks> CuseServer<C, Handlers, Hooks>
 where
 	C: CuseServerChannel,
-	H: CuseHandlers,
+	Handlers: CuseHandlers,
+	Hooks: server::ServerHooks,
 {
 	#[cfg(feature = "std")]
 	fn new(
 		channel: C,
-		handlers: H,
-		hooks: Option<Box<dyn server::ServerHooks>>,
+		handlers: Handlers,
+		hooks: Option<Hooks>,
 		init_response: &CuseInitResponse,
-	) -> Result<CuseServer<C, H>, C::Error> {
+	) -> Result<CuseServer<C, Handlers, Hooks>, C::Error> {
 		let channel = Arc::new(channel);
 		let handlers = Arc::new(handlers);
-		let hooks = hooks.map(|h| Arc::from(h));
+		let hooks = hooks.map(|h| Arc::new(h));
 		let version = init_response.version();
 		let read_buf_size = server::read_buf_size(init_response.max_write());
 
@@ -265,25 +259,31 @@ where
 	#[cfg(not(feature = "std"))]
 	fn new(
 		channel: C,
-		handlers: H,
+		handlers: Handlers,
+		hooks: Option<Hooks>,
 		init_response: &CuseInitResponse,
-	) -> Result<CuseServer<C, H>, C::Error> {
+	) -> Result<CuseServer<C, Handlers, Hooks>, C::Error> {
 		Ok(Self {
 			executor: CuseServerExecutor {
 				channel,
 				handlers,
+				hooks,
 				version: init_response.version(),
 			},
 		})
 	}
 
-	pub fn executor_mut(&mut self) -> &mut CuseServerExecutor<C, H> {
+	pub fn executor_mut(
+		&mut self,
+	) -> &mut CuseServerExecutor<C, Handlers, Hooks> {
 		&mut self.executor
 	}
 
 	#[cfg(feature = "std")]
 	#[cfg_attr(doc, doc(cfg(feature = "std")))]
-	pub fn new_executor(&self) -> Result<CuseServerExecutor<C, H>, C::Error> {
+	pub fn new_executor(
+		&self,
+	) -> Result<CuseServerExecutor<C, Handlers, Hooks>, C::Error> {
 		let channel = self.channel.as_ref().try_clone()?;
 		Ok(CuseServerExecutor {
 			channel: Arc::new(channel),
@@ -300,43 +300,57 @@ where
 // CuseServerExecutor {{{
 
 #[cfg(feature = "std")]
-pub struct CuseServerExecutor<Channel, Handlers> {
+pub struct CuseServerExecutor<Channel, Handlers, Hooks> {
 	channel: Arc<Channel>,
 	handlers: Arc<Handlers>,
-	hooks: Option<Arc<dyn server::ServerHooks>>,
+	hooks: Option<Arc<Hooks>>,
 	version: ProtocolVersion,
 	read_buf_size: usize,
 }
 
 #[cfg(not(feature = "std"))]
-pub struct CuseServerExecutor<Channel, Handlers> {
+pub struct CuseServerExecutor<Channel, Handlers, Hooks> {
 	channel: Channel,
 	handlers: Handlers,
+	hooks: Option<Hooks>,
 	version: ProtocolVersion,
 }
 
-impl<C, H> CuseServerExecutor<C, H>
+impl<C, Handlers, Hooks> CuseServerExecutor<C, Handlers, Hooks>
 where
 	C: CuseServerChannel,
-	H: CuseHandlers,
+	Handlers: CuseHandlers,
+	Hooks: server::ServerHooks,
 {
 	#[cfg(feature = "std")]
 	pub fn run(&mut self) -> Result<(), C::Error>
 	where
 		C: Send + Sync + 'static,
+		Hooks: Send + Sync + 'static,
 	{
 		let channel = self.channel.as_ref();
 		let handlers = self.handlers.as_ref();
+		let hooks = self.hooks.as_deref();
 		let mut buf = fuse_io::AlignedVec::new(self.read_buf_size);
 		server::main_loop(channel, &mut buf, self.version, CUSE, |dec| {
 			let request_id = dec.header().unique;
+			let mut channel_err = Ok(());
 			let respond = server::RespondRef::new(
 				channel,
+				hooks,
+				&mut channel_err,
 				request_id,
 				self.version,
 				&self.channel,
+				self.hooks.as_ref(),
 			);
-			cuse_request_dispatch::<C, H>(dec, handlers, respond, &self.hooks)
+			cuse_request_dispatch::<C, Handlers, Hooks>(
+				dec,
+				handlers,
+				respond,
+				self.hooks.as_ref(),
+			)?;
+			channel_err
 		})
 	}
 
@@ -344,6 +358,7 @@ where
 	pub fn run(&mut self) -> Result<(), C::Error>
 	where
 		C: Send + Sync + 'static,
+		Hooks: Send + Sync + 'static,
 	{
 		self.run_local()
 	}
@@ -353,44 +368,62 @@ where
 	pub fn run_local(&mut self) -> Result<(), C::Error> {
 		let channel = &self.channel;
 		let handlers = &self.handlers;
+		let hooks = self.hooks.as_ref();
 		let mut buf = fuse_io::MinReadBuffer::new();
 		server::main_loop(channel, &mut buf, self.version, CUSE, |dec| {
 			let request_id = dec.header().unique;
-			let respond =
-				server::RespondRef::new(channel, request_id, self.version);
-			cuse_request_dispatch::<C, H>(dec, handlers, respond)
+			let mut channel_error = Ok(());
+			let respond = server::RespondRef::new(
+				channel,
+				hooks,
+				&mut channel_error,
+				request_id,
+				self.version,
+			);
+			cuse_request_dispatch::<C, Handlers, Hooks>(
+				dec, handlers, respond, hooks,
+			)?;
+			channel_error
 		})
 	}
 }
 
 // }}}
 
-fn cuse_request_dispatch<C, H>(
+fn cuse_request_dispatch<C, Handlers, Hooks>(
 	request_decoder: fuse_io::RequestDecoder,
-	handlers: &H,
-	respond: server::RespondRef<C::T>,
-	#[cfg(feature = "std")] hooks: &Option<Arc<dyn server::ServerHooks>>,
+	handlers: &Handlers,
+	respond: server::RespondRef<C::T, Hooks::T>,
+	#[cfg(feature = "std")] hooks: Option<&Arc<Hooks::T>>,
+	#[cfg(not(feature = "std"))] hooks: Option<&Hooks::T>,
 ) -> Result<(), <<C as server::MaybeSendChannel>::T as channel::Channel>::Error>
 where
 	C: server::MaybeSendChannel,
-	H: CuseHandlers,
+	Handlers: CuseHandlers,
+	Hooks: server::MaybeSendHooks,
 {
+	use server::ServerHooks;
+
 	let header = request_decoder.header();
 	let ctx = server::ServerContext::new(*header);
 
-	#[cfg(feature = "std")]
 	if let Some(hooks) = hooks {
-		hooks.on_request(ctx.request_header());
+		hooks.request(ctx.request_header());
 	}
 
+	#[rustfmt::skip]
 	macro_rules! do_dispatch {
 		($handler:tt) => {{
 			match DecodeRequest::decode_request(request_decoder) {
-				Ok(request) => handlers.$handler(ctx, &request, respond),
+				Ok(request) => {
+					handlers.$handler(ctx, &request, respond);
+					Ok(())
+				},
 				Err(err) => {
-					// TODO: use ServerLogger to log the parse error
-					let _ = err;
-					respond.encoder().encode_error(ErrorCode::EIO)?;
+					if let Some(hooks) = hooks {
+						hooks.request_error(RequestHeader::new_ref(header), err);
+					}
+					respond.encoder().encode_error(ErrorCode::EIO)
 				},
 			}
 		}};
@@ -408,13 +441,11 @@ where
 		fuse_kernel::FUSE_RELEASE => do_dispatch!(release),
 		fuse_kernel::FUSE_WRITE => do_dispatch!(write),
 		_ => {
-			#[cfg(feature = "std")]
 			if let Some(hooks) = hooks {
 				let request = UnknownRequest::decode_request(request_decoder)?;
-				hooks.on_unknown(&request);
+				hooks.unknown_request(&request);
 			}
-			respond.encoder().encode_error(ErrorCode::ENOSYS)?;
+			respond.encoder().encode_error(ErrorCode::ENOSYS)
 		},
 	}
-	Ok(())
 }

@@ -31,8 +31,7 @@ use crate::internal::fuse_io::{
 };
 use crate::internal::fuse_kernel;
 use crate::internal::types::ProtocolVersion;
-#[cfg(feature = "std")]
-use crate::protocol::common::UnknownRequest;
+use crate::protocol::common::{RequestHeader, UnknownRequest};
 use crate::protocol::{FuseInitRequest, FuseInitResponse};
 use crate::server;
 
@@ -42,43 +41,37 @@ const FUSE: fuse_io::Semantics = fuse_io::Semantics::FUSE;
 
 pub trait FuseServerChannel: server::ServerChannel {}
 
-pub struct FuseServerBuilder<Channel, Handlers> {
+pub struct FuseServerBuilder<Channel, Handlers, Hooks> {
 	channel: Channel,
 	handlers: Handlers,
-	#[cfg(feature = "std")]
-	hooks: Option<Box<dyn server::ServerHooks>>,
+	hooks: Option<Hooks>,
 }
 
-impl<C, H> FuseServerBuilder<C, H>
+impl<C, Handlers, Hooks> FuseServerBuilder<C, Handlers, Hooks>
 where
 	C: FuseServerChannel,
-	H: FuseHandlers,
+	Handlers: FuseHandlers,
+	Hooks: server::ServerHooks,
 {
-	pub fn new(channel: C, handlers: H) -> FuseServerBuilder<C, H> {
+	pub fn new(
+		channel: C,
+		handlers: Handlers,
+	) -> FuseServerBuilder<C, Handlers, Hooks> {
 		Self {
 			channel,
 			handlers,
-			#[cfg(feature = "std")]
 			hooks: None,
 		}
 	}
 
-	#[cfg(feature = "std")]
-	#[cfg_attr(doc, doc(cfg(feature = "std")))]
-	pub fn set_hooks(mut self, hooks: Box<dyn server::ServerHooks>) -> Self {
+	pub fn set_hooks(mut self, hooks: Hooks) -> Self {
 		self.hooks = Some(hooks);
 		self
 	}
 
-	pub fn build(mut self) -> Result<FuseServer<C, H>, C::Error> {
+	pub fn build(mut self) -> Result<FuseServer<C, Handlers, Hooks>, C::Error> {
 		let init_response = self.fuse_handshake()?;
-		FuseServer::new(
-			self.channel,
-			self.handlers,
-			#[cfg(feature = "std")]
-			self.hooks,
-			&init_response,
-		)
+		FuseServer::new(self.channel, self.handlers, self.hooks, &init_response)
 	}
 
 	fn fuse_handshake(&mut self) -> Result<FuseInitResponse, C::Error> {
@@ -143,36 +136,37 @@ where
 // FuseServer {{{
 
 #[cfg(feature = "std")]
-pub struct FuseServer<Channel, Handlers> {
-	executor: FuseServerExecutor<Channel, Handlers>,
+pub struct FuseServer<Channel, Handlers, Hooks> {
+	executor: FuseServerExecutor<Channel, Handlers, Hooks>,
 
 	channel: Arc<Channel>,
 	handlers: Arc<Handlers>,
-	hooks: Option<Arc<dyn server::ServerHooks>>,
+	hooks: Option<Arc<Hooks>>,
 	version: ProtocolVersion,
 	read_buf_size: usize,
 }
 
 #[cfg(not(feature = "std"))]
-pub struct FuseServer<Channel, Handlers> {
-	executor: FuseServerExecutor<Channel, Handlers>,
+pub struct FuseServer<Channel, Handlers, Hooks> {
+	executor: FuseServerExecutor<Channel, Handlers, Hooks>,
 }
 
-impl<C, H> FuseServer<C, H>
+impl<C, Handlers, Hooks> FuseServer<C, Handlers, Hooks>
 where
 	C: FuseServerChannel,
-	H: FuseHandlers,
+	Handlers: FuseHandlers,
+	Hooks: server::ServerHooks,
 {
 	#[cfg(feature = "std")]
 	fn new(
 		channel: C,
-		handlers: H,
-		hooks: Option<Box<dyn server::ServerHooks>>,
+		handlers: Handlers,
+		hooks: Option<Hooks>,
 		init_response: &FuseInitResponse,
-	) -> Result<FuseServer<C, H>, C::Error> {
+	) -> Result<FuseServer<C, Handlers, Hooks>, C::Error> {
 		let channel = Arc::new(channel);
 		let handlers = Arc::new(handlers);
-		let hooks = hooks.map(|h| Arc::from(h));
+		let hooks = hooks.map(|h| Arc::new(h));
 		let version = init_response.version();
 		let read_buf_size = server::read_buf_size(init_response.max_write());
 
@@ -197,25 +191,31 @@ where
 	#[cfg(not(feature = "std"))]
 	fn new(
 		channel: C,
-		handlers: H,
+		handlers: Handlers,
+		hooks: Option<Hooks>,
 		init_response: &FuseInitResponse,
-	) -> Result<FuseServer<C, H>, C::Error> {
+	) -> Result<FuseServer<C, Handlers, Hooks>, C::Error> {
 		Ok(Self {
 			executor: FuseServerExecutor {
 				channel,
 				handlers,
+				hooks,
 				version: init_response.version(),
 			},
 		})
 	}
 
-	pub fn executor_mut(&mut self) -> &mut FuseServerExecutor<C, H> {
+	pub fn executor_mut(
+		&mut self,
+	) -> &mut FuseServerExecutor<C, Handlers, Hooks> {
 		&mut self.executor
 	}
 
 	#[cfg(feature = "std")]
 	#[cfg_attr(doc, doc(cfg(feature = "std")))]
-	pub fn new_executor(&self) -> Result<FuseServerExecutor<C, H>, C::Error> {
+	pub fn new_executor(
+		&self,
+	) -> Result<FuseServerExecutor<C, Handlers, Hooks>, C::Error> {
 		let channel = self.channel.as_ref().try_clone()?;
 		Ok(FuseServerExecutor {
 			channel: Arc::new(channel),
@@ -232,43 +232,57 @@ where
 // FuseServerExecutor {{{
 
 #[cfg(feature = "std")]
-pub struct FuseServerExecutor<Channel, Handlers> {
+pub struct FuseServerExecutor<Channel, Handlers, Hooks> {
 	channel: Arc<Channel>,
 	handlers: Arc<Handlers>,
-	hooks: Option<Arc<dyn server::ServerHooks>>,
+	hooks: Option<Arc<Hooks>>,
 	version: ProtocolVersion,
 	read_buf_size: usize,
 }
 
 #[cfg(not(feature = "std"))]
-pub struct FuseServerExecutor<Channel, Handlers> {
+pub struct FuseServerExecutor<Channel, Handlers, Hooks> {
 	channel: Channel,
 	handlers: Handlers,
+	hooks: Option<Hooks>,
 	version: ProtocolVersion,
 }
 
-impl<C, H> FuseServerExecutor<C, H>
+impl<C, Handlers, Hooks> FuseServerExecutor<C, Handlers, Hooks>
 where
 	C: FuseServerChannel,
-	H: FuseHandlers,
+	Handlers: FuseHandlers,
+	Hooks: server::ServerHooks,
 {
 	#[cfg(feature = "std")]
 	pub fn run(&mut self) -> Result<(), C::Error>
 	where
 		C: Send + Sync + 'static,
+		Hooks: Send + Sync + 'static,
 	{
 		let channel = self.channel.as_ref();
 		let handlers = self.handlers.as_ref();
+		let hooks = self.hooks.as_deref();
 		let mut buf = fuse_io::AlignedVec::new(self.read_buf_size);
 		server::main_loop(channel, &mut buf, self.version, FUSE, |dec| {
 			let request_id = dec.header().unique;
+			let mut channel_err = Ok(());
 			let respond = server::RespondRef::new(
 				channel,
+				hooks,
+				&mut channel_err,
 				request_id,
 				self.version,
 				&self.channel,
+				self.hooks.as_ref(),
 			);
-			fuse_request_dispatch::<C, H>(dec, handlers, respond, &self.hooks)
+			fuse_request_dispatch::<C, Handlers, Hooks>(
+				dec,
+				handlers,
+				respond,
+				self.hooks.as_ref(),
+			)?;
+			channel_err
 		})
 	}
 
@@ -285,34 +299,47 @@ where
 	pub fn run_local(&mut self) -> Result<(), C::Error> {
 		let channel = &self.channel;
 		let handlers = &self.handlers;
+		let hooks = self.hooks.as_ref();
 		let mut buf = fuse_io::MinReadBuffer::new();
 		server::main_loop(channel, &mut buf, self.version, FUSE, |dec| {
 			let request_id = dec.header().unique;
-			let respond =
-				server::RespondRef::new(channel, request_id, self.version);
-			fuse_request_dispatch::<C, H>(dec, handlers, respond)
+			let mut channel_error = Ok(());
+			let respond = server::RespondRef::new(
+				channel,
+				hooks,
+				&mut channel_error,
+				request_id,
+				self.version,
+			);
+			fuse_request_dispatch::<C, Handlers, Hooks>(
+				dec, handlers, respond, hooks,
+			)?;
+			channel_error
 		})
 	}
 }
 
 // }}}
 
-fn fuse_request_dispatch<C, H>(
+fn fuse_request_dispatch<C, Handlers, Hooks>(
 	request_decoder: fuse_io::RequestDecoder,
-	handlers: &H,
-	respond: server::RespondRef<C::T>,
-	#[cfg(feature = "std")] hooks: &Option<Arc<dyn server::ServerHooks>>,
+	handlers: &Handlers,
+	respond: server::RespondRef<C::T, Hooks::T>,
+	#[cfg(feature = "std")] hooks: Option<&Arc<Hooks::T>>,
+	#[cfg(not(feature = "std"))] hooks: Option<&Hooks::T>,
 ) -> Result<(), <<C as server::MaybeSendChannel>::T as channel::Channel>::Error>
 where
 	C: server::MaybeSendChannel,
-	H: FuseHandlers,
+	Handlers: FuseHandlers,
+	Hooks: server::MaybeSendHooks,
 {
+	use crate::server::ServerHooks;
+
 	let header = request_decoder.header();
 	let ctx = server::ServerContext::new(*header);
 
-	#[cfg(feature = "std")]
 	if let Some(hooks) = hooks {
-		hooks.on_request(ctx.request_header());
+		hooks.request(ctx.request_header());
 	}
 
 	macro_rules! do_dispatch {
@@ -320,8 +347,9 @@ where
 			match DecodeRequest::decode_request(request_decoder) {
 				Ok(request) => handlers.$handler(ctx, &request, respond),
 				Err(err) => {
-					// TODO: use ServerLogger to log the parse error
-					let _ = err;
+					if let Some(hooks) = hooks {
+						hooks.request_error(RequestHeader::new_ref(header), err)
+					}
 					respond.encoder().encode_error(ErrorCode::EIO)?;
 				},
 			}
@@ -385,10 +413,9 @@ where
 		fuse_kernel::FUSE_UNLINK => do_dispatch!(unlink),
 		fuse_kernel::FUSE_WRITE => do_dispatch!(write),
 		_ => {
-			#[cfg(feature = "std")]
 			if let Some(hooks) = hooks {
 				let request = UnknownRequest::decode_request(request_decoder)?;
-				hooks.on_unknown(&request);
+				hooks.unknown_request(&request);
 			}
 			respond.encoder().encode_error(ErrorCode::ENOSYS)?;
 		},

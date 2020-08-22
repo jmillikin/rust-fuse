@@ -23,18 +23,18 @@ use crate::fuse_server::{self, FuseServer};
 use crate::server;
 
 #[cfg_attr(doc, doc(cfg(feature = "std")))]
-pub struct FuseServerBuilder<Mount, Handlers> {
+pub struct FuseServerBuilder<Mount, Handlers, Hooks> {
 	mount_target: path::PathBuf,
 	mount: Mount,
 	handlers: Handlers,
-	hooks: Option<Box<dyn server::ServerHooks>>,
+	hooks: Option<Hooks>,
 }
 
-impl<H> FuseServerBuilder<(), H> {
+impl<Handlers> FuseServerBuilder<(), Handlers, server::NoopServerHooks> {
 	pub fn new(
 		mount_target: impl AsRef<path::Path>,
-		handlers: H,
-	) -> FuseServerBuilder<(), H> {
+		handlers: Handlers,
+	) -> FuseServerBuilder<(), Handlers, server::NoopServerHooks> {
 		FuseServerBuilder {
 			mount_target: path::PathBuf::from(mount_target.as_ref()),
 			mount: (),
@@ -44,13 +44,23 @@ impl<H> FuseServerBuilder<(), H> {
 	}
 }
 
-impl<M, H> FuseServerBuilder<M, H> {
-	pub fn set_hooks(mut self, hooks: Box<dyn server::ServerHooks>) -> Self {
-		self.hooks = Some(hooks);
-		self
+impl<Mount, Handlers, Hooks> FuseServerBuilder<Mount, Handlers, Hooks> {
+	pub fn set_hooks<H>(
+		self,
+		hooks: H,
+	) -> FuseServerBuilder<Mount, Handlers, H> {
+		FuseServerBuilder {
+			mount_target: self.mount_target,
+			mount: self.mount,
+			handlers: self.handlers,
+			hooks: Some(hooks),
+		}
 	}
 
-	pub fn set_mount<Mount>(self, mount: Mount) -> FuseServerBuilder<Mount, H> {
+	pub fn set_mount<M>(
+		self,
+		mount: M,
+	) -> FuseServerBuilder<M, Handlers, Hooks> {
 		FuseServerBuilder {
 			mount_target: self.mount_target,
 			mount,
@@ -60,15 +70,16 @@ impl<M, H> FuseServerBuilder<M, H> {
 	}
 }
 
-impl<M, H> FuseServerBuilder<M, H>
+impl<M, Handlers, Hooks> FuseServerBuilder<M, Handlers, Hooks>
 where
 	M: FuseMount,
-	H: FuseHandlers,
+	Handlers: FuseHandlers,
+	Hooks: server::ServerHooks,
 {
 	pub fn build(
 		self,
 	) -> Result<
-		FuseServer<M::Channel, H>,
+		FuseServer<M::Channel, Handlers, Hooks>,
 		<<M as FuseMount>::Channel as Channel>::Error,
 	> {
 		let channel = self.mount.fuse_mount(&self.mount_target)?;

@@ -24,6 +24,7 @@ pub trait CuseHandlers {
 		&mut self,
 		request: &protocol::CuseInitRequest,
 	) -> protocol::CuseInitResponse {
+		let _ = request;
 		protocol::CuseInitResponse::new()
 	}
 

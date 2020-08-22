@@ -23,18 +23,18 @@ use crate::cuse_server::{self, CuseDeviceName, CuseServer};
 use crate::server;
 
 #[cfg_attr(doc, doc(cfg(feature = "std")))]
-pub struct CuseServerBuilder<Handlers> {
+pub struct CuseServerBuilder<Handlers, Hooks> {
 	dev_cuse: path::PathBuf,
 	device_name: ffi::OsString,
 	handlers: Handlers,
-	hooks: Option<Box<dyn server::ServerHooks>>,
+	hooks: Option<Hooks>,
 }
 
-impl<H> CuseServerBuilder<H> {
+impl<Handlers> CuseServerBuilder<Handlers, server::NoopServerHooks> {
 	pub fn new(
 		device_name: impl AsRef<ffi::OsStr>,
-		handlers: H,
-	) -> CuseServerBuilder<H> {
+		handlers: Handlers,
+	) -> CuseServerBuilder<Handlers, server::NoopServerHooks> {
 		Self {
 			dev_cuse: path::PathBuf::from("/dev/cuse"),
 			device_name: ffi::OsString::from(device_name.as_ref()),
@@ -42,18 +42,27 @@ impl<H> CuseServerBuilder<H> {
 			hooks: None,
 		}
 	}
+}
 
-	pub fn set_hooks(mut self, hooks: Box<dyn server::ServerHooks>) -> Self {
-		self.hooks = Some(hooks);
-		self
+impl<Handlers, Hooks> CuseServerBuilder<Handlers, Hooks> {
+	pub fn set_hooks<H>(self, hooks: H) -> CuseServerBuilder<Handlers, H> {
+		CuseServerBuilder {
+			dev_cuse: self.dev_cuse,
+			device_name: self.device_name,
+			handlers: self.handlers,
+			hooks: Some(hooks),
+		}
 	}
 }
 
-impl<H> CuseServerBuilder<H>
+impl<Handlers, Hooks> CuseServerBuilder<Handlers, Hooks>
 where
-	H: CuseHandlers,
+	Handlers: CuseHandlers,
+	Hooks: server::ServerHooks,
 {
-	pub fn build(self) -> io::Result<CuseServer<DevCuseChannel, H>> {
+	pub fn build(
+		self,
+	) -> io::Result<CuseServer<DevCuseChannel, Handlers, Hooks>> {
 		let devname = self.device_name.as_bytes();
 		let device_name = match CuseDeviceName::from_bytes(devname) {
 			Some(x) => x,
