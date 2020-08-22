@@ -77,7 +77,8 @@ fn request_major_mismatch() {
 
 #[test]
 fn response_v7p1() {
-	let resp = FuseInitResponse::new(ProtocolVersion::new(7, 1));
+	let mut resp = FuseInitResponse::new();
+	resp.set_version(ProtocolVersion::new(7, 1));
 	let encoded = encode_response!(resp);
 
 	assert_eq!(
@@ -96,7 +97,8 @@ fn response_v7p1() {
 
 #[test]
 fn response_v7p5() {
-	let resp = FuseInitResponse::new(ProtocolVersion::new(7, 5));
+	let mut resp = FuseInitResponse::new();
+	resp.set_version(ProtocolVersion::new(7, 5));
 	let encoded = encode_response!(resp);
 
 	assert_eq!(
@@ -123,7 +125,8 @@ fn response_v7p5() {
 
 #[test]
 fn response_v7p23() {
-	let mut resp = FuseInitResponse::new(ProtocolVersion::new(7, 23));
+	let mut resp = FuseInitResponse::new();
+	resp.set_version(ProtocolVersion::new(7, 23));
 	resp.set_max_readahead(4096);
 	*resp.flags_mut() = FuseInitFlags::from_bits(0xFFFFFFFF);
 	let encoded = encode_response!(resp);
@@ -142,74 +145,6 @@ fn response_v7p23() {
 				minor: 23,
 				max_readahead: 4096,
 				flags: 0xFFFFFFFF,
-				max_background: 0,
-				congestion_threshold: 0,
-				max_write: 0,
-				time_gran: 0,
-				unused: [0; 9],
-			})
-			.build()
-	);
-}
-
-#[test]
-fn response_minor_mismatch() {
-	let resp = FuseInitResponse::for_request_impl(&FuseInitRequest {
-		phantom: PhantomData,
-		version: ProtocolVersion::new(fuse_kernel::FUSE_KERNEL_VERSION, 0xFF),
-		max_readahead: 4096,
-		flags: FuseInitFlags::from_bits(0xFFFFFFFF),
-	});
-	let encoded = encode_response!(resp);
-
-	assert_eq!(
-		encoded,
-		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ size_of::<fuse_kernel::fuse_init_out>()) as u32,
-				error: 0,
-				unique: 0,
-			})
-			.push_sized(&fuse_kernel::fuse_init_out {
-				major: fuse_kernel::FUSE_KERNEL_VERSION,
-				minor: fuse_kernel::FUSE_KERNEL_MINOR_VERSION,
-				max_readahead: 4096,
-				flags: 0x003F9FFF,
-				max_background: 0,
-				congestion_threshold: 0,
-				max_write: 0,
-				time_gran: 0,
-				unused: [0; 9],
-			})
-			.build()
-	);
-}
-
-#[test]
-fn response_major_mismatch() {
-	let resp = FuseInitResponse::for_request_impl(&FuseInitRequest {
-		phantom: PhantomData,
-		version: ProtocolVersion::new(0xFF, 0xFF),
-		max_readahead: 0,
-		flags: FuseInitFlags::from_bits(0),
-	});
-	let encoded = encode_response!(resp);
-
-	assert_eq!(
-		encoded,
-		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ size_of::<fuse_kernel::fuse_init_out>()) as u32,
-				error: 0,
-				unique: 0,
-			})
-			.push_sized(&fuse_kernel::fuse_init_out {
-				major: fuse_kernel::FUSE_KERNEL_VERSION,
-				minor: fuse_kernel::FUSE_KERNEL_MINOR_VERSION,
-				max_readahead: 0,
-				flags: 0,
 				max_background: 0,
 				congestion_threshold: 0,
 				max_write: 0,
@@ -306,8 +241,7 @@ fn request_impl_debug() {
 
 #[test]
 fn response_impl_debug() {
-	let version = ProtocolVersion::new(7, 1);
-	let mut response = FuseInitResponse::new(version);
+	let mut response = FuseInitResponse::new();
 	response.set_max_readahead(4096);
 	response.set_max_write(8192);
 	response.set_max_background(10);
@@ -319,10 +253,6 @@ fn response_impl_debug() {
 		format!("{:#?}", response),
 		concat!(
 			"FuseInitResponse {\n",
-			"    version: ProtocolVersion {\n",
-			"        major: 7,\n",
-			"        minor: 1,\n",
-			"    },\n",
 			"    max_readahead: 4096,\n",
 			"    flags: FuseInitFlags {\n",
 			"        async_read: true,\n",

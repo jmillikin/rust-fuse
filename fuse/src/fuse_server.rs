@@ -104,22 +104,27 @@ where
 			let init_request =
 				FuseInitRequest::decode_request(request_decoder)?;
 
-			let major_version = init_request.version().major();
-			if major_version != fuse_kernel::FUSE_KERNEL_VERSION {
-				let init_response =
-					FuseInitResponse::new(ProtocolVersion::LATEST);
-				init_response.encode_response(
-					fuse_io::ResponseEncoder::new(
-						&self.channel,
-						request_id,
-						init_response.version(),
-					),
-				)?;
-				continue;
-			}
+			let encoder = fuse_io::ResponseEncoder::new(
+				&self.channel,
+				request_id,
+				// FuseInitResponse always encodes with its own version
+				ProtocolVersion::LATEST,
+			);
+
+			let version =
+				match server::negotiate_version(init_request.version()) {
+					Some(x) => x,
+					None => {
+						let mut init_response = FuseInitResponse::new();
+						init_response.set_version(ProtocolVersion::LATEST);
+						init_response.encode_response(encoder)?;
+						continue;
+					},
+				};
 
 			#[allow(unused_mut)]
 			let mut init_response = self.handlers.fuse_init(&init_request);
+			init_response.set_version(version);
 
 			#[cfg(not(feature = "std"))]
 			init_response.set_max_write(cmp::min(
@@ -127,12 +132,7 @@ where
 				server::capped_max_write(),
 			));
 
-			init_response.encode_response(fuse_io::ResponseEncoder::new(
-				&self.channel,
-				request_id,
-				// FuseInitResponse always encodes with its own version
-				ProtocolVersion::LATEST,
-			))?;
+			init_response.encode_response(encoder)?;
 			return Ok(init_response);
 		}
 	}

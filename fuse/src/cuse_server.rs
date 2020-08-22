@@ -178,16 +178,20 @@ where
 				ProtocolVersion::LATEST,
 			);
 
-			let major_version = init_request.version().major();
-			if major_version != fuse_kernel::FUSE_KERNEL_VERSION {
-				let init_response =
-					CuseInitResponse::new(ProtocolVersion::LATEST);
-				init_response.encode_response(encoder, None)?;
-				continue;
-			}
+			let version =
+				match server::negotiate_version(init_request.version()) {
+					Some(x) => x,
+					None => {
+						let mut init_response = CuseInitResponse::new();
+						init_response.set_version(ProtocolVersion::LATEST);
+						init_response.encode_response(encoder, None)?;
+						continue;
+					},
+				};
 
 			#[allow(unused_mut)]
 			let mut init_response = self.handlers.cuse_init(&init_request);
+			init_response.set_version(version);
 
 			#[cfg(not(feature = "std"))]
 			init_response.set_max_write(cmp::min(

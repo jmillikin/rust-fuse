@@ -121,11 +121,11 @@ pub struct FuseInitResponse {
 }
 
 impl FuseInitResponse {
-	pub fn new(version: ProtocolVersion) -> FuseInitResponse {
+	pub fn new() -> FuseInitResponse {
 		Self {
 			raw: fuse_kernel::fuse_init_out {
-				major: version.major(),
-				minor: version.minor(),
+				major: 0,
+				minor: 0,
 				max_readahead: 0,
 				flags: 0,
 				max_background: 0,
@@ -138,43 +138,13 @@ impl FuseInitResponse {
 		}
 	}
 
-	#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
-	pub fn for_request(request: &FuseInitRequest) -> FuseInitResponse {
-		Self::for_request_impl(request)
-	}
-
-	pub(crate) fn for_request_impl(request: &FuseInitRequest) -> Self {
-		let version = request.version();
-
-		let v_minor;
-		if version.major() == fuse_kernel::FUSE_KERNEL_VERSION {
-			// Use the kernel's minor version, unless it's too new for this
-			// library in which case use ours.
-			v_minor =
-				min(version.minor(), fuse_kernel::FUSE_KERNEL_MINOR_VERSION);
-		} else {
-			// See comment in `FuseInitRequest::decode_request()`. Major version
-			// mismatch results in a dummy `FuseInitResponse`. We set our best
-			// minor version here as a hint to the kernel.
-			v_minor = fuse_kernel::FUSE_KERNEL_MINOR_VERSION;
-		}
-
-		let v_major = fuse_kernel::FUSE_KERNEL_VERSION;
-		let version = ProtocolVersion::new(v_major, v_minor);
-		let mut response = FuseInitResponse::new(version);
-		response.set_max_readahead(request.max_readahead());
-
-		let mut flags = *request.flags();
-		flags.bits = 0; // clear unknown flag bits
-		flags.do_readdirplus = false;
-		flags.readdirplus_auto = false;
-
-		*response.flags_mut() = flags;
-		response
-	}
-
-	pub fn version(&self) -> ProtocolVersion {
+	pub(crate) fn version(&self) -> ProtocolVersion {
 		ProtocolVersion::new(self.raw.major, self.raw.minor)
+	}
+
+	pub(crate) fn set_version(&mut self, v: ProtocolVersion) {
+		self.raw.major = v.major();
+		self.raw.minor = v.minor();
 	}
 
 	pub fn flags(&self) -> &FuseInitFlags {
@@ -229,7 +199,6 @@ impl FuseInitResponse {
 impl fmt::Debug for FuseInitResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("FuseInitResponse")
-			.field("version", &self.version())
 			.field("max_readahead", &self.max_readahead())
 			.field("flags", self.flags())
 			.field("max_background", &self.max_background())

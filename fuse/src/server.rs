@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::cmp::max;
+use core::cmp::{max, min};
 
 #[cfg(feature = "std")]
 use std::sync::Arc;
@@ -78,6 +78,18 @@ pub(crate) const fn capped_max_write() -> u32 {
 	// bytes, so init responses must have their max_write capped to a value such
 	// that `read_buf_size(max_write) <= FUSE_MIN_READ_BUFFER`.
 	return (fuse_kernel::FUSE_MIN_READ_BUFFER - HEADER_OVERHEAD) as u32;
+}
+
+pub(crate) fn negotiate_version(
+	kernel: ProtocolVersion,
+) -> Option<ProtocolVersion> {
+	if kernel.major() != fuse_kernel::FUSE_KERNEL_VERSION {
+		return None;
+	}
+	Some(ProtocolVersion::new(
+		fuse_kernel::FUSE_KERNEL_VERSION,
+		min(kernel.minor(), fuse_kernel::FUSE_KERNEL_MINOR_VERSION),
+	))
 }
 
 pub(crate) fn main_loop<Buf, C, Cb>(

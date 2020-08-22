@@ -33,20 +33,11 @@ use crate::server;
 /// [`ServerResponseWriter`]: struct.ServerResponseWriter.html
 /// [`ErrorCode::ENOSYS`]: struct.ErrorCode.html#associatedconstant.ENOSYS
 pub trait FuseHandlers {
-	/// Initialize the FUSE connection parameters.
-	///
-	/// Most servers do not need to override this method.
-	///
-	/// The default implementation returns a response created by the helper
-	/// function [`FuseInitResponse::for_request`], which is also a good starting
-	/// point for custom implementations.
-	///
-	/// [`FuseInitResponse::for_request`]: protocol/struct.FuseInitResponse.html#method.for_request
 	fn fuse_init(
 		&mut self,
 		request: &protocol::FuseInitRequest,
 	) -> protocol::FuseInitResponse {
-		protocol::FuseInitResponse::for_request_impl(request)
+		protocol::FuseInitResponse::new()
 	}
 
 	#[cfg(any(doc, feature = "unstable_access"))]

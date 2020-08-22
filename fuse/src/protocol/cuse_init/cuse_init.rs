@@ -82,11 +82,11 @@ pub struct CuseInitResponse {
 }
 
 impl CuseInitResponse {
-	pub fn new(version: ProtocolVersion) -> CuseInitResponse {
+	pub fn new() -> CuseInitResponse {
 		Self {
 			raw: fuse_kernel::cuse_init_out {
-				major: version.major(),
-				minor: version.minor(),
+				major: 0,
+				minor: 0,
 				unused: 0,
 				flags: 0,
 				max_read: 0,
@@ -99,34 +99,13 @@ impl CuseInitResponse {
 		}
 	}
 
-	#[cfg_attr(doc, doc(cfg(feature = "unstable")))]
-	pub fn for_request(request: &CuseInitRequest) -> CuseInitResponse {
-		Self::for_request_impl(request)
-	}
-
-	pub(crate) fn for_request_impl(request: &CuseInitRequest) -> Self {
-		let version = request.version();
-
-		let v_minor;
-		if version.major() == fuse_kernel::FUSE_KERNEL_VERSION {
-			// Use the kernel's minor version, unless it's too new for this
-			// library in which case use ours.
-			v_minor =
-				min(version.minor(), fuse_kernel::FUSE_KERNEL_MINOR_VERSION);
-		} else {
-			// See comment in `FuseInitRequest::decode_request()`. Major version
-			// mismatch results in a dummy `CuseInitResponse`. We set our best
-			// minor version here as a hint to the kernel.
-			v_minor = fuse_kernel::FUSE_KERNEL_MINOR_VERSION;
-		}
-
-		let v_major = fuse_kernel::FUSE_KERNEL_VERSION;
-		let version = ProtocolVersion::new(v_major, v_minor);
-		CuseInitResponse::new(version)
-	}
-
-	pub fn version(&self) -> ProtocolVersion {
+	pub(crate) fn version(&self) -> ProtocolVersion {
 		ProtocolVersion::new(self.raw.major, self.raw.minor)
+	}
+
+	pub(crate) fn set_version(&mut self, v: ProtocolVersion) {
+		self.raw.major = v.major();
+		self.raw.minor = v.minor();
 	}
 
 	pub fn flags(&self) -> &CuseInitFlags {
@@ -173,7 +152,6 @@ impl CuseInitResponse {
 impl fmt::Debug for CuseInitResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("CuseInitResponse")
-			.field("version", &self.version())
 			.field("flags", self.flags())
 			.field("max_read", &self.max_read())
 			.field("max_write", &self.max_write())

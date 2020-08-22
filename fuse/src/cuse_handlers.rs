@@ -24,7 +24,7 @@ pub trait CuseHandlers {
 		&mut self,
 		request: &protocol::CuseInitRequest,
 	) -> protocol::CuseInitResponse {
-		protocol::CuseInitResponse::for_request_impl(request)
+		protocol::CuseInitResponse::new()
 	}
 
 	#[cfg(any(doc, feature = "unstable_flush"))]

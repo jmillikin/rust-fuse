@@ -82,7 +82,8 @@ fn encode_response(
 
 #[test]
 fn response() {
-	let mut resp = CuseInitResponse::new(ProtocolVersion::new(7, 23));
+	let mut resp = CuseInitResponse::new();
+	resp.set_version(ProtocolVersion::new(7, 23));
 	resp.set_max_write(4096);
 	*resp.flags_mut() = CuseInitFlags::from_bits(0xFFFFFFFF);
 	let encoded = encode_response(resp, Some(b"test-device"));
@@ -114,77 +115,8 @@ fn response() {
 }
 
 #[test]
-fn response_minor_mismatch() {
-	let resp = CuseInitResponse::for_request_impl(&CuseInitRequest {
-		phantom: PhantomData,
-		version: ProtocolVersion::new(fuse_kernel::FUSE_KERNEL_VERSION, 0xFF),
-		flags: CuseInitFlags::from_bits(0xFFFFFFFF),
-	});
-	let encoded = encode_response(resp, Some(b"test-device"));
-
-	assert_eq!(
-		encoded,
-		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ size_of::<fuse_kernel::cuse_init_out>()
-					+ b"DEVNAME=test-device\x00".len()) as u32,
-				error: 0,
-				unique: 0,
-			})
-			.push_sized(&fuse_kernel::cuse_init_out {
-				major: fuse_kernel::FUSE_KERNEL_VERSION,
-				minor: fuse_kernel::FUSE_KERNEL_MINOR_VERSION,
-				unused: 0,
-				flags: 0,
-				max_read: 0,
-				max_write: 0,
-				dev_major: 0,
-				dev_minor: 0,
-				spare: [0; 10],
-			})
-			.push_bytes(b"DEVNAME=test-device\x00")
-			.build()
-	);
-}
-
-#[test]
-fn response_major_mismatch() {
-	let resp = CuseInitResponse::for_request_impl(&CuseInitRequest {
-		phantom: PhantomData,
-		version: ProtocolVersion::new(0xFF, 0xFF),
-		flags: CuseInitFlags::from_bits(0),
-	});
-	let encoded = encode_response(resp, None);
-
-	assert_eq!(
-		encoded,
-		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ size_of::<fuse_kernel::cuse_init_out>()) as u32,
-				error: 0,
-				unique: 0,
-			})
-			.push_sized(&fuse_kernel::cuse_init_out {
-				major: fuse_kernel::FUSE_KERNEL_VERSION,
-				minor: fuse_kernel::FUSE_KERNEL_MINOR_VERSION,
-				unused: 0,
-				flags: 0,
-				max_read: 0,
-				max_write: 0,
-				dev_major: 0,
-				dev_minor: 0,
-				spare: [0; 10],
-			})
-			.build()
-	);
-}
-
-#[test]
 fn response_impl_debug() {
-	let version = ProtocolVersion::new(7, 1);
-	let mut response = CuseInitResponse::new(version);
+	let mut response = CuseInitResponse::new();
 	response.set_max_read(4096);
 	response.set_max_write(8192);
 	response.set_dev_major(10);
@@ -195,10 +127,6 @@ fn response_impl_debug() {
 		format!("{:#?}", response),
 		concat!(
 			"CuseInitResponse {\n",
-			"    version: ProtocolVersion {\n",
-			"        major: 7,\n",
-			"        minor: 1,\n",
-			"    },\n",
 			"    flags: CuseInitFlags {\n",
 			"        unrestricted_ioctl: true,\n",
 			"    },\n",
