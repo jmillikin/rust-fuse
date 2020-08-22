@@ -130,7 +130,7 @@ fn readdir_response_test_impl(resp: &mut ReaddirResponse) {
 		let name = NodeName::from_bytes(b"123456789ABCDEF").unwrap();
 		let cursor = num::NonZeroU64::new(1).unwrap();
 		let opt_dirent = resp.try_add_entry(node_id, name, cursor);
-		assert!(opt_dirent.is_none());
+		assert!(opt_dirent.is_err());
 	}
 
 	// Dirent capacity takes 8-byte name padding into account.
@@ -139,7 +139,7 @@ fn readdir_response_test_impl(resp: &mut ReaddirResponse) {
 		let name = NodeName::from_bytes(b"123456789").unwrap();
 		let cursor = num::NonZeroU64::new(1).unwrap();
 		let opt_dirent = resp.try_add_entry(node_id, name, cursor);
-		assert!(opt_dirent.is_none());
+		assert!(opt_dirent.is_err());
 	}
 
 	// Adding a dirent works if there's enough capacity.

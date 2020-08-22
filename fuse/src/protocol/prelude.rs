@@ -40,6 +40,7 @@ pub(super) use crate::protocol::common::{
 	NodeAttr,
 	NodeId,
 	NodeName,
+	XattrError,
 	XattrName,
 };
 

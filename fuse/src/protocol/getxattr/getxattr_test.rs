@@ -88,7 +88,7 @@ fn response_sized() {
 	assert_eq!(resp.request_size(), request_size);
 
 	// value must fit in kernel buffer
-	assert!(resp.try_set_value(&[255; 11]).is_none());
+	assert!(resp.try_set_value(&[255; 11]).is_err());
 
 	resp.set_value(&[255, 0, 255]);
 
@@ -113,10 +113,7 @@ fn response_unsized() {
 	assert_eq!(resp.request_size(), None);
 
 	// set_value() doesn't allow value sizes larger than XATTR_SIZE_MAX
-	assert!(
-		resp.try_set_value(&[0; crate::XATTR_SIZE_MAX + 1])
-			.is_none()
-	);
+	assert!(resp.try_set_value(&[0; crate::XATTR_SIZE_MAX + 1]).is_err());
 	assert!(resp.value.is_empty());
 	assert_eq!(resp.raw.size, 0);
 

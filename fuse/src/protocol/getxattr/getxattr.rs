@@ -104,10 +104,9 @@ impl<'a> GetxattrResponse<'a> {
 		self.try_set_value(value).unwrap()
 	}
 
-	pub fn try_set_value(&mut self, value: &'a [u8]) -> Option<()> {
-		// TODO: Result
+	pub fn try_set_value(&mut self, value: &'a [u8]) -> Result<(), XattrError> {
 		if value.len() > crate::XATTR_SIZE_MAX {
-			return None; // ERANGE
+			return Err(XattrError::exceeds_size_max(value.len()));
 		}
 		let value_len = value.len() as u32;
 
@@ -117,12 +116,15 @@ impl<'a> GetxattrResponse<'a> {
 			},
 			Some(request_size) => {
 				if value_len > request_size.get() {
-					return None; // ERANGE
+					return Err(XattrError::exceeds_request_size(
+						value.len(),
+						request_size.get(),
+					));
 				}
 				self.value = value;
 			},
 		}
-		return Some(());
+		return Ok(());
 	}
 }
 

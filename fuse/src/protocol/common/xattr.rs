@@ -18,6 +18,88 @@ use core::{cmp, fmt};
 
 use crate::internal::fuse_io;
 
+// XattrError {{{
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct XattrError {
+	kind: XattrErrorKind,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+enum XattrErrorKind {
+	ExceedsListMax(usize),
+	ExceedsCapacity(usize, usize),
+	ExceedsSizeMax(usize),
+	ExceedsRequestSize(usize, u32),
+	NameEmpty,
+	ExceedsNameMax(usize),
+	NameContainsNul,
+}
+
+impl XattrError {
+	pub(crate) fn exceeds_list_max(response_size: usize) -> XattrError {
+		XattrError {
+			kind: XattrErrorKind::ExceedsListMax(response_size),
+		}
+	}
+
+	pub(crate) fn exceeds_capacity(
+		response_size: usize,
+		capacity: usize,
+	) -> XattrError {
+		XattrError {
+			kind: XattrErrorKind::ExceedsCapacity(response_size, capacity),
+		}
+	}
+
+	pub(crate) fn exceeds_size_max(value_size: usize) -> XattrError {
+		XattrError {
+			kind: XattrErrorKind::ExceedsSizeMax(value_size),
+		}
+	}
+
+	pub(crate) fn exceeds_request_size(
+		response_size: usize,
+		request_size: u32,
+	) -> XattrError {
+		XattrError {
+			kind: XattrErrorKind::ExceedsRequestSize(
+				response_size,
+				request_size,
+			),
+		}
+	}
+
+	pub(crate) fn name_empty() -> XattrError {
+		XattrError {
+			kind: XattrErrorKind::NameEmpty,
+		}
+	}
+
+	pub(crate) fn exceeds_name_max(name_size: usize) -> XattrError {
+		XattrError {
+			kind: XattrErrorKind::ExceedsNameMax(name_size),
+		}
+	}
+
+	pub(crate) fn name_contains_nul() -> XattrError {
+		XattrError {
+			kind: XattrErrorKind::NameContainsNul,
+		}
+	}
+}
+
+impl fmt::Display for XattrError {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+		fmt::Debug::fmt(self, fmt)
+	}
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for XattrError {}
+
+// }}}
+
 #[derive(Hash)]
 #[repr(transparent)]
 pub struct XattrName([u8]);
@@ -45,15 +127,20 @@ impl XattrName {
 		unsafe { &*(bytes as *const [u8] as *const XattrName) }
 	}
 
-	pub fn from_bytes<'a>(bytes: &'a [u8]) -> Option<&'a XattrName> {
+	pub fn from_bytes<'a>(
+		bytes: &'a [u8],
+	) -> Result<&'a XattrName, XattrError> {
 		let len = bytes.len();
-		if len == 0 || len > XATTR_NAME_MAX {
-			return None;
+		if len == 0 {
+			return Err(XattrError::name_empty());
+		}
+		if len > XATTR_NAME_MAX {
+			return Err(XattrError::exceeds_name_max(len));
 		}
 		if bytes.contains(&0) {
-			return None;
+			return Err(XattrError::name_contains_nul());
 		}
-		Some(unsafe { &*(bytes as *const [u8] as *const XattrName) })
+		Ok(unsafe { &*(bytes as *const [u8] as *const XattrName) })
 	}
 
 	pub fn as_bytes(&self) -> &[u8] {

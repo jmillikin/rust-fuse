@@ -95,7 +95,7 @@ fn response_sized_test_impl(resp: &mut ListxattrResponse) {
 	// response must fit in kernel buffer
 	{
 		let name = XattrName::from_bytes(b"12345678901").unwrap();
-		assert!(resp.try_add_name(name).is_none());
+		assert!(resp.try_add_name(name).is_err());
 	}
 
 	// xattr names are NUL-terminated
@@ -157,7 +157,7 @@ fn response_size_limit() {
 		resp.add_name(name);
 	}
 	assert_eq!(resp.raw.size, 65511);
-	assert!(resp.try_add_name(name).is_none());
+	assert!(resp.try_add_name(name).is_err());
 }
 
 #[test]

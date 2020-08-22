@@ -111,29 +111,28 @@ impl<'a> ListxattrResponse<'a> {
 		self.try_add_name(name).unwrap()
 	}
 
-	pub fn try_add_name(&mut self, name: &XattrName) -> Option<()> {
+	pub fn try_add_name(&mut self, name: &XattrName) -> Result<(), XattrError> {
 		use crate::XATTR_LIST_MAX;
 
 		let name = name.as_bytes();
 		let name_len = name.len() as usize;
 		let name_buf_len = name_len + 1; // includes NUL terminator
 
-		let mut request_size = match self.request_size {
+		let mut request_size_u32 = match self.request_size {
 			None => {
 				// Don't actually copy any bytes around, just keep track of the
 				// response size.
-				if self.raw.size as usize + name_buf_len > XATTR_LIST_MAX {
-					return None;
+				let new_size = self.raw.size as usize + name_buf_len;
+				if new_size > XATTR_LIST_MAX {
+					return Err(XattrError::exceeds_list_max(new_size));
 				}
 				self.raw.size += name_buf_len as u32;
-				return Some(());
+				return Ok(());
 			},
-			Some(x) => x.get() as usize,
+			Some(x) => x.get(),
 		};
 
-		if request_size > XATTR_LIST_MAX {
-			request_size = XATTR_LIST_MAX;
-		}
+		let request_size = min(request_size_u32 as usize, XATTR_LIST_MAX);
 
 		let name_buf = match &mut self.buf {
 			ListxattrBuf::Borrowed {
@@ -142,8 +141,20 @@ impl<'a> ListxattrResponse<'a> {
 			} => {
 				let current_size = *size_ref;
 				let new_size = current_size + name_buf_len;
-				if new_size > cap.len() || new_size > request_size {
-					return None;
+				if new_size > cap.len() {
+					return Err(XattrError::exceeds_capacity(
+						new_size,
+						cap.len(),
+					));
+				}
+				if new_size > XATTR_LIST_MAX {
+					return Err(XattrError::exceeds_list_max(new_size));
+				}
+				if new_size > request_size {
+					return Err(XattrError::exceeds_request_size(
+						new_size,
+						request_size_u32,
+					));
 				}
 				let (_, remaining_cap) = cap.split_at_mut(current_size);
 				let (name_buf, _) = remaining_cap.split_at_mut(name_buf_len);
@@ -154,8 +165,14 @@ impl<'a> ListxattrResponse<'a> {
 			ListxattrBuf::Owned { cap } => {
 				let current_size = cap.len();
 				let new_size = current_size + name_buf_len;
+				if new_size > XATTR_LIST_MAX {
+					return Err(XattrError::exceeds_list_max(new_size));
+				}
 				if new_size > request_size {
-					return None;
+					return Err(XattrError::exceeds_request_size(
+						new_size,
+						request_size_u32,
+					));
 				}
 				cap.resize(new_size, 0u8);
 				let (_, entry_buf) = cap.split_at_mut(current_size);
@@ -168,7 +185,7 @@ impl<'a> ListxattrResponse<'a> {
 		let (name_no_nul, name_nul) = name_buf.split_at_mut(name_len);
 		name_no_nul.copy_from_slice(name);
 		name_nul[0] = 0;
-		Some(())
+		Ok(())
 	}
 }
 

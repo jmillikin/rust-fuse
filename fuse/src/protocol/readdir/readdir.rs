@@ -116,6 +116,40 @@ impl<'a> fuse_io::DecodeRequest<'a> for ReaddirRequest<'a> {
 
 // ReaddirResponse {{{
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct ReaddirError {
+	kind: ReaddirErrorKind,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+enum ReaddirErrorKind {
+	ExceedsCapacity(usize, usize),
+	OverflowsUsize,
+}
+
+impl ReaddirError {
+	fn exceeds_capacity(response_size: usize, capacity: usize) -> ReaddirError {
+		ReaddirError {
+			kind: ReaddirErrorKind::ExceedsCapacity(response_size, capacity),
+		}
+	}
+
+	fn overflows_usize() -> ReaddirError {
+		ReaddirError {
+			kind: ReaddirErrorKind::OverflowsUsize,
+		}
+	}
+}
+
+impl fmt::Display for ReaddirError {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+		fmt::Debug::fmt(self, fmt)
+	}
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for ReaddirError {}
+
 /// Response type for [`FuseHandlers::readdir`].
 ///
 /// [`FuseHandlers::readdir`]: ../../trait.FuseHandlers.html#method.readdir
@@ -211,9 +245,17 @@ impl<'a> ReaddirResponse<'a> {
 		node_id: NodeId,
 		name: &NodeName,
 		cursor: num::NonZeroU64,
-	) -> Option<ReaddirEntry> {
+	) -> Result<ReaddirEntry, ReaddirError> {
 		let name = name.as_bytes();
-		let response_buf = self.buf.as_mut()?;
+		let response_buf = match self.buf.as_mut() {
+			Some(x) => x,
+			None => {
+				return Err(ReaddirError::exceeds_capacity(
+					dirent_size(name.len()),
+					0,
+				));
+			},
+		};
 		let dirent_buf = response_buf.try_alloc_dirent(name)?;
 
 		// From here on `try_add_entry()` must not fail, or the response buffer
@@ -239,7 +281,7 @@ impl<'a> ReaddirResponse<'a> {
 				ptr::write_bytes(padding_ptr, 0, padding_len);
 			}
 
-			Some(ReaddirEntry {
+			Ok(ReaddirEntry {
 				dirent: &mut *dirent_ptr,
 			})
 		}
@@ -258,8 +300,17 @@ enum ReaddirBuf<'a> {
 	},
 }
 
+fn dirent_size(name_len: usize) -> usize {
+	let padding_len = (8 - (name_len % 8)) % 8;
+	let overhead = padding_len + size_of::<fuse_kernel::fuse_dirent>();
+	overhead + name_len
+}
+
 impl ReaddirBuf<'_> {
-	fn try_alloc_dirent(&mut self, name: &[u8]) -> Option<*mut u8> {
+	fn try_alloc_dirent(
+		&mut self,
+		name: &[u8],
+	) -> Result<*mut u8, ReaddirError> {
 		debug_assert!(name.len() > 0);
 
 		let padding_len = (8 - (name.len() % 8)) % 8;
@@ -272,9 +323,15 @@ impl ReaddirBuf<'_> {
 				size: size_ref,
 			} => {
 				let current_size: usize = *size_ref;
-				let new_size = current_size.checked_add(entry_size)?;
+				let new_size = match current_size.checked_add(entry_size) {
+					Some(x) => x,
+					None => return Err(ReaddirError::overflows_usize()),
+				};
 				if new_size > cap.len() {
-					return None;
+					return Err(ReaddirError::exceeds_capacity(
+						new_size,
+						cap.len(),
+					));
 				}
 				let (_, remaining_cap) = cap.split_at_mut(current_size);
 				let (entry_buf, _) = remaining_cap.split_at_mut(entry_size);
@@ -285,9 +342,14 @@ impl ReaddirBuf<'_> {
 			#[cfg(feature = "std")]
 			Self::Owned { cap, max_size } => {
 				let current_size = cap.len();
-				let new_size = current_size.checked_add(entry_size)?;
+				let new_size = match current_size.checked_add(entry_size) {
+					Some(x) => x,
+					None => return Err(ReaddirError::overflows_usize()),
+				};
 				if new_size > *max_size {
-					return None;
+					return Err(ReaddirError::exceeds_capacity(
+						new_size, *max_size,
+					));
 				}
 				cap.resize(new_size, 0u8);
 				let (_, entry_buf) = cap.split_at_mut(current_size);
@@ -301,7 +363,7 @@ impl ReaddirBuf<'_> {
 			entry_buf.len(),
 			entry_size,
 		);
-		Some(entry_buf.as_mut_ptr())
+		Ok(entry_buf.as_mut_ptr())
 	}
 
 	fn foreach_dirent<F>(&self, mut f: F)
