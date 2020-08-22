@@ -32,12 +32,14 @@ mod fuse_server_builder;
 pub use self::fuse_server_builder::*;
 
 #[cfg(any(
+	doc,
 	feature = "libc_fuse_mount",
 	feature = "nightly_syscall_fuse_mount",
 ))]
 mod fuse_mount;
 
 #[cfg(any(
+	doc,
 	feature = "libc_fuse_mount",
 	feature = "nightly_syscall_fuse_mount",
 ))]

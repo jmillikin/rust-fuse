@@ -1,6 +1,6 @@
 = rust-fuse
 :url-fuse: https://en.wikipedia.org/wiki/Filesystem_in_Userspace
-:url-docs: https://jmillikin.github.io/rust-fuse/fuse-v0.0.1-0138f26448d3f20dacec218561c99634c3e69dab/fuse
+:url-docs: https://jmillikin.github.io/rust-fuse/
 
 image:https://img.shields.io/badge/License-Apache%202.0-blue.svg[link="http://www.apache.org/licenses/LICENSE-2.0"]
 image:https://img.shields.io/badge/docs-github.io-green.svg[link={url-docs}]

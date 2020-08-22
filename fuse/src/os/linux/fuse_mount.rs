@@ -109,7 +109,7 @@ impl FuseMountOptions {
 #[cfg_attr(doc, doc(cfg(feature = "libc_fuse_mount")))]
 pub struct LibcFuseMount(FuseMountOptions);
 
-#[cfg(feature = "libc_fuse_mount")]
+#[cfg(any(doc, feature = "libc_fuse_mount"))]
 impl LibcFuseMount {
 	pub fn new() -> LibcFuseMount {
 		Self(FuseMountOptions::new())
@@ -149,7 +149,7 @@ impl LibcFuseMount {
 	}
 }
 
-#[cfg(feature = "libc_fuse_mount")]
+#[cfg(any(doc, feature = "libc_fuse_mount"))]
 impl FuseMount for LibcFuseMount {
 	type Channel = DevFuseChannel;
 
@@ -201,7 +201,7 @@ impl FuseMount for LibcFuseMount {
 #[cfg_attr(doc, doc(cfg(feature = "nightly_syscall_fuse_mount")))]
 pub struct SyscallFuseMount(FuseMountOptions);
 
-#[cfg(feature = "nightly_syscall_fuse_mount")]
+#[cfg(any(doc, feature = "nightly_syscall_fuse_mount"))]
 impl SyscallFuseMount {
 	pub fn new() -> SyscallFuseMount {
 		Self(FuseMountOptions::new())
@@ -241,7 +241,7 @@ impl SyscallFuseMount {
 	}
 }
 
-#[cfg(feature = "nightly_syscall_fuse_mount")]
+#[cfg(any(doc, feature = "nightly_syscall_fuse_mount"))]
 impl FuseMount for SyscallFuseMount {
 	type Channel = DevFuseChannel;
 
