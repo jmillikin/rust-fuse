@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["RmdirRequest","Request type for [`FuseHandlers::rmdir`]."],["RmdirResponse","Response type for [`FuseHandlers::rmdir`]."]]});

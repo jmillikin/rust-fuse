@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["OpendirRequest","Request type for [`FuseHandlers::opendir`]."],["OpendirResponse","Response type for [`FuseHandlers::opendir`]."],["OpendirResponseFlags","Optional flags set on [`OpendirResponse`]."]]});

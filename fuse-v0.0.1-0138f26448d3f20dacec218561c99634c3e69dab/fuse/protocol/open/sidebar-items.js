@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["OpenRequest","Request type for [`FuseHandlers::open`]."],["OpenResponse","Response type for [`FuseHandlers::open`]."],["OpenResponseFlags","Optional flags set on [`OpenResponse`]."]]});

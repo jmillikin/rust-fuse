@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["ReleaseRequest","Request type for [`FuseHandlers::release`]."],["ReleaseResponse","Response type for [`FuseHandlers::release`]."]]});

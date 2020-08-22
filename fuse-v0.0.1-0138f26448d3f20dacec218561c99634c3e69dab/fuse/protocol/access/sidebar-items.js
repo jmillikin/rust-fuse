@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["AccessRequest","Request type for [`FuseHandlers::access`]."],["AccessResponse","Response type for [`FuseHandlers::access`]."]]});

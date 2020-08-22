@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["CuseInitFlags",""],["CuseInitRequest","Request type for [`CuseHandlers::cuse_init`]."],["CuseInitResponse","Response type for [`CuseHandlers::cuse_init`]."]]});

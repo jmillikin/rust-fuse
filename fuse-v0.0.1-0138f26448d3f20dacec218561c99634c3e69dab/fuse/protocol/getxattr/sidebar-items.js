@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["GetxattrRequest","Request type for [`FuseHandlers::getxattr`]."],["GetxattrResponse","Response type for [`FuseHandlers::getxattr`]."]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["ReaddirEntry",""],["ReaddirError",""],["ReaddirRequest","Request type for [`FuseHandlers::readdir`]."],["ReaddirResponse","Response type for [`FuseHandlers::readdir`]."]]});
