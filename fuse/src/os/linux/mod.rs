@@ -31,5 +31,14 @@ pub use self::dev_fuse_channel::*;
 mod fuse_server_builder;
 pub use self::fuse_server_builder::*;
 
+#[cfg(any(
+	feature = "libc_fuse_mount",
+	feature = "nightly_syscall_fuse_mount",
+))]
 mod fuse_mount;
+
+#[cfg(any(
+	feature = "libc_fuse_mount",
+	feature = "nightly_syscall_fuse_mount",
+))]
 pub use self::fuse_mount::*;

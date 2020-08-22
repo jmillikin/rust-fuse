@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#[cfg(feature = "std")]
 use core::convert::TryInto;
 
 #[cfg(feature = "nightly_impl_channel")]

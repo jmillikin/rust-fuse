@@ -24,6 +24,7 @@ use crate::protocol::common::NodeId;
 pub use fuse_kernel::OpcodeEnum as Opcode;
 
 #[repr(transparent)]
+#[derive(Copy, Clone)]
 pub struct RequestHeader(fuse_kernel::fuse_in_header);
 
 impl RequestHeader {
@@ -32,10 +33,6 @@ impl RequestHeader {
 			&*(raw as *const fuse_kernel::fuse_in_header
 				as *const RequestHeader)
 		}
-	}
-
-	pub(crate) fn clone(&self) -> Self {
-		RequestHeader(self.0)
 	}
 
 	pub fn opcode(&self) -> u32 {
@@ -93,6 +90,7 @@ impl fmt::Debug for RequestHeader {
 }
 
 #[repr(transparent)]
+#[derive(Copy, Clone)]
 pub struct ResponseHeader(fuse_kernel::fuse_out_header);
 
 impl ResponseHeader {

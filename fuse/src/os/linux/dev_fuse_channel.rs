@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use std::{fs, io};
+use std::io;
 
 use crate::channel;
 use crate::fuse_server;
@@ -24,7 +24,11 @@ use crate::server;
 pub struct DevFuseChannel(channel::FileChannel);
 
 impl DevFuseChannel {
-	pub(super) fn new(file: fs::File) -> DevFuseChannel {
+	#[cfg(any(
+		feature = "libc_fuse_mount",
+		feature = "nightly_syscall_fuse_mount",
+	))]
+	pub(super) fn new(file: std::fs::File) -> DevFuseChannel {
 		Self(channel::FileChannel::new(file))
 	}
 }

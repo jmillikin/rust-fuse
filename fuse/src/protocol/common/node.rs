@@ -108,6 +108,7 @@ impl Node {
 		enc.encode_sized(&self.0)
 	}
 
+	#[cfg(feature = "unstable_create")]
 	pub(crate) fn encode_entry_sized<'a, Chan: fuse_io::Channel, T: Sized>(
 		&self,
 		enc: fuse_io::ResponseEncoder<Chan>,

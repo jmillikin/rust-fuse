@@ -16,11 +16,20 @@
 
 use std::path;
 
-use super::fuse_mount::FuseMount;
 use crate::channel::Channel;
 use crate::fuse_handlers::FuseHandlers;
 use crate::fuse_server::{self, FuseServer};
 use crate::server;
+
+#[cfg_attr(doc, doc(cfg(feature = "std")))]
+pub trait FuseMount {
+	type Channel: fuse_server::FuseServerChannel;
+
+	fn fuse_mount(
+		self,
+		mount_target: &path::Path,
+	) -> Result<Self::Channel, <Self::Channel as Channel>::Error>;
+}
 
 #[cfg_attr(doc, doc(cfg(feature = "std")))]
 pub struct FuseServerBuilder<Mount, Handlers, Hooks> {

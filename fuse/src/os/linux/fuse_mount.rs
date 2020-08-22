@@ -23,18 +23,7 @@ use std::{fs, io, path};
 #[cfg(feature = "nightly_syscall_fuse_mount")]
 use super::linux_syscalls as syscalls;
 use super::DevFuseChannel;
-use crate::channel::Channel;
-use crate::fuse_server;
-
-#[cfg_attr(doc, doc(cfg(feature = "std")))]
-pub trait FuseMount {
-	type Channel: fuse_server::FuseServerChannel;
-
-	fn fuse_mount(
-		self,
-		mount_target: &path::Path,
-	) -> Result<Self::Channel, <Self::Channel as Channel>::Error>;
-}
+use super::FuseMount;
 
 const MS_NOSUID: u32 = 0x2;
 const MS_NODEV: u32 = 0x4;

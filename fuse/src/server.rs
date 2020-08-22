@@ -66,7 +66,8 @@ pub trait ServerHooks {
 	}
 }
 
-pub struct NoopServerHooks(());
+#[cfg_attr(not(feature = "std"), allow(dead_code))]
+pub enum NoopServerHooks {}
 
 impl ServerHooks for NoopServerHooks {}
 
@@ -78,6 +79,7 @@ impl ServerHooks for NoopServerHooks {}
 // value was chosen.
 const HEADER_OVERHEAD: usize = 4096;
 
+#[cfg_attr(not(feature = "std"), allow(dead_code))]
 pub(crate) fn read_buf_size(max_write: u32) -> usize {
 	let max_write = max_write as usize;
 

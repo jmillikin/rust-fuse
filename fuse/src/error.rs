@@ -16,6 +16,7 @@
 
 use core::{fmt, num};
 
+#[cfg(feature = "std")]
 use crate::internal::fuse_kernel;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

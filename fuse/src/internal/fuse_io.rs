@@ -14,7 +14,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::mem::{align_of, size_of};
+#[cfg(feature = "std")]
+use core::mem::align_of;
+use core::mem::size_of;
+#[cfg(feature = "std")]
 use core::pin::Pin;
 
 #[cfg(feature = "std")]
@@ -265,6 +268,14 @@ impl<'a> RequestDecoder<'a> {
 	}
 
 	#[cfg(feature = "std")]
+	#[cfg_attr(
+		not(any(
+			feature = "unstable_create",
+			feature = "unstable_removexattr",
+			feature = "unstable_setxattr",
+		)),
+		allow(dead_code)
+	)]
 	pub(crate) fn next_cstr(&mut self) -> Result<&'a CStr, Error> {
 		for off in self.consumed..self.header.len {
 			if self.buf[off as usize] == 0 {
@@ -342,6 +353,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 		self.encode_bytes(bytes)
 	}
 
+	#[cfg(feature = "unstable_create")]
 	pub(crate) fn encode_sized_bytes<T: Sized>(
 		self,
 		bytes_1: &[u8],
@@ -356,6 +368,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 		self.encode_bytes_2(bytes_1, bytes_2)
 	}
 
+	#[cfg(feature = "unstable_create")]
 	pub(crate) fn encode_sized_sized<T1: Sized, T2: Sized>(
 		self,
 		t_1: &T1,

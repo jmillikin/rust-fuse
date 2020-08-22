@@ -147,7 +147,7 @@ fn readdir_response_test_impl(resp: &mut ReaddirResponse) {
 		let node_id = NodeId::new(100).unwrap();
 		let name = NodeName::from_bytes(b"foobar").unwrap();
 		let cursor = num::NonZeroU64::new(1).unwrap();
-		let mut dirent = resp.try_add_entry(node_id, name, cursor).unwrap();
+		let dirent = resp.try_add_entry(node_id, name, cursor).unwrap();
 
 		assert_eq!(dirent.cursor(), cursor);
 		assert_eq!(dirent.file_type(), FileType::Unknown);
