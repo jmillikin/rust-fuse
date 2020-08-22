@@ -260,6 +260,7 @@ impl PartialEq<ErrorCode> for isize {
 }
 
 impl ErrorCode {
+	pub const EINTR: ErrorCode = target::EINTR;
 	pub const EIO: ErrorCode = target::EIO;
 	pub const ENODEV: ErrorCode = target::ENODEV;
 	pub const ENOENT: ErrorCode = target::ENOENT;
@@ -268,6 +269,7 @@ impl ErrorCode {
 
 	pub fn name(&self) -> Option<&'static str> {
 		match *self {
+			Self::EINTR => Some("EINTR"),
 			Self::EIO => Some("EIO"),
 			Self::ENODEV => Some("ENODEV"),
 			Self::ENOENT => Some("ENOENT"),
@@ -292,6 +294,7 @@ macro_rules! target_error_codes {
 
 #[cfg(target_os = "freebsd")]
 target_error_codes! {
+	EINTR: 4,
 	EIO: 5,
 	ENODEV: 19,
 	ENOENT: 2,
@@ -304,6 +307,7 @@ target_error_codes! {
 	any(target_arch = "x86", target_arch = "x86_64",),
 ))]
 target_error_codes! {
+	EINTR: 4,
 	EIO: 5,
 	ENODEV: 19,
 	ENOENT: 2,

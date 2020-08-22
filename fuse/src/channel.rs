@@ -191,7 +191,21 @@ impl Channel for FileChannel {
 	}
 
 	fn receive(&self, buf: &mut [u8]) -> Result<usize, io::Error> {
-		Read::read(&mut &self.file, buf)
+		loop {
+			match Read::read(&mut &self.file, buf) {
+				Ok(size) => return Ok(size),
+				Err(err) => match err.error_code() {
+					Some(ErrorCode::ENOENT) => {
+						// The next request in the kernel buffer was interrupted before
+						// it could be deleted. Try again.
+					},
+					Some(ErrorCode::EINTR) => {
+						// Interrupted by signal. Try again.
+					},
+					_ => return Err(err),
+				},
+			}
+		}
 	}
 }
 
