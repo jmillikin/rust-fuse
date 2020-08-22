@@ -1,0 +1,104 @@
+= rust-fuse
+:url-fuse: https://en.wikipedia.org/wiki/Filesystem_in_Userspace
+:url-docs: https://jmillikin.github.io/rust-fuse/fuse-v0.0.1-0138f26448d3f20dacec218561c99634c3e69dab/fuse
+
+image:https://img.shields.io/badge/License-Apache%202.0-blue.svg[link="http://www.apache.org/licenses/LICENSE-2.0"]
+image:https://img.shields.io/badge/docs-github.io-green.svg[link={url-docs}]
+
+The `fuse` crate is an implementation of the {url-fuse}[FUSE] protocol, which
+allows filesystems and character devices to be backed by a userspace process.
+It currently provides enough coverage to implement basic FUSE and CUSE servers.
+
+== Stability
+
+This is a pre-v0.1 library. Many of FUSE's more advanced capabilities do not
+work yet, and test coverage is incomplete. Please file issues if there is
+functionality you'd like to see implemented.
+
+[%header, cols="2,5"]
+|===
+|Feature
+|Tracking issue
+
+|FreeBSD support
+|image:https://img.shields.io/github/issues/detail/state/jmillikin/rust-fuse/5[link="https://github.com/jmillikin/rust-fuse/issues/5"]
+
+|High-level API
+|image:https://img.shields.io/github/issues/detail/state/jmillikin/rust-fuse/10[link="https://github.com/jmillikin/rust-fuse/issues/10"]
+
+|Interrupts
+|image:https://img.shields.io/github/issues/detail/state/jmillikin/rust-fuse/5[link="https://github.com/jmillikin/rust-fuse/issues/5"]
+
+|macOS support
+|Not planned due to lack of open-source kernel drivers.
+
+|Unprivileged mounts
+|image:https://img.shields.io/github/issues/detail/state/jmillikin/rust-fuse/6[link="https://github.com/jmillikin/rust-fuse/issues/6"]
+|===
+
+
+## Contributing
+
+I am happy to accept contributions in the form of bug reports, pull requests,
+or emailed patches.
+
+== Usage
+
+Add a dependency in `Cargo.toml`:
+
+[source,toml]
+----
+[dependencies]
+fuse = { git = "https://github.com/jmillikin/rust-fuse" }
+----
+
+Implement the `FuseHandlers` trait for your filesystem:
+
+[source,rust]
+----
+extern crate fuse;
+
+struct HelloFS {}
+impl fuse::FuseHandlers for HelloFS {
+    // your filesystem handlers here
+}
+----
+
+Use `LibcFuseMount` (requires `libc`) or `SyscallFuseMount` (requires nightly
+rustc) to build and run your filesystem server:
+
+[source,rust]
+----
+fn main() {
+	let mount_target = std::env::args_os().nth(1).unwrap();
+	let handlers = HelloFS {};
+
+	use fuse::os::linux::*;
+	let mount = LibcFuseMount::new()
+		.set_mount_source("hello")
+		.set_mount_subtype("hello");
+	let mut srv = FuseServerBuilder::new(&mount_target, handlers)
+		.set_mount(mount)
+		.build().unwrap();
+	srv.executor_mut().run().unwrap();
+}
+----
+
+Please see {url-docs}[the documentation] for advanced options.
+
+=== Feature `std`
+
+It is possible to run a minimal single-threaded FUSE server in a `no_std`
+binary. This currently requires nightly features (const generics and inline
+assembly).
+
+[source,toml]
+----
+[dependencies.fuse]
+default-features = false
+features = ["nightly_impl_channel", "nightly_syscall_fuse_mount"]
+----
+
+Note that some functionality is not available in `no_std` mode. Please see
+{url-docs}[the documentation] for details on which parts of the API depend
+on `std`.
