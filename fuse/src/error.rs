@@ -102,6 +102,10 @@ impl ErrorCode {
 	pub fn new(n: num::NonZeroU16) -> ErrorCode {
 		ErrorCode(n)
 	}
+
+	pub fn name(&self) -> Option<&'static str> {
+		self.name_impl()
+	}
 }
 
 impl From<num::NonZeroU16> for ErrorCode {
@@ -267,7 +271,7 @@ impl ErrorCode {
 	pub const ENOSYS: ErrorCode = target::ENOSYS;
 	pub const ERANGE: ErrorCode = target::ERANGE;
 
-	pub fn name(&self) -> Option<&'static str> {
+	fn name_impl(&self) -> Option<&'static str> {
 		match *self {
 			Self::EINTR => Some("EINTR"),
 			Self::EIO => Some("EIO"),

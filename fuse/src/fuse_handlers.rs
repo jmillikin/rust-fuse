@@ -14,7 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::error::ErrorCode;
 use crate::protocol;
 use crate::server;
 
@@ -32,12 +31,12 @@ use crate::server;
 /// [`ServerContext`]: struct.ServerContext.html
 /// [`ServerResponseWriter`]: struct.ServerResponseWriter.html
 /// [`ErrorCode::ENOSYS`]: struct.ErrorCode.html#associatedconstant.ENOSYS
+#[allow(unused_variables)]
 pub trait FuseHandlers {
 	fn fuse_init(
 		&mut self,
 		request: &protocol::FuseInitRequest,
 	) -> protocol::FuseInitResponse {
-		let _ = request;
 		protocol::FuseInitResponse::new()
 	}
 
@@ -49,8 +48,7 @@ pub trait FuseHandlers {
 		request: &protocol::AccessRequest,
 		respond: impl for<'a> server::Respond<protocol::AccessResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	#[cfg(any(doc, feature = "unstable_bmap"))]
@@ -61,8 +59,7 @@ pub trait FuseHandlers {
 		request: &protocol::BmapRequest,
 		respond: impl for<'a> server::Respond<protocol::BmapResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	#[cfg(any(doc, feature = "unstable_create"))]
@@ -73,8 +70,7 @@ pub trait FuseHandlers {
 		request: &protocol::CreateRequest,
 		respond: impl for<'a> server::Respond<protocol::CreateResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fallocate"))]
@@ -85,8 +81,7 @@ pub trait FuseHandlers {
 		request: &protocol::FallocateRequest,
 		respond: impl for<'a> server::Respond<protocol::FallocateResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	#[cfg(any(doc, feature = "unstable_flush"))]
@@ -97,8 +92,7 @@ pub trait FuseHandlers {
 		request: &protocol::FlushRequest,
 		respond: impl for<'a> server::Respond<protocol::FlushResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn forget(
@@ -106,7 +100,6 @@ pub trait FuseHandlers {
 		ctx: server::ServerContext,
 		request: &protocol::ForgetRequest,
 	) {
-		let _ = (ctx, request);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fsync"))]
@@ -117,8 +110,7 @@ pub trait FuseHandlers {
 		request: &protocol::FsyncRequest,
 		respond: impl for<'a> server::Respond<protocol::FsyncResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fsyncdir"))]
@@ -129,8 +121,7 @@ pub trait FuseHandlers {
 		request: &protocol::FsyncdirRequest,
 		respond: impl for<'a> server::Respond<protocol::FsyncdirResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn getattr(
@@ -139,8 +130,7 @@ pub trait FuseHandlers {
 		request: &protocol::GetattrRequest,
 		respond: impl for<'a> server::Respond<protocol::GetattrResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	#[cfg(any(doc, feature = "unstable_getlk"))]
@@ -151,8 +141,7 @@ pub trait FuseHandlers {
 		request: &protocol::GetlkRequest,
 		respond: impl for<'a> server::Respond<protocol::GetlkResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn getxattr(
@@ -161,8 +150,7 @@ pub trait FuseHandlers {
 		request: &protocol::GetxattrRequest,
 		respond: impl for<'a> server::Respond<protocol::GetxattrResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	#[cfg(any(doc, feature = "unstable_ioctl"))]
@@ -173,8 +161,7 @@ pub trait FuseHandlers {
 		request: &protocol::IoctlRequest,
 		respond: impl for<'a> server::Respond<protocol::IoctlResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn link(
@@ -183,8 +170,7 @@ pub trait FuseHandlers {
 		request: &protocol::LinkRequest,
 		respond: impl for<'a> server::Respond<protocol::LinkResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn listxattr(
@@ -193,8 +179,7 @@ pub trait FuseHandlers {
 		request: &protocol::ListxattrRequest,
 		respond: impl for<'a> server::Respond<protocol::ListxattrResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn lookup(
@@ -203,8 +188,7 @@ pub trait FuseHandlers {
 		request: &protocol::LookupRequest,
 		respond: impl for<'a> server::Respond<protocol::LookupResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	#[cfg(any(doc, feature = "unstable_lseek"))]
@@ -215,8 +199,7 @@ pub trait FuseHandlers {
 		request: &protocol::LseekRequest,
 		respond: impl for<'a> server::Respond<protocol::LseekResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn mkdir(
@@ -225,8 +208,7 @@ pub trait FuseHandlers {
 		request: &protocol::MkdirRequest,
 		respond: impl for<'a> server::Respond<protocol::MkdirResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn mknod(
@@ -235,8 +217,7 @@ pub trait FuseHandlers {
 		request: &protocol::MknodRequest,
 		respond: impl for<'a> server::Respond<protocol::MknodResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn open(
@@ -245,8 +226,7 @@ pub trait FuseHandlers {
 		request: &protocol::OpenRequest,
 		respond: impl for<'a> server::Respond<protocol::OpenResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn opendir(
@@ -255,8 +235,7 @@ pub trait FuseHandlers {
 		request: &protocol::OpendirRequest,
 		respond: impl for<'a> server::Respond<protocol::OpendirResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn read(
@@ -265,8 +244,7 @@ pub trait FuseHandlers {
 		request: &protocol::ReadRequest,
 		respond: impl for<'a> server::Respond<protocol::ReadResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn readdir(
@@ -275,8 +253,7 @@ pub trait FuseHandlers {
 		request: &protocol::ReaddirRequest,
 		respond: impl for<'a> server::Respond<protocol::ReaddirResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn readlink(
@@ -285,8 +262,7 @@ pub trait FuseHandlers {
 		request: &protocol::ReadlinkRequest,
 		respond: impl for<'a> server::Respond<protocol::ReadlinkResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn release(
@@ -295,8 +271,7 @@ pub trait FuseHandlers {
 		request: &protocol::ReleaseRequest,
 		respond: impl for<'a> server::Respond<protocol::ReleaseResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn releasedir(
@@ -305,8 +280,7 @@ pub trait FuseHandlers {
 		request: &protocol::ReleasedirRequest,
 		respond: impl for<'a> server::Respond<protocol::ReleasedirResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	#[cfg(any(doc, feature = "unstable_removexattr"))]
@@ -317,8 +291,7 @@ pub trait FuseHandlers {
 		request: &protocol::RemovexattrRequest,
 		respond: impl for<'a> server::Respond<protocol::RemovexattrResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn rename(
@@ -327,8 +300,7 @@ pub trait FuseHandlers {
 		request: &protocol::RenameRequest,
 		respond: impl for<'a> server::Respond<protocol::RenameResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn rmdir(
@@ -337,8 +309,7 @@ pub trait FuseHandlers {
 		request: &protocol::RmdirRequest,
 		respond: impl for<'a> server::Respond<protocol::RmdirResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	#[cfg(any(doc, feature = "unstable_setattr"))]
@@ -349,8 +320,7 @@ pub trait FuseHandlers {
 		request: &protocol::SetattrRequest,
 		respond: impl for<'a> server::Respond<protocol::SetattrResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	#[cfg(any(doc, feature = "unstable_setlk"))]
@@ -361,8 +331,7 @@ pub trait FuseHandlers {
 		request: &protocol::SetlkRequest,
 		respond: impl for<'a> server::Respond<protocol::SetlkResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	#[cfg(any(doc, feature = "unstable_setxattr"))]
@@ -373,8 +342,7 @@ pub trait FuseHandlers {
 		request: &protocol::SetxattrRequest,
 		respond: impl for<'a> server::Respond<protocol::SetxattrResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	#[cfg(any(doc, feature = "unstable_statfs"))]
@@ -385,8 +353,7 @@ pub trait FuseHandlers {
 		request: &protocol::StatfsRequest,
 		respond: impl for<'a> server::Respond<protocol::StatfsResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn symlink(
@@ -395,8 +362,7 @@ pub trait FuseHandlers {
 		request: &protocol::SymlinkRequest,
 		respond: impl for<'a> server::Respond<protocol::SymlinkResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn unlink(
@@ -405,8 +371,7 @@ pub trait FuseHandlers {
 		request: &protocol::UnlinkRequest,
 		respond: impl for<'a> server::Respond<protocol::UnlinkResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn write(
@@ -415,7 +380,6 @@ pub trait FuseHandlers {
 		request: &protocol::WriteRequest,
 		respond: impl for<'a> server::Respond<protocol::WriteResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 }

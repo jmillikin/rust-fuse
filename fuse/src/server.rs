@@ -50,9 +50,20 @@ impl<'a> ServerContext {
 pub trait ServerHooks {
 	fn request(&self, request_header: &RequestHeader) {}
 	fn unknown_request(&self, request: &UnknownRequest) {}
+	fn unhandled_request(&self, request_header: &RequestHeader) {}
 	fn request_error(&self, request_header: &RequestHeader, err: Error) {}
-	fn response_error(&self, code: Option<ErrorCode>) {}
-	fn async_channel_error(&self, code: Option<ErrorCode>) {}
+	fn response_error(
+		&self,
+		request_header: &RequestHeader,
+		code: Option<ErrorCode>,
+	) {
+	}
+	fn async_channel_error(
+		&self,
+		request_header: &RequestHeader,
+		code: Option<ErrorCode>,
+	) {
+	}
 }
 
 pub struct NoopServerHooks(());
@@ -181,11 +192,23 @@ where
 }
 
 mod private {
-	pub trait Sealed {}
+	pub trait Respond {
+		type Internal: RespondInternal<Self>;
+	}
+
+	pub trait RespondInternal<R: ?Sized> {
+		fn unhandled_request(r: &R);
+	}
+}
+
+pub(crate) fn unhandled_request<T, R: Respond<T>>(respond: R) {
+	use private::RespondInternal;
+	R::Internal::unhandled_request(&respond);
+	respond.err(ErrorCode::ENOSYS)
 }
 
 /// **\[SEALED\]**
-pub trait Respond<R>: private::Sealed {
+pub trait Respond<R>: private::Respond {
 	fn ok(self, response: &R);
 	fn err(self, err: ErrorCode);
 
@@ -201,7 +224,7 @@ where
 	channel: &'a C,
 	hooks: Option<&'a Hooks>,
 	channel_err: &'a mut Result<(), C::Error>,
-	request_id: u64,
+	header: &'a RequestHeader,
 	fuse_version: ProtocolVersion,
 
 	#[cfg(feature = "std")]
@@ -220,7 +243,7 @@ where
 		channel: &'a C,
 		hooks: Option<&'a Hooks>,
 		channel_err: &'a mut Result<(), C::Error>,
-		request_id: u64,
+		header: &'a RequestHeader,
 		fuse_version: ProtocolVersion,
 		#[cfg(feature = "std")] channel_arc: &'a Arc<C>,
 		#[cfg(feature = "std")] hooks_arc: Option<&'a Arc<Hooks>>,
@@ -229,7 +252,7 @@ where
 			channel,
 			hooks,
 			channel_err,
-			request_id,
+			header,
 			fuse_version,
 			#[cfg(feature = "std")]
 			channel_arc,
@@ -241,7 +264,7 @@ where
 	pub(crate) fn encoder(&self) -> fuse_io::ResponseEncoder<C> {
 		fuse_io::ResponseEncoder::new(
 			self.channel,
-			self.request_id,
+			self.header.request_id(),
 			self.fuse_version,
 		)
 	}
@@ -252,7 +275,7 @@ where
 	{
 		if let Err(err) = response.encode_response(self.encoder()) {
 			if let Some(hooks) = &self.hooks {
-				hooks.response_error(err.error_code())
+				hooks.response_error(self.header, err.error_code())
 			}
 			self.err_impl(ErrorCode::EIO);
 		}
@@ -263,9 +286,27 @@ where
 	}
 }
 
-impl<C, Hooks> private::Sealed for RespondRef<'_, C, Hooks> where
-	C: channel::Channel
+impl<C, Hooks> private::Respond for RespondRef<'_, C, Hooks>
+where
+	C: channel::Channel,
+	Hooks: ServerHooks,
 {
+	type Internal = RespondRefInternal;
+}
+
+pub struct RespondRefInternal(());
+
+impl<C, Hooks> private::RespondInternal<RespondRef<'_, C, Hooks>>
+	for RespondRefInternal
+where
+	C: channel::Channel,
+	Hooks: ServerHooks,
+{
+	fn unhandled_request(r: &RespondRef<C, Hooks>) {
+		if let Some(hooks) = r.hooks {
+			hooks.unhandled_request(r.header);
+		}
+	}
 }
 
 #[cfg(feature = "std")]
@@ -328,7 +369,7 @@ trait RespondAsyncInner<R>: Send + Sync {
 struct RespondAsyncInnerImpl<C, Hooks> {
 	channel: Arc<C>,
 	hooks: Option<Arc<Hooks>>,
-	request_id: u64,
+	header: RequestHeader,
 	fuse_version: ProtocolVersion,
 }
 
@@ -341,7 +382,7 @@ where
 	fn encoder(&self) -> fuse_io::ResponseEncoder<C> {
 		fuse_io::ResponseEncoder::new(
 			self.channel.as_ref(),
-			self.request_id,
+			self.header.request_id(),
 			self.fuse_version,
 		)
 	}
@@ -349,7 +390,7 @@ where
 	fn err_impl(&self, err: ErrorCode) {
 		if let Err(err) = self.encoder().encode_error(err) {
 			if let Some(hooks) = &self.hooks {
-				hooks.async_channel_error(err.error_code())
+				hooks.async_channel_error(&self.header, err.error_code())
 			}
 		}
 	}
@@ -365,7 +406,7 @@ where
 	fn ok(&self, response: &R) {
 		if let Err(err) = response.encode_response(self.encoder()) {
 			if let Some(hooks) = &self.hooks {
-				hooks.response_error(err.error_code())
+				hooks.response_error(&self.header, err.error_code())
 			}
 			self.err_impl(ErrorCode::EIO)
 		}
@@ -389,7 +430,7 @@ where
 		RespondAsync(Box::new(RespondAsyncInnerImpl {
 			channel: self.channel_arc.clone(),
 			hooks: self.hooks_arc.map(|h| h.clone()),
-			request_id: self.request_id,
+			header: self.header.clone(),
 			fuse_version: self.fuse_version,
 		}))
 	}

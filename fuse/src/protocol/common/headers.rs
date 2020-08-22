@@ -34,6 +34,10 @@ impl RequestHeader {
 		}
 	}
 
+	pub(crate) fn clone(&self) -> Self {
+		RequestHeader(self.0)
+	}
+
 	pub fn opcode(&self) -> u32 {
 		self.0.opcode.0
 	}

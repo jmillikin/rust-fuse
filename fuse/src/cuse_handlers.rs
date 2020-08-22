@@ -14,17 +14,16 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::error::ErrorCode;
 use crate::protocol;
 use crate::server;
 
 /// User-provided handlers for CUSE operations.
+#[allow(unused_variables)]
 pub trait CuseHandlers {
 	fn cuse_init(
 		&mut self,
 		request: &protocol::CuseInitRequest,
 	) -> protocol::CuseInitResponse {
-		let _ = request;
 		protocol::CuseInitResponse::new()
 	}
 
@@ -36,8 +35,7 @@ pub trait CuseHandlers {
 		request: &protocol::FlushRequest,
 		respond: impl for<'a> server::Respond<protocol::FlushResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	#[cfg(any(doc, feature = "unstable_fsync"))]
@@ -48,8 +46,7 @@ pub trait CuseHandlers {
 		request: &protocol::FsyncRequest,
 		respond: impl for<'a> server::Respond<protocol::FsyncResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	#[cfg(any(doc, feature = "unstable_ioctl"))]
@@ -60,8 +57,7 @@ pub trait CuseHandlers {
 		request: &protocol::IoctlRequest,
 		respond: impl for<'a> server::Respond<protocol::IoctlResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn open(
@@ -70,8 +66,7 @@ pub trait CuseHandlers {
 		request: &protocol::OpenRequest,
 		respond: impl for<'a> server::Respond<protocol::OpenResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn read(
@@ -80,8 +75,7 @@ pub trait CuseHandlers {
 		request: &protocol::ReadRequest,
 		respond: impl for<'a> server::Respond<protocol::ReadResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn release(
@@ -90,8 +84,7 @@ pub trait CuseHandlers {
 		request: &protocol::ReleaseRequest,
 		respond: impl for<'a> server::Respond<protocol::ReleaseResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 
 	fn write(
@@ -100,7 +93,6 @@ pub trait CuseHandlers {
 		request: &protocol::WriteRequest,
 		respond: impl for<'a> server::Respond<protocol::WriteResponse<'a>>,
 	) {
-		let _ = (ctx, request);
-		respond.err(ErrorCode::ENOSYS);
+		server::unhandled_request(respond);
 	}
 }

@@ -265,13 +265,12 @@ where
 		let hooks = self.hooks.as_deref();
 		let mut buf = fuse_io::AlignedVec::new(self.read_buf_size);
 		server::main_loop(channel, &mut buf, self.version, FUSE, |dec| {
-			let request_id = dec.header().unique;
 			let mut channel_err = Ok(());
 			let respond = server::RespondRef::new(
 				channel,
 				hooks,
 				&mut channel_err,
-				request_id,
+				RequestHeader::new_ref(dec.header()),
 				self.version,
 				&self.channel,
 				self.hooks.as_ref(),
@@ -302,13 +301,12 @@ where
 		let hooks = self.hooks.as_ref();
 		let mut buf = fuse_io::MinReadBuffer::new();
 		server::main_loop(channel, &mut buf, self.version, FUSE, |dec| {
-			let request_id = dec.header().unique;
 			let mut channel_error = Ok(());
 			let respond = server::RespondRef::new(
 				channel,
 				hooks,
 				&mut channel_error,
-				request_id,
+				RequestHeader::new_ref(dec.header()),
 				self.version,
 			);
 			fuse_request_dispatch::<C, Handlers, Hooks>(
