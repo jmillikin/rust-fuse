@@ -434,9 +434,8 @@ impl ReaddirEntry {
 		dirent_type(&self.0)
 	}
 
-	pub fn set_file_type(&mut self, file_type: FileType) -> &mut Self {
+	pub fn set_file_type(&mut self, file_type: FileType) {
 		self.0.r#type = file_type.as_bits();
-		self
 	}
 }
 
