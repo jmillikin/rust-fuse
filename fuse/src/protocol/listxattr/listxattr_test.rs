@@ -76,22 +76,18 @@ fn request_impl_debug() {
 
 #[test]
 fn response_sized_heap() {
-	let request_size = num::NonZeroU32::new(10);
-	let mut resp = ListxattrResponse::new(request_size);
+	let mut resp = ListxattrResponse::with_max_size(10);
 	response_sized_test_impl(&mut resp);
 }
 
 #[test]
 fn response_sized_stack() {
-	let request_size = num::NonZeroU32::new(10);
-	let mut buf = [0u8; 1024];
-	let mut resp = ListxattrResponse::with_capacity(request_size, &mut buf);
+	let mut buf = [0u8; 10];
+	let mut resp = ListxattrResponse::with_capacity(&mut buf);
 	response_sized_test_impl(&mut resp);
 }
 
 fn response_sized_test_impl(resp: &mut ListxattrResponse) {
-	assert_eq!(resp.request_size(), num::NonZeroU32::new(10));
-
 	// response must fit in kernel buffer
 	{
 		let name = XattrName::from_bytes(b"12345678901").unwrap();
@@ -118,16 +114,12 @@ fn response_sized_test_impl(resp: &mut ListxattrResponse) {
 }
 
 #[test]
-fn response_unsized() {
-	let mut resp = ListxattrResponse::new(None);
-	assert_eq!(resp.request_size(), None);
+fn response_without_capacity() {
+	let mut resp = ListxattrResponse::without_capacity();
 
-	// set_value() doesn't store value bytes for unsized responses
+	// set_value() doesn't store value bytes for responses without capacity
 	resp.add_name(XattrName::from_bytes(b"123").unwrap());
-	assert_eq!(resp.raw.size, 4);
-
 	resp.add_name(XattrName::from_bytes(b"456").unwrap());
-	assert_eq!(resp.raw.size, 8);
 
 	let encoded = encode_response!(resp);
 
@@ -151,19 +143,17 @@ fn response_unsized() {
 #[test]
 fn response_size_limit() {
 	// listxattr response size can't exceed XATTR_LIST_MAX
-	let mut resp = ListxattrResponse::new(None);
+	let mut resp = ListxattrResponse::without_capacity();
 	let name = XattrName::from_bytes(&[b'a'; 250]).unwrap();
 	for _ in 0..261 {
 		resp.add_name(name);
 	}
-	assert_eq!(resp.raw.size, 65511);
 	assert!(resp.try_add_name(name).is_err());
 }
 
 #[test]
 fn response_sized_impl_debug() {
-	let request_size = num::NonZeroU32::new(10);
-	let mut response = ListxattrResponse::new(request_size);
+	let mut response = ListxattrResponse::with_max_size(10);
 
 	response.add_name(XattrName::from_bytes(b"123").unwrap());
 	response.add_name(XattrName::from_bytes(b"456").unwrap());
@@ -172,8 +162,6 @@ fn response_sized_impl_debug() {
 		format!("{:#?}", response),
 		concat!(
 			"ListxattrResponse {\n",
-			"    request_size: Some(10),\n",
-			"    size: 8,\n",
 			"    names: [\n",
 			"        \"123\",\n",
 			"        \"456\",\n",
@@ -184,20 +172,14 @@ fn response_sized_impl_debug() {
 }
 
 #[test]
-fn response_unsized_impl_debug() {
-	let mut response = ListxattrResponse::new(None);
+fn response_without_capacity_impl_debug() {
+	let mut response = ListxattrResponse::without_capacity();
 
 	response.add_name(XattrName::from_bytes(b"123").unwrap());
 	response.add_name(XattrName::from_bytes(b"456").unwrap());
 
 	assert_eq!(
 		format!("{:#?}", response),
-		concat!(
-			"ListxattrResponse {\n",
-			"    request_size: None,\n",
-			"    size: 8,\n",
-			"    names: [],\n",
-			"}",
-		),
+		concat!("ListxattrResponse {\n", "    size: 8,\n", "}",),
 	);
 }

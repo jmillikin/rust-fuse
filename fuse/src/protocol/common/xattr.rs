@@ -123,7 +123,10 @@ impl XattrName {
 	pub(crate) fn new<'a>(
 		bytes: fuse_io::NulTerminatedBytes<'a>,
 	) -> &'a XattrName {
-		let bytes = bytes.to_bytes_without_nul();
+		Self::new_unchecked(bytes.to_bytes_without_nul())
+	}
+
+	pub(crate) fn new_unchecked<'a>(bytes: &'a [u8]) -> &'a XattrName {
 		unsafe { &*(bytes as *const [u8] as *const XattrName) }
 	}
 

@@ -73,29 +73,29 @@ impl<'a> fuse_io::DecodeRequest<'a> for ListxattrRequest<'a> {
 ///
 /// [`FuseHandlers::listxattr`]: ../../trait.FuseHandlers.html#method.listxattr
 pub struct ListxattrResponse<'a> {
-	request_size: Option<num::NonZeroU32>,
-	raw: fuse_kernel::fuse_getxattr_out,
 	buf: ListxattrBuf<'a>,
 }
 
 impl<'a> ListxattrResponse<'a> {
-	#[cfg(feature = "std")]
-	#[cfg_attr(doc, doc(cfg(feature = "std")))]
-	pub fn new(request_size: Option<num::NonZeroU32>) -> ListxattrResponse<'a> {
+	pub fn without_capacity() -> ListxattrResponse<'a> {
 		Self {
-			request_size,
-			raw: Default::default(),
-			buf: ListxattrBuf::Owned { cap: Vec::new() },
+			buf: ListxattrBuf::SizeOnly { size: 0 },
 		}
 	}
 
-	pub fn with_capacity(
-		request_size: Option<num::NonZeroU32>,
-		capacity: &'a mut [u8],
-	) -> ListxattrResponse<'a> {
+	#[cfg(feature = "std")]
+	#[cfg_attr(doc, doc(cfg(feature = "std")))]
+	pub fn with_max_size(max_size: u32) -> ListxattrResponse<'a> {
 		Self {
-			request_size,
-			raw: Default::default(),
+			buf: ListxattrBuf::Owned {
+				cap: Vec::new(),
+				max_size: max_size as usize,
+			},
+		}
+	}
+
+	pub fn with_capacity(capacity: &'a mut [u8]) -> ListxattrResponse<'a> {
+		Self {
 			buf: ListxattrBuf::Borrowed {
 				cap: capacity,
 				size: 0,
@@ -103,8 +103,8 @@ impl<'a> ListxattrResponse<'a> {
 		}
 	}
 
-	pub fn request_size(&self) -> Option<num::NonZeroU32> {
-		self.request_size
+	pub fn names(&self) -> impl Iterator<Item = &XattrName> {
+		XattrNamesIter::new(&self.buf)
 	}
 
 	pub fn add_name(&mut self, name: &XattrName) {
@@ -118,23 +118,15 @@ impl<'a> ListxattrResponse<'a> {
 		let name_len = name.len() as usize;
 		let name_buf_len = name_len + 1; // includes NUL terminator
 
-		let mut request_size_u32 = match self.request_size {
-			None => {
-				// Don't actually copy any bytes around, just keep track of the
-				// response size.
-				let new_size = self.raw.size as usize + name_buf_len;
+		let name_buf = match &mut self.buf {
+			ListxattrBuf::SizeOnly { size } => {
+				let new_size = *size as usize + name_buf_len;
 				if new_size > XATTR_LIST_MAX {
 					return Err(XattrError::exceeds_list_max(new_size));
 				}
-				self.raw.size += name_buf_len as u32;
+				*size += name_buf_len as u32;
 				return Ok(());
 			},
-			Some(x) => x.get(),
-		};
-
-		let request_size = min(request_size_u32 as usize, XATTR_LIST_MAX);
-
-		let name_buf = match &mut self.buf {
 			ListxattrBuf::Borrowed {
 				cap,
 				size: size_ref,
@@ -150,28 +142,21 @@ impl<'a> ListxattrResponse<'a> {
 				if new_size > XATTR_LIST_MAX {
 					return Err(XattrError::exceeds_list_max(new_size));
 				}
-				if new_size > request_size {
-					return Err(XattrError::exceeds_request_size(
-						new_size,
-						request_size_u32,
-					));
-				}
 				let (_, remaining_cap) = cap.split_at_mut(current_size);
 				let (name_buf, _) = remaining_cap.split_at_mut(name_buf_len);
 				*size_ref = new_size;
 				name_buf
 			},
 			#[cfg(feature = "std")]
-			ListxattrBuf::Owned { cap } => {
+			ListxattrBuf::Owned { cap, max_size } => {
 				let current_size = cap.len();
 				let new_size = current_size + name_buf_len;
 				if new_size > XATTR_LIST_MAX {
 					return Err(XattrError::exceeds_list_max(new_size));
 				}
-				if new_size > request_size {
-					return Err(XattrError::exceeds_request_size(
-						new_size,
-						request_size_u32,
+				if new_size > *max_size {
+					return Err(XattrError::exceeds_capacity(
+						new_size, *max_size,
 					));
 				}
 				cap.resize(new_size, 0u8);
@@ -190,9 +175,13 @@ impl<'a> ListxattrResponse<'a> {
 }
 
 enum ListxattrBuf<'a> {
+	SizeOnly {
+		size: u32,
+	},
 	#[cfg(feature = "std")]
 	Owned {
 		cap: Vec<u8>,
+		max_size: usize,
 	},
 	Borrowed {
 		cap: &'a mut [u8],
@@ -203,42 +192,72 @@ enum ListxattrBuf<'a> {
 impl fmt::Debug for ListxattrResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		let mut out = fmt.debug_struct("ListxattrResponse");
-		out.field("request_size", &format_args!("{:?}", &self.request_size));
-		match self.request_size {
-			None => {
-				out.field("size", &self.raw.size);
-				let names: &[u8] = &[];
+		let names = DebugClosure(|fmt| {
+			fmt.debug_list()
+				.entries(XattrNamesIter::new(&self.buf))
+				.finish()
+		});
+		match &self.buf {
+			ListxattrBuf::SizeOnly { size } => {
+				out.field("size", size);
+			},
+			#[cfg(feature = "std")]
+			ListxattrBuf::Owned { .. } => {
 				out.field("names", &names);
 			},
-			Some(_) => match &self.buf {
-				#[cfg(feature = "std")]
-				ListxattrBuf::Owned { cap } => {
-					out.field("size", &cap.len());
-					out.field("names", &DebugListxattrNames(&cap));
-				},
-				ListxattrBuf::Borrowed { cap, size } => {
-					let (bytes, _) = cap.split_at(*size);
-					out.field("size", size);
-					out.field("names", &DebugListxattrNames(&bytes));
-				},
+			ListxattrBuf::Borrowed { .. } => {
+				out.field("names", &names);
 			},
 		}
-
 		out.finish()
 	}
 }
 
-struct DebugListxattrNames<'a>(&'a [u8]);
+struct XattrNamesIter<'a>(&'a [u8]);
+
+impl<'a> XattrNamesIter<'a> {
+	fn new(buf: &'a ListxattrBuf) -> XattrNamesIter<'a> {
+		XattrNamesIter(match buf {
+			ListxattrBuf::SizeOnly { .. } => &[],
+			#[cfg(feature = "std")]
+			ListxattrBuf::Owned { cap, .. } => cap.as_ref(),
+			ListxattrBuf::Borrowed { cap, size } => {
+				let (bytes, _) = cap.split_at(*size);
+				bytes
+			},
+		})
+	}
+}
+
+impl<'a> core::iter::Iterator for XattrNamesIter<'a> {
+	type Item = &'a XattrName;
+
+	fn next(&mut self) -> Option<&'a XattrName> {
+		let len = self.0.len();
+		if len == 0 {
+			return None;
+		}
+		for ii in 0..len {
+			if self.0[ii] == 0 {
+				let (name, _) = self.0.split_at(ii);
+				let (_, next) = self.0.split_at(ii + 1);
+				self.0 = next;
+				return Some(XattrName::new_unchecked(name));
+			}
+		}
+		let name = XattrName::new_unchecked(self.0);
+		self.0 = &[];
+		Some(name)
+	}
+}
+
+struct DebugListxattrNames<'a>(&'a ListxattrBuf<'a>);
 
 impl fmt::Debug for DebugListxattrNames<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		let mut out = fmt.debug_list();
-		for chunk in self.0.split(|&b| b == 0) {
-			if chunk.len() > 0 {
-				out.entry(&DebugBytesAsString(chunk));
-			}
-		}
-		out.finish()
+		fmt.debug_list()
+			.entries(XattrNamesIter::new(self.0))
+			.finish()
 	}
 }
 
@@ -247,13 +266,15 @@ impl fuse_io::EncodeResponse for ListxattrResponse<'_> {
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
 	) -> Result<(), Chan::Error> {
-		if self.request_size.is_none() {
-			return enc.encode_sized(&self.raw);
-		}
-
 		match &self.buf {
+			ListxattrBuf::SizeOnly { size } => {
+				enc.encode_sized(&fuse_kernel::fuse_getxattr_out {
+					size: *size,
+					padding: 0,
+				})
+			},
 			#[cfg(feature = "std")]
-			ListxattrBuf::Owned { cap } => enc.encode_bytes(&cap),
+			ListxattrBuf::Owned { cap, .. } => enc.encode_bytes(&cap),
 			ListxattrBuf::Borrowed { cap, size } => {
 				let (bytes, _) = cap.split_at(*size);
 				enc.encode_bytes(bytes)
