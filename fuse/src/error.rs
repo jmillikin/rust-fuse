@@ -264,6 +264,7 @@ impl ErrorCode {
 	pub const ENODEV: ErrorCode = target::ENODEV;
 	pub const ENOENT: ErrorCode = target::ENOENT;
 	pub const ENOSYS: ErrorCode = target::ENOSYS;
+	pub const ERANGE: ErrorCode = target::ERANGE;
 
 	pub fn name(&self) -> Option<&'static str> {
 		match *self {
@@ -271,6 +272,7 @@ impl ErrorCode {
 			Self::ENODEV => Some("ENODEV"),
 			Self::ENOENT => Some("ENOENT"),
 			Self::ENOSYS => Some("ENOSYS"),
+			Self::ERANGE => Some("ERANGE"),
 			_ => None,
 		}
 	}
@@ -294,6 +296,7 @@ target_error_codes! {
 	ENODEV: 19,
 	ENOENT: 2,
 	ENOSYS: 78,
+	ERANGE: 34,
 }
 
 #[cfg(all(
@@ -305,4 +308,5 @@ target_error_codes! {
 	ENODEV: 19,
 	ENOENT: 2,
 	ENOSYS: 38,
+	ERANGE: 34,
 }
