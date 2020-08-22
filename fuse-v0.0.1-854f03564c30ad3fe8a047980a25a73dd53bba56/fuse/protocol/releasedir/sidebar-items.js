@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["ReleasedirRequest","Request type for [`FuseHandlers::releasedir`]."],["ReleasedirResponse","Response type for [`FuseHandlers::releasedir`]."]]});

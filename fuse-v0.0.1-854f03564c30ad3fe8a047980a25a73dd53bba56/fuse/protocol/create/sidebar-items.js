@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["CreateRequest","Request type for [`FuseHandlers::create`]."],["CreateResponse","Response type for [`FuseHandlers::create`]."]]});

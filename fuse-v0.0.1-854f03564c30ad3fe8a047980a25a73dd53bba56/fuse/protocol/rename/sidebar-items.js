@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["RenameRequest","Request type for [`FuseHandlers::rename`]."],["RenameRequestFlags","Optional flags set on [`RenameRequest`]."],["RenameResponse","Response type for [`FuseHandlers::rename`]."]]});

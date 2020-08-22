@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["MkdirRequest","Request type for [`FuseHandlers::mkdir`]."],["MkdirResponse","Response type for [`FuseHandlers::mkdir`]."]]});

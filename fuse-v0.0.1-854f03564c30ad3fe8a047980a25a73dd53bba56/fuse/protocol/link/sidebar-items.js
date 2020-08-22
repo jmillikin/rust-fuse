@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["LinkRequest","Request type for [`FuseHandlers::link`]."],["LinkResponse","Response type for [`FuseHandlers::link`]."]]});

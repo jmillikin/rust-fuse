@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["fuse"] = [{"text":"impl Hash for ErrorCode","synthetic":false,"types":[]},{"text":"impl Hash for CuseDeviceName","synthetic":false,"types":[]},{"text":"impl Hash for FileMode","synthetic":false,"types":[]},{"text":"impl Hash for FileType","synthetic":false,"types":[]},{"text":"impl Hash for NodeId","synthetic":false,"types":[]},{"text":"impl Hash for NodeName","synthetic":false,"types":[]},{"text":"impl Hash for XattrName","synthetic":false,"types":[]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

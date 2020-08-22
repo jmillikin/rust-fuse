@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["ForgetRequest","Request type for [`FuseHandlers::forget`]."],["ForgetRequestItem",""]]});
