@@ -16,7 +16,7 @@
 
 use core::{cmp, fmt};
 
-#[cfg(feature = "std")]
+#[cfg(feature = "respond_async")]
 use std::sync::Arc;
 
 use crate::channel;
@@ -203,7 +203,7 @@ where
 
 // CuseServer {{{
 
-#[cfg(feature = "std")]
+#[cfg(feature = "respond_async")]
 pub struct CuseServer<Channel, Handlers, Hooks> {
 	executor: CuseServerExecutor<Channel, Handlers, Hooks>,
 
@@ -214,7 +214,7 @@ pub struct CuseServer<Channel, Handlers, Hooks> {
 	read_buf_size: usize,
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(not(feature = "respond_async"))]
 pub struct CuseServer<Channel, Handlers, Hooks> {
 	executor: CuseServerExecutor<Channel, Handlers, Hooks>,
 }
@@ -225,7 +225,7 @@ where
 	Handlers: CuseHandlers,
 	Hooks: server::ServerHooks,
 {
-	#[cfg(feature = "std")]
+	#[cfg(feature = "respond_async")]
 	fn new(
 		channel: C,
 		handlers: Handlers,
@@ -256,19 +256,23 @@ where
 		})
 	}
 
-	#[cfg(not(feature = "std"))]
+	#[cfg(not(feature = "respond_async"))]
 	fn new(
 		channel: C,
 		handlers: Handlers,
 		hooks: Option<Hooks>,
 		init_response: &CuseInitResponse,
 	) -> Result<CuseServer<C, Handlers, Hooks>, C::Error> {
+		#[cfg(feature = "std")]
+		let read_buf_size = server::read_buf_size(init_response.max_write());
 		Ok(Self {
 			executor: CuseServerExecutor {
 				channel,
 				handlers,
 				hooks,
 				version: init_response.version(),
+				#[cfg(feature = "std")]
+				read_buf_size,
 			},
 		})
 	}
@@ -279,8 +283,8 @@ where
 		&mut self.executor
 	}
 
-	#[cfg(feature = "std")]
-	#[cfg_attr(doc, doc(cfg(feature = "std")))]
+	#[cfg(feature = "respond_async")]
+	#[cfg_attr(doc, doc(cfg(feature = "respond_async")))]
 	pub fn new_executor(
 		&self,
 	) -> Result<CuseServerExecutor<C, Handlers, Hooks>, C::Error> {
@@ -299,7 +303,7 @@ where
 
 // CuseServerExecutor {{{
 
-#[cfg(feature = "std")]
+#[cfg(feature = "respond_async")]
 pub struct CuseServerExecutor<Channel, Handlers, Hooks> {
 	channel: Arc<Channel>,
 	handlers: Arc<Handlers>,
@@ -308,12 +312,14 @@ pub struct CuseServerExecutor<Channel, Handlers, Hooks> {
 	read_buf_size: usize,
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(not(feature = "respond_async"))]
 pub struct CuseServerExecutor<Channel, Handlers, Hooks> {
 	channel: Channel,
 	handlers: Handlers,
 	hooks: Option<Hooks>,
 	version: ProtocolVersion,
+	#[cfg(feature = "std")]
+	read_buf_size: usize,
 }
 
 impl<C, Handlers, Hooks> CuseServerExecutor<C, Handlers, Hooks>
@@ -322,7 +328,7 @@ where
 	Handlers: CuseHandlers,
 	Hooks: server::ServerHooks,
 {
-	#[cfg(feature = "std")]
+	#[cfg(feature = "respond_async")]
 	pub fn run(&mut self) -> Result<(), C::Error>
 	where
 		C: Send + Sync + 'static,
@@ -353,7 +359,7 @@ where
 		})
 	}
 
-	#[cfg(not(feature = "std"))]
+	#[cfg(not(feature = "respond_async"))]
 	pub fn run(&mut self) -> Result<(), C::Error>
 	where
 		C: Send + Sync + 'static,
@@ -362,12 +368,15 @@ where
 		self.run_local()
 	}
 
-	#[cfg(any(doc, not(feature = "std")))]
-	#[cfg_attr(doc, doc(cfg(not(feature = "std"))))]
+	#[cfg(any(doc, not(feature = "respond_async")))]
+	#[cfg_attr(doc, doc(cfg(not(feature = "respond_async"))))]
 	pub fn run_local(&mut self) -> Result<(), C::Error> {
 		let channel = &self.channel;
 		let handlers = &self.handlers;
 		let hooks = self.hooks.as_ref();
+		#[cfg(feature = "std")]
+		let mut buf = fuse_io::AlignedVec::new(self.read_buf_size);
+		#[cfg(not(feature = "std"))]
 		let mut buf = fuse_io::MinReadBuffer::new();
 		server::main_loop(channel, &mut buf, self.version, CUSE, |dec| {
 			let mut channel_error = Ok(());
@@ -392,8 +401,8 @@ fn cuse_request_dispatch<C, Handlers, Hooks>(
 	request_decoder: fuse_io::RequestDecoder,
 	handlers: &Handlers,
 	respond: server::RespondRef<C::T, Hooks::T>,
-	#[cfg(feature = "std")] hooks: Option<&Arc<Hooks::T>>,
-	#[cfg(not(feature = "std"))] hooks: Option<&Hooks::T>,
+	#[cfg(feature = "respond_async")] hooks: Option<&Arc<Hooks::T>>,
+	#[cfg(not(feature = "respond_async"))] hooks: Option<&Hooks::T>,
 ) -> Result<(), <<C as server::MaybeSendChannel>::T as channel::Channel>::Error>
 where
 	C: server::MaybeSendChannel,

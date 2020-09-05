@@ -59,7 +59,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 			return;
 		}
 
-		let respond = respond.into_async();
+		let respond = fuse::RespondAsync::new(respond);
 		thread::spawn(move || {
 			let mut resp = fuse::LookupResponse::new();
 			let node = resp.node_mut();
@@ -78,7 +78,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 	) {
 		let node_id = request.node_id();
 
-		let respond = respond.into_async();
+		let respond = fuse::RespondAsync::new(respond);
 		thread::spawn(move || {
 			let mut resp = fuse::GetattrResponse::new();
 			let attr = resp.attr_mut();
@@ -113,7 +113,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 			return;
 		}
 
-		let respond = respond.into_async();
+		let respond = fuse::RespondAsync::new(respond);
 		thread::spawn(move || {
 			let mut resp = fuse::OpenResponse::new();
 			resp.set_handle(1001);
@@ -132,7 +132,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 			return;
 		}
 
-		let respond = respond.into_async();
+		let respond = fuse::RespondAsync::new(respond);
 		thread::spawn(move || {
 			let resp = fuse::ReadResponse::from_bytes(HELLO_WORLD);
 			respond.ok(&resp);
@@ -150,7 +150,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 			return;
 		}
 
-		let respond = respond.into_async();
+		let respond = fuse::RespondAsync::new(respond);
 		thread::spawn(move || {
 			let mut resp = fuse::OpendirResponse::new();
 			resp.set_handle(1002);
@@ -174,7 +174,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 			return;
 		}
 
-		let respond = respond.into_async();
+		let respond = fuse::RespondAsync::new(respond);
 		let request_size = request.size();
 		thread::spawn(move || {
 			let mut resp = fuse::ReaddirResponse::with_max_size(request_size);
@@ -198,7 +198,7 @@ impl fuse::FuseHandlers for HelloWorldFS {
 			return;
 		}
 
-		let respond = respond.into_async();
+		let respond = fuse::RespondAsync::new(respond);
 		thread::spawn(move || {
 			let resp = fuse::ReleasedirResponse::new();
 			respond.ok(&resp);

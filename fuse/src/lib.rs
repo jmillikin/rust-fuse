@@ -65,7 +65,7 @@ pub use self::server::{
 	Respond,
 };
 
-#[cfg(feature = "std")]
+#[cfg(feature = "respond_async")]
 pub use self::server::RespondAsync;
 
 pub mod os {

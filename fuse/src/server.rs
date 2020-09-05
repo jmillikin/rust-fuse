@@ -16,7 +16,7 @@
 
 use core::cmp::{max, min};
 
-#[cfg(feature = "std")]
+#[cfg(feature = "respond_async")]
 use std::sync::Arc;
 
 use crate::channel::{self, ChannelError};
@@ -146,14 +146,14 @@ where
 }
 
 pub(crate) trait MaybeSendChannel {
-	#[cfg(feature = "std")]
+	#[cfg(feature = "respond_async")]
 	type T: channel::Channel + Send + Sync + 'static;
 
-	#[cfg(not(feature = "std"))]
+	#[cfg(not(feature = "respond_async"))]
 	type T: channel::Channel;
 }
 
-#[cfg(feature = "std")]
+#[cfg(feature = "respond_async")]
 impl<C> MaybeSendChannel for C
 where
 	C: channel::Channel + Send + Sync + 'static,
@@ -161,7 +161,7 @@ where
 	type T = C;
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(not(feature = "respond_async"))]
 impl<C> MaybeSendChannel for C
 where
 	C: channel::Channel,
@@ -170,14 +170,14 @@ where
 }
 
 pub(crate) trait MaybeSendHooks {
-	#[cfg(feature = "std")]
+	#[cfg(feature = "respond_async")]
 	type T: ServerHooks + Send + Sync + 'static;
 
-	#[cfg(not(feature = "std"))]
+	#[cfg(not(feature = "respond_async"))]
 	type T: ServerHooks;
 }
 
-#[cfg(feature = "std")]
+#[cfg(feature = "respond_async")]
 impl<H> MaybeSendHooks for H
 where
 	H: ServerHooks + Send + Sync + 'static,
@@ -185,7 +185,7 @@ where
 	type T = H;
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(not(feature = "respond_async"))]
 impl<H> MaybeSendHooks for H
 where
 	H: ServerHooks,
@@ -194,12 +194,15 @@ where
 }
 
 mod private {
-	pub trait Respond {
-		type Internal: RespondInternal<Self>;
+	pub trait Respond<R> {
+		type Internal: RespondInternal<R, Self>;
 	}
 
-	pub trait RespondInternal<R: ?Sized> {
-		fn unhandled_request(r: &R);
+	pub trait RespondInternal<R, Respond: ?Sized> {
+		fn unhandled_request(r: &Respond);
+
+		#[cfg(feature = "respond_async")]
+		fn new_respond_async(respond: Respond) -> super::RespondAsync<R>;
 	}
 }
 
@@ -210,13 +213,9 @@ pub(crate) fn unhandled_request<T, R: Respond<T>>(respond: R) {
 }
 
 /// **\[SEALED\]**
-pub trait Respond<R>: private::Respond {
+pub trait Respond<R>: private::Respond<R> {
 	fn ok(self, response: &R);
 	fn err(self, err: ErrorCode);
-
-	#[cfg(feature = "std")]
-	#[cfg_attr(doc, doc(cfg(feature = "std")))]
-	fn into_async(self) -> RespondAsync<R>;
 }
 
 pub(crate) struct RespondRef<'a, C, Hooks>
@@ -229,10 +228,10 @@ where
 	header: &'a RequestHeader,
 	fuse_version: ProtocolVersion,
 
-	#[cfg(feature = "std")]
+	#[cfg(feature = "respond_async")]
 	channel_arc: &'a Arc<C>,
 
-	#[cfg(feature = "std")]
+	#[cfg(feature = "respond_async")]
 	hooks_arc: Option<&'a Arc<Hooks>>,
 }
 
@@ -247,8 +246,8 @@ where
 		channel_err: &'a mut Result<(), C::Error>,
 		header: &'a RequestHeader,
 		fuse_version: ProtocolVersion,
-		#[cfg(feature = "std")] channel_arc: &'a Arc<C>,
-		#[cfg(feature = "std")] hooks_arc: Option<&'a Arc<Hooks>>,
+		#[cfg(feature = "respond_async")] channel_arc: &'a Arc<C>,
+		#[cfg(feature = "respond_async")] hooks_arc: Option<&'a Arc<Hooks>>,
 	) -> Self {
 		Self {
 			channel,
@@ -256,9 +255,9 @@ where
 			channel_err,
 			header,
 			fuse_version,
-			#[cfg(feature = "std")]
+			#[cfg(feature = "respond_async")]
 			channel_arc,
-			#[cfg(feature = "std")]
+			#[cfg(feature = "respond_async")]
 			hooks_arc,
 		}
 	}
@@ -288,21 +287,35 @@ where
 	}
 }
 
-impl<C, Hooks> private::Respond for RespondRef<'_, C, Hooks>
+#[cfg(not(feature = "respond_async"))]
+impl<C, Hooks, R> private::Respond<R> for RespondRef<'_, C, Hooks>
 where
 	C: channel::Channel,
 	Hooks: ServerHooks,
+	R: fuse_io::EncodeResponse,
+{
+	type Internal = RespondRefInternal;
+}
+
+#[cfg(feature = "respond_async")]
+impl<C, Hooks, R> private::Respond<R> for RespondRef<'_, C, Hooks>
+where
+	C: channel::Channel + Send + Sync + 'static,
+	Hooks: ServerHooks + Send + Sync + 'static,
+	R: fuse_io::EncodeResponse,
 {
 	type Internal = RespondRefInternal;
 }
 
 pub struct RespondRefInternal(());
 
-impl<C, Hooks> private::RespondInternal<RespondRef<'_, C, Hooks>>
+#[cfg(not(feature = "respond_async"))]
+impl<C, Hooks, R> private::RespondInternal<R, RespondRef<'_, C, Hooks>>
 	for RespondRefInternal
 where
 	C: channel::Channel,
 	Hooks: ServerHooks,
+	R: fuse_io::EncodeResponse,
 {
 	fn unhandled_request(r: &RespondRef<C, Hooks>) {
 		if let Some(hooks) = r.hooks {
@@ -311,7 +324,31 @@ where
 	}
 }
 
-#[cfg(feature = "std")]
+#[cfg(feature = "respond_async")]
+impl<C, Hooks, R> private::RespondInternal<R, RespondRef<'_, C, Hooks>>
+	for RespondRefInternal
+where
+	C: channel::Channel + Send + Sync + 'static,
+	Hooks: ServerHooks + Send + Sync + 'static,
+	R: fuse_io::EncodeResponse,
+{
+	fn unhandled_request(r: &RespondRef<C, Hooks>) {
+		if let Some(hooks) = r.hooks {
+			hooks.unhandled_request(r.header);
+		}
+	}
+
+	fn new_respond_async(r: RespondRef<C, Hooks>) -> RespondAsync<R> {
+		RespondAsync(Box::new(RespondAsyncInnerImpl {
+			channel: r.channel_arc.clone(),
+			hooks: r.hooks_arc.map(|h| h.clone()),
+			header: r.header.clone(),
+			fuse_version: r.fuse_version,
+		}))
+	}
+}
+
+#[cfg(feature = "respond_async")]
 impl<C, Hooks, R> Respond<R> for RespondRef<'_, C, Hooks>
 where
 	C: channel::Channel + Send + Sync + 'static,
@@ -325,13 +362,9 @@ where
 	fn err(self, err: ErrorCode) {
 		self.err_impl(err)
 	}
-
-	fn into_async(self) -> RespondAsync<R> {
-		self.new_respond_async()
-	}
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(not(feature = "respond_async"))]
 impl<C, Hooks, R> Respond<R> for RespondRef<'_, C, Hooks>
 where
 	C: channel::Channel,
@@ -347,27 +380,33 @@ where
 	}
 }
 
-#[cfg(feature = "std")]
-#[cfg_attr(doc, doc(cfg(feature = "std")))]
+#[cfg(feature = "respond_async")]
+#[cfg_attr(doc, doc(cfg(feature = "respond_async")))]
 pub struct RespondAsync<R>(Box<dyn RespondAsyncInner<R> + 'static>);
 
-#[cfg(feature = "std")]
+#[cfg(feature = "respond_async")]
 impl<R> RespondAsync<R> {
+	pub fn new<R2: Respond<R>>(respond: R2) -> Self {
+		use private::RespondInternal;
+		R2::Internal::new_respond_async(respond)
+	}
+
 	pub fn ok(self, response: &R) {
 		self.0.ok(response)
 	}
+
 	pub fn err(self, err: ErrorCode) {
 		self.0.err(err)
 	}
 }
 
-#[cfg(feature = "std")]
+#[cfg(feature = "respond_async")]
 trait RespondAsyncInner<R>: Send + Sync {
 	fn ok(&self, response: &R);
 	fn err(&self, err: ErrorCode);
 }
 
-#[cfg(feature = "std")]
+#[cfg(feature = "respond_async")]
 struct RespondAsyncInnerImpl<C, Hooks> {
 	channel: Arc<C>,
 	hooks: Option<Arc<Hooks>>,
@@ -375,7 +414,7 @@ struct RespondAsyncInnerImpl<C, Hooks> {
 	fuse_version: ProtocolVersion,
 }
 
-#[cfg(feature = "std")]
+#[cfg(feature = "respond_async")]
 impl<C, Hooks> RespondAsyncInnerImpl<C, Hooks>
 where
 	C: channel::Channel,
@@ -398,7 +437,7 @@ where
 	}
 }
 
-#[cfg(feature = "std")]
+#[cfg(feature = "respond_async")]
 impl<C, Hooks, R> RespondAsyncInner<R> for RespondAsyncInnerImpl<C, Hooks>
 where
 	C: channel::Channel + Send + Sync,
@@ -416,24 +455,5 @@ where
 
 	fn err(&self, err: ErrorCode) {
 		self.err_impl(err)
-	}
-}
-
-#[cfg(feature = "std")]
-impl<'a, C, Hooks> RespondRef<'a, C, Hooks>
-where
-	C: channel::Channel + Send + Sync + 'static,
-	Hooks: ServerHooks + Send + Sync + 'static,
-{
-	fn new_respond_async<R>(self) -> RespondAsync<R>
-	where
-		R: fuse_io::EncodeResponse,
-	{
-		RespondAsync(Box::new(RespondAsyncInnerImpl {
-			channel: self.channel_arc.clone(),
-			hooks: self.hooks_arc.map(|h| h.clone()),
-			header: self.header.clone(),
-			fuse_version: self.fuse_version,
-		}))
 	}
 }

@@ -12,7 +12,8 @@ name = "fuse"
 libc = { version = "0.2.*", optional = true }
 
 [features]
-default = ["std"]
+default = ["std", "respond_async"]
+respond_async = ["std"]
 std = []
 
 libc_fuse_mount = ["libc"]

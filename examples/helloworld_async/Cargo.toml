@@ -10,8 +10,8 @@ name = "helloworld_async"
 path = "helloworld_async.rs"
 
 [dependencies]
-fuse = { version = "0.0.1", path = "../../fuse" }
+fuse = { version = "0.0.1", path = "../../fuse", default-features = false }
 libc = "0.2"
 
 [features]
-default = ["fuse/libc_fuse_mount"]
+default = ["fuse/libc_fuse_mount", "fuse/respond_async"]
