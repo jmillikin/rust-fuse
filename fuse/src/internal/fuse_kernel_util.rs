@@ -75,7 +75,14 @@ macro_rules! enum_fuse_opcode {
     }
 }
 
-#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[cfg(all(
+	target_os = "linux",
+	any(
+		target_arch = "arm",
+		target_arch = "x86",
+		target_arch = "x86_64",
+	),
+))]
 macro_rules! _IOR {
 	(229, 0, uint32_t) => {
 		2147804416u32

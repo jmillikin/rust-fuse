@@ -309,7 +309,11 @@ target_error_codes! {
 
 #[cfg(all(
 	target_os = "linux",
-	any(target_arch = "x86", target_arch = "x86_64",),
+	any(
+		target_arch = "arm",
+		target_arch = "x86",
+		target_arch = "x86_64",
+	),
 ))]
 target_error_codes! {
 	EINTR: 4,

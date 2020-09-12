@@ -39,6 +39,58 @@ pub(crate) fn mount(
 	Err(io::Error::from_raw_os_error(-(rc as isize) as i32))
 }
 
+#[cfg(target_arch = "arm")] // EABI
+mod target {
+	#![allow(non_upper_case_globals)]
+
+	use std::ffi::CStr;
+
+	const SYS_getuid32: usize = 199;
+	const SYS_getgid32: usize = 200;
+	const SYS_mount: usize = 21;
+
+	pub(super) unsafe fn getuid() -> usize {
+		let rc: usize;
+		asm!(
+			"swi #0",
+			in("r7") SYS_getuid32,
+			lateout("r0") rc,
+		);
+		rc
+	}
+
+	pub(super) unsafe fn getgid() -> usize {
+		let rc: usize;
+		asm!(
+			"swi #0",
+			in("r7") SYS_getgid32,
+			lateout("r0") rc,
+		);
+		rc
+	}
+
+	pub(super) unsafe fn mount(
+		source: &CStr,
+		target: &CStr,
+		fstype: &CStr,
+		mountflags: u32,
+		data: &[u8],
+	) -> usize {
+		let mut rc: usize;
+		asm!(
+			"swi #0",
+			in("r7") SYS_mount,
+			in("r0") source.as_ptr(),
+			in("r1") target.as_ptr(),
+			in("r2") fstype.as_ptr(),
+			in("r3") mountflags,
+			in("r4") data.as_ptr(),
+			lateout("r0") rc,
+		);
+		rc
+	}
+}
+
 #[cfg(target_arch = "x86")]
 mod target {
 	#![allow(non_upper_case_globals)]
