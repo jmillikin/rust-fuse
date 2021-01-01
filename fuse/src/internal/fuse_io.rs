@@ -432,13 +432,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 			)
 		};
 
-		#[cfg(feature = "nightly_impl_channel")]
-		let rc = self.channel.send_vectored(&[out_hdr_buf, bytes]);
-
-		#[cfg(not(feature = "nightly_impl_channel"))]
-		let rc = self.channel.send_vectored_2(&[out_hdr_buf, bytes]);
-
-		rc
+		self.channel.send_vectored(&[out_hdr_buf, bytes])
 	}
 
 	pub(crate) fn encode_bytes_2(
@@ -475,15 +469,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 			)
 		};
 
-		#[cfg(feature = "nightly_impl_channel")]
-		let rc = self.channel.send_vectored(&[out_hdr_buf, bytes_1, bytes_2]);
-
-		#[cfg(not(feature = "nightly_impl_channel"))]
-		let rc = self
-			.channel
-			.send_vectored_3(&[out_hdr_buf, bytes_1, bytes_2]);
-
-		rc
+		self.channel.send_vectored(&[out_hdr_buf, bytes_1, bytes_2])
 	}
 
 	pub(crate) fn encode_bytes_4(
@@ -530,24 +516,12 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 			)
 		};
 
-		#[cfg(feature = "nightly_impl_channel")]
-		let rc = self.channel.send_vectored(&[
+		self.channel.send_vectored(&[
 			out_hdr_buf,
 			bytes_1,
 			bytes_2,
 			bytes_3,
 			bytes_4,
-		]);
-
-		#[cfg(not(feature = "nightly_impl_channel"))]
-		let rc = self.channel.send_vectored_5(&[
-			out_hdr_buf,
-			bytes_1,
-			bytes_2,
-			bytes_3,
-			bytes_4,
-		]);
-
-		rc
+		])
 	}
 }

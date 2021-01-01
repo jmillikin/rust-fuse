@@ -18,7 +18,6 @@ std = []
 
 libc_fuse_mount = ["libc"]
 
-nightly_impl_channel = []
 nightly_syscall_fuse_mount = []
 
 unstable_access = []

@@ -122,33 +122,6 @@ impl FakeChannel {
 	}
 }
 
-#[cfg(not(feature = "nightly_impl_channel"))]
-impl channel::private::ChannelNoConstGenerics<std::io::Error> for FakeChannel {
-	fn send_vectored_2(&self, bufs: &[&[u8]; 2]) -> Result<(), std::io::Error> {
-		let mut vec = Vec::new();
-		for buf in bufs {
-			vec.extend(buf.to_vec());
-		}
-		channel::Channel::send(self, &vec)
-	}
-
-	fn send_vectored_3(&self, bufs: &[&[u8]; 3]) -> Result<(), std::io::Error> {
-		let mut vec = Vec::new();
-		for buf in bufs {
-			vec.extend(buf.to_vec());
-		}
-		channel::Channel::send(self, &vec)
-	}
-
-	fn send_vectored_5(&self, bufs: &[&[u8]; 5]) -> Result<(), std::io::Error> {
-		let mut vec = Vec::new();
-		for buf in bufs {
-			vec.extend(buf.to_vec());
-		}
-		channel::Channel::send(self, &vec)
-	}
-}
-
 impl channel::Channel for FakeChannel {
 	type Error = std::io::Error;
 
@@ -160,7 +133,6 @@ impl channel::Channel for FakeChannel {
 		Ok(())
 	}
 
-	#[cfg(feature = "nightly_impl_channel")]
 	fn send_vectored<const N: usize>(
 		&self,
 		bufs: &[&[u8]; N],

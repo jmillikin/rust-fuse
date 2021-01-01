@@ -96,7 +96,7 @@ assembly).
 ----
 [dependencies.fuse]
 default-features = false
-features = ["nightly_impl_channel", "nightly_syscall_fuse_mount"]
+features = ["nightly_syscall_fuse_mount"]
 ----
 
 Note that some functionality is not available in `no_std` mode. Please see
