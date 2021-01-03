@@ -267,19 +267,23 @@ impl PartialEq<ErrorCode> for isize {
 impl ErrorCode {
 	pub const EINTR: ErrorCode = target::EINTR;
 	pub const EIO: ErrorCode = target::EIO;
+	pub const E2BIG: ErrorCode = target::E2BIG;
 	pub const ENODEV: ErrorCode = target::ENODEV;
 	pub const ENOENT: ErrorCode = target::ENOENT;
 	pub const ENOSYS: ErrorCode = target::ENOSYS;
 	pub const ERANGE: ErrorCode = target::ERANGE;
+	pub const ENOATTR: ErrorCode = target::ENOATTR;
 
 	fn name_impl(&self) -> Option<&'static str> {
 		match *self {
 			Self::EINTR => Some("EINTR"),
 			Self::EIO => Some("EIO"),
+			Self::E2BIG => Some("E2BIG"),
 			Self::ENODEV => Some("ENODEV"),
 			Self::ENOENT => Some("ENOENT"),
 			Self::ENOSYS => Some("ENOSYS"),
 			Self::ERANGE => Some("ERANGE"),
+			Self::ENOATTR => Some("ENOATTR"),
 			_ => None,
 		}
 	}
@@ -301,10 +305,12 @@ macro_rules! target_error_codes {
 target_error_codes! {
 	EINTR: 4,
 	EIO: 5,
+	E2BIG: 7,
 	ENODEV: 19,
 	ENOENT: 2,
 	ENOSYS: 78,
 	ERANGE: 34,
+	ENOATTR: 87,
 }
 
 #[cfg(all(
@@ -318,8 +324,10 @@ target_error_codes! {
 target_error_codes! {
 	EINTR: 4,
 	EIO: 5,
+	E2BIG: 7,
 	ENODEV: 19,
 	ENOENT: 2,
 	ENOSYS: 38,
 	ERANGE: 34,
+	ENOATTR: 61,
 }

@@ -13,6 +13,7 @@ http_archive(
     patches = [
         "//build:rules_rust-triple-mappings.patch",
         "//build:rules_rust-no-skylib.patch",
+        "//build:rules_rust-crate-name-no-slashes.patch",
     ],
     sha256 = "8e1bae501e0df40e8feb2497ebab37c84930bf00b332f8f55315dfc08d85c30a",
     strip_prefix = "rules_rust-df18ddbece5b68f86e63414ea4b50d691923039a",
@@ -29,7 +30,45 @@ local_repository(
 
 load("@rust_fuse_cc_toolchains//:cc_toolchains.bzl", "cc_toolchains")
 load("//build:rust_toolchains.bzl", "rust_toolchains")
+load("//fuse/tests:tests.bzl", "busybox_multiarch")
 
 cc_toolchains()
 
 rust_toolchains()
+
+busybox_multiarch(name = "busybox_multiarch")
+
+http_archive(
+    name = "rust_diff",
+    build_file_content = """
+load("@io_bazel_rules_rust//rust:rust.bzl", "rust_library")
+rust_library(
+    name = "diff",
+    srcs = glob(["src/*.rs"]),
+    edition = "2015",
+    visibility = ["//visibility:public"],
+)
+""",
+    sha256 = "0e25ea47919b1560c4e3b7fe0aaab9becf5b84a10325ddf7db0f0ba5e1026499",
+    strip_prefix = "diff-0.1.12",
+    type = "tar.gz",
+    url = "https://crates.io/api/v1/crates/diff/0.1.12/download",
+)
+
+http_archive(
+    name = "rust_libc",
+    build_file_content = """
+load("@io_bazel_rules_rust//rust:rust.bzl", "rust_library")
+rust_library(
+    name = "libc",
+    srcs = glob(["**/*.rs"]),
+    crate_features = ["std"],
+    edition = "2015",
+    visibility = ["//visibility:public"],
+)
+""",
+    sha256 = "a2f02823cf78b754822df5f7f268fb59822e7296276d3e069d8e8cb26a14bd10",
+    strip_prefix = "libc-0.2.74",
+    type = "tar.gz",
+    url = "https://crates.io/api/v1/crates/libc/0.2.74/download",
+)
