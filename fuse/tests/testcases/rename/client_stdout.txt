@@ -1,0 +1,10 @@
+START /rust-fuse/test_client
+
+rename("/rust-fuse/testfs/rename_old.txt", "/rust-fuse/testfs/rename_new.txt") -> 0
+  errno: 0
+
+rename("/rust-fuse/testfs/rename_noexist.txt", "/rust-fuse/testfs/rename_new.txt") -> -1
+  errno: ENOENT
+
+rename("/rust-fuse/testfs/rename_old.txt", "/rust-fuse/testfs/rename_dir.d") -> -1
+  errno: EISDIR

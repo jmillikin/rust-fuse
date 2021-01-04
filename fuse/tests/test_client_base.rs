@@ -23,11 +23,26 @@ pub fn errno_name() -> String {
 		libc::E2BIG => "E2BIG".to_string(),
 		libc::EEXIST => "EEXIST".to_string(),
 		libc::EIO => "EIO".to_string(),
+		libc::EISDIR => "EISDIR".to_string(),
 		#[allow(deprecated)]
 		libc::ENOATTR => "ENOATTR".to_string(),
 		libc::ENOENT => "ENOENT".to_string(),
 		libc::ENOSYS => "ENOSYS".to_string(),
 		libc::ERANGE => "ERANGE".to_string(),
+		x => format!("{}", x),
+	}
+}
+
+pub fn dirent_type_name(dirent: &libc::dirent) -> String {
+	match dirent.d_type {
+		libc::DT_BLK => "DT_BLK".to_string(),
+		libc::DT_CHR => "DT_CHR".to_string(),
+		libc::DT_DIR => "DT_DIR".to_string(),
+		libc::DT_FIFO => "DT_FIFO".to_string(),
+		libc::DT_LNK => "DT_LNK".to_string(),
+		libc::DT_REG => "DT_REG".to_string(),
+		libc::DT_SOCK => "DT_SOCK".to_string(),
+		libc::DT_UNKNOWN => "DT_UNKNOWN".to_string(),
 		x => format!("{}", x),
 	}
 }

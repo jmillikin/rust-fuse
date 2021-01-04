@@ -38,6 +38,9 @@ rust_fuse_test_cases! {
 	getxattr
 	link
 	listxattr
+	opendir_readdir
+	readlink
+	rename
 	symlink
 }
 
