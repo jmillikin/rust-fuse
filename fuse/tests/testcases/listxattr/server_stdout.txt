@@ -1,0 +1,75 @@
+START /rust-fuse/test_server
+
+LookupRequest {
+    parent_id: 1,
+    name: "xattrs.txt",
+}
+LookupResponse {
+    node: Node {
+        id: Some(2),
+        generation: 0,
+        cache_timeout: 60s,
+        attr_cache_timeout: 0ns,
+        attr: NodeAttr {
+            node_id: None,
+            size: 0,
+            blocks: 0,
+            atime: 0ns,
+            mtime: 0ns,
+            ctime: 0ns,
+            mode: 0o100644,
+            nlink: 1,
+            uid: 0,
+            gid: 0,
+            rdev: 0,
+            blksize: 0,
+        },
+    },
+}
+
+ListxattrRequest {
+    node_id: 2,
+    size: None,
+}
+
+ListxattrRequest {
+    node_id: 2,
+    size: Some(32),
+}
+
+ListxattrRequest {
+    node_id: 2,
+    size: Some(1),
+}
+
+LookupRequest {
+    parent_id: 1,
+    name: "xattrs_toobig.txt",
+}
+LookupResponse {
+    node: Node {
+        id: Some(3),
+        generation: 0,
+        cache_timeout: 60s,
+        attr_cache_timeout: 0ns,
+        attr: NodeAttr {
+            node_id: None,
+            size: 0,
+            blocks: 0,
+            atime: 0ns,
+            mtime: 0ns,
+            ctime: 0ns,
+            mode: 0o100644,
+            nlink: 1,
+            uid: 0,
+            gid: 0,
+            rdev: 0,
+            blksize: 0,
+        },
+    },
+}
+
+ListxattrRequest {
+    node_id: 3,
+    size: Some(32),
+}

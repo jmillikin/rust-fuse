@@ -86,12 +86,18 @@ def testcase_targets(cpus):
         rust_binary(
             name = "testcases/{}/test_client".format(name),
             srcs = ["testcases/{}/test_client.rs".format(name)],
-            deps = ["@rust_libc//:libc"],
+            deps = [
+                "//fuse/tests:test_client_base",
+                "@rust_libc//:libc",
+            ],
         )
         rust_binary(
             name = "testcases/{}/test_server".format(name),
             srcs = ["testcases/{}/test_server.rs".format(name)],
-            deps = ["//fuse"],
+            deps = [
+                "//fuse",
+                "//fuse/tests:test_server_base",
+            ],
         )
 
     for cpu in cpus:

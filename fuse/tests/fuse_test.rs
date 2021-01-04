@@ -20,21 +20,25 @@ use std::net::{TcpListener, TcpStream};
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::sync::{mpsc, Once};
 use std::thread;
-use std::time;
 
 macro_rules! rust_fuse_test_cases {
 	($( $testcase:ident )*) => {
-		$(
-			#[test]
-			fn $testcase() {
-				run_test(stringify!($testcase))
-			}
-		)*
+		mod fuse_tests {
+			$(
+				#[test]
+				fn $testcase() {
+					super::run_test(stringify!($testcase))
+				}
+			)*
+		}
 	}
 }
 
 rust_fuse_test_cases! {
 	getxattr
+	link
+	listxattr
+	symlink
 }
 
 struct Qemu {
@@ -135,12 +139,6 @@ fn init_qemu() -> io::Result<Qemu> {
 }
 
 fn run_test(testcase: &str) {
-	println!(
-		"[{:?}] ----- [test {}] -----",
-		time::SystemTime::now(),
-		testcase
-	);
-
 	let qemu = get_qemu();
 	let serial_stream = &mut qemu.serial_stream;
 	let mut testcase_path = std::path::PathBuf::new();

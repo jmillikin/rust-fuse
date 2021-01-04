@@ -1,0 +1,7 @@
+START /rust-fuse/test_client
+
+link("/rust-fuse/testfs/link_target.txt", "/rust-fuse/testfs/link.txt") -> 0
+  errno: 0
+
+link("/rust-fuse/testfs/link_target.txt", "/rust-fuse/testfs/exists.txt") -> -1
+  errno: EEXIST

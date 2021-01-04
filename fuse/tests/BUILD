@@ -32,10 +32,25 @@ rust_library(
     srcs = ["frame_io.rs"],
 )
 
+rust_library(
+    name = "test_client_base",
+    srcs = ["test_client_base.rs"],
+    deps = ["@rust_libc//:libc"],
+)
+
 rust_binary(
     name = "test_runner",
     srcs = ["test_runner.rs"],
-    deps = [":frame_io"],
+    deps = [
+        ":frame_io",
+        "@rust_libc//:libc",
+    ],
+)
+
+rust_library(
+    name = "test_server_base",
+    srcs = ["test_server_base.rs"],
+    deps = ["//fuse"],
 )
 
 _CPUS = [

@@ -16,21 +16,7 @@
 
 use std::ffi::CString;
 
-extern crate libc;
-
-fn errno() -> libc::c_int {
-	unsafe { *libc::__errno_location() }
-}
-
-fn errno_name() -> String {
-	match errno() {
-		#[allow(deprecated)]
-		libc::ENOATTR => "ENOATTR".to_string(),
-		libc::ERANGE => "ERANGE".to_string(),
-		libc::E2BIG => "E2BIG".to_string(),
-		x => format!("{}", x),
-	}
-}
+use test_client_base::errno_name;
 
 fn main() {
 	println!("START {}", std::env::args().next().unwrap());

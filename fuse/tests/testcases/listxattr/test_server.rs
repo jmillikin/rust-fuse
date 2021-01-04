@@ -28,15 +28,23 @@ impl fuse::FuseHandlers for TestFS {
 			respond.err(fuse::ErrorCode::ENOENT);
 			return;
 		}
-		if request.name() != fuse::NodeName::from_bytes(b"xattrs.txt").unwrap()
+
+		let node_id;
+		if request.name() == fuse::NodeName::from_bytes(b"xattrs.txt").unwrap()
 		{
+			node_id = fuse::NodeId::new(2).unwrap();
+		} else if request.name()
+			== fuse::NodeName::from_bytes(b"xattrs_toobig.txt").unwrap()
+		{
+			node_id = fuse::NodeId::new(3).unwrap();
+		} else {
 			respond.err(fuse::ErrorCode::ENOENT);
 			return;
 		}
 
 		let mut resp = fuse::LookupResponse::new();
 		let node = resp.node_mut();
-		node.set_id(fuse::NodeId::new(2).unwrap());
+		node.set_id(node_id);
 		node.set_cache_timeout(std::time::Duration::from_secs(60));
 
 		let attr = node.attr_mut();
@@ -47,11 +55,11 @@ impl fuse::FuseHandlers for TestFS {
 		respond.ok(&resp);
 	}
 
-	fn getxattr(
+	fn listxattr(
 		&self,
 		_ctx: fuse::ServerContext,
-		request: &fuse::GetxattrRequest,
-		respond: impl for<'a> fuse::Respond<fuse::GetxattrResponse<'a>>,
+		request: &fuse::ListxattrRequest,
+		respond: impl for<'a> fuse::Respond<fuse::ListxattrResponse<'a>>,
 	) {
 		println!("\n{:#?}", request);
 
@@ -59,29 +67,27 @@ impl fuse::FuseHandlers for TestFS {
 		let xattr_toobig =
 			fuse::XattrName::from_bytes(b"xattr_toobig").unwrap();
 
-		if request.name() == xattr_small {
-			let mut resp = fuse::GetxattrResponse::new(request.size());
-			match resp.try_set_value(b"small xattr value") {
-				Ok(_) => {
-					println!("{:#?}", resp);
-					respond.ok(&resp);
-				},
-				Err(_) => {
-					// TODO: error should either have enough public info to let the caller
-					// return an appropriate error code, or ERANGE should be handled by
-					// the response dispatcher.
-					respond.err(fuse::ErrorCode::ERANGE);
-				},
-			}
-			return;
-		}
+		let mut resp = match request.size() {
+			None => fuse::ListxattrResponse::without_capacity(),
+			Some(max_size) => {
+				fuse::ListxattrResponse::with_max_size(max_size.into())
+			},
+		};
 
-		if request.name() == xattr_toobig {
+		if request.node_id() == fuse::NodeId::new(3).unwrap() {
 			respond.err(fuse::ErrorCode::E2BIG);
 			return;
 		}
 
-		respond.err(fuse::ErrorCode::ENOATTR);
+		if let Err(_) = resp.try_add_name(xattr_small) {
+			respond.err(fuse::ErrorCode::ERANGE);
+			return;
+		}
+		if let Err(_) = resp.try_add_name(xattr_toobig) {
+			respond.err(fuse::ErrorCode::ERANGE);
+			return;
+		}
+		respond.ok(&resp);
 	}
 }
 

@@ -28,7 +28,7 @@ impl fuse::FuseHandlers for TestFS {
 			respond.err(fuse::ErrorCode::ENOENT);
 			return;
 		}
-		if request.name() != fuse::NodeName::from_bytes(b"xattrs.txt").unwrap()
+		if request.name() != fuse::NodeName::from_bytes(b"exists.txt").unwrap()
 		{
 			respond.err(fuse::ErrorCode::ENOENT);
 			return;
@@ -47,41 +47,24 @@ impl fuse::FuseHandlers for TestFS {
 		respond.ok(&resp);
 	}
 
-	fn getxattr(
+	fn symlink(
 		&self,
 		_ctx: fuse::ServerContext,
-		request: &fuse::GetxattrRequest,
-		respond: impl for<'a> fuse::Respond<fuse::GetxattrResponse<'a>>,
+		request: &fuse::SymlinkRequest,
+		respond: impl for<'a> fuse::Respond<fuse::SymlinkResponse<'a>>,
 	) {
 		println!("\n{:#?}", request);
 
-		let xattr_small = fuse::XattrName::from_bytes(b"xattr_small").unwrap();
-		let xattr_toobig =
-			fuse::XattrName::from_bytes(b"xattr_toobig").unwrap();
+		let mut resp = fuse::SymlinkResponse::new();
+		let node = resp.node_mut();
+		node.set_id(fuse::NodeId::new(3).unwrap());
 
-		if request.name() == xattr_small {
-			let mut resp = fuse::GetxattrResponse::new(request.size());
-			match resp.try_set_value(b"small xattr value") {
-				Ok(_) => {
-					println!("{:#?}", resp);
-					respond.ok(&resp);
-				},
-				Err(_) => {
-					// TODO: error should either have enough public info to let the caller
-					// return an appropriate error code, or ERANGE should be handled by
-					// the response dispatcher.
-					respond.err(fuse::ErrorCode::ERANGE);
-				},
-			}
-			return;
-		}
+		let attr = node.attr_mut();
+		attr.set_mode(fuse::FileType::Symlink | 0o644);
+		attr.set_nlink(1);
 
-		if request.name() == xattr_toobig {
-			respond.err(fuse::ErrorCode::E2BIG);
-			return;
-		}
-
-		respond.err(fuse::ErrorCode::ENOATTR);
+		println!("{:#?}", resp);
+		respond.ok(&resp);
 	}
 }
 

@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use std::ffi::CString;
 use std::fs;
 use std::os::unix::fs::OpenOptionsExt;
 use std::process::{Command, Stdio};
@@ -24,6 +25,7 @@ fn main() {
 		.write(true)
 		.open("/dev/vport0p1")
 		.unwrap();
+	let fs_mount = CString::new("/rust-fuse/testfs").unwrap();
 	println!("[rust-fuse] TEST_RUNNER_READY");
 
 	loop {
@@ -63,6 +65,10 @@ fn main() {
 
 		let _ = server.kill();
 		let server_output = server.wait_with_output().unwrap();
+
+		unsafe {
+			libc::umount(fs_mount.as_ptr())
+		};
 
 		frame_io::send_frame(&mut virtio, &client_output.stdout).unwrap();
 		frame_io::send_frame(&mut virtio, &client_output.stderr).unwrap();
