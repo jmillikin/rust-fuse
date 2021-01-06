@@ -16,7 +16,7 @@
 
 use std::ffi::CString;
 
-use test_client_base::errno_name;
+use test_client_base::{errno_clear, errno_name};
 
 fn main() {
 	println!("START {}", std::env::args().next().unwrap());
@@ -25,6 +25,8 @@ fn main() {
 	let path_new = CString::new("/rust-fuse/testfs/rename_new.txt").unwrap();
 	let path_noexist =
 		CString::new("/rust-fuse/testfs/rename_noexist.txt").unwrap();
+	let path_noexist2 =
+		CString::new("/rust-fuse/testfs/rename_noexist2.txt").unwrap();
 	let path_dir = CString::new("/rust-fuse/testfs/rename_dir.d").unwrap();
 
 	{
@@ -43,6 +45,84 @@ fn main() {
 	{
 		let rc = unsafe { libc::rename(path_old.as_ptr(), path_dir.as_ptr()) };
 		println!("\nrename({:?}, {:?}) -> {}", path_old, path_dir, rc);
+		println!("  errno: {}", errno_name());
+	}
+
+	{
+		errno_clear();
+		let rc = unsafe {
+			libc::syscall(
+				libc::SYS_renameat2,
+				libc::AT_FDCWD,
+				path_old.as_ptr(),
+				libc::AT_FDCWD,
+				path_dir.as_ptr(),
+				libc::RENAME_EXCHANGE,
+			)
+		};
+		println!(
+			r#"
+SYS_renameat2(
+  AT_FDCWD,
+  {:?},
+  AT_FDCWD,
+  {:?},
+  RENAME_EXCHANGE
+) -> {}"#,
+			path_old, path_dir, rc
+		);
+		println!("  errno: {}", errno_name());
+	}
+
+	{
+		errno_clear();
+		let rc = unsafe {
+			libc::syscall(
+				libc::SYS_renameat2,
+				libc::AT_FDCWD,
+				path_old.as_ptr(),
+				libc::AT_FDCWD,
+				path_noexist.as_ptr(),
+				libc::RENAME_NOREPLACE,
+			)
+		};
+		println!(
+			r#"
+SYS_renameat2(
+  AT_FDCWD,
+  {:?},
+  AT_FDCWD,
+  {:?},
+  RENAME_NOREPLACE
+) -> {}"#,
+			path_old, path_noexist, rc
+		);
+		println!("  errno: {}", errno_name());
+	}
+
+	{
+		errno_clear();
+		let rc = unsafe {
+			libc::syscall(
+				libc::SYS_renameat2,
+				libc::AT_FDCWD,
+				path_old.as_ptr(),
+				libc::AT_FDCWD,
+				path_noexist2.as_ptr(),
+				libc::RENAME_WHITEOUT,
+			)
+		};
+		println!(
+			r#"
+SYS_renameat2(
+  AT_FDCWD,
+  {:?},
+  AT_FDCWD,
+  {:?},
+  RENAME_WHITEOUT
+) -> {}"#,
+			path_old, path_noexist2, rc
+		);
 		println!("  errno: {}", errno_name());
 	}
 }

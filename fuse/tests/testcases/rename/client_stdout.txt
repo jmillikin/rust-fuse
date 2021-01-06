@@ -8,3 +8,30 @@ rename("/rust-fuse/testfs/rename_noexist.txt", "/rust-fuse/testfs/rename_new.txt
 
 rename("/rust-fuse/testfs/rename_old.txt", "/rust-fuse/testfs/rename_dir.d") -> -1
   errno: EISDIR
+
+SYS_renameat2(
+  AT_FDCWD,
+  "/rust-fuse/testfs/rename_old.txt",
+  AT_FDCWD,
+  "/rust-fuse/testfs/rename_dir.d",
+  RENAME_EXCHANGE
+) -> 0
+  errno: 0
+
+SYS_renameat2(
+  AT_FDCWD,
+  "/rust-fuse/testfs/rename_old.txt",
+  AT_FDCWD,
+  "/rust-fuse/testfs/rename_noexist.txt",
+  RENAME_NOREPLACE
+) -> 0
+  errno: 0
+
+SYS_renameat2(
+  AT_FDCWD,
+  "/rust-fuse/testfs/rename_old.txt",
+  AT_FDCWD,
+  "/rust-fuse/testfs/rename_noexist2.txt",
+  RENAME_WHITEOUT
+) -> 0
+  errno: 0

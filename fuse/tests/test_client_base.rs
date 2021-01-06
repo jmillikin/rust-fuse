@@ -18,6 +18,12 @@ pub fn errno() -> libc::c_int {
 	unsafe { *libc::__errno_location() }
 }
 
+pub fn errno_clear() {
+	unsafe {
+		*libc::__errno_location() = 0;
+	}
+}
+
 pub fn errno_name() -> String {
 	match errno() {
 		libc::E2BIG => "E2BIG".to_string(),
