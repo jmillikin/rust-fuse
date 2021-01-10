@@ -16,6 +16,9 @@
 
 use crate::protocol::prelude::*;
 
+#[cfg(rust_fuse_test = "removexattr_test")]
+mod removexattr_test;
+
 // RemovexattrRequest {{{
 
 pub struct RemovexattrRequest<'a> {

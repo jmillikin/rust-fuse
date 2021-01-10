@@ -16,6 +16,9 @@
 
 use crate::protocol::prelude::*;
 
+#[cfg(rust_fuse_test = "getattr_test")]
+mod getattr_test;
+
 // GetattrRequest {{{
 
 /// Request type for [`FuseHandlers::getattr`].

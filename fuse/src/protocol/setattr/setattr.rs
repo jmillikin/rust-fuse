@@ -16,6 +16,9 @@
 
 use crate::protocol::prelude::*;
 
+#[cfg(rust_fuse_test = "setattr_test")]
+mod setattr_test;
+
 // SetattrRequest {{{
 
 pub struct SetattrRequest<'a> {

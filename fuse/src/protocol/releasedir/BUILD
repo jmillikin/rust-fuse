@@ -1,14 +1,5 @@
-load("@io_bazel_rules_rust//rust:rust.bzl", "rust_test")
+load("//fuse:src/protocol/common.bzl", "rust_fuse_protocol_module")
 
-exports_files(glob(["*rs"]))
+exports_files(glob(["*.rs"]))
 
-rust_test(
-    name = "releasedir_test",
-    srcs = ["releasedir_test.rs"] + [
-        "//fuse:test_srcs",
-    ],
-    crate = "//fuse",
-    crate_features = [
-        "std",
-    ],
-)
+rust_fuse_protocol_module()

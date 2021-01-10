@@ -16,6 +16,9 @@
 
 use crate::protocol::prelude::*;
 
+#[cfg(rust_fuse_test = "open_test")]
+mod open_test;
+
 // OpenRequest {{{
 
 /// Request type for [`FuseHandlers::open`].

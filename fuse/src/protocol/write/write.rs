@@ -16,6 +16,9 @@
 
 use crate::protocol::prelude::*;
 
+#[cfg(rust_fuse_test = "write_test")]
+mod write_test;
+
 // WriteRequest {{{
 
 /// Request type for [`FuseHandlers::write`].

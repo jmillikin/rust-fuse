@@ -16,6 +16,9 @@
 
 use crate::protocol::prelude::*;
 
+#[cfg(rust_fuse_test = "mkdir_test")]
+mod mkdir_test;
+
 // MkdirRequest {{{
 
 /// Request type for [`FuseHandlers::mkdir`].

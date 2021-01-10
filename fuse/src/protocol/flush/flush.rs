@@ -16,6 +16,9 @@
 
 use crate::protocol::prelude::*;
 
+#[cfg(rust_fuse_test = "flush_test")]
+mod flush_test;
+
 // FlushRequest {{{
 
 pub struct FlushRequest<'a> {

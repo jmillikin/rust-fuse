@@ -16,6 +16,9 @@
 
 use crate::protocol::prelude::*;
 
+#[cfg(rust_fuse_test = "setlk_test")]
+mod setlk_test;
+
 // SetlkRequest {{{
 
 pub struct SetlkRequest<'a> {

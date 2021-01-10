@@ -16,6 +16,9 @@
 
 use crate::protocol::prelude::*;
 
+#[cfg(rust_fuse_test = "listxattr_test")]
+mod listxattr_test;
+
 // ListxattrRequest {{{
 
 /// Request type for [`FuseHandlers::listxattr`].

@@ -16,6 +16,9 @@
 
 use crate::protocol::prelude::*;
 
+#[cfg(rust_fuse_test = "rmdir_test")]
+mod rmdir_test;
+
 // RmdirRequest {{{
 
 /// Request type for [`FuseHandlers::rmdir`].

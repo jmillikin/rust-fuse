@@ -16,6 +16,9 @@
 
 use crate::protocol::prelude::*;
 
+#[cfg(rust_fuse_test = "statfs_test")]
+mod statfs_test;
+
 // StatfsRequest {{{
 
 pub struct StatfsRequest<'a> {

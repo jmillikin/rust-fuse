@@ -40,11 +40,7 @@ fn request_impl_debug() {
 
 	assert_eq!(
 		format!("{:#?}", request),
-		concat!(
-			"StatfsRequest {\n",
-			"    node_id: 1,\n",
-			"}",
-		),
+		concat!("StatfsRequest {\n", "    node_id: 1,\n", "}",),
 	);
 }
 

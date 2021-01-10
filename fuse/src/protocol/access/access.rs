@@ -16,6 +16,9 @@
 
 use crate::protocol::prelude::*;
 
+#[cfg(rust_fuse_test = "access_test")]
+mod access_test;
+
 // AccessRequest {{{
 
 /// Request type for [`FuseHandlers::access`].

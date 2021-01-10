@@ -16,6 +16,9 @@
 
 use crate::protocol::prelude::*;
 
+#[cfg(rust_fuse_test = "forget_test")]
+mod forget_test;
+
 // ForgetRequest {{{
 
 #[derive(Debug)]

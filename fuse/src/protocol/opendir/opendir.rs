@@ -16,6 +16,9 @@
 
 use crate::protocol::prelude::*;
 
+#[cfg(rust_fuse_test = "opendir_test")]
+mod opendir_test;
+
 // OpendirRequest {{{
 
 /// Request type for [`FuseHandlers::opendir`].

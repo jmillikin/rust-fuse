@@ -19,6 +19,9 @@ use core::num;
 use crate::protocol::prelude::*;
 use crate::protocol::read::fuse_read_in_v7p1;
 
+#[cfg(rust_fuse_test = "readdir_test")]
+mod readdir_test;
+
 // ReaddirRequest {{{
 
 /// Request type for [`FuseHandlers::readdir`].

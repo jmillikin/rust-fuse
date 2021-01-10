@@ -16,6 +16,9 @@
 
 use crate::protocol::prelude::*;
 
+#[cfg(rust_fuse_test = "mknod_test")]
+mod mknod_test;
+
 // MknodRequest {{{
 
 /// Request type for [`FuseHandlers::mknod`].

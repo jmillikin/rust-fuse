@@ -14,8 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use std::{panic, mem,fmt};
 use std::sync::mpsc;
+use std::{fmt, mem, panic};
 
 use interop_testutil::{diff_str, interop_test, path_cstr};
 
@@ -34,7 +34,8 @@ impl fuse::FuseHandlers for TestFS {
 			respond.err(fuse::ErrorCode::ENOENT);
 			return;
 		}
-		if request.name() != fuse::NodeName::from_bytes(b"statfs.txt").unwrap() {
+		if request.name() != fuse::NodeName::from_bytes(b"statfs.txt").unwrap()
+		{
 			respond.err(fuse::ErrorCode::ENOENT);
 			return;
 		}
@@ -88,7 +89,9 @@ fn statfs() {
 		let path = path_cstr(root.join("statfs.txt"));
 
 		let mut stat_buf: libc::statfs = unsafe { mem::zeroed() };
-		let rc = unsafe { libc::statfs(path.as_ptr(), (&mut stat_buf) as *mut libc::statfs) };
+		let rc = unsafe {
+			libc::statfs(path.as_ptr(), (&mut stat_buf) as *mut libc::statfs)
+		};
 		assert_eq!(rc, 0);
 
 		let expect = r#"statfs {
@@ -124,7 +127,9 @@ fn statfs_statvfs() {
 		let path = path_cstr(root.join("statfs.txt"));
 
 		let mut stat_buf: libc::statvfs = unsafe { mem::zeroed() };
-		let rc = unsafe { libc::statvfs(path.as_ptr(), (&mut stat_buf) as *mut libc::statvfs) };
+		let rc = unsafe {
+			libc::statvfs(path.as_ptr(), (&mut stat_buf) as *mut libc::statvfs)
+		};
 		assert_eq!(rc, 0);
 
 		let expect = r#"statvfs {
@@ -159,15 +164,15 @@ struct DebugStatfs(libc::statfs);
 impl fmt::Debug for DebugStatfs {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("statfs")
-			 .field("f_bsize", &self.0.f_bsize)
-			 .field("f_blocks", &self.0.f_blocks)
-			 .field("f_bfree", &self.0.f_bfree)
-			 .field("f_bavail", &self.0.f_bavail)
-			 .field("f_files", &self.0.f_files)
-			 .field("f_ffree", &self.0.f_ffree)
-			 .field("f_namelen", &self.0.f_namelen)
-			 .field("f_frsize", &self.0.f_frsize)
-			 .finish()
+			.field("f_bsize", &self.0.f_bsize)
+			.field("f_blocks", &self.0.f_blocks)
+			.field("f_bfree", &self.0.f_bfree)
+			.field("f_bavail", &self.0.f_bavail)
+			.field("f_files", &self.0.f_files)
+			.field("f_ffree", &self.0.f_ffree)
+			.field("f_namelen", &self.0.f_namelen)
+			.field("f_frsize", &self.0.f_frsize)
+			.finish()
 	}
 }
 
@@ -176,14 +181,14 @@ struct DebugStatvfs(libc::statvfs);
 impl fmt::Debug for DebugStatvfs {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("statvfs")
-			 .field("f_bsize", &self.0.f_bsize)
-			 .field("f_blocks", &self.0.f_blocks)
-			 .field("f_bfree", &self.0.f_bfree)
-			 .field("f_bavail", &self.0.f_bavail)
-			 .field("f_files", &self.0.f_files)
-			 .field("f_ffree", &self.0.f_ffree)
-			 .field("f_namemax", &self.0.f_namemax)
-			 .field("f_frsize", &self.0.f_frsize)
-			 .finish()
+			.field("f_bsize", &self.0.f_bsize)
+			.field("f_blocks", &self.0.f_blocks)
+			.field("f_bfree", &self.0.f_bfree)
+			.field("f_bavail", &self.0.f_bavail)
+			.field("f_files", &self.0.f_files)
+			.field("f_ffree", &self.0.f_ffree)
+			.field("f_namemax", &self.0.f_namemax)
+			.field("f_frsize", &self.0.f_frsize)
+			.finish()
 	}
 }

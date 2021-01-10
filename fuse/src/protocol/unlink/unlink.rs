@@ -16,6 +16,9 @@
 
 use crate::protocol::prelude::*;
 
+#[cfg(rust_fuse_test = "unlink_test")]
+mod unlink_test;
+
 // UnlinkRequest {{{
 
 /// Request type for [`FuseHandlers::unlink`].

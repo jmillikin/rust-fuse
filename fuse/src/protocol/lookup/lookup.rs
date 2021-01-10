@@ -16,6 +16,9 @@
 
 use crate::protocol::prelude::*;
 
+#[cfg(rust_fuse_test = "lookup_test")]
+mod lookup_test;
+
 // LookupRequest {{{
 
 /// Request type for [`FuseHandlers::lookup`].

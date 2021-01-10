@@ -16,6 +16,9 @@
 
 use crate::protocol::prelude::*;
 
+#[cfg(rust_fuse_test = "rename_test")]
+mod rename_test;
+
 // RenameRequest {{{
 
 const RENAME_NOREPLACE: u32 = 1 << 0;
