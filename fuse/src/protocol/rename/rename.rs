@@ -20,6 +20,7 @@ use crate::protocol::prelude::*;
 
 const RENAME_NOREPLACE: u32 = 1 << 0;
 const RENAME_EXCHANGE: u32 = 1 << 1;
+const RENAME_WHITEOUT: u32 = 1 << 2;
 
 /// Request type for [`FuseHandlers::rename`].
 ///
@@ -62,6 +63,7 @@ bitflags_struct! {
 
 	RENAME_EXCHANGE: exchange,
 	RENAME_NOREPLACE: no_replace,
+	RENAME_WHITEOUT: whiteout,
 }
 
 impl fmt::Debug for RenameRequest<'_> {

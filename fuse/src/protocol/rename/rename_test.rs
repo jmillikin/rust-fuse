@@ -41,6 +41,7 @@ fn request_rename() {
 	assert_eq!(request.new_directory_id(), NodeId::new(456).unwrap());
 	assert_eq!(request.flags().exchange, false);
 	assert_eq!(request.flags().no_replace, false);
+	assert_eq!(request.flags().whiteout, false);
 }
 
 #[test]
@@ -52,7 +53,7 @@ fn request_rename2() {
 		})
 		.push_sized(&fuse_kernel::fuse_rename2_in {
 			newdir: 456,
-			flags: 0x3,
+			flags: 0b111,
 			padding: 0,
 		})
 		.push_bytes(b"old\x00")
@@ -69,6 +70,7 @@ fn request_rename2() {
 	assert_eq!(request.new_directory_id(), NodeId::new(456).unwrap());
 	assert_eq!(request.flags().exchange, true);
 	assert_eq!(request.flags().no_replace, true);
+	assert_eq!(request.flags().whiteout, true);
 }
 
 #[test]
@@ -80,7 +82,7 @@ fn request_impl_debug() {
 		})
 		.push_sized(&fuse_kernel::fuse_rename2_in {
 			newdir: 456,
-			flags: 0x3,
+			flags: 0b111,
 			padding: 0,
 		})
 		.push_bytes(b"old\x00")
@@ -99,6 +101,7 @@ fn request_impl_debug() {
 			"    flags: RenameRequestFlags {\n",
 			"        no_replace: true,\n",
 			"        exchange: true,\n",
+			"        whiteout: true,\n",
 			"    },\n",
 			"}",
 		),

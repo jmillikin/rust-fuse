@@ -124,6 +124,7 @@ fn rename() {
     flags: RenameRequestFlags {
         no_replace: false,
         exchange: false,
+        whiteout: false,
     },
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
@@ -186,6 +187,7 @@ fn rename2_flag_exchange() {
     flags: RenameRequestFlags {
         no_replace: false,
         exchange: true,
+        whiteout: false,
     },
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
@@ -222,6 +224,7 @@ fn rename2_flag_noreplace() {
     flags: RenameRequestFlags {
         no_replace: true,
         exchange: false,
+        whiteout: false,
     },
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
@@ -258,7 +261,7 @@ fn rename2_flag_whiteout() {
     flags: RenameRequestFlags {
         no_replace: false,
         exchange: false,
-        0x00000004: true,
+        whiteout: true,
     },
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
