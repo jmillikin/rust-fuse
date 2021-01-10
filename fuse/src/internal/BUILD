@@ -11,6 +11,7 @@ rust_test(
     crate_features = [
         "std",
     ],
+    rustc_flags = ['--cfg=rust_fuse_test="fuse_io_test"'],
 )
 
 rust_library(

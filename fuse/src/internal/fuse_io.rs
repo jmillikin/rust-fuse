@@ -27,6 +27,10 @@ use crate::error::{Error, ErrorCode};
 use crate::internal::fuse_kernel;
 use crate::internal::types::ProtocolVersion;
 
+#[cfg(rust_fuse_test = "fuse_io_test")]
+#[path = "fuse_io_test.rs"]
+mod fuse_io_test;
+
 pub(crate) use crate::channel::Channel;
 
 pub(crate) trait AlignedBuffer {
