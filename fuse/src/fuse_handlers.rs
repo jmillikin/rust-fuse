@@ -345,8 +345,6 @@ pub trait FuseHandlers {
 		server::unhandled_request(respond);
 	}
 
-	#[cfg(any(doc, feature = "unstable_statfs"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_statfs")))]
 	fn statfs(
 		&self,
 		ctx: server::ServerContext,

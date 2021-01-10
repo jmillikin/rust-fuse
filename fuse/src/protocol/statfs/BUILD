@@ -12,3 +12,16 @@ rust_test(
         "std",
     ],
 )
+
+rust_test(
+    name = "statfs_interop_test",
+    srcs = ["statfs_interop_test.rs"],
+    crate_features = [
+        "std",
+    ],
+    deps = [
+        "//fuse",
+        "//fuse/src/internal:interop_testutil",
+        "@rust_libc//:libc",
+    ],
+)

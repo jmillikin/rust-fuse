@@ -414,7 +414,6 @@ where
 		fuse_kernel::FUSE_SETLK => do_dispatch!(setlk),
 		#[cfg(feature = "unstable_setxattr")]
 		fuse_kernel::FUSE_SETXATTR => do_dispatch!(setxattr),
-		#[cfg(feature = "unstable_statfs")]
 		fuse_kernel::FUSE_STATFS => do_dispatch!(statfs),
 		fuse_kernel::FUSE_SYMLINK => do_dispatch!(symlink),
 		fuse_kernel::FUSE_UNLINK => do_dispatch!(unlink),

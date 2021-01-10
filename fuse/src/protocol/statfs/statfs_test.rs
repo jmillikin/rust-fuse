@@ -22,16 +22,93 @@ use super::{StatfsRequest, StatfsResponse};
 #[test]
 fn request() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_STATFS)
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_STATFS;
+			h.nodeid = 123;
+		})
 		.build_aligned();
 
 	let _req: StatfsRequest = decode_request!(buf);
 }
 
 #[test]
-fn response() {
-	let resp = StatfsResponse::new();
-	let encoded = encode_response!(resp);
+fn request_impl_debug() {
+	let request = &StatfsRequest {
+		phantom: PhantomData,
+		node_id: crate::ROOT_ID,
+	};
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"StatfsRequest {\n",
+			"    node_id: 1,\n",
+			"}",
+		),
+	);
+}
+
+#[test]
+fn response_v7p1() {
+	let mut response = StatfsResponse::new();
+	response.set_block_count(10);
+	response.set_block_size(20);
+	response.set_blocks_available(30);
+	response.set_blocks_free(40);
+	response.set_fragment_size(50);
+	response.set_inode_count(60);
+	response.set_inodes_free(70);
+	response.set_max_filename_length(80);
+
+	let encoded = encode_response!(response, {
+		protocol_version: (7, 1),
+	});
+
+	assert_eq!(
+		encoded,
+		MessageBuilder::new()
+			.push_sized(&fuse_kernel::fuse_out_header {
+				len: (size_of::<fuse_kernel::fuse_out_header>()
+					+ fuse_kernel::FUSE_COMPAT_STATFS_SIZE) as u32,
+				error: 0,
+				unique: 0,
+			})
+			.push_sized(&fuse_kernel::fuse_statfs_out {
+				st: fuse_kernel::fuse_kstatfs {
+					blocks: 10,
+					bsize: 20,
+					bavail: 30,
+					bfree: 40,
+					frsize: 50,
+					files: 60,
+					ffree: 70,
+					namelen: 80,
+					..Default::default()
+				},
+			})
+			.unpush(
+				size_of::<fuse_kernel::fuse_statfs_out>()
+					- fuse_kernel::FUSE_COMPAT_STATFS_SIZE
+			)
+			.build()
+	);
+}
+
+#[test]
+fn response_v7p4() {
+	let mut response = StatfsResponse::new();
+	response.set_block_count(10);
+	response.set_block_size(20);
+	response.set_blocks_available(30);
+	response.set_blocks_free(40);
+	response.set_fragment_size(50);
+	response.set_inode_count(60);
+	response.set_inodes_free(70);
+	response.set_max_filename_length(80);
+
+	let encoded = encode_response!(response, {
+		protocol_version: (7, 4),
+	});
 
 	assert_eq!(
 		encoded,
@@ -43,8 +120,47 @@ fn response() {
 				unique: 0,
 			})
 			.push_sized(&fuse_kernel::fuse_statfs_out {
-				st: Default::default(),
+				st: fuse_kernel::fuse_kstatfs {
+					blocks: 10,
+					bsize: 20,
+					bavail: 30,
+					bfree: 40,
+					frsize: 50,
+					files: 60,
+					ffree: 70,
+					namelen: 80,
+					..Default::default()
+				},
 			})
 			.build()
+	);
+}
+
+#[test]
+fn response_impl_debug() {
+	let mut response = StatfsResponse::new();
+	response.set_block_count(10);
+	response.set_block_size(20);
+	response.set_blocks_available(30);
+	response.set_blocks_free(40);
+	response.set_fragment_size(50);
+	response.set_inode_count(60);
+	response.set_inodes_free(70);
+	response.set_max_filename_length(80);
+
+	assert_eq!(
+		format!("{:#?}", response),
+		concat!(
+			"StatfsResponse {\n",
+			"    block_count: 10,\n",
+			"    block_size: 20,\n",
+			"    blocks_available: 30,\n",
+			"    blocks_free: 40,\n",
+			"    fragment_size: 50,\n",
+			"    inode_count: 60,\n",
+			"    inodes_free: 70,\n",
+			"    max_filename_length: 80,\n",
+			"}",
+		),
 	);
 }

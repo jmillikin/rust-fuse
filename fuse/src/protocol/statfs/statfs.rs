@@ -19,20 +19,31 @@ use crate::protocol::prelude::*;
 // StatfsRequest {{{
 
 pub struct StatfsRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
+	phantom: PhantomData<&'a ()>,
+	node_id: NodeId,
 }
 
 impl StatfsRequest<'_> {
-	pub fn node_id(&self) -> u64 {
-		self.header.nodeid
+	pub fn node_id(&self) -> NodeId {
+		self.node_id
 	}
 }
 
+impl fmt::Debug for StatfsRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("StatfsRequest")
+			.field("node_id", &self.node_id)
+			.finish()
+	}
+}
 impl<'a> fuse_io::DecodeRequest<'a> for StatfsRequest<'a> {
 	fn decode_request(dec: fuse_io::RequestDecoder<'a>) -> Result<Self, Error> {
 		let header = dec.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_STATFS);
-		Ok(Self { header })
+		Ok(Self {
+			phantom: PhantomData,
+			node_id: try_node_id(header.nodeid)?,
+		})
 	}
 }
 
@@ -52,11 +63,52 @@ impl<'a> StatfsResponse<'a> {
 			raw: Default::default(),
 		}
 	}
+
+	pub fn set_block_count(&mut self, block_count: u64) {
+		self.raw.st.blocks = block_count;
+	}
+
+	pub fn set_block_size(&mut self, block_size: u32) {
+		self.raw.st.bsize = block_size;
+	}
+
+	pub fn set_blocks_available(&mut self, blocks_available: u64) {
+		self.raw.st.bavail = blocks_available;
+	}
+
+	pub fn set_blocks_free(&mut self, blocks_free: u64) {
+		self.raw.st.bfree = blocks_free;
+	}
+
+	pub fn set_fragment_size(&mut self, fragment_size: u32) {
+		self.raw.st.frsize = fragment_size;
+	}
+
+	pub fn set_inode_count(&mut self, inode_count: u64) {
+		self.raw.st.files = inode_count;
+	}
+
+	pub fn set_inodes_free(&mut self, inodes_free: u64) {
+		self.raw.st.ffree = inodes_free;
+	}
+
+	pub fn set_max_filename_length(&mut self, max_filename_length: u32) {
+		self.raw.st.namelen = max_filename_length;
+	}
 }
 
 impl fmt::Debug for StatfsResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("StatfsResponse").finish()
+		fmt.debug_struct("StatfsResponse")
+			.field("block_count", &self.raw.st.blocks)
+			.field("block_size", &self.raw.st.bsize)
+			.field("blocks_available", &self.raw.st.bavail)
+			.field("blocks_free", &self.raw.st.bfree)
+			.field("fragment_size", &self.raw.st.frsize)
+			.field("inode_count", &self.raw.st.files)
+			.field("inodes_free", &self.raw.st.ffree)
+			.field("max_filename_length", &self.raw.st.namelen)
+			.finish()
 	}
 }
 
@@ -65,6 +117,16 @@ impl fuse_io::EncodeResponse for StatfsResponse<'_> {
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
 	) -> Result<(), Chan::Error> {
+		if enc.version().minor() < 4 {
+			let buf: &[u8] = unsafe {
+				slice::from_raw_parts(
+					(&self.raw as *const fuse_kernel::fuse_statfs_out)
+						as *const u8,
+					fuse_kernel::FUSE_COMPAT_STATFS_SIZE,
+				)
+			};
+			return enc.encode_bytes(buf);
+		}
 		enc.encode_sized(&self.raw)
 	}
 }
