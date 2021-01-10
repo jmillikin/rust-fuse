@@ -13,6 +13,7 @@ def rust_fuse_protocol_module():
             crate = "//fuse",
             crate_features = [
                 "std",
+                "unstable_" + name,
             ],
             rustc_flags = ['--cfg=rust_fuse_test="{}_test"'.format(name)],
         )
@@ -23,6 +24,7 @@ def rust_fuse_protocol_module():
             srcs = [name + "_interop_test.rs"],
             crate_features = [
                 "std",
+                "unstable_" + name,
             ],
             deps = [
                 "//fuse",
