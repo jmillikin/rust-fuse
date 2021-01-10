@@ -271,8 +271,6 @@ impl<'a> RequestDecoder<'a> {
 	#[cfg_attr(
 		not(any(
 			feature = "unstable_create",
-			feature = "unstable_removexattr",
-			feature = "unstable_setxattr",
 		)),
 		allow(dead_code)
 	)]

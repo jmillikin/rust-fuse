@@ -402,7 +402,6 @@ where
 		fuse_kernel::FUSE_READLINK => do_dispatch!(readlink),
 		fuse_kernel::FUSE_RELEASE => do_dispatch!(release),
 		fuse_kernel::FUSE_RELEASEDIR => do_dispatch!(releasedir),
-		#[cfg(feature = "unstable_removexattr")]
 		fuse_kernel::FUSE_REMOVEXATTR => do_dispatch!(removexattr),
 		fuse_kernel::FUSE_RENAME | fuse_kernel::FUSE_RENAME2 => {
 			do_dispatch!(rename)
@@ -412,7 +411,6 @@ where
 		fuse_kernel::FUSE_SETATTR => do_dispatch!(setattr),
 		#[cfg(feature = "unstable_setlk")]
 		fuse_kernel::FUSE_SETLK => do_dispatch!(setlk),
-		#[cfg(feature = "unstable_setxattr")]
 		fuse_kernel::FUSE_SETXATTR => do_dispatch!(setxattr),
 		fuse_kernel::FUSE_STATFS => do_dispatch!(statfs),
 		fuse_kernel::FUSE_SYMLINK => do_dispatch!(symlink),

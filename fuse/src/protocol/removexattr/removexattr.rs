@@ -22,17 +22,26 @@ mod removexattr_test;
 // RemovexattrRequest {{{
 
 pub struct RemovexattrRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	name: &'a CStr,
+	node_id: NodeId,
+	name: &'a XattrName,
 }
 
 impl RemovexattrRequest<'_> {
-	pub fn node_id(&self) -> u64 {
-		self.header.nodeid
+	pub fn node_id(&self) -> NodeId {
+		self.node_id
 	}
 
-	pub fn name(&self) -> &CStr {
+	pub fn name(&self) -> &XattrName {
 		self.name
+	}
+}
+
+impl fmt::Debug for RemovexattrRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("RemovexattrRequest")
+			.field("node_id", &self.node_id)
+			.field("name", &self.name)
+			.finish()
 	}
 }
 
@@ -43,8 +52,11 @@ impl<'a> fuse_io::DecodeRequest<'a> for RemovexattrRequest<'a> {
 		let header = dec.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_REMOVEXATTR);
 
-		let name = dec.next_cstr()?;
-		Ok(Self { header, name })
+		let name = XattrName::new(dec.next_nul_terminated_bytes()?);
+		Ok(Self {
+			node_id: try_node_id(header.nodeid)?,
+			name,
+		})
 	}
 }
 

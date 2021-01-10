@@ -21,28 +21,52 @@ mod setxattr_test;
 
 // SetxattrRequest {{{
 
+const XATTR_CREATE: u32 = 1 << 0;
+const XATTR_REPLACE: u32 = 1 << 1;
+
 pub struct SetxattrRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	raw: &'a fuse_kernel::fuse_setxattr_in,
-	name: &'a CStr,
+	node_id: NodeId,
+	flags: SetxattrRequestFlags,
+	name: &'a XattrName,
 	value: &'a [u8],
 }
 
 impl SetxattrRequest<'_> {
-	pub fn node_id(&self) -> u64 {
-		self.header.nodeid
+	pub fn node_id(&self) -> NodeId {
+		self.node_id
 	}
 
-	pub fn flags(&self) -> u32 {
-		self.raw.flags
-	}
-
-	pub fn name(&self) -> &CStr {
+	pub fn name(&self) -> &XattrName {
 		self.name
+	}
+
+	pub fn flags(&self) -> &SetxattrRequestFlags {
+		&self.flags
 	}
 
 	pub fn value(&self) -> &[u8] {
 		self.value
+	}
+}
+
+bitflags_struct! {
+	/// Optional flags set on [`SetxattrRequest`].
+	///
+	/// [`SetxattrRequest`]: struct.SetxattrRequest.html
+	pub struct SetxattrRequestFlags(u32);
+
+	XATTR_CREATE: create,
+	XATTR_REPLACE: replace,
+}
+
+impl fmt::Debug for SetxattrRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("SetxattrRequest")
+			.field("node_id", &self.node_id)
+			.field("name", &self.name)
+			.field("flags", &self.flags)
+			.field("value", &DebugBytesAsString(&self.value))
+			.finish()
 	}
 }
 
@@ -54,11 +78,11 @@ impl<'a> fuse_io::DecodeRequest<'a> for SetxattrRequest<'a> {
 		debug_assert!(header.opcode == fuse_kernel::FUSE_SETXATTR);
 
 		let raw: &'a fuse_kernel::fuse_setxattr_in = dec.next_sized()?;
-		let name = dec.next_cstr()?;
+		let name = XattrName::new(dec.next_nul_terminated_bytes()?);
 		let value = dec.next_bytes(raw.size)?;
 		Ok(Self {
-			header,
-			raw,
+			node_id: try_node_id(header.nodeid)?,
+			flags: SetxattrRequestFlags::from_bits(raw.flags),
 			name,
 			value,
 		})

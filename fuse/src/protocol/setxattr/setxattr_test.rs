@@ -22,10 +22,13 @@ use super::{SetxattrRequest, SetxattrResponse};
 #[test]
 fn request() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_SETXATTR)
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_SETXATTR;
+			h.nodeid = 123;
+		})
 		.push_sized(&fuse_kernel::fuse_setxattr_in {
 			size: 10,
-			flags: 0xFF,
+			flags: 0b11,
 			..Default::default()
 		})
 		.push_bytes(b"hello.world!\x00")
@@ -34,10 +37,36 @@ fn request() {
 
 	let req: SetxattrRequest = decode_request!(buf);
 
-	let expect_name = CString::new("hello.world!").unwrap();
-	assert_eq!(req.flags(), 0xFF);
-	assert_eq!(req.name(), expect_name.as_ref());
+	let expect_name = XattrName::from_bytes(b"hello.world!").unwrap();
+	assert_eq!(req.name(), expect_name);
 	assert_eq!(req.value(), b"some\x00value");
+	assert_eq!(req.flags().create, true);
+	assert_eq!(req.flags().replace, true);
+}
+
+#[test]
+fn request_impl_debug() {
+	let request = &SetxattrRequest {
+		node_id: crate::ROOT_ID,
+		name: XattrName::from_bytes(b"hello.world!").unwrap(),
+		flags: super::SetxattrRequestFlags::from_bits(0),
+		value: b"some\x00value",
+	};
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"SetxattrRequest {\n",
+			"    node_id: 1,\n",
+			"    name: \"hello.world!\",\n",
+			"    flags: SetxattrRequestFlags {\n",
+			"        create: false,\n",
+			"        replace: false,\n",
+			"    },\n",
+			"    value: \"some\\x00value\",\n",
+			"}",
+		),
+	);
 }
 
 #[test]
@@ -55,4 +84,11 @@ fn response_empty() {
 			})
 			.build()
 	);
+}
+
+#[test]
+fn response_impl_debug() {
+	let response = SetxattrResponse::new();
+
+	assert_eq!(format!("{:#?}", response), "SetxattrResponse",);
 }

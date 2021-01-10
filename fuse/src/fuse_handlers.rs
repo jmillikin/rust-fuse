@@ -283,8 +283,6 @@ pub trait FuseHandlers {
 		server::unhandled_request(respond);
 	}
 
-	#[cfg(any(doc, feature = "unstable_removexattr"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_removexattr")))]
 	fn removexattr(
 		&self,
 		ctx: server::ServerContext,
@@ -334,8 +332,6 @@ pub trait FuseHandlers {
 		server::unhandled_request(respond);
 	}
 
-	#[cfg(any(doc, feature = "unstable_setxattr"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_setxattr")))]
 	fn setxattr(
 		&self,
 		ctx: server::ServerContext,

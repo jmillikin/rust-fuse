@@ -22,14 +22,35 @@ use super::{RemovexattrRequest, RemovexattrResponse};
 #[test]
 fn request() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_REMOVEXATTR)
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_REMOVEXATTR;
+			h.nodeid = 123;
+		})
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 
 	let req: RemovexattrRequest = decode_request!(buf);
 
-	let expect = CString::new("hello.world!").unwrap();
-	assert_eq!(req.name(), expect.as_ref());
+	let expect = XattrName::from_bytes(b"hello.world!").unwrap();
+	assert_eq!(req.name(), expect);
+}
+
+#[test]
+fn request_impl_debug() {
+	let request = &RemovexattrRequest {
+		node_id: crate::ROOT_ID,
+		name: XattrName::from_bytes(b"hello.world!").unwrap(),
+	};
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"RemovexattrRequest {\n",
+			"    node_id: 1,\n",
+			"    name: \"hello.world!\",\n",
+			"}",
+		),
+	);
 }
 
 #[test]
@@ -47,4 +68,10 @@ fn response_empty() {
 			})
 			.build()
 	);
+}
+
+#[test]
+fn response_impl_debug() {
+	let response = RemovexattrResponse::new();
+	assert_eq!(format!("{:#?}", response), "RemovexattrResponse",);
 }

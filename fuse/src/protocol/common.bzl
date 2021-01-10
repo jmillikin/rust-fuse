@@ -24,7 +24,6 @@ def rust_fuse_protocol_module():
             srcs = [name + "_interop_test.rs"],
             crate_features = [
                 "std",
-                "unstable_" + name,
             ],
             deps = [
                 "//fuse",
