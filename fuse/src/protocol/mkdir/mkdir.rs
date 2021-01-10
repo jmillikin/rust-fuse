@@ -16,9 +16,6 @@
 
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod mkdir_test;
-
 // MkdirRequest {{{
 
 /// Request type for [`FuseHandlers::mkdir`].

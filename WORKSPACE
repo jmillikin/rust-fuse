@@ -30,7 +30,7 @@ local_repository(
 
 load("@rust_fuse_cc_toolchains//:cc_toolchains.bzl", "cc_toolchains")
 load("//build:rust_toolchains.bzl", "rust_toolchains")
-load("//fuse/tests:tests.bzl", "busybox_multiarch")
+load("//build/testutil:testutil.bzl", "busybox_multiarch")
 
 cc_toolchains()
 
@@ -53,6 +53,22 @@ rust_library(
     strip_prefix = "diff-0.1.12",
     type = "tar.gz",
     url = "https://crates.io/api/v1/crates/diff/0.1.12/download",
+)
+
+http_archive(
+    name = "rust_json",
+    build_file_content = """
+load("@io_bazel_rules_rust//rust:rust.bzl", "rust_library")
+rust_library(
+    name = "json",
+    srcs = glob(["**/*.rs"]),
+    visibility = ["//visibility:public"],
+)
+""",
+    sha256 = "078e285eafdfb6c4b434e0d31e8cfcb5115b651496faca5749b88fafd4f23bfd",
+    strip_prefix = "json-0.12.4",
+    type = "tar.gz",
+    url = "https://crates.io/api/v1/crates/json/0.12.4/download",
 )
 
 http_archive(

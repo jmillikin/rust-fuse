@@ -16,9 +16,6 @@
 
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod access_test;
-
 // AccessRequest {{{
 
 /// Request type for [`FuseHandlers::access`].

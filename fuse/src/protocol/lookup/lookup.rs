@@ -16,9 +16,6 @@
 
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod lookup_test;
-
 // LookupRequest {{{
 
 /// Request type for [`FuseHandlers::lookup`].

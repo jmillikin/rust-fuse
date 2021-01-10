@@ -16,9 +16,6 @@
 
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod opendir_test;
-
 // OpendirRequest {{{
 
 /// Request type for [`FuseHandlers::opendir`].

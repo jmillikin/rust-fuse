@@ -16,9 +16,6 @@
 
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod removexattr_test;
-
 // RemovexattrRequest {{{
 
 pub struct RemovexattrRequest<'a> {

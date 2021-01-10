@@ -1,8 +1,0 @@
-START /rust-fuse/test_client
-
-readlink("/rust-fuse/testfs/symlink.txt", _, 32) -> 10
-  errno: 0
-  value: [116, 97, 114, 103, 101, 116, 46, 116, 120, 116, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-
-readlink("/rust-fuse/testfs/noexist.txt", _, 32) -> -1
-  errno: ENOENT

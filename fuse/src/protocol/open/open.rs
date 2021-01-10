@@ -16,9 +16,6 @@
 
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod open_test;
-
 // OpenRequest {{{
 
 /// Request type for [`FuseHandlers::open`].

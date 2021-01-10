@@ -16,9 +16,6 @@
 
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod fallocate_test;
-
 // FallocateRequest {{{
 
 pub struct FallocateRequest<'a> {

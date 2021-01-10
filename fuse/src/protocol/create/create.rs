@@ -16,9 +16,6 @@
 
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod create_test;
-
 // CreateRequest {{{
 
 /// Request type for [`FuseHandlers::create`].

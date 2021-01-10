@@ -16,9 +16,6 @@
 
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod rename_test;
-
 // RenameRequest {{{
 
 const RENAME_NOREPLACE: u32 = 1 << 0;

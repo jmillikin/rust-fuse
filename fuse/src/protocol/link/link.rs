@@ -16,9 +16,6 @@
 
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod link_test;
-
 // LinkRequest {{{
 
 /// Request type for [`FuseHandlers::link`].

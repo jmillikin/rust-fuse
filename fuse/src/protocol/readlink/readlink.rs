@@ -16,9 +16,6 @@
 
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod readlink_test;
-
 // ReadlinkRequest {{{
 
 /// Request type for [`FuseHandlers::readlink`].

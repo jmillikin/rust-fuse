@@ -1,7 +1,0 @@
-START /rust-fuse/test_client
-
-symlink("symlink_target.txt", "/rust-fuse/testfs/symlink.txt") -> 0
-  errno: 0
-
-symlink("symlink_target.txt", "/rust-fuse/testfs/exists.txt") -> -1
-  errno: EEXIST

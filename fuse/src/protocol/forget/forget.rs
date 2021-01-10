@@ -16,9 +16,6 @@
 
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod forget_test;
-
 // ForgetRequest {{{
 
 #[derive(Debug)]

@@ -16,9 +16,6 @@
 
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod setxattr_test;
-
 // SetxattrRequest {{{
 
 pub struct SetxattrRequest<'a> {

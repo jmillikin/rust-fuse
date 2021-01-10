@@ -16,9 +16,6 @@
 
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod symlink_test;
-
 // SymlinkRequest {{{
 
 /// Request type for [`FuseHandlers::symlink`].

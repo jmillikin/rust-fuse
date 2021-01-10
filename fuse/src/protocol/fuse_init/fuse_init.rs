@@ -17,9 +17,6 @@
 use crate::internal::types::ProtocolVersion;
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod fuse_init_test;
-
 // FuseInitRequest {{{
 
 /// Request type for [`FuseHandlers::fuse_init`].

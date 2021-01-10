@@ -16,9 +16,6 @@
 
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod write_test;
-
 // WriteRequest {{{
 
 /// Request type for [`FuseHandlers::write`].

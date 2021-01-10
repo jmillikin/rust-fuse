@@ -17,9 +17,6 @@
 use crate::protocol::prelude::*;
 use crate::protocol::release::fuse_release_in_v7p1;
 
-#[cfg(test)]
-mod releasedir_test;
-
 // ReleasedirRequest {{{
 
 /// Request type for [`FuseHandlers::releasedir`].

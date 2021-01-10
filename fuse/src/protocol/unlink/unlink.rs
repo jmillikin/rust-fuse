@@ -16,9 +16,6 @@
 
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod unlink_test;
-
 // UnlinkRequest {{{
 
 /// Request type for [`FuseHandlers::unlink`].

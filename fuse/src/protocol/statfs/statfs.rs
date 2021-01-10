@@ -16,9 +16,6 @@
 
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod statfs_test;
-
 // StatfsRequest {{{
 
 pub struct StatfsRequest<'a> {

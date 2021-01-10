@@ -16,9 +16,6 @@
 
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod read_test;
-
 // ReadRequest {{{
 
 /// Request type for [`FuseHandlers::read`].

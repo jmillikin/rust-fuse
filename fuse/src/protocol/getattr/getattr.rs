@@ -16,9 +16,6 @@
 
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod getattr_test;
-
 // GetattrRequest {{{
 
 /// Request type for [`FuseHandlers::getattr`].

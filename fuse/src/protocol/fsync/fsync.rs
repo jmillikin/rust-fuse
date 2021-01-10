@@ -16,9 +16,6 @@
 
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod fsync_test;
-
 // FsyncRequest {{{
 
 pub struct FsyncRequest<'a> {

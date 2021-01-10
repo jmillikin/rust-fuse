@@ -16,9 +16,6 @@
 
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod release_test;
-
 // ReleaseRequest {{{
 
 /// Request type for [`FuseHandlers::release`].

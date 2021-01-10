@@ -17,9 +17,6 @@
 use crate::internal::types::ProtocolVersion;
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod cuse_init_test;
-
 // CuseInitRequest {{{
 
 /// Request type for [`CuseHandlers::cuse_init`].

@@ -16,9 +16,6 @@
 
 use crate::protocol::prelude::*;
 
-#[cfg(test)]
-mod setattr_test;
-
 // SetattrRequest {{{
 
 pub struct SetattrRequest<'a> {
