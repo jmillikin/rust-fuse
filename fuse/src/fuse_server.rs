@@ -378,9 +378,7 @@ where
 			let request = DecodeRequest::decode_request(request_decoder)?;
 			handlers.forget(ctx, &request);
 		},
-		#[cfg(feature = "unstable_fsync")]
 		fuse_kernel::FUSE_FSYNC => do_dispatch!(fsync),
-		#[cfg(feature = "unstable_fsyncdir")]
 		fuse_kernel::FUSE_FSYNCDIR => do_dispatch!(fsyncdir),
 		fuse_kernel::FUSE_GETATTR => do_dispatch!(getattr),
 		#[cfg(feature = "unstable_getlk")]

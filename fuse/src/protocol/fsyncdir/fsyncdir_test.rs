@@ -19,15 +19,16 @@ use crate::protocol::prelude::*;
 
 use super::{FsyncdirRequest, FsyncdirResponse};
 
-const DUMMY_FSYNC_FLAG: u32 = 0x80000000;
-
 #[test]
 fn request() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_FSYNCDIR)
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_FSYNCDIR;
+			h.nodeid = 123;
+		})
 		.push_sized(&fuse_kernel::fuse_fsync_in {
-			fh: 123,
-			fsync_flags: DUMMY_FSYNC_FLAG | 0x1,
+			fh: 3,
+			fsync_flags: 0x1,
 			padding: 0,
 		})
 		.build_aligned();
@@ -36,8 +37,31 @@ fn request() {
 		protocol_version: (7, 1),
 	});
 
-	assert_eq!(req.handle(), 123);
-	assert_eq!(req.datasync(), true);
+	assert_eq!(req.handle(), 3);
+	assert_eq!(req.flags().datasync, true);
+}
+
+#[test]
+fn request_impl_debug() {
+	let request = &FsyncdirRequest {
+		phantom: PhantomData,
+		node_id: crate::ROOT_ID,
+		handle: 3,
+		flags: super::FsyncdirRequestFlags::from_bits(0x1),
+	};
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"FsyncdirRequest {\n",
+			"    node_id: 1,\n",
+			"    handle: 3,\n",
+			"    flags: FsyncdirRequestFlags {\n",
+			"        datasync: true,\n",
+			"    },\n",
+			"}",
+		),
+	);
 }
 
 #[test]
@@ -55,4 +79,10 @@ fn response_empty() {
 			})
 			.build()
 	);
+}
+
+#[test]
+fn response_impl_debug() {
+	let response = FsyncdirResponse::new();
+	assert_eq!(format!("{:#?}", response), "FsyncdirResponse",);
 }

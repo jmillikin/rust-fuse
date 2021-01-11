@@ -102,8 +102,6 @@ pub trait FuseHandlers {
 	) {
 	}
 
-	#[cfg(any(doc, feature = "unstable_fsync"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fsync")))]
 	fn fsync(
 		&self,
 		ctx: server::ServerContext,
@@ -113,8 +111,6 @@ pub trait FuseHandlers {
 		server::unhandled_request(respond);
 	}
 
-	#[cfg(any(doc, feature = "unstable_fsyncdir"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fsyncdir")))]
 	fn fsyncdir(
 		&self,
 		ctx: server::ServerContext,

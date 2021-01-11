@@ -21,23 +21,45 @@ mod fsyncdir_test;
 
 // FsyncdirRequest {{{
 
+const FSYNCDIR_DATASYNC: u32 = 1 << 0;
+
 pub struct FsyncdirRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	fh: u64,
-	fsync_flags: u32,
+	phantom: PhantomData<&'a ()>,
+	node_id: NodeId,
+	handle: u64,
+	flags: FsyncdirRequestFlags,
 }
 
 impl FsyncdirRequest<'_> {
-	pub fn node_id(&self) -> u64 {
-		self.header.nodeid
+	pub fn node_id(&self) -> NodeId {
+		self.node_id
 	}
 
 	pub fn handle(&self) -> u64 {
-		self.fh
+		self.handle
 	}
 
-	pub fn datasync(&self) -> bool {
-		(self.fsync_flags & 0x1) > 0
+	pub fn flags(&self) -> &FsyncdirRequestFlags {
+		&self.flags
+	}
+}
+
+bitflags_struct! {
+	/// Optional flags set on [`FsyncdirRequest`].
+	///
+	/// [`FsyncdirRequest`]: struct.FsyncdirRequest.html
+	pub struct FsyncdirRequestFlags(u32);
+
+	FSYNCDIR_DATASYNC: datasync,
+}
+
+impl fmt::Debug for FsyncdirRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("FsyncdirRequest")
+			.field("node_id", &self.node_id)
+			.field("handle", &self.handle)
+			.field("flags", &self.flags)
+			.finish()
 	}
 }
 
@@ -50,9 +72,10 @@ impl<'a> fuse_io::DecodeRequest<'a> for FsyncdirRequest<'a> {
 
 		let raw: &fuse_kernel::fuse_fsync_in = dec.next_sized()?;
 		Ok(Self {
-			header,
-			fh: raw.fh,
-			fsync_flags: raw.fsync_flags,
+			phantom: PhantomData,
+			node_id: try_node_id(header.nodeid)?,
+			handle: raw.fh,
+			flags: FsyncdirRequestFlags::from_bits(raw.fsync_flags),
 		})
 	}
 }
