@@ -46,12 +46,12 @@ macro_rules! op_mod {
 	};
 }
 
-op_mod!(access,      "access/access.rs",           "unstable_access");
+op_mod!(access,      "access/access.rs");
 op_mod!(bmap,        "bmap/bmap.rs",               "unstable_bmap");
-op_mod!(create,      "create/create.rs",           "unstable_create");
+op_mod!(create,      "create/create.rs");
 op_mod!(cuse_init,   "cuse_init/cuse_init.rs");
-op_mod!(fallocate,   "fallocate/fallocate.rs",     "unstable_fallocate");
-op_mod!(flush,       "flush/flush.rs",             "unstable_flush");
+op_mod!(fallocate,   "fallocate/fallocate.rs");
+op_mod!(flush,       "flush/flush.rs");
 op_mod!(forget,      "forget/forget.rs");
 op_mod!(fsync,       "fsync/fsync.rs");
 op_mod!(fsyncdir,    "fsyncdir/fsyncdir.rs");
@@ -63,7 +63,7 @@ op_mod!(ioctl,       "ioctl/ioctl.rs",             "unstable_ioctl");
 op_mod!(link,        "link/link.rs");
 op_mod!(listxattr,   "listxattr/listxattr.rs");
 op_mod!(lookup,      "lookup/lookup.rs");
-op_mod!(lseek,       "lseek/lseek.rs",             "unstable_lseek");
+op_mod!(lseek,       "lseek/lseek.rs");
 op_mod!(mkdir,       "mkdir/mkdir.rs");
 op_mod!(mknod,       "mknod/mknod.rs");
 op_mod!(open,        "open/open.rs");

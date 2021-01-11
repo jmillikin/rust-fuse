@@ -21,14 +21,22 @@ mod fallocate_test;
 
 // FallocateRequest {{{
 
+const FALLOC_FL_KEEP_SIZE: u32 = 1 << 0;
+const FALLOC_FL_PUNCH_HOLE: u32 = 1 << 1;
+const FALLOC_FL_COLLAPSE_RANGE: u32 = 1 << 3;
+const FALLOC_FL_ZERO_RANGE: u32 = 1 << 4;
+const FALLOC_FL_INSERT_RANGE: u32 = 1 << 5;
+const FALLOC_FL_UNSHARE_RANGE: u32 = 1 << 6;
+
 pub struct FallocateRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
 	raw: &'a fuse_kernel::fuse_fallocate_in,
+	node_id: NodeId,
+	mode: FallocateMode,
 }
 
 impl FallocateRequest<'_> {
-	pub fn node_id(&self) -> u64 {
-		self.header.nodeid
+	pub fn node_id(&self) -> NodeId {
+		self.node_id
 	}
 
 	pub fn handle(&self) -> u64 {
@@ -43,8 +51,34 @@ impl FallocateRequest<'_> {
 		self.raw.length
 	}
 
-	pub fn mode(&self) -> FileMode {
-		FileMode(self.raw.mode)
+	pub fn mode(&self) -> FallocateMode {
+		self.mode
+	}
+}
+
+bitflags_struct! {
+	/// Mode bits set in an [`FallocateRequest`].
+	///
+	/// [`FallocateRequest`]: struct.FallocateRequest.html
+	pub struct FallocateMode(u32);
+
+	FALLOC_FL_KEEP_SIZE: keep_size,
+	FALLOC_FL_PUNCH_HOLE: punch_hole,
+	FALLOC_FL_COLLAPSE_RANGE: collapse_range,
+	FALLOC_FL_ZERO_RANGE: zero_range,
+	FALLOC_FL_INSERT_RANGE: insert_range,
+	FALLOC_FL_UNSHARE_RANGE: unshare_range,
+}
+
+impl fmt::Debug for FallocateRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("FallocateRequest")
+			.field("node_id", &self.node_id)
+			.field("handle", &self.raw.fh)
+			.field("offset", &self.raw.offset)
+			.field("length", &self.raw.length)
+			.field("mode", &self.mode)
+			.finish()
 	}
 }
 
@@ -55,7 +89,11 @@ impl<'a> fuse_io::DecodeRequest<'a> for FallocateRequest<'a> {
 		let header = dec.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_FALLOCATE);
 		let raw = dec.next_sized()?;
-		Ok(Self { header, raw })
+		Ok(Self {
+			raw,
+			node_id: try_node_id(header.nodeid)?,
+			mode: FallocateMode::from_bits(raw.mode),
+		})
 	}
 }
 

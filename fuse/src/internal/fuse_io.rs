@@ -20,9 +20,6 @@ use core::mem::size_of;
 #[cfg(feature = "std")]
 use core::pin::Pin;
 
-#[cfg(feature = "std")]
-use std::ffi::CStr;
-
 use crate::error::{Error, ErrorCode};
 use crate::internal::fuse_kernel;
 use crate::internal::types::ProtocolVersion;
@@ -266,24 +263,6 @@ impl<'a> RequestDecoder<'a> {
 		}
 		Err(Error::unexpected_eof())
 	}
-
-	#[cfg(feature = "std")]
-	#[cfg_attr(
-		not(any(
-			feature = "unstable_create",
-		)),
-		allow(dead_code)
-	)]
-	pub(crate) fn next_cstr(&mut self) -> Result<&'a CStr, Error> {
-		for off in self.consumed..self.header.len {
-			if self.buf[off as usize] == 0 {
-				let len = off - self.consumed;
-				let buf = self.next_bytes(len + 1)?;
-				return Ok(unsafe { CStr::from_bytes_with_nul_unchecked(buf) });
-			}
-		}
-		Err(Error::unexpected_eof())
-	}
 }
 
 pub(crate) trait EncodeResponse {
@@ -351,7 +330,6 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 		self.encode_bytes(bytes)
 	}
 
-	#[cfg(feature = "unstable_create")]
 	pub(crate) fn encode_sized_bytes<T: Sized>(
 		self,
 		bytes_1: &[u8],
@@ -366,7 +344,6 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 		self.encode_bytes_2(bytes_1, bytes_2)
 	}
 
-	#[cfg(feature = "unstable_create")]
 	pub(crate) fn encode_sized_sized<T1: Sized, T2: Sized>(
 		self,
 		t_1: &T1,

@@ -22,7 +22,10 @@ use super::{FlushRequest, FlushResponse};
 #[test]
 fn request() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_FLUSH)
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_FLUSH;
+			h.nodeid = 123;
+		})
 		.push_sized(&fuse_kernel::fuse_flush_in {
 			fh: 123,
 			unused: 0,
@@ -35,6 +38,27 @@ fn request() {
 
 	assert_eq!(req.handle(), 123);
 	assert_eq!(req.lock_owner(), 456);
+}
+
+#[test]
+fn request_impl_debug() {
+	let request = FlushRequest {
+		phantom: PhantomData,
+		node_id: crate::ROOT_ID,
+		handle: 12,
+		lock_owner: 34,
+	};
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"FlushRequest {\n",
+			"    node_id: 1,\n",
+			"    handle: 12,\n",
+			"    lock_owner: 34,\n",
+			"}",
+		),
+	);
 }
 
 #[test]
@@ -52,4 +76,10 @@ fn response_empty() {
 			})
 			.build()
 	);
+}
+
+#[test]
+fn response_impl_debug() {
+	let response = FlushResponse::new();
+	assert_eq!(format!("{:#?}", response), "FlushResponse");
 }

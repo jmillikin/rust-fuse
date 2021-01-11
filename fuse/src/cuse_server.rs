@@ -437,7 +437,6 @@ where
 	}
 
 	match header.opcode {
-		#[cfg(feature = "unstable_flush")]
 		fuse_kernel::FUSE_FLUSH => do_dispatch!(flush),
 		fuse_kernel::FUSE_FSYNC => do_dispatch!(fsync),
 		#[cfg(feature = "unstable_ioctl")]

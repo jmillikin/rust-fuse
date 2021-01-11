@@ -37,6 +37,25 @@ fn request() {
 }
 
 #[test]
+fn request_impl_debug() {
+	let request = &AccessRequest {
+		phantom: PhantomData,
+		node_id: crate::ROOT_ID,
+		mask: 0,
+	};
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"AccessRequest {\n",
+			"    node_id: 1,\n",
+			"    mask: 0,\n",
+			"}",
+		),
+	);
+}
+
+#[test]
 fn response() {
 	let resp = AccessResponse::new();
 	let encoded = encode_response!(resp);
@@ -51,4 +70,10 @@ fn response() {
 			})
 			.build()
 	);
+}
+
+#[test]
+fn response_impl_debug() {
+	let response = AccessResponse::new();
+	assert_eq!(format!("{:#?}", response), "AccessResponse",);
 }

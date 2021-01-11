@@ -20,13 +20,8 @@ libc_fuse_mount = ["libc"]
 
 nightly_syscall_fuse_mount = []
 
-unstable_access = []
 unstable_bmap = []
-unstable_create = []
-unstable_fallocate = []
-unstable_flush = []
 unstable_getlk = []
 unstable_ioctl = []
-unstable_lseek = []
 unstable_setattr = []
 unstable_setlk = []

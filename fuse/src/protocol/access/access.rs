@@ -24,13 +24,13 @@ mod access_test;
 /// Request type for [`FuseHandlers::access`].
 ///
 /// [`FuseHandlers::access`]: ../../trait.FuseHandlers.html#method.access
-#[derive(Debug)]
-pub struct AccessRequest {
+pub struct AccessRequest<'a> {
+	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
 	mask: u32,
 }
 
-impl AccessRequest {
+impl AccessRequest<'_> {
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -40,7 +40,16 @@ impl AccessRequest {
 	}
 }
 
-impl<'a> fuse_io::DecodeRequest<'a> for AccessRequest {
+impl fmt::Debug for AccessRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("AccessRequest")
+			.field("node_id", &self.node_id)
+			.field("mask", &self.mask)
+			.finish()
+	}
+}
+
+impl<'a> fuse_io::DecodeRequest<'a> for AccessRequest<'a> {
 	fn decode_request(
 		mut dec: fuse_io::RequestDecoder<'a>,
 	) -> Result<Self, Error> {
@@ -49,6 +58,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for AccessRequest {
 
 		let raw: &'a fuse_kernel::fuse_access_in = dec.next_sized()?;
 		Ok(Self {
+			phantom: PhantomData,
 			node_id: try_node_id(header.nodeid)?,
 			mask: raw.mask,
 		})

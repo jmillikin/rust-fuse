@@ -27,8 +27,6 @@ pub trait CuseHandlers {
 		protocol::CuseInitResponse::new()
 	}
 
-	#[cfg(any(doc, feature = "unstable_flush"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_flush")))]
 	fn flush(
 		&self,
 		ctx: server::ServerContext,

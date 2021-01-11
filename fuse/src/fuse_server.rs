@@ -364,15 +364,11 @@ where
 	}
 
 	match header.opcode {
-		#[cfg(feature = "unstable_access")]
 		fuse_kernel::FUSE_ACCESS => do_dispatch!(access),
 		#[cfg(feature = "unstable_bmap")]
 		fuse_kernel::FUSE_BMAP => do_dispatch!(bmap),
-		#[cfg(feature = "unstable_create")]
 		fuse_kernel::FUSE_CREATE => do_dispatch!(create),
-		#[cfg(feature = "unstable_fallocate")]
 		fuse_kernel::FUSE_FALLOCATE => do_dispatch!(fallocate),
-		#[cfg(feature = "unstable_flush")]
 		fuse_kernel::FUSE_FLUSH => do_dispatch!(flush),
 		fuse_kernel::FUSE_FORGET | fuse_kernel::FUSE_BATCH_FORGET => {
 			let request = DecodeRequest::decode_request(request_decoder)?;
@@ -389,7 +385,6 @@ where
 		fuse_kernel::FUSE_LINK => do_dispatch!(link),
 		fuse_kernel::FUSE_LISTXATTR => do_dispatch!(listxattr),
 		fuse_kernel::FUSE_LOOKUP => do_dispatch!(lookup),
-		#[cfg(feature = "unstable_lseek")]
 		fuse_kernel::FUSE_LSEEK => do_dispatch!(lseek),
 		fuse_kernel::FUSE_MKDIR => do_dispatch!(mkdir),
 		fuse_kernel::FUSE_MKNOD => do_dispatch!(mknod),

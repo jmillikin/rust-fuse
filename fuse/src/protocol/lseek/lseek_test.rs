@@ -1,4 +1,4 @@
-// Copyright 2020 John Millikin and the rust-fuse contributors.
+// Copyright 2021 John Millikin and the rust-fuse contributors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,63 +17,50 @@
 use crate::internal::testutil::MessageBuilder;
 use crate::protocol::prelude::*;
 
-use super::{FallocateRequest, FallocateResponse};
+use super::{LseekRequest, LseekResponse, LseekWhence};
 
 #[test]
 fn request() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_FALLOCATE;
+			h.opcode = fuse_kernel::FUSE_LSEEK;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_fallocate_in {
+		.push_sized(&fuse_kernel::fuse_lseek_in {
 			fh: 12,
 			offset: 34,
-			length: 56,
-			mode: 0b11,
+			whence: LseekWhence::SEEK_DATA.0,
 			padding: 0,
 		})
 		.build_aligned();
 
-	let req: FallocateRequest = decode_request!(buf);
+	let req: LseekRequest = decode_request!(buf);
 
 	assert_eq!(req.handle(), 12);
 	assert_eq!(req.offset(), 34);
-	assert_eq!(req.length(), 56);
-	assert_eq!(req.mode().keep_size, true);
-	assert_eq!(req.mode().punch_hole, true);
+	assert_eq!(req.whence(), LseekWhence::SEEK_DATA);
 }
 
 #[test]
 fn request_impl_debug() {
-	let request = FallocateRequest {
-		raw: &fuse_kernel::fuse_fallocate_in {
-			fh: 123,
-			offset: 1024,
-			length: 4096,
-			mode: 0b11,
+	let request = LseekRequest {
+		raw: &fuse_kernel::fuse_lseek_in {
+			fh: 12,
+			offset: 34,
+			whence: 3,
 			padding: 0,
 		},
 		node_id: crate::ROOT_ID,
-		mode: super::FallocateMode::from_bits(0b11),
 	};
 
 	assert_eq!(
 		format!("{:#?}", request),
 		concat!(
-			"FallocateRequest {\n",
+			"LseekRequest {\n",
 			"    node_id: 1,\n",
-			"    handle: 123,\n",
-			"    offset: 1024,\n",
-			"    length: 4096,\n",
-			"    mode: FallocateMode {\n",
-			"        keep_size: true,\n",
-			"        punch_hole: true,\n",
-			"        collapse_range: false,\n",
-			"        zero_range: false,\n",
-			"        insert_range: false,\n",
-			"        unshare_range: false,\n",
-			"    },\n",
+			"    handle: 12,\n",
+			"    offset: 34,\n",
+			"    whence: SEEK_DATA,\n",
 			"}",
 		),
 	);
@@ -81,23 +68,34 @@ fn request_impl_debug() {
 
 #[test]
 fn response_empty() {
-	let resp = FallocateResponse::new();
+	let mut resp = LseekResponse::new();
+	resp.set_offset(4096);
 	let encoded = encode_response!(resp);
 
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
 			.push_sized(&fuse_kernel::fuse_out_header {
-				len: size_of::<fuse_kernel::fuse_out_header>() as u32,
+				len: (size_of::<fuse_kernel::fuse_out_header>()
+					+ size_of::<fuse_kernel::fuse_lseek_out>()) as u32,
 				error: 0,
 				unique: 0,
 			})
+			.push_sized(&fuse_kernel::fuse_lseek_out { offset: 4096 })
 			.build()
 	);
 }
 
 #[test]
 fn response_impl_debug() {
-	let response = FallocateResponse::new();
-	assert_eq!(format!("{:#?}", response), "FallocateResponse");
+	let mut response = LseekResponse::new();
+	response.set_offset(4096);
+	assert_eq!(
+		format!("{:#?}", response),
+		concat!(
+			"LseekResponse {\n",
+			"    offset: 4096,\n",
+			"}",
+		),
+	);
 }

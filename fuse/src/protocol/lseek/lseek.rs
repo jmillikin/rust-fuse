@@ -16,16 +16,19 @@
 
 use crate::protocol::prelude::*;
 
+#[cfg(rust_fuse_test = "lseek_test")]
+mod lseek_test;
+
 // LseekRequest {{{
 
 pub struct LseekRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
 	raw: &'a fuse_kernel::fuse_lseek_in,
+	node_id: NodeId,
 }
 
 impl LseekRequest<'_> {
-	pub fn node_id(&self) -> u64 {
-		self.header.nodeid
+	pub fn node_id(&self) -> NodeId {
+		self.node_id
 	}
 
 	pub fn handle(&self) -> u64 {
@@ -36,13 +39,37 @@ impl LseekRequest<'_> {
 		self.raw.offset
 	}
 
-	// TODO: SEEK_HOLE, SEEK_DATA
-	//
-	// maybe SEEK_SET, SEEK_CUR, SEEK_END ? does the kernel ever pass these
-	// through to the FS?
+	pub fn whence(&self) -> LseekWhence {
+		LseekWhence(self.raw.whence)
+	}
+}
 
-	pub fn whence(&self) -> u32 {
-		self.raw.whence
+impl fmt::Debug for LseekRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("LseekRequest")
+			.field("node_id", &self.node_id)
+			.field("handle", &self.raw.fh)
+			.field("offset", &self.raw.offset)
+			.field("whence", &LseekWhence(self.raw.whence))
+			.finish()
+	}
+}
+
+#[derive(Eq, PartialEq)]
+pub struct LseekWhence(u32);
+
+impl LseekWhence {
+	pub const SEEK_DATA: LseekWhence = LseekWhence(3);
+	pub const SEEK_HOLE: LseekWhence = LseekWhence(4);
+}
+
+impl fmt::Debug for LseekWhence {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		match self.0 {
+			3 => fmt.write_str("SEEK_DATA"),
+			4 => fmt.write_str("SEEK_HOLE"),
+			_ => self.0.fmt(fmt),
+		}
 	}
 }
 
@@ -53,7 +80,10 @@ impl<'a> fuse_io::DecodeRequest<'a> for LseekRequest<'a> {
 		let header = dec.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_LSEEK);
 		let raw = dec.next_sized()?;
-		Ok(Self { header, raw })
+		Ok(Self {
+			raw,
+			node_id: try_node_id(header.nodeid)?,
+		})
 	}
 }
 

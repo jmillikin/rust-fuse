@@ -37,8 +37,8 @@ fn request_v7p1() {
 		protocol_version: (7, 1),
 	});
 
-	let expect = CString::new("hello.world!").unwrap();
-	assert_eq!(req.name(), expect.as_ref());
+	let expect: &[u8] = b"hello.world!";
+	assert_eq!(req.name(), expect);
 	assert_eq!(req.flags(), 0xFF);
 	assert_eq!(req.mode(), 0);
 	assert_eq!(req.umask(), 0);
@@ -64,11 +64,35 @@ fn request_v7p12() {
 		protocol_version: (7, 12),
 	});
 
-	let expect = CString::new("hello.world!").unwrap();
-	assert_eq!(req.name(), expect.as_ref());
+	let expect: &[u8] = b"hello.world!";
+	assert_eq!(req.name(), expect);
 	assert_eq!(req.flags(), 0xFF);
 	assert_eq!(req.mode(), 0xEE);
 	assert_eq!(req.umask(), 0xDD);
+}
+
+#[test]
+fn request_impl_debug() {
+	let request = &CreateRequest {
+		node_id: crate::ROOT_ID,
+		name: NodeName::from_bytes(b"hello.world").unwrap(),
+		flags: 123,
+		mode: 0o100644,
+		umask: 0o22,
+	};
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"CreateRequest {\n",
+			"    node_id: 1,\n",
+			"    name: \"hello.world\",\n",
+			"    flags: 123,\n",
+			"    mode: 0o100644,\n",
+			"    umask: 18,\n",
+			"}",
+		),
+	);
 }
 
 #[test]
@@ -80,7 +104,8 @@ fn response_v7p1() {
 		.attr_mut()
 		.set_node_id(NodeId::new(11).unwrap());
 	resp.set_handle(123);
-	resp.set_flags(0xFE);
+	resp.flags_mut().direct_io = true;
+	resp.flags_mut().keep_cache = true;
 
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 1),
@@ -114,7 +139,7 @@ fn response_v7p1() {
 			)
 			.push_sized(&fuse_kernel::fuse_open_out {
 				fh: 123,
-				open_flags: 0xFE,
+				open_flags: 0b11,
 				padding: 0,
 			})
 			.build()
@@ -130,7 +155,8 @@ fn response_v7p9() {
 		.attr_mut()
 		.set_node_id(NodeId::new(11).unwrap());
 	resp.set_handle(123);
-	resp.set_flags(0xFE);
+	resp.flags_mut().direct_io = true;
+	resp.flags_mut().keep_cache = true;
 
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 9),
@@ -160,9 +186,64 @@ fn response_v7p9() {
 			})
 			.push_sized(&fuse_kernel::fuse_open_out {
 				fh: 123,
-				open_flags: 0xFE,
+				open_flags: 0b11,
 				padding: 0,
 			})
 			.build()
+	);
+}
+
+#[test]
+fn response_impl_debug() {
+	let mut response = CreateResponse::new();
+
+	let node = response.node_mut();
+	node.set_id(NodeId::new(11).unwrap());
+	node.set_generation(22);
+	node.attr_mut().set_node_id(NodeId::new(11).unwrap());
+	node.attr_mut().set_mode(FileType::Regular | 0o644);
+
+	response.set_handle(123);
+	response.flags_mut().direct_io = true;
+	response.flags_mut().keep_cache = true;
+
+	assert_eq!(
+		format!("{:#?}", response),
+		concat!(
+			"CreateResponse {\n",
+			"    node: fuse_entry_out {\n",
+			"        nodeid: 11,\n",
+			"        generation: 22,\n",
+			"        entry_valid: 0,\n",
+			"        attr_valid: 0,\n",
+			"        entry_valid_nsec: 0,\n",
+			"        attr_valid_nsec: 0,\n",
+			"        attr: fuse_attr {\n",
+			"            ino: 11,\n",
+			"            size: 0,\n",
+			"            blocks: 0,\n",
+			"            atime: 0,\n",
+			"            mtime: 0,\n",
+			"            ctime: 0,\n",
+			"            atimensec: 0,\n",
+			"            mtimensec: 0,\n",
+			"            ctimensec: 0,\n",
+			"            mode: 33188,\n",
+			"            nlink: 0,\n",
+			"            uid: 0,\n",
+			"            gid: 0,\n",
+			"            rdev: 0,\n",
+			"            blksize: 0,\n",
+			"            padding: 0,\n",
+			"        },\n",
+			"    },\n",
+			"    handle: 123,\n",
+			"    flags: CreateResponseFlags {\n",
+			"        direct_io: true,\n",
+			"        keep_cache: true,\n",
+			"        nonseekable: false,\n",
+			"    },\n",
+			"}",
+		),
 	);
 }

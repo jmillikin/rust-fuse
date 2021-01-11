@@ -24,10 +24,9 @@ mod create_test;
 /// Request type for [`FuseHandlers::create`].
 ///
 /// [`FuseHandlers::create`]: ../../trait.FuseHandlers.html#method.create
-#[derive(Debug)]
 pub struct CreateRequest<'a> {
 	node_id: NodeId,
-	name: &'a CStr,
+	name: &'a NodeName,
 	flags: u32,
 	mode: u32,
 	umask: u32,
@@ -38,7 +37,7 @@ impl CreateRequest<'_> {
 		self.node_id
 	}
 
-	pub fn name(&self) -> &CStr {
+	pub fn name(&self) -> &NodeName {
 		self.name
 	}
 
@@ -52,6 +51,18 @@ impl CreateRequest<'_> {
 
 	pub fn umask(&self) -> u32 {
 		self.umask
+	}
+}
+
+impl fmt::Debug for CreateRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("CreateRequest")
+			.field("node_id", &self.node_id)
+			.field("name", &self.name)
+			.field("flags", &self.flags)
+			.field("mode", &FileMode(self.mode))
+			.field("umask", &self.umask)
+			.finish()
 	}
 }
 
@@ -72,7 +83,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for CreateRequest<'a> {
 
 		if dec.version().minor() < 12 {
 			let raw: &'a fuse_create_in_v7p1 = dec.next_sized()?;
-			let name = dec.next_cstr()?;
+			let name = NodeName::new(dec.next_nul_terminated_bytes()?);
 			return Ok(Self {
 				node_id,
 				name,
@@ -83,7 +94,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for CreateRequest<'a> {
 		}
 
 		let raw: &'a fuse_kernel::fuse_create_in = dec.next_sized()?;
-		let name = dec.next_cstr()?;
+		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
 		Ok(Self {
 			node_id,
 			name,
@@ -104,7 +115,8 @@ impl<'a> fuse_io::DecodeRequest<'a> for CreateRequest<'a> {
 pub struct CreateResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	entry_out: fuse_kernel::fuse_entry_out,
-	open_out: fuse_kernel::fuse_open_out,
+	handle: u64,
+	flags: CreateResponseFlags,
 }
 
 impl<'a> CreateResponse<'a> {
@@ -112,14 +124,10 @@ impl<'a> CreateResponse<'a> {
 		Self {
 			phantom: PhantomData,
 			entry_out: Default::default(),
-			open_out: Default::default(),
+			handle: 0,
+			flags: CreateResponseFlags::new(),
 		}
 	}
-
-	/*
-	if (!S_ISREG(outentry.attr.mode) || invalid_nodeid(outentry.nodeid))
-		err -EIO
-	*/
 
 	pub fn node(&self) -> &Node {
 		Node::new_ref(&self.entry_out)
@@ -130,22 +138,25 @@ impl<'a> CreateResponse<'a> {
 	}
 
 	pub fn set_handle(&mut self, handle: u64) {
-		self.open_out.fh = handle;
+		self.handle = handle;
 	}
 
-	pub fn flags(&self) -> u32 {
-		self.open_out.open_flags
+	pub fn flags(&self) -> &CreateResponseFlags {
+		&self.flags
 	}
 
-	pub fn set_flags(&mut self, flags: u32) {
-		self.open_out.open_flags = flags;
+	pub fn flags_mut(&mut self) -> &mut CreateResponseFlags {
+		&mut self.flags
 	}
 }
 
 impl fmt::Debug for CreateResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("CreateResponse").finish()
-		// TODO
+		fmt.debug_struct("CreateResponse")
+			.field("node", &self.entry_out)
+			.field("handle", &self.handle)
+			.field("flags", &self.flags)
+			.finish()
 	}
 }
 
@@ -154,8 +165,36 @@ impl fuse_io::EncodeResponse for CreateResponse<'_> {
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
 	) -> Result<(), Chan::Error> {
-		self.node().encode_entry_sized(enc, &self.open_out)
+		let open_out = fuse_kernel::fuse_open_out {
+			fh: self.handle,
+			open_flags: self.flags.to_bits(),
+			padding: 0,
+		};
+		self.node().encode_entry_sized(enc, &open_out)
 	}
+}
+
+// }}}
+
+// CreateResponseFlags {{{
+
+bitflags_struct! {
+	/// Optional flags set on [`CreateResponse`].
+	///
+	/// [`CreateResponse`]: struct.CreateResponse.html
+	pub struct CreateResponseFlags(u32);
+
+	/// Use [page-based direct I/O][direct-io] on this file.
+	///
+	/// [direct-io]: https://lwn.net/Articles/348719/
+	fuse_kernel::FOPEN_DIRECT_IO: direct_io,
+
+	/// Allow the kernel to preserve cached file data from the last time this
+	/// file was opened.
+	fuse_kernel::FOPEN_KEEP_CACHE: keep_cache,
+
+	/// Tell the kernel this file is not seekable.
+	fuse_kernel::FOPEN_NONSEEKABLE: nonseekable,
 }
 
 // }}}

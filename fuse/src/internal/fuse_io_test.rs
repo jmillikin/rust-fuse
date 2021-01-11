@@ -145,29 +145,3 @@ fn frame_decoder_bytes() {
 	// [8 .. 12) hits EOF
 	assert_eq!(decoder.next_bytes(4), Err(Error::unexpected_eof()));
 }
-
-#[test]
-fn frame_reader_cstr() {
-	let buf = MessageBuilder::new()
-		.set_header(|_| {})
-		.push_bytes(&[1, 2, 3, 4, 0, 5, 6, 7, 8, 0, 9])
-		.build_aligned();
-
-	let mut decoder = RequestDecoder::new(
-		buf.borrow(),
-		ProtocolVersion::LATEST,
-		Semantics::FUSE,
-	)
-	.unwrap();
-
-	// [0 .. 5)
-	let did_read = decoder.next_cstr().unwrap();
-	assert_eq!(did_read.to_bytes_with_nul(), &[1, 2, 3, 4, 0]);
-
-	// [5 .. 10)
-	let did_read = decoder.next_cstr().unwrap();
-	assert_eq!(did_read.to_bytes_with_nul(), &[5, 6, 7, 8, 0]);
-
-	// [10 .. 15) hits EOF
-	assert_eq!(decoder.next_cstr(), Err(Error::unexpected_eof()));
-}

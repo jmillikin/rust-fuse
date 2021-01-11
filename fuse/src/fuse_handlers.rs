@@ -40,8 +40,6 @@ pub trait FuseHandlers {
 		protocol::FuseInitResponse::new()
 	}
 
-	#[cfg(any(doc, feature = "unstable_access"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_access")))]
 	fn access(
 		&self,
 		ctx: server::ServerContext,
@@ -62,8 +60,6 @@ pub trait FuseHandlers {
 		server::unhandled_request(respond);
 	}
 
-	#[cfg(any(doc, feature = "unstable_create"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_create")))]
 	fn create(
 		&self,
 		ctx: server::ServerContext,
@@ -73,8 +69,6 @@ pub trait FuseHandlers {
 		server::unhandled_request(respond);
 	}
 
-	#[cfg(any(doc, feature = "unstable_fallocate"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_fallocate")))]
 	fn fallocate(
 		&self,
 		ctx: server::ServerContext,
@@ -84,8 +78,6 @@ pub trait FuseHandlers {
 		server::unhandled_request(respond);
 	}
 
-	#[cfg(any(doc, feature = "unstable_flush"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_flush")))]
 	fn flush(
 		&self,
 		ctx: server::ServerContext,
@@ -187,8 +179,6 @@ pub trait FuseHandlers {
 		server::unhandled_request(respond);
 	}
 
-	#[cfg(any(doc, feature = "unstable_lseek"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_lseek")))]
 	fn lseek(
 		&self,
 		ctx: server::ServerContext,

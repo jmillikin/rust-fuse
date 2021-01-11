@@ -22,22 +22,33 @@ mod flush_test;
 // FlushRequest {{{
 
 pub struct FlushRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	fh: u64,
+	phantom: PhantomData<&'a ()>,
+	node_id: NodeId,
+	handle: u64,
 	lock_owner: u64,
 }
 
 impl FlushRequest<'_> {
-	pub fn node_id(&self) -> u64 {
-		self.header.nodeid
+	pub fn node_id(&self) -> NodeId {
+		self.node_id
 	}
 
 	pub fn handle(&self) -> u64 {
-		self.fh
+		self.handle
 	}
 
 	pub fn lock_owner(&self) -> u64 {
 		self.lock_owner
+	}
+}
+
+impl fmt::Debug for FlushRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("FlushRequest")
+			.field("node_id", &self.node_id)
+			.field("handle", &self.handle)
+			.field("lock_owner", &self.lock_owner)
+			.finish()
 	}
 }
 
@@ -50,8 +61,9 @@ impl<'a> fuse_io::DecodeRequest<'a> for FlushRequest<'a> {
 
 		let raw: &fuse_kernel::fuse_flush_in = dec.next_sized()?;
 		Ok(Self {
-			header,
-			fh: raw.fh,
+			phantom: PhantomData,
+			node_id: try_node_id(header.nodeid)?,
+			handle: raw.fh,
 			lock_owner: raw.lock_owner,
 		})
 	}
