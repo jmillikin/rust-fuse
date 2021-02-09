@@ -160,6 +160,7 @@ fn rename_err_eisdir() {
 }
 
 #[test]
+#[cfg(target_os = "linux")]
 fn rename2_flag_exchange() {
 	let requests = rename_test(|root| {
 		let path_src = path_cstr(root.join("rename_old.txt"));
@@ -197,6 +198,7 @@ fn rename2_flag_exchange() {
 }
 
 #[test]
+#[cfg(target_os = "linux")]
 fn rename2_flag_noreplace() {
 	let requests = rename_test(|root| {
 		let path_src = path_cstr(root.join("rename_old.txt"));
@@ -234,6 +236,7 @@ fn rename2_flag_noreplace() {
 }
 
 #[test]
+#[cfg(target_os = "linux")]
 fn rename2_flag_whiteout() {
 	let requests = rename_test(|root| {
 		let path_src = path_cstr(root.join("rename_old.txt"));

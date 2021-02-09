@@ -155,5 +155,11 @@ pub fn diff_str(want: &str, got: &str) -> Option<String> {
 }
 
 pub fn errno() -> libc::c_int {
-	unsafe { *libc::__errno_location() }
+	unsafe {
+		#[cfg(target_os = "linux")]
+		return *libc::__errno_location();
+
+		#[cfg(target_os = "freebsd")]
+		return *libc::__error();
+	}
 }

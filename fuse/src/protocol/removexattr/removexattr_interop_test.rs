@@ -81,8 +81,23 @@ fn removexattr() {
 		let path = path_cstr(root.join("xattrs.txt"));
 		let xattr_name = ffi::CString::new("xattr_name").unwrap();
 
-		let rc =
-			unsafe { libc::removexattr(path.as_ptr(), xattr_name.as_ptr()) };
+		#[cfg(target_os = "linux")]
+		let rc = unsafe {
+			libc::removexattr(
+				path.as_ptr(),
+				xattr_name.as_ptr(),
+			)
+		};
+
+		#[cfg(target_os = "freebsd")]
+		let rc = unsafe {
+			libc::extattr_delete_file(
+				path.as_ptr(),
+				libc::EXTATTR_NAMESPACE_USER,
+				xattr_name.as_ptr(),
+			)
+		};
+
 		assert_eq!(rc, 0);
 	});
 	assert_eq!(requests.len(), 1);

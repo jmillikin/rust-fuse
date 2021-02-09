@@ -163,16 +163,24 @@ struct DebugStatfs(libc::statfs);
 
 impl fmt::Debug for DebugStatfs {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("statfs")
-			.field("f_bsize", &self.0.f_bsize)
-			.field("f_blocks", &self.0.f_blocks)
-			.field("f_bfree", &self.0.f_bfree)
-			.field("f_bavail", &self.0.f_bavail)
-			.field("f_files", &self.0.f_files)
-			.field("f_ffree", &self.0.f_ffree)
-			.field("f_namelen", &self.0.f_namelen)
-			.field("f_frsize", &self.0.f_frsize)
-			.finish()
+		let mut s = fmt.debug_struct("statfs");
+		s.field("f_bsize", &self.0.f_bsize);
+		s.field("f_blocks", &self.0.f_blocks);
+		s.field("f_bfree", &self.0.f_bfree);
+		s.field("f_bavail", &self.0.f_bavail);
+		s.field("f_files", &self.0.f_files);
+		s.field("f_ffree", &self.0.f_ffree);
+
+		#[cfg(target_os = "linux")]
+		{
+			s.field("f_namelen", &self.0.f_namelen);
+			s.field("f_frsize", &self.0.f_frsize);
+		}
+		#[cfg(target_os = "freebsd")]
+		{
+			s.field("f_namemax", &self.0.f_namemax);
+		}
+		s.finish()
 	}
 }
 

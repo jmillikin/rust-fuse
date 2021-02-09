@@ -84,7 +84,11 @@ impl fuse_io::EncodeResponse for ReadlinkResponse<'_> {
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
 	) -> Result<(), Chan::Error> {
-		enc.encode_bytes_2(self.name.as_bytes(), &[0])
+		#[cfg(target_os = "linux")]
+		return enc.encode_bytes_2(self.name.as_bytes(), &[0]);
+
+		#[cfg(target_os = "freebsd")]
+		return enc.encode_bytes(self.name.as_bytes());
 	}
 }
 

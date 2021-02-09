@@ -111,8 +111,26 @@ fn listxattr_test(
 fn listxattr_query_size() {
 	let requests = listxattr_test(|root| {
 		let path = path_cstr(root.join("xattrs.txt"));
-		let rc =
-			unsafe { libc::listxattr(path.as_ptr(), std::ptr::null_mut(), 0) };
+
+		#[cfg(target_os = "linux")]
+		let rc = unsafe {
+			libc::listxattr(
+				path.as_ptr(),
+				std::ptr::null_mut(),
+				0,
+			)
+		};
+
+		#[cfg(target_os = "freebsd")]
+		let rc = unsafe {
+			libc::extattr_list_file(
+				path.as_ptr(),
+				libc::EXTATTR_NAMESPACE_USER,
+				std::ptr::null_mut(),
+				0,
+			)
+		};
+
 		assert_eq!(rc, 25);
 	});
 	assert_eq!(requests.len(), 1);
@@ -133,6 +151,7 @@ fn listxattr() {
 		let path = path_cstr(root.join("xattrs.txt"));
 		let mut name_list = [0u8; 30];
 
+		#[cfg(target_os = "linux")]
 		let rc = unsafe {
 			libc::listxattr(
 				path.as_ptr(),
@@ -140,6 +159,17 @@ fn listxattr() {
 				name_list.len(),
 			)
 		};
+
+		#[cfg(target_os = "freebsd")]
+		let rc = unsafe {
+			libc::extattr_list_file(
+				path.as_ptr(),
+				libc::EXTATTR_NAMESPACE_USER,
+				name_list.as_mut_ptr() as *mut libc::c_void,
+				name_list.len(),
+			)
+		};
+
 		assert_eq!(rc, 25);
 		assert_eq!(&name_list, b"xattr_small\0xattr_toobig\0\0\0\0\0\0");
 	});
@@ -161,6 +191,7 @@ fn listxattr_buffer_too_small() {
 		let path = path_cstr(root.join("xattrs.txt"));
 		let mut name_list = [0i8; 1];
 
+		#[cfg(target_os = "linux")]
 		let rc = unsafe {
 			libc::listxattr(
 				path.as_ptr(),
@@ -168,6 +199,17 @@ fn listxattr_buffer_too_small() {
 				name_list.len(),
 			)
 		};
+
+		#[cfg(target_os = "freebsd")]
+		let rc = unsafe {
+			libc::extattr_list_file(
+				path.as_ptr(),
+				libc::EXTATTR_NAMESPACE_USER,
+				name_list.as_mut_ptr() as *mut libc::c_void,
+				name_list.len(),
+			)
+		};
+
 		assert_eq!(rc, -1);
 		assert_eq!(errno(), libc::ERANGE);
 	});
@@ -189,6 +231,7 @@ fn listxattr_oversize_name_list() {
 		let path = path_cstr(root.join("xattrs_toobig.txt"));
 		let mut name_list = [0i8; 30];
 
+		#[cfg(target_os = "linux")]
 		let rc = unsafe {
 			libc::listxattr(
 				path.as_ptr(),
@@ -196,6 +239,17 @@ fn listxattr_oversize_name_list() {
 				name_list.len(),
 			)
 		};
+
+		#[cfg(target_os = "freebsd")]
+		let rc = unsafe {
+			libc::extattr_list_file(
+				path.as_ptr(),
+				libc::EXTATTR_NAMESPACE_USER,
+				name_list.as_mut_ptr() as *mut libc::c_void,
+				name_list.len(),
+			)
+		};
+
 		assert_eq!(rc, -1);
 		assert_eq!(errno(), libc::E2BIG);
 	});

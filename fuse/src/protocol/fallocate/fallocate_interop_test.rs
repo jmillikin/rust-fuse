@@ -89,6 +89,7 @@ fn fallocate_test(
 }
 
 #[test]
+#[cfg(target_os = "linux")]
 fn fallocate() {
 	let requests = fallocate_test(|root| {
 		let path = path_cstr(root.join("fallocate.txt"));
@@ -124,6 +125,42 @@ fn fallocate() {
 }
 
 #[test]
+fn posix_fallocate() {
+	let requests = fallocate_test(|root| {
+		let path = path_cstr(root.join("fallocate.txt"));
+
+		let file_fd = unsafe { libc::open(path.as_ptr(), libc::O_RDWR) };
+		assert_ne!(file_fd, -1);
+		let fallocate_rc = unsafe { libc::posix_fallocate(file_fd, 1024, 4096) };
+		unsafe {
+			libc::close(file_fd)
+		};
+		assert_eq!(fallocate_rc, 0);
+	});
+	assert_eq!(requests.len(), 1);
+
+	let expect = r#"FallocateRequest {
+    node_id: 2,
+    handle: 12345,
+    offset: 1024,
+    length: 4096,
+    mode: FallocateMode {
+        keep_size: false,
+        punch_hole: false,
+        collapse_range: false,
+        zero_range: false,
+        insert_range: false,
+        unshare_range: false,
+    },
+}"#;
+	if let Some(diff) = diff_str(expect, &requests[0]) {
+		println!("{}", diff);
+		assert!(false);
+	}
+}
+
+#[test]
+#[cfg(target_os = "linux")]
 fn fallocate_keep_size() {
 	let requests = fallocate_test(|root| {
 		let path = path_cstr(root.join("fallocate.txt"));
@@ -161,6 +198,7 @@ fn fallocate_keep_size() {
 }
 
 #[test]
+#[cfg(target_os = "linux")]
 fn fallocate_punch_hole() {
 	let requests = fallocate_test(|root| {
 		let path = path_cstr(root.join("fallocate.txt"));

@@ -106,6 +106,7 @@ fn getxattr_query_size() {
 		let path = path_cstr(root.join("xattrs.txt"));
 		let xattr_name = ffi::CString::new("xattr_small").unwrap();
 
+		#[cfg(target_os = "linux")]
 		let rc = unsafe {
 			libc::getxattr(
 				path.as_ptr(),
@@ -114,6 +115,18 @@ fn getxattr_query_size() {
 				0,
 			)
 		};
+
+		#[cfg(target_os = "freebsd")]
+		let rc = unsafe {
+			libc::extattr_get_file(
+				path.as_ptr(),
+				libc::EXTATTR_NAMESPACE_USER,
+				xattr_name.as_ptr(),
+				std::ptr::null_mut(),
+				0,
+			)
+		};
+
 		assert_eq!(rc, 17);
 	});
 	assert_eq!(requests.len(), 1);
@@ -136,6 +149,8 @@ fn getxattr_small() {
 		let xattr_name = ffi::CString::new("xattr_small").unwrap();
 
 		let mut value = [0u8; 20];
+
+		#[cfg(target_os = "linux")]
 		let rc = unsafe {
 			libc::getxattr(
 				path.as_ptr(),
@@ -144,6 +159,18 @@ fn getxattr_small() {
 				value.len(),
 			)
 		};
+
+		#[cfg(target_os = "freebsd")]
+		let rc = unsafe {
+			libc::extattr_get_file(
+				path.as_ptr(),
+				libc::EXTATTR_NAMESPACE_USER,
+				xattr_name.as_ptr(),
+				value.as_mut_ptr() as *mut libc::c_void,
+				value.len(),
+			)
+		};
+
 		assert_eq!(rc, 17);
 		assert_eq!(&value, b"small xattr value\0\0\0")
 	});
@@ -166,6 +193,7 @@ fn getxattr_noexist() {
 		let path = path_cstr(root.join("xattrs.txt"));
 		let xattr_name = ffi::CString::new("xattr_noexist").unwrap();
 
+		#[cfg(target_os = "linux")]
 		let rc = unsafe {
 			libc::getxattr(
 				path.as_ptr(),
@@ -174,6 +202,18 @@ fn getxattr_noexist() {
 				0,
 			)
 		};
+
+		#[cfg(target_os = "freebsd")]
+		let rc = unsafe {
+			libc::extattr_get_file(
+				path.as_ptr(),
+				libc::EXTATTR_NAMESPACE_USER,
+				xattr_name.as_ptr(),
+				std::ptr::null_mut(),
+				0,
+			)
+		};
+
 		assert_eq!(rc, -1);
 		#[allow(deprecated)]
 		const ENOATTR: i32 = libc::ENOATTR;
@@ -199,6 +239,8 @@ fn getxattr_buffer_too_small() {
 		let xattr_name = ffi::CString::new("xattr_small").unwrap();
 
 		let mut value = [0u8; 1];
+
+		#[cfg(target_os = "linux")]
 		let rc = unsafe {
 			libc::getxattr(
 				path.as_ptr(),
@@ -207,6 +249,18 @@ fn getxattr_buffer_too_small() {
 				value.len(),
 			)
 		};
+
+		#[cfg(target_os = "freebsd")]
+		let rc = unsafe {
+			libc::extattr_get_file(
+				path.as_ptr(),
+				libc::EXTATTR_NAMESPACE_USER,
+				xattr_name.as_ptr(),
+				value.as_mut_ptr() as *mut libc::c_void,
+				value.len(),
+			)
+		};
+
 		assert_eq!(rc, -1);
 		assert_eq!(errno(), libc::ERANGE);
 	});
@@ -230,6 +284,8 @@ fn getxattr_oversize_xattr() {
 		let xattr_name = ffi::CString::new("xattr_toobig").unwrap();
 
 		let mut value = [0u8; 32];
+
+		#[cfg(target_os = "linux")]
 		let rc = unsafe {
 			libc::getxattr(
 				path.as_ptr(),
@@ -238,6 +294,18 @@ fn getxattr_oversize_xattr() {
 				value.len(),
 			)
 		};
+
+		#[cfg(target_os = "freebsd")]
+		let rc = unsafe {
+			libc::extattr_get_file(
+				path.as_ptr(),
+				libc::EXTATTR_NAMESPACE_USER,
+				xattr_name.as_ptr(),
+				value.as_mut_ptr() as *mut libc::c_void,
+				value.len(),
+			)
+		};
+
 		assert_eq!(rc, -1);
 		assert_eq!(errno(), libc::E2BIG);
 	});

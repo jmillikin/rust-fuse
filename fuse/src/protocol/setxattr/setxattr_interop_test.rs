@@ -82,16 +82,33 @@ fn setxattr() {
 		let xattr_name = ffi::CString::new("xattr_name").unwrap();
 		let xattr_value = b"some\x00value";
 
-		let rc = unsafe {
-			libc::setxattr(
-				path.as_ptr(),
-				xattr_name.as_ptr(),
-				xattr_value.as_ptr() as *const libc::c_void,
-				xattr_value.len(),
-				0,
-			)
-		};
-		assert_eq!(rc, 0);
+		#[cfg(target_os = "linux")]
+		{
+			let rc = unsafe {
+				libc::setxattr(
+					path.as_ptr(),
+					xattr_name.as_ptr(),
+					xattr_value.as_ptr() as *const libc::c_void,
+					xattr_value.len(),
+					0,
+				)
+			};
+			assert_eq!(rc, 0);
+		}
+
+		#[cfg(target_os = "freebsd")]
+		{
+			let rc = unsafe {
+				libc::extattr_set_file(
+					path.as_ptr(),
+					libc::EXTATTR_NAMESPACE_USER,
+					xattr_name.as_ptr(),
+					xattr_value.as_ptr() as *const libc::c_void,
+					xattr_value.len(),
+				)
+			};
+			assert_eq!(rc, xattr_value.len() as isize);
+		}
 	});
 	assert_eq!(requests.len(), 1);
 
@@ -111,6 +128,7 @@ fn setxattr() {
 }
 
 #[test]
+#[cfg(target_os = "linux")]
 fn setxattr_flag_create() {
 	let requests = setxattr_test(|root| {
 		let path = path_cstr(root.join("xattrs.txt"));
@@ -146,6 +164,7 @@ fn setxattr_flag_create() {
 }
 
 #[test]
+#[cfg(target_os = "linux")]
 fn setxattr_flag_replace() {
 	let requests = setxattr_test(|root| {
 		let path = path_cstr(root.join("xattrs.txt"));
