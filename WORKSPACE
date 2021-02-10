@@ -29,14 +29,48 @@ local_repository(
 )
 
 load("@rust_fuse_cc_toolchains//:cc_toolchains.bzl", "cc_toolchains")
-load("//build:rust_toolchains.bzl", "rust_toolchains")
-load("//build/testutil:testutil.bzl", "busybox_multiarch")
 
 cc_toolchains()
 
+load("//build:rust_toolchains.bzl", "rust_toolchains")
+
 rust_toolchains()
 
+load(
+    "//build/testutil:testutil.bzl",
+    "busybox_multiarch",
+    "freebsd_repository",
+    "qemu_repository",
+)
+
 busybox_multiarch(name = "busybox_multiarch")
+
+freebsd_repository(
+    name = "freebsd_amd64_v12.2",
+    platform = "amd64/amd64",
+    version = "12.2",
+)
+
+qemu_repository(
+    name = "qemu_v5.2.0",
+    version = "5.2.0",
+)
+
+http_archive(
+    name = "rust_base64",
+    build_file_content = """
+load("@io_bazel_rules_rust//rust:rust.bzl", "rust_library")
+rust_library(
+    name = "base64",
+    srcs = glob(["**/*.rs"]),
+    visibility = ["//visibility:public"],
+)
+""",
+    sha256 = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd",
+    strip_prefix = "base64-0.13.0",
+    type = "tar.gz",
+    url = "https://crates.io/api/v1/crates/base64/0.13.0/download",
+)
 
 http_archive(
     name = "rust_diff",

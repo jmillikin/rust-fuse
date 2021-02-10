@@ -1,9 +1,13 @@
 #!/bin/sh
 set -eu
 
-busybox_path="$1"
-qemu_exec_helper_path="$2"
-initrd_path="$3"
+rootfs_path="$1"
+busybox_path="$2"
+kernel_path="$3"
+qemu_exec_helper_path="$4"
+
+mkdir "${rootfs_path}/boot"
+cp "${kernel_path}" "${rootfs_path}/boot/bzImage"
 
 mkdir initrd-dir
 cd initrd-dir
@@ -29,4 +33,4 @@ EOF
 
 chmod +x bin/* etc/init.d/rcS
 
-find . -print0 | cpio --null -ov --format=newc | gzip -9 > "../${initrd_path}"
+find . -print0 | cpio --null -ov --format=newc | gzip -9 > "../${rootfs_path}/boot/initrd.cpio.gz"

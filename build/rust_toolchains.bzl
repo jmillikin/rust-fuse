@@ -41,5 +41,6 @@ def rust_toolchains():
       extra_target_triples = [
           "armv7-unknown-linux-musleabihf",
           "x86_64-unknown-linux-musl",
+          "x86_64-unknown-freebsd",
       ],
   )

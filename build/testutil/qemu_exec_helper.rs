@@ -14,6 +14,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#![allow(unused_imports)]
+
+use std::convert::TryInto;
 use std::env;
 use std::fs;
 use std::io::{self, BufRead, BufReader, Cursor, Read, Write};
@@ -68,7 +71,7 @@ fn main_host() {
 	let mut qemu = Qemu::new().unwrap();
 	qemu.wait_ready().unwrap();
 
-	send_frame(&mut qemu.control_stream, &manifest_json).unwrap();
+	qemu.control_stream.send(&manifest_json).unwrap();
 
 	{
 		let mut file = fs::File::open(&test_binary).unwrap();
@@ -76,7 +79,8 @@ fn main_host() {
 		std::mem::drop(file);
 	}
 
-	let result_json = recv_frame(&mut qemu.control_stream).unwrap();
+	let mut recv_buf = [0u8; PAYLOAD_MTU];
+	let result_json = qemu.control_stream.recv(&mut recv_buf).unwrap();
 	let result =
 		json::parse(std::str::from_utf8(&result_json).unwrap()).unwrap();
 
@@ -86,28 +90,21 @@ fn main_host() {
 	std::process::exit(result["code"].as_i32().unwrap());
 }
 
+#[cfg(any(target_os = "linux", target_os = "freebsd",))]
 fn main_guest() {
-	let mut virtio_control = fs::OpenOptions::new()
-		.read(true)
-		.write(true)
-		.open("/dev/vport0p1")
-		.unwrap();
-	let virtio_stdout = fs::OpenOptions::new()
-		.write(true)
-		.open("/dev/vport0p2")
-		.unwrap();
-	let virtio_stderr = fs::OpenOptions::new()
-		.write(true)
-		.open("/dev/vport0p3")
-		.unwrap();
+	let mut virtio_control = GuestVirtioStream::new(1).unwrap();
+	let virtio_stdout = GuestVirtioStream::new(2).unwrap().file;
+	let virtio_stderr = GuestVirtioStream::new(3).unwrap().file;
 
-	send_frame(&mut virtio_control, b"").unwrap();
-	let manifest_json = recv_frame(&mut virtio_control).unwrap();
+	virtio_control.send(b"").unwrap();
+	let mut recv_buf = [0u8; PAYLOAD_MTU];
+	let manifest_json = virtio_control.recv(&mut recv_buf).unwrap();
 	let mut manifest =
 		json::parse(std::str::from_utf8(&manifest_json).unwrap()).unwrap();
 
 	std::env::set_current_dir("/rust-fuse/test_sandbox").unwrap();
 
+	println!("[GUEST] receiving test files ...");
 	for file_json in manifest["files"].members() {
 		let file_path =
 			path::PathBuf::from(file_json["path"].as_str().unwrap());
@@ -146,7 +143,9 @@ fn main_guest() {
 		test_command.env(key, value);
 	});
 
+	println!("[GUEST] running test ...");
 	let test_status = test_command.status().unwrap();
+	println!("[GUEST] test complete!");
 
 	let mut result = json::JsonValue::new_object();
 	result
@@ -156,13 +155,19 @@ fn main_guest() {
 	result.write(&mut result_buf).unwrap();
 	let result_json = result_buf.into_inner();
 
-	send_frame(&mut virtio_control, &result_json).unwrap();
+	virtio_control.send(&result_json).unwrap();
 }
+
+#[cfg(not(any(
+	target_os = "linux",
+	target_os = "freebsd",
+)))]
+fn main_guest() {}
 
 struct Qemu {
 	process: Child,
 	qmp_stream: TcpStream,
-	control_stream: TcpStream,
+	control_stream: HostVirtioStream,
 }
 
 impl Qemu {
@@ -179,30 +184,46 @@ impl Qemu {
 		let stderr_sock = TcpListener::bind("127.0.0.1:0")?;
 		let stderr_port = stderr_sock.local_addr()?.port();
 
-		let qemu_process: Child;
-		if let Ok(_) = fs::metadata("external/linux_kernel/arch/x86_64") {
-			#[rustfmt::skip]
-			let qemu = Command::new("qemu-system-x86_64")
-				.arg("-m").arg("512M")
-				.arg("-kernel").arg("external/linux_kernel/arch/x86_64/boot/bzImage")
-				.arg("-initrd").arg("build/testutil/initrd.cpio.gz")
-				.arg("-serial").arg("stdio")
-				.arg("-chardev").arg(format!("socket,id=virtio-control,host=127.0.0.1,port={}", control_port))
-				.arg("-chardev").arg(format!("socket,id=virtio-stdout,host=127.0.0.1,port={}", stdout_port))
-				.arg("-chardev").arg(format!("socket,id=virtio-stderr,host=127.0.0.1,port={}", stderr_port))
-				.arg("-device").arg("virtio-serial")
-				.arg("-device").arg("virtserialport,chardev=virtio-control,id=test0,nr=1")
-				.arg("-device").arg("virtserialport,chardev=virtio-stdout,id=test1,nr=2")
-				.arg("-device").arg("virtserialport,chardev=virtio-stderr,id=test2,nr=3")
-				.arg("-qmp").arg(format!("tcp:127.0.0.1:{},nodelay", qmp_port))
-				.arg("-append").arg("console=ttyS0 rdinit=/bin/init")
-				.arg("-nic").arg("none")
-				.arg("-nographic")
-				.spawn()?;
-			qemu_process = qemu;
-		} else {
-			panic!("don't know how to run QEMU for current target platform")
-		}
+		let test_cpu = std::env::var("RUST_FUSE_TEST_CPU").unwrap();
+		let test_os = std::env::var("RUST_FUSE_TEST_OS").unwrap();
+
+		let qemu_common_args = |qemu: &mut Command| {
+			qemu.arg("-m").arg("512M");
+			qemu.arg("-serial").arg("stdio");
+			qemu.arg("-chardev").arg(format!("socket,id=virtio-control,host=127.0.0.1,port={}", control_port));
+			qemu.arg("-chardev").arg(format!("socket,id=virtio-stdout,host=127.0.0.1,port={}", stdout_port));
+			qemu.arg("-chardev").arg(format!("socket,id=virtio-stderr,host=127.0.0.1,port={}", stderr_port));
+			qemu.arg("-device").arg("virtio-serial");
+			qemu.arg("-device").arg("virtserialport,chardev=virtio-control,id=test0,nr=1");
+			qemu.arg("-device").arg("virtserialport,chardev=virtio-stdout,id=test1,nr=2");
+			qemu.arg("-device").arg("virtserialport,chardev=virtio-stderr,id=test2,nr=3");
+			qemu.arg("-qmp").arg(format!("tcp:127.0.0.1:{},nodelay", qmp_port));
+			qemu.arg("-nic").arg("none");
+			qemu.arg("-nographic");
+		};
+
+		let mut qemu = match (&test_os as &str, &test_cpu as &str) {
+			("linux", "x86_64") => {
+				let mut qemu = Command::new("qemu-system-x86_64");
+				qemu_common_args(&mut qemu);
+				qemu.arg("-kernel").arg("build/testutil/linux_rootfs/boot/bzImage");
+				qemu.arg("-initrd").arg("build/testutil/linux_rootfs/boot/initrd.cpio.gz");
+				qemu.arg("-append").arg("console=ttyS0 rdinit=/bin/init");
+				qemu
+			},
+			("freebsd", "x86_64") => {
+				let mut qemu = Command::new("qemu-system-x86_64");
+				qemu_common_args(&mut qemu);
+				qemu.arg("-kernel").arg("build/testutil/freebsd_rootfs/boot/loader_simp.efi");
+				qemu.arg("-drive").arg("if=pflash,format=raw,unit=0,file=external/qemu_v5.2.0/pc-bios/edk2-x86_64-code.fd,readonly=on");
+				qemu.arg("-drive").arg("format=raw,file=fat:rw:build/testutil/freebsd_rootfs");
+				qemu.arg("-append").arg("rootdev=disk0p1 currdev=disk0p1 autoboot_delay=-1 vfs.root.mountfrom=msdosfs:/dev/ada0s1 init_path=/sbin/init");
+				qemu
+			}
+			_ => panic!("don't know how to run QEMU for current target platform"),
+		};
+
+		let qemu_process = qemu.spawn()?;
 
 		let (mut qmp_stream, _) = qmp_sock.accept()?;
 		qmp_stream.set_nodelay(true)?;
@@ -242,12 +263,13 @@ impl Qemu {
 		Ok(Qemu {
 			process: qemu_process,
 			qmp_stream: qmp_stream,
-			control_stream: control_stream,
+			control_stream: HostVirtioStream::new(control_stream),
 		})
 	}
 
 	fn wait_ready(&mut self) -> io::Result<()> {
-		recv_frame(&mut self.control_stream)?;
+		let mut buf = [0u8; PAYLOAD_MTU];
+		self.control_stream.recv(&mut buf)?;
 		Ok(())
 	}
 
@@ -264,37 +286,192 @@ impl Qemu {
 	}
 }
 
-fn send_frame(w: &mut impl Write, buf: &[u8]) -> io::Result<()> {
-	let len_buf = (buf.len() as u64).to_be_bytes();
-	w.write_all(&len_buf)?;
-	w.write_all(buf)
+const PACKET_MTU: usize = 22000;
+const PAYLOAD_MTU: usize = 16500;
+
+trait VirtioStream {
+	fn send(&mut self, buf: &[u8]) -> io::Result<()>;
+	fn recv<'a>(
+		&mut self,
+		buf: &'a mut [u8; PAYLOAD_MTU],
+	) -> io::Result<&'a [u8]>;
 }
 
-fn send_file(w: &mut impl Write, file: &mut fs::File) -> io::Result<()> {
-	let file_len: u64 = file.metadata()?.len();
-	let file_len_buf = file_len.to_be_bytes();
-	w.write_all(&file_len_buf)?;
-	io::copy(file, w)?;
+struct HostVirtioStream {
+	stream: TcpStream,
+}
+
+impl HostVirtioStream {
+	fn new(stream: TcpStream) -> Self {
+		Self { stream }
+	}
+}
+
+impl VirtioStream for HostVirtioStream {
+	fn send(&mut self, buf: &[u8]) -> io::Result<()> {
+		send_packet(&mut self.stream, buf)
+	}
+
+	fn recv<'a>(
+		&mut self,
+		buf: &'a mut [u8; PAYLOAD_MTU],
+	) -> io::Result<&'a [u8]> {
+		recv_packet(&mut self.stream, buf)
+	}
+}
+
+struct GuestVirtioStream {
+	file: fs::File,
+}
+
+impl GuestVirtioStream {
+	#[cfg(target_os = "linux")]
+	fn new(virtio_port: u8) -> io::Result<Self> {
+		let virtio_device = format!("/dev/vport0p{}", virtio_port);
+		let file = fs::OpenOptions::new()
+			.read(true)
+			.write(true)
+			.open(&virtio_device)?;
+		Ok(Self { file })
+	}
+
+	#[cfg(target_os = "freebsd")]
+	fn new(virtio_port: u8) -> io::Result<Self> {
+		let virtio_device = format!("/dev/ttyV0.{}", virtio_port);
+
+		let file = fs::OpenOptions::new()
+			.read(true)
+			.write(true)
+			.open(&virtio_device)?;
+
+		Command::new("/rescue/rescue")
+			.arg("stty")
+			.arg("-f")
+			.arg(&virtio_device)
+			.arg("raw")
+			.arg("speed")
+			.arg("115200")
+			.output()?;
+
+		Ok(Self { file })
+	}
+}
+
+impl VirtioStream for GuestVirtioStream {
+	fn send(&mut self, buf: &[u8]) -> io::Result<()> {
+		send_packet(&mut self.file, buf)
+	}
+
+	fn recv<'a>(
+		&mut self,
+		buf: &'a mut [u8; PAYLOAD_MTU],
+	) -> io::Result<&'a [u8]> {
+		recv_packet(&mut self.file, buf)
+	}
+}
+
+fn send_packet(w: &mut impl Write, payload: &[u8]) -> io::Result<()> {
+	let mut header = [0u8; 9];
+
+	let payload_len: [u8; 4] = (payload.len() as u32).to_be_bytes();
+	(&mut header[0..4]).copy_from_slice(&payload_len);
+
+	let checksum = [0u8; 4]; // TODO
+	(&mut header[4..8]).copy_from_slice(&checksum);
+
+	let mut base64_header = [0u8; 13];
+	base64::encode_config_slice(header, base64::STANDARD, &mut base64_header);
+	base64_header[12] = b'\n';
+	w.write_all(&base64_header)?;
+
+	let mut base64_payload = [0u8; PACKET_MTU + 1];
+	let base64_payload_len = base64::encode_config_slice(
+		payload,
+		base64::STANDARD,
+		&mut base64_payload,
+	);
+	base64_payload[base64_payload_len] = b'\n';
+	w.write_all(&base64_payload[..base64_payload_len + 1])?;
+
 	Ok(())
 }
 
-fn recv_frame(r: &mut impl Read) -> io::Result<Vec<u8>> {
-	let mut len_buf = [0; 8];
-	r.read_exact(&mut len_buf)?;
-	let len = u64::from_be_bytes(len_buf);
-	let mut buf = Vec::new();
-	if len > 0 {
-		r.take(len).read_to_end(&mut buf)?;
+fn recv_packet<'a>(
+	r: &mut impl Read,
+	buf: &'a mut [u8; PAYLOAD_MTU],
+) -> io::Result<&'a [u8]> {
+	let mut base64_header = [0u8; 13];
+	let mut header = [0u8; 9];
+	r.read_exact(&mut base64_header)?;
+	base64::decode_config_slice(
+		&base64_header[0..12],
+		base64::STANDARD,
+		&mut header,
+	)
+	.unwrap();
+
+	let payload_len =
+		u32::from_be_bytes(header[0..4].try_into().unwrap()) as usize;
+	let checksum = u32::from_be_bytes(header[4..8].try_into().unwrap());
+	let _checksum = checksum; // TODO
+
+	let mut base64_payload = [0u8; PACKET_MTU + 1];
+	let mut base64_payload_len = 4 * (payload_len / 3);
+	if payload_len % 3 > 0 {
+		base64_payload_len += 4;
 	}
-	Ok(buf)
+
+	r.read_exact(&mut base64_payload[..base64_payload_len + 1])?;
+	let decoded_len = base64::decode_config_slice(
+		&base64_payload[..base64_payload_len],
+		base64::STANDARD,
+		buf,
+	)
+	.unwrap();
+	assert_eq!(payload_len, decoded_len);
+
+	Ok(&buf[..payload_len])
 }
 
-fn recv_file(r: &mut impl Read, file: &mut fs::File) -> io::Result<()> {
-	let mut len_buf = [0; 8];
-	r.read_exact(&mut len_buf)?;
-	let len = u64::from_be_bytes(len_buf);
-	if len > 0 {
-		io::copy(&mut r.take(len), file)?;
+fn send_file(
+	sock: &mut impl VirtioStream,
+	file: &mut fs::File,
+) -> io::Result<()> {
+	let file_len: u64 = file.metadata()?.len();
+	let file_len_buf = file_len.to_be_bytes();
+	sock.send(&file_len_buf)?;
+
+	let mut buf = [0u8; PAYLOAD_MTU];
+	loop {
+		match file.read(&mut buf)? {
+			0 => return Ok(()),
+			len => {
+				sock.send(&buf[..len])?;
+				sock.recv(&mut buf)?; // ACK
+			},
+		};
+	}
+}
+
+#[allow(dead_code)]
+fn recv_file(
+	sock: &mut impl VirtioStream,
+	file: &mut fs::File,
+) -> io::Result<()> {
+	let mut buf = [0u8; PAYLOAD_MTU];
+	sock.recv(&mut buf)?;
+	let len = u64::from_be_bytes(buf[0..8].try_into().unwrap());
+	if len == 0 {
+		return Ok(());
+	}
+
+	let mut remaining = len;
+	while remaining > 0 {
+		let received = sock.recv(&mut buf)?;
+		file.write_all(received)?;
+		remaining -= received.len() as u64;
+
+		sock.send(b"ACK")?;
 	}
 	Ok(())
 }
