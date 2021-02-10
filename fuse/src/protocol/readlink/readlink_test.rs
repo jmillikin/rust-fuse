@@ -59,11 +59,11 @@ fn response() {
 		encoded,
 		MessageBuilder::new()
 			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>() + 13) as u32,
+				len: (size_of::<fuse_kernel::fuse_out_header>() + 12) as u32,
 				error: 0,
 				unique: 0,
 			})
-			.push_bytes(b"hello.world!\x00")
+			.push_bytes(b"hello.world!")
 			.build()
 	);
 }
