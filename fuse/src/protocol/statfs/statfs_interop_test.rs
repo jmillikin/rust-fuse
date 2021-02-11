@@ -60,14 +60,14 @@ impl fuse::FuseHandlers for TestFS {
 	) {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 		let mut response = fuse::StatfsResponse::new();
-		response.set_block_count(10);
-		response.set_block_size(20);
-		response.set_blocks_available(30);
-		response.set_blocks_free(40);
-		response.set_fragment_size(50);
-		response.set_inode_count(60);
-		response.set_inodes_free(70);
-		response.set_max_filename_length(80);
+		response.set_block_size(10);
+		response.set_block_count(20);
+		response.set_blocks_free(30);
+		response.set_blocks_available(40);
+		response.set_inode_count(50);
+		response.set_inodes_free(60);
+		response.set_max_filename_length(70);
+		response.set_fragment_size(80);
 		respond.ok(&response);
 	}
 }
@@ -94,15 +94,28 @@ fn statfs() {
 		};
 		assert_eq!(rc, 0);
 
+		#[cfg(target_os = "linux")]
 		let expect = r#"statfs {
-    f_bsize: 20,
-    f_blocks: 10,
-    f_bfree: 40,
-    f_bavail: 30,
-    f_files: 60,
-    f_ffree: 70,
-    f_namelen: 80,
-    f_frsize: 50,
+    f_bsize: 10,
+    f_blocks: 20,
+    f_bfree: 30,
+    f_bavail: 40,
+    f_files: 50,
+    f_ffree: 60,
+    f_namelen: 70,
+    f_frsize: 80,
+}"#;
+		// https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=253424
+		#[cfg(target_os = "freebsd")]
+		let expect = r#"statfs {
+    f_bsize: 80,
+    f_iosize: 65536,
+    f_blocks: 20,
+    f_bfree: 30,
+    f_bavail: 40,
+    f_files: 50,
+    f_ffree: 60,
+    f_namemax: 70,
 }"#;
 		let got = format!("{:#?}", &DebugStatfs(stat_buf));
 		if let Some(diff) = diff_str(expect, &got) {
@@ -112,8 +125,13 @@ fn statfs() {
 	});
 	assert_eq!(requests.len(), 1);
 
+	#[cfg(target_os = "linux")]
 	let expect = r#"StatfsRequest {
     node_id: 2,
+}"#;
+	#[cfg(target_os = "freebsd")]
+	let expect = r#"StatfsRequest {
+    node_id: 1,
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);
@@ -132,15 +150,30 @@ fn statfs_statvfs() {
 		};
 		assert_eq!(rc, 0);
 
+		#[cfg(target_os = "linux")]
 		let expect = r#"statvfs {
-    f_bsize: 20,
-    f_blocks: 10,
-    f_bfree: 40,
-    f_bavail: 30,
-    f_files: 60,
-    f_ffree: 70,
-    f_namemax: 80,
-    f_frsize: 50,
+    f_bsize: 10,
+    f_frsize: 80,
+    f_blocks: 20,
+    f_bfree: 30,
+    f_bavail: 40,
+    f_files: 50,
+    f_ffree: 60,
+    f_favail: 60,
+    f_namemax: 70,
+}"#;
+		// https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=253424
+		#[cfg(target_os = "freebsd")]
+		let expect = r#"statvfs {
+    f_bsize: 65536,
+    f_frsize: 80,
+    f_blocks: 20,
+    f_bfree: 30,
+    f_bavail: 40,
+    f_files: 50,
+    f_ffree: 60,
+    f_favail: 60,
+    f_namemax: 255,
 }"#;
 		let got = format!("{:#?}", &DebugStatvfs(stat_buf));
 		if let Some(diff) = diff_str(expect, &got) {
@@ -150,8 +183,13 @@ fn statfs_statvfs() {
 	});
 	assert_eq!(requests.len(), 1);
 
+	#[cfg(target_os = "linux")]
 	let expect = r#"StatfsRequest {
     node_id: 2,
+}"#;
+	#[cfg(target_os = "freebsd")]
+	let expect = r#"StatfsRequest {
+    node_id: 1,
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);
@@ -161,26 +199,35 @@ fn statfs_statvfs() {
 
 struct DebugStatfs(libc::statfs);
 
+#[cfg(target_os = "linux")]
 impl fmt::Debug for DebugStatfs {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		let mut s = fmt.debug_struct("statfs");
-		s.field("f_bsize", &self.0.f_bsize);
-		s.field("f_blocks", &self.0.f_blocks);
-		s.field("f_bfree", &self.0.f_bfree);
-		s.field("f_bavail", &self.0.f_bavail);
-		s.field("f_files", &self.0.f_files);
-		s.field("f_ffree", &self.0.f_ffree);
+		fmt.debug_struct("statfs")
+			.field("f_bsize", &self.0.f_bsize)
+			.field("f_blocks", &self.0.f_blocks)
+			.field("f_bfree", &self.0.f_bfree)
+			.field("f_bavail", &self.0.f_bavail)
+			.field("f_files", &self.0.f_files)
+			.field("f_ffree", &self.0.f_ffree)
+			.field("f_namelen", &self.0.f_namelen)
+			.field("f_frsize", &self.0.f_frsize)
+			.finish()
+	}
+}
 
-		#[cfg(target_os = "linux")]
-		{
-			s.field("f_namelen", &self.0.f_namelen);
-			s.field("f_frsize", &self.0.f_frsize);
-		}
-		#[cfg(target_os = "freebsd")]
-		{
-			s.field("f_namemax", &self.0.f_namemax);
-		}
-		s.finish()
+#[cfg(target_os = "freebsd")]
+impl fmt::Debug for DebugStatfs {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("statfs")
+			.field("f_bsize", &self.0.f_bsize)
+			.field("f_iosize", &self.0.f_iosize)
+			.field("f_blocks", &self.0.f_blocks)
+			.field("f_bfree", &self.0.f_bfree)
+			.field("f_bavail", &self.0.f_bavail)
+			.field("f_files", &self.0.f_files)
+			.field("f_ffree", &self.0.f_ffree)
+			.field("f_namemax", &self.0.f_namemax)
+			.finish()
 	}
 }
 
@@ -190,13 +237,14 @@ impl fmt::Debug for DebugStatvfs {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("statvfs")
 			.field("f_bsize", &self.0.f_bsize)
+			.field("f_frsize", &self.0.f_frsize)
 			.field("f_blocks", &self.0.f_blocks)
 			.field("f_bfree", &self.0.f_bfree)
 			.field("f_bavail", &self.0.f_bavail)
 			.field("f_files", &self.0.f_files)
 			.field("f_ffree", &self.0.f_ffree)
+			.field("f_favail", &self.0.f_favail)
 			.field("f_namemax", &self.0.f_namemax)
-			.field("f_frsize", &self.0.f_frsize)
 			.finish()
 	}
 }
