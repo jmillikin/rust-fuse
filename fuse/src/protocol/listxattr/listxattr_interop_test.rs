@@ -68,9 +68,10 @@ impl fuse::FuseHandlers for TestFS {
 	) {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
-		let xattr_small = fuse::XattrName::from_bytes(b"xattr_small").unwrap();
+		let xattr_small =
+			fuse::XattrName::from_bytes(b"user.xattr_small").unwrap();
 		let xattr_toobig =
-			fuse::XattrName::from_bytes(b"xattr_toobig").unwrap();
+			fuse::XattrName::from_bytes(b"user.xattr_toobig").unwrap();
 
 		let mut resp = match request.size() {
 			None => fuse::ListxattrResponse::without_capacity(),
@@ -108,11 +109,11 @@ fn listxattr_test(
 }
 
 #[test]
+#[cfg(target_os = "linux")]
 fn listxattr_query_size() {
 	let requests = listxattr_test(|root| {
 		let path = path_cstr(root.join("xattrs.txt"));
 
-		#[cfg(target_os = "linux")]
 		let rc = unsafe {
 			libc::listxattr(
 				path.as_ptr(),
@@ -121,17 +122,7 @@ fn listxattr_query_size() {
 			)
 		};
 
-		#[cfg(target_os = "freebsd")]
-		let rc = unsafe {
-			libc::extattr_list_file(
-				path.as_ptr(),
-				libc::EXTATTR_NAMESPACE_USER,
-				std::ptr::null_mut(),
-				0,
-			)
-		};
-
-		assert_eq!(rc, 25);
+		assert_eq!(rc, 35);
 	});
 	assert_eq!(requests.len(), 1);
 
@@ -146,12 +137,49 @@ fn listxattr_query_size() {
 }
 
 #[test]
+#[cfg(target_os = "freebsd")]
+fn extattr_list_query_size() {
+	let requests = listxattr_test(|root| {
+		let path = path_cstr(root.join("xattrs.txt"));
+
+		let rc = unsafe {
+			libc::extattr_list_file(
+				path.as_ptr(),
+				libc::EXTATTR_NAMESPACE_USER,
+				std::ptr::null_mut(),
+				0,
+			)
+		};
+
+		assert_eq!(rc, 25);
+	});
+	assert_eq!(requests.len(), 2);
+
+	let expect = r#"ListxattrRequest {
+    node_id: 2,
+    size: None,
+}"#;
+	if let Some(diff) = diff_str(expect, &requests[0]) {
+		println!("{}", diff);
+		assert!(false);
+	}
+	let expect = r#"ListxattrRequest {
+    node_id: 2,
+    size: Some(35),
+}"#;
+	if let Some(diff) = diff_str(expect, &requests[1]) {
+		println!("{}", diff);
+		assert!(false);
+	}
+}
+
+#[test]
+#[cfg(target_os = "linux")]
 fn listxattr() {
 	let requests = listxattr_test(|root| {
 		let path = path_cstr(root.join("xattrs.txt"));
-		let mut name_list = [0u8; 30];
+		let mut name_list = [0u8; 40];
 
-		#[cfg(target_os = "linux")]
 		let rc = unsafe {
 			libc::listxattr(
 				path.as_ptr(),
@@ -159,8 +187,31 @@ fn listxattr() {
 				name_list.len(),
 			)
 		};
+		assert_eq!(rc, 35);
+		assert_eq!(
+			&name_list,
+			b"user.xattr_small\0user.xattr_toobig\0\0\0\0\0\0"
+		);
+	});
+	assert_eq!(requests.len(), 1);
 
-		#[cfg(target_os = "freebsd")]
+	let expect = r#"ListxattrRequest {
+    node_id: 2,
+    size: Some(40),
+}"#;
+	if let Some(diff) = diff_str(expect, &requests[0]) {
+		println!("{}", diff);
+		assert!(false);
+	}
+}
+
+#[test]
+#[cfg(target_os = "freebsd")]
+fn extattr_list() {
+	let requests = listxattr_test(|root| {
+		let path = path_cstr(root.join("xattrs.txt"));
+		let mut name_list = [0u8; 30];
+
 		let rc = unsafe {
 			libc::extattr_list_file(
 				path.as_ptr(),
@@ -171,41 +222,39 @@ fn listxattr() {
 		};
 
 		assert_eq!(rc, 25);
-		assert_eq!(&name_list, b"xattr_small\0xattr_toobig\0\0\0\0\0\0");
+		assert_eq!(&name_list, b"\x0Bxattr_small\x0Cxattr_toobig\0\0\0\0\0");
 	});
-	assert_eq!(requests.len(), 1);
+	assert_eq!(requests.len(), 2);
 
 	let expect = r#"ListxattrRequest {
     node_id: 2,
-    size: Some(30),
+    size: None,
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
+		println!("{}", diff);
+		assert!(false);
+	}
+	let expect = r#"ListxattrRequest {
+    node_id: 2,
+    size: Some(35),
+}"#;
+	if let Some(diff) = diff_str(expect, &requests[1]) {
 		println!("{}", diff);
 		assert!(false);
 	}
 }
 
 #[test]
+#[cfg(target_os = "linux")]
 fn listxattr_buffer_too_small() {
 	let requests = listxattr_test(|root| {
 		let path = path_cstr(root.join("xattrs.txt"));
-		let mut name_list = [0i8; 1];
+		let mut name_list = [0i8; 5];
 
-		#[cfg(target_os = "linux")]
 		let rc = unsafe {
 			libc::listxattr(
 				path.as_ptr(),
 				name_list.as_mut_ptr(),
-				name_list.len(),
-			)
-		};
-
-		#[cfg(target_os = "freebsd")]
-		let rc = unsafe {
-			libc::extattr_list_file(
-				path.as_ptr(),
-				libc::EXTATTR_NAMESPACE_USER,
-				name_list.as_mut_ptr() as *mut libc::c_void,
 				name_list.len(),
 			)
 		};
@@ -217,7 +266,7 @@ fn listxattr_buffer_too_small() {
 
 	let expect = r#"ListxattrRequest {
     node_id: 2,
-    size: Some(1),
+    size: Some(5),
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);
@@ -226,12 +275,51 @@ fn listxattr_buffer_too_small() {
 }
 
 #[test]
+#[cfg(target_os = "freebsd")]
+fn extattr_list_buffer_too_small() {
+	let requests = listxattr_test(|root| {
+		let path = path_cstr(root.join("xattrs.txt"));
+		let mut name_list = [0u8; 5];
+
+		let rc = unsafe {
+			libc::extattr_list_file(
+				path.as_ptr(),
+				libc::EXTATTR_NAMESPACE_USER,
+				name_list.as_mut_ptr() as *mut libc::c_void,
+				name_list.len(),
+			)
+		};
+
+		assert_eq!(rc, 5);
+		assert_eq!(&name_list, b"\x0Bxatt");
+	});
+	assert_eq!(requests.len(), 2);
+
+	let expect = r#"ListxattrRequest {
+    node_id: 2,
+    size: None,
+}"#;
+	if let Some(diff) = diff_str(expect, &requests[0]) {
+		println!("{}", diff);
+		assert!(false);
+	}
+	let expect = r#"ListxattrRequest {
+    node_id: 2,
+    size: Some(35),
+}"#;
+	if let Some(diff) = diff_str(expect, &requests[1]) {
+		println!("{}", diff);
+		assert!(false);
+	}
+}
+
+#[test]
+#[cfg(target_os = "linux")]
 fn listxattr_oversize_name_list() {
 	let requests = listxattr_test(|root| {
 		let path = path_cstr(root.join("xattrs_toobig.txt"));
 		let mut name_list = [0i8; 30];
 
-		#[cfg(target_os = "linux")]
 		let rc = unsafe {
 			libc::listxattr(
 				path.as_ptr(),
@@ -240,7 +328,28 @@ fn listxattr_oversize_name_list() {
 			)
 		};
 
-		#[cfg(target_os = "freebsd")]
+		assert_eq!(rc, -1);
+		assert_eq!(errno(), libc::E2BIG);
+	});
+	assert_eq!(requests.len(), 1);
+
+	let expect = r#"ListxattrRequest {
+    node_id: 3,
+    size: Some(30),
+}"#;
+	if let Some(diff) = diff_str(expect, &requests[0]) {
+		println!("{}", diff);
+		assert!(false);
+	}
+}
+
+#[test]
+#[cfg(target_os = "freebsd")]
+fn extattr_list_oversize_name_list() {
+	let requests = listxattr_test(|root| {
+		let path = path_cstr(root.join("xattrs_toobig.txt"));
+		let mut name_list = [0i8; 30];
+
 		let rc = unsafe {
 			libc::extattr_list_file(
 				path.as_ptr(),
@@ -257,7 +366,7 @@ fn listxattr_oversize_name_list() {
 
 	let expect = r#"ListxattrRequest {
     node_id: 3,
-    size: Some(30),
+    size: None,
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);

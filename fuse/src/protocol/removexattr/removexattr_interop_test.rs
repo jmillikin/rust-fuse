@@ -79,10 +79,10 @@ fn removexattr_test(
 fn removexattr() {
 	let requests = removexattr_test(|root| {
 		let path = path_cstr(root.join("xattrs.txt"));
-		let xattr_name = ffi::CString::new("xattr_name").unwrap();
 
 		#[cfg(target_os = "linux")]
 		let rc = unsafe {
+			let xattr_name = ffi::CString::new("user.xattr_name").unwrap();
 			libc::removexattr(
 				path.as_ptr(),
 				xattr_name.as_ptr(),
@@ -91,6 +91,7 @@ fn removexattr() {
 
 		#[cfg(target_os = "freebsd")]
 		let rc = unsafe {
+			let xattr_name = ffi::CString::new("xattr_name").unwrap();
 			libc::extattr_delete_file(
 				path.as_ptr(),
 				libc::EXTATTR_NAMESPACE_USER,
@@ -104,7 +105,7 @@ fn removexattr() {
 
 	let expect = r#"RemovexattrRequest {
     node_id: 2,
-    name: "xattr_name",
+    name: "user.xattr_name",
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);

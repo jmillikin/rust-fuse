@@ -60,9 +60,10 @@ impl fuse::FuseHandlers for TestFS {
 	) {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
-		let xattr_small = fuse::XattrName::from_bytes(b"xattr_small").unwrap();
+		let xattr_small =
+			fuse::XattrName::from_bytes(b"user.xattr_small").unwrap();
 		let xattr_toobig =
-			fuse::XattrName::from_bytes(b"xattr_toobig").unwrap();
+			fuse::XattrName::from_bytes(b"user.xattr_toobig").unwrap();
 
 		if request.name() == xattr_small {
 			let mut resp = fuse::GetxattrResponse::new(request.size());
@@ -104,10 +105,10 @@ fn getxattr_test(
 fn getxattr_query_size() {
 	let requests = getxattr_test(|root| {
 		let path = path_cstr(root.join("xattrs.txt"));
-		let xattr_name = ffi::CString::new("xattr_small").unwrap();
 
 		#[cfg(target_os = "linux")]
 		let rc = unsafe {
+			let xattr_name = ffi::CString::new("user.xattr_small").unwrap();
 			libc::getxattr(
 				path.as_ptr(),
 				xattr_name.as_ptr(),
@@ -118,6 +119,7 @@ fn getxattr_query_size() {
 
 		#[cfg(target_os = "freebsd")]
 		let rc = unsafe {
+			let xattr_name = ffi::CString::new("xattr_small").unwrap();
 			libc::extattr_get_file(
 				path.as_ptr(),
 				libc::EXTATTR_NAMESPACE_USER,
@@ -134,7 +136,7 @@ fn getxattr_query_size() {
 	let expect = r#"GetxattrRequest {
     node_id: 2,
     size: None,
-    name: "xattr_small",
+    name: "user.xattr_small",
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);
@@ -146,12 +148,12 @@ fn getxattr_query_size() {
 fn getxattr_small() {
 	let requests = getxattr_test(|root| {
 		let path = path_cstr(root.join("xattrs.txt"));
-		let xattr_name = ffi::CString::new("xattr_small").unwrap();
 
 		let mut value = [0u8; 20];
 
 		#[cfg(target_os = "linux")]
 		let rc = unsafe {
+			let xattr_name = ffi::CString::new("user.xattr_small").unwrap();
 			libc::getxattr(
 				path.as_ptr(),
 				xattr_name.as_ptr(),
@@ -162,6 +164,7 @@ fn getxattr_small() {
 
 		#[cfg(target_os = "freebsd")]
 		let rc = unsafe {
+			let xattr_name = ffi::CString::new("xattr_small").unwrap();
 			libc::extattr_get_file(
 				path.as_ptr(),
 				libc::EXTATTR_NAMESPACE_USER,
@@ -179,7 +182,7 @@ fn getxattr_small() {
 	let expect = r#"GetxattrRequest {
     node_id: 2,
     size: Some(20),
-    name: "xattr_small",
+    name: "user.xattr_small",
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);
@@ -191,10 +194,10 @@ fn getxattr_small() {
 fn getxattr_noexist() {
 	let requests = getxattr_test(|root| {
 		let path = path_cstr(root.join("xattrs.txt"));
-		let xattr_name = ffi::CString::new("xattr_noexist").unwrap();
 
 		#[cfg(target_os = "linux")]
 		let rc = unsafe {
+			let xattr_name = ffi::CString::new("user.xattr_noexist").unwrap();
 			libc::getxattr(
 				path.as_ptr(),
 				xattr_name.as_ptr(),
@@ -205,6 +208,7 @@ fn getxattr_noexist() {
 
 		#[cfg(target_os = "freebsd")]
 		let rc = unsafe {
+			let xattr_name = ffi::CString::new("xattr_noexist").unwrap();
 			libc::extattr_get_file(
 				path.as_ptr(),
 				libc::EXTATTR_NAMESPACE_USER,
@@ -224,7 +228,7 @@ fn getxattr_noexist() {
 	let expect = r#"GetxattrRequest {
     node_id: 2,
     size: None,
-    name: "xattr_noexist",
+    name: "user.xattr_noexist",
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);
@@ -236,12 +240,12 @@ fn getxattr_noexist() {
 fn getxattr_buffer_too_small() {
 	let requests = getxattr_test(|root| {
 		let path = path_cstr(root.join("xattrs.txt"));
-		let xattr_name = ffi::CString::new("xattr_small").unwrap();
 
 		let mut value = [0u8; 1];
 
 		#[cfg(target_os = "linux")]
 		let rc = unsafe {
+			let xattr_name = ffi::CString::new("user.xattr_small").unwrap();
 			libc::getxattr(
 				path.as_ptr(),
 				xattr_name.as_ptr(),
@@ -252,6 +256,7 @@ fn getxattr_buffer_too_small() {
 
 		#[cfg(target_os = "freebsd")]
 		let rc = unsafe {
+			let xattr_name = ffi::CString::new("xattr_small").unwrap();
 			libc::extattr_get_file(
 				path.as_ptr(),
 				libc::EXTATTR_NAMESPACE_USER,
@@ -269,7 +274,7 @@ fn getxattr_buffer_too_small() {
 	let expect = r#"GetxattrRequest {
     node_id: 2,
     size: Some(1),
-    name: "xattr_small",
+    name: "user.xattr_small",
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);
@@ -281,12 +286,12 @@ fn getxattr_buffer_too_small() {
 fn getxattr_oversize_xattr() {
 	let requests = getxattr_test(|root| {
 		let path = path_cstr(root.join("xattrs.txt"));
-		let xattr_name = ffi::CString::new("xattr_toobig").unwrap();
 
 		let mut value = [0u8; 32];
 
 		#[cfg(target_os = "linux")]
 		let rc = unsafe {
+			let xattr_name = ffi::CString::new("user.xattr_toobig").unwrap();
 			libc::getxattr(
 				path.as_ptr(),
 				xattr_name.as_ptr(),
@@ -297,6 +302,7 @@ fn getxattr_oversize_xattr() {
 
 		#[cfg(target_os = "freebsd")]
 		let rc = unsafe {
+			let xattr_name = ffi::CString::new("xattr_toobig").unwrap();
 			libc::extattr_get_file(
 				path.as_ptr(),
 				libc::EXTATTR_NAMESPACE_USER,
@@ -314,7 +320,7 @@ fn getxattr_oversize_xattr() {
 	let expect = r#"GetxattrRequest {
     node_id: 2,
     size: Some(32),
-    name: "xattr_toobig",
+    name: "user.xattr_toobig",
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);

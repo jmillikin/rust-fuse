@@ -79,11 +79,11 @@ fn setxattr_test(
 fn setxattr() {
 	let requests = setxattr_test(|root| {
 		let path = path_cstr(root.join("xattrs.txt"));
-		let xattr_name = ffi::CString::new("xattr_name").unwrap();
 		let xattr_value = b"some\x00value";
 
 		#[cfg(target_os = "linux")]
 		{
+			let xattr_name = ffi::CString::new("user.xattr_name").unwrap();
 			let rc = unsafe {
 				libc::setxattr(
 					path.as_ptr(),
@@ -98,6 +98,7 @@ fn setxattr() {
 
 		#[cfg(target_os = "freebsd")]
 		{
+			let xattr_name = ffi::CString::new("xattr_name").unwrap();
 			let rc = unsafe {
 				libc::extattr_set_file(
 					path.as_ptr(),
@@ -114,7 +115,7 @@ fn setxattr() {
 
 	let expect = r#"SetxattrRequest {
     node_id: 2,
-    name: "xattr_name",
+    name: "user.xattr_name",
     flags: SetxattrRequestFlags {
         create: false,
         replace: false,
@@ -132,7 +133,7 @@ fn setxattr() {
 fn setxattr_flag_create() {
 	let requests = setxattr_test(|root| {
 		let path = path_cstr(root.join("xattrs.txt"));
-		let xattr_name = ffi::CString::new("xattr_name").unwrap();
+		let xattr_name = ffi::CString::new("user.xattr_name").unwrap();
 		let xattr_value = b"some\x00value";
 
 		let rc = unsafe {
@@ -150,7 +151,7 @@ fn setxattr_flag_create() {
 
 	let expect = r#"SetxattrRequest {
     node_id: 2,
-    name: "xattr_name",
+    name: "user.xattr_name",
     flags: SetxattrRequestFlags {
         create: true,
         replace: false,
@@ -168,7 +169,7 @@ fn setxattr_flag_create() {
 fn setxattr_flag_replace() {
 	let requests = setxattr_test(|root| {
 		let path = path_cstr(root.join("xattrs.txt"));
-		let xattr_name = ffi::CString::new("xattr_name").unwrap();
+		let xattr_name = ffi::CString::new("user.xattr_name").unwrap();
 		let xattr_value = b"some\x00value";
 
 		let rc = unsafe {
@@ -186,7 +187,7 @@ fn setxattr_flag_replace() {
 
 	let expect = r#"SetxattrRequest {
     node_id: 2,
-    name: "xattr_name",
+    name: "user.xattr_name",
     flags: SetxattrRequestFlags {
         create: false,
         replace: true,
