@@ -100,15 +100,31 @@ fn access() {
 		let rc = unsafe { libc::access(path.as_ptr(), libc::F_OK) };
 		assert_eq!(rc, 0);
 	});
-	assert_eq!(requests.len(), 1);
 
-	let expect = r#"AccessRequest {
+	#[cfg(target_os = "linux")]
+	{
+		assert_eq!(requests.len(), 1);
+		let expect = r#"AccessRequest {
     node_id: 2,
     mask: 0,
 }"#;
-	if let Some(diff) = diff_str(expect, &requests[0]) {
-		println!("{}", diff);
-		assert!(false);
+		if let Some(diff) = diff_str(expect, &requests[0]) {
+			println!("{}", diff);
+			assert!(false);
+		}
+	}
+
+	#[cfg(target_os = "freebsd")]
+	{
+		assert_eq!(requests.len(), 1);
+		let expect = r#"AccessRequest {
+    node_id: 1,
+    mask: 1,
+}"#;
+		if let Some(diff) = diff_str(expect, &requests[0]) {
+			println!("{}", diff);
+			assert!(false);
+		}
 	}
 }
 
@@ -120,15 +136,42 @@ fn access_read() {
 		let rc = unsafe { libc::access(path.as_ptr(), libc::R_OK) };
 		assert_eq!(rc, 0);
 	});
-	assert_eq!(requests.len(), 1);
 
-	let expect = r#"AccessRequest {
+	#[cfg(target_os = "linux")]
+	{
+		assert_eq!(requests.len(), 1);
+
+		let expect = r#"AccessRequest {
     node_id: 2,
     mask: 4,
 }"#;
-	if let Some(diff) = diff_str(expect, &requests[0]) {
-		println!("{}", diff);
-		assert!(false);
+		if let Some(diff) = diff_str(expect, &requests[0]) {
+			println!("{}", diff);
+			assert!(false);
+		}
+	}
+
+	#[cfg(target_os = "freebsd")]
+	{
+		assert_eq!(requests.len(), 2);
+
+		let expect = r#"AccessRequest {
+    node_id: 1,
+    mask: 1,
+}"#;
+		if let Some(diff) = diff_str(expect, &requests[0]) {
+			println!("{}", diff);
+			assert!(false);
+		}
+
+		let expect = r#"AccessRequest {
+    node_id: 2,
+    mask: 4,
+}"#;
+		if let Some(diff) = diff_str(expect, &requests[1]) {
+			println!("{}", diff);
+			assert!(false);
+		}
 	}
 }
 
@@ -140,15 +183,42 @@ fn access_write() {
 		let rc = unsafe { libc::access(path.as_ptr(), libc::W_OK) };
 		assert_eq!(rc, 0);
 	});
-	assert_eq!(requests.len(), 1);
 
-	let expect = r#"AccessRequest {
+	#[cfg(target_os = "linux")]
+	{
+		assert_eq!(requests.len(), 1);
+
+		let expect = r#"AccessRequest {
     node_id: 2,
     mask: 2,
 }"#;
-	if let Some(diff) = diff_str(expect, &requests[0]) {
-		println!("{}", diff);
-		assert!(false);
+		if let Some(diff) = diff_str(expect, &requests[0]) {
+			println!("{}", diff);
+			assert!(false);
+		}
+	}
+
+	#[cfg(target_os = "freebsd")]
+	{
+		assert_eq!(requests.len(), 2);
+
+		let expect = r#"AccessRequest {
+    node_id: 1,
+    mask: 1,
+}"#;
+		if let Some(diff) = diff_str(expect, &requests[0]) {
+			println!("{}", diff);
+			assert!(false);
+		}
+
+		let expect = r#"AccessRequest {
+    node_id: 2,
+    mask: 2,
+}"#;
+		if let Some(diff) = diff_str(expect, &requests[1]) {
+			println!("{}", diff);
+			assert!(false);
+		}
 	}
 }
 
@@ -160,23 +230,50 @@ fn access_exec() {
 		let rc = unsafe { libc::access(path.as_ptr(), libc::X_OK) };
 		assert_eq!(rc, 0);
 	});
-	assert_eq!(requests.len(), 2);
 
-	let expect = r#"GetattrRequest {
+	#[cfg(target_os = "linux")]
+	{
+		assert_eq!(requests.len(), 2);
+
+		let expect = r#"GetattrRequest {
     node_id: 2,
     handle: None,
 }"#;
-	if let Some(diff) = diff_str(expect, &requests[0]) {
-		println!("{}", diff);
-		assert!(false);
-	}
+		if let Some(diff) = diff_str(expect, &requests[0]) {
+			println!("{}", diff);
+			assert!(false);
+		}
 
-	let expect = r#"AccessRequest {
+		let expect = r#"AccessRequest {
     node_id: 2,
     mask: 1,
 }"#;
-	if let Some(diff) = diff_str(expect, &requests[1]) {
-		println!("{}", diff);
-		assert!(false);
+		if let Some(diff) = diff_str(expect, &requests[1]) {
+			println!("{}", diff);
+			assert!(false);
+		}
+	}
+
+	#[cfg(target_os = "freebsd")]
+	{
+		assert_eq!(requests.len(), 2);
+
+		let expect = r#"AccessRequest {
+    node_id: 1,
+    mask: 1,
+}"#;
+		if let Some(diff) = diff_str(expect, &requests[0]) {
+			println!("{}", diff);
+			assert!(false);
+		}
+
+		let expect = r#"AccessRequest {
+    node_id: 2,
+    mask: 1,
+}"#;
+		if let Some(diff) = diff_str(expect, &requests[1]) {
+			println!("{}", diff);
+			assert!(false);
+		}
 	}
 }

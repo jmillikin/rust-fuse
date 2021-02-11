@@ -88,6 +88,7 @@ fn lseek_test(
 }
 
 #[test]
+#[cfg_attr(target_os = "freebsd", ignore)]
 fn lseek_set() {
 	let requests = lseek_test(|root| {
 		let path = path_cstr(root.join("lseek.txt"));
@@ -104,6 +105,7 @@ fn lseek_set() {
 }
 
 #[test]
+#[cfg_attr(target_os = "freebsd", ignore)]
 fn lseek_data() {
 	let requests = lseek_test(|root| {
 		let path = path_cstr(root.join("lseek.txt"));
@@ -131,6 +133,7 @@ fn lseek_data() {
 }
 
 #[test]
+#[cfg_attr(target_os = "freebsd", ignore)]
 fn lseek_hole() {
 	let requests = lseek_test(|root| {
 		let path = path_cstr(root.join("lseek.txt"));

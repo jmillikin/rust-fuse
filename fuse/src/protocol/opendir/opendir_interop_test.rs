@@ -89,9 +89,15 @@ fn opendir() {
 	});
 	assert_eq!(requests.len(), 1);
 
+	#[cfg(target_os = "linux")]
 	let expect = r#"OpendirRequest {
     node_id: 2,
     flags: 0x00018000,
+}"#;
+	#[cfg(target_os = "freebsd")]
+	let expect = r#"OpendirRequest {
+    node_id: 2,
+    flags: 0x00000000,
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);
@@ -112,9 +118,15 @@ fn opendir_open() {
 	});
 	assert_eq!(requests.len(), 1);
 
+	#[cfg(target_os = "linux")]
 	let expect = r#"OpendirRequest {
     node_id: 2,
     flags: 0x00008000,
+}"#;
+	#[cfg(target_os = "freebsd")]
+	let expect = r#"OpendirRequest {
+    node_id: 2,
+    flags: 0x00000000,
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);

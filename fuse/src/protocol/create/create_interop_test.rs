@@ -80,14 +80,23 @@ fn create() {
 	});
 	assert_eq!(requests.len(), 1);
 
-	let expect = r#"CreateRequest {
+	#[cfg(target_os = "linux")]
+	let flags = 33345;
+
+	#[cfg(target_os = "freebsd")]
+	let flags = 514;
+
+	let expect = format!(
+		r#"CreateRequest {{
     node_id: 1,
     name: "create.txt",
-    flags: 33345,
+    flags: {},
     mode: 0o100644,
     umask: 18,
-}"#;
-	if let Some(diff) = diff_str(expect, &requests[0]) {
+}}"#,
+		flags
+	);
+	if let Some(diff) = diff_str(&expect, &requests[0]) {
 		println!("{}", diff);
 		assert!(false);
 	}
@@ -108,14 +117,23 @@ fn create_open() {
 	});
 	assert_eq!(requests.len(), 1);
 
-	let expect = r#"CreateRequest {
+	#[cfg(target_os = "linux")]
+	let flags = 32833;
+
+	#[cfg(target_os = "freebsd")]
+	let flags = 514;
+
+	let expect = format!(
+		r#"CreateRequest {{
     node_id: 1,
     name: "create.txt",
-    flags: 32833,
+    flags: {},
     mode: 0o100644,
     umask: 18,
-}"#;
-	if let Some(diff) = diff_str(expect, &requests[0]) {
+}}"#,
+		flags
+	);
+	if let Some(diff) = diff_str(&expect, &requests[0]) {
 		println!("{}", diff);
 		assert!(false);
 	}
@@ -140,14 +158,23 @@ fn create_exclusive() {
 	});
 	assert_eq!(requests.len(), 1);
 
-	let expect = r#"CreateRequest {
+	#[cfg(target_os = "linux")]
+	let flags = 32961;
+
+	#[cfg(target_os = "freebsd")]
+	let flags = 514;
+
+	let expect = format!(
+		r#"CreateRequest {{
     node_id: 1,
     name: "create.txt",
-    flags: 32961,
+    flags: {},
     mode: 0o100644,
     umask: 18,
-}"#;
-	if let Some(diff) = diff_str(expect, &requests[0]) {
+}}"#,
+		flags
+	);
+	if let Some(diff) = diff_str(&expect, &requests[0]) {
 		println!("{}", diff);
 		assert!(false);
 	}

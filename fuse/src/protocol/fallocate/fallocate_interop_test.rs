@@ -125,6 +125,7 @@ fn fallocate() {
 }
 
 #[test]
+#[cfg_attr(target_os = "freebsd", ignore)]
 fn posix_fallocate() {
 	let requests = fallocate_test(|root| {
 		let path = path_cstr(root.join("fallocate.txt"));
