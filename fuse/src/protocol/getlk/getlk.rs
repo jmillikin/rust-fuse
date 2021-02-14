@@ -14,18 +14,26 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::protocol::common::file_lock::{Lock, F_RDLCK, F_UNLCK, F_WRLCK};
 use crate::protocol::prelude::*;
+
+#[cfg(rust_fuse_test = "getlk_test")]
+mod getlk_test;
 
 // GetlkRequest {{{
 
+/// Request type for [`FuseHandlers::getlk`].
+///
+/// [`FuseHandlers::getlk`]: ../../trait.FuseHandlers.html#method.getlk
 pub struct GetlkRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
 	raw: &'a fuse_kernel::fuse_lk_in,
+	node_id: NodeId,
+	lock: Lock,
 }
 
 impl GetlkRequest<'_> {
-	pub fn node_id(&self) -> u64 {
-		self.header.nodeid
+	pub fn node_id(&self) -> NodeId {
+		self.node_id
 	}
 
 	pub fn handle(&self) -> u64 {
@@ -36,10 +44,19 @@ impl GetlkRequest<'_> {
 		self.raw.owner
 	}
 
-	// TODO: the lock itself
+	pub fn lock(&self) -> &Lock {
+		&self.lock
+	}
+}
 
-	pub fn flock(&self) -> bool {
-		(self.raw.lk_flags & fuse_kernel::FUSE_LK_FLOCK) > 0
+impl fmt::Debug for GetlkRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("GetlkRequest")
+			.field("node_id", &self.node_id)
+			.field("handle", &self.raw.fh)
+			.field("owner", &self.raw.owner)
+			.field("lock", &self.lock)
+			.finish()
 	}
 }
 
@@ -49,8 +66,15 @@ impl<'a> fuse_io::DecodeRequest<'a> for GetlkRequest<'a> {
 	) -> Result<Self, Error> {
 		let header = dec.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_GETLK);
-		let raw = dec.next_sized()?;
-		Ok(Self { header, raw })
+		let raw: &fuse_kernel::fuse_lk_in = dec.next_sized()?;
+		let node_id = try_node_id(header.nodeid)?;
+
+		let lock_type = raw.lk.r#type;
+		let lock = match Lock::parse(raw.lk) {
+			Some(l) => l,
+			_ => return Err(Error::invalid_lock_type(lock_type)),
+		};
+		Ok(Self { raw, node_id, lock })
 	}
 }
 
@@ -58,23 +82,36 @@ impl<'a> fuse_io::DecodeRequest<'a> for GetlkRequest<'a> {
 
 // GetlkResponse {{{
 
+/// Response type for [`FuseHandlers::getlk`].
+///
+/// [`FuseHandlers::getlk`]: ../../trait.FuseHandlers.html#method.getlk
 pub struct GetlkResponse<'a> {
 	phantom: PhantomData<&'a ()>,
-	raw: fuse_kernel::fuse_lk_out,
+	lock: Option<Lock>,
 }
 
 impl<'a> GetlkResponse<'a> {
 	pub fn new() -> GetlkResponse<'a> {
 		Self {
 			phantom: PhantomData,
-			raw: Default::default(),
+			lock: None,
 		}
+	}
+
+	pub fn lock(&self) -> &Option<Lock> {
+		&self.lock
+	}
+
+	pub fn set_lock(&mut self, lock: Option<Lock>) {
+		self.lock = lock;
 	}
 }
 
 impl fmt::Debug for GetlkResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("GetlkResponse").finish()
+		fmt.debug_struct("GetlkResponse")
+			.field("lock", &self.lock)
+			.finish()
 	}
 }
 
@@ -83,7 +120,31 @@ impl fuse_io::EncodeResponse for GetlkResponse<'_> {
 		&'a self,
 		enc: fuse_io::ResponseEncoder<Chan>,
 	) -> Result<(), Chan::Error> {
-		enc.encode_sized(&self.raw)
+		let lock = match self.lock {
+			None => fuse_kernel::fuse_file_lock {
+				start: 0,
+				end: 0,
+				r#type: F_UNLCK,
+				pid: 0,
+			},
+			Some(Lock::Shared { range, process_id }) => {
+				fuse_kernel::fuse_file_lock {
+					start: range.start,
+					end: range.end,
+					r#type: F_RDLCK,
+					pid: process_id,
+				}
+			},
+			Some(Lock::Exclusive { range, process_id }) => {
+				fuse_kernel::fuse_file_lock {
+					start: range.start,
+					end: range.end,
+					r#type: F_WRLCK,
+					pid: process_id,
+				}
+			},
+		};
+		enc.encode_sized(&fuse_kernel::fuse_lk_out { lk: lock })
 	}
 }
 

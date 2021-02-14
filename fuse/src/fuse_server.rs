@@ -377,7 +377,6 @@ where
 		fuse_kernel::FUSE_FSYNC => do_dispatch!(fsync),
 		fuse_kernel::FUSE_FSYNCDIR => do_dispatch!(fsyncdir),
 		fuse_kernel::FUSE_GETATTR => do_dispatch!(getattr),
-		#[cfg(feature = "unstable_getlk")]
 		fuse_kernel::FUSE_GETLK => do_dispatch!(getlk),
 		fuse_kernel::FUSE_GETXATTR => do_dispatch!(getxattr),
 		#[cfg(feature = "unstable_ioctl")]
@@ -402,8 +401,9 @@ where
 		fuse_kernel::FUSE_RMDIR => do_dispatch!(rmdir),
 		#[cfg(feature = "unstable_setattr")]
 		fuse_kernel::FUSE_SETATTR => do_dispatch!(setattr),
-		#[cfg(feature = "unstable_setlk")]
-		fuse_kernel::FUSE_SETLK => do_dispatch!(setlk),
+		fuse_kernel::FUSE_SETLK | fuse_kernel::FUSE_SETLKW => {
+			do_dispatch!(setlk)
+		},
 		fuse_kernel::FUSE_SETXATTR => do_dispatch!(setxattr),
 		fuse_kernel::FUSE_STATFS => do_dispatch!(statfs),
 		fuse_kernel::FUSE_SYMLINK => do_dispatch!(symlink),

@@ -121,8 +121,6 @@ pub trait FuseHandlers {
 		server::unhandled_request(respond);
 	}
 
-	#[cfg(any(doc, feature = "unstable_getlk"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_getlk")))]
 	fn getlk(
 		&self,
 		ctx: server::ServerContext,
@@ -307,8 +305,6 @@ pub trait FuseHandlers {
 		server::unhandled_request(respond);
 	}
 
-	#[cfg(any(doc, feature = "unstable_setlk"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_setlk")))]
 	fn setlk(
 		&self,
 		ctx: server::ServerContext,

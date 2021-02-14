@@ -30,6 +30,7 @@ pub enum ErrorKind {
 	UnexpectedEof,
 	ExpectedCuseInit(u32),
 	ExpectedFuseInit(u32),
+	InvalidLockType(u32),
 }
 
 impl Error {
@@ -42,6 +43,12 @@ impl Error {
 	pub(crate) fn expected_fuse_init(opcode: u32) -> Error {
 		Error {
 			kind: ErrorKind::ExpectedFuseInit(opcode),
+		}
+	}
+
+	pub(crate) fn invalid_lock_type(t: u32) -> Error {
+		Error {
+			kind: ErrorKind::InvalidLockType(t),
 		}
 	}
 
@@ -90,6 +97,13 @@ impl From<Error> for std::io::Error {
 				format!(
 					"Received opcode {:?} from kernel (expected FUSE_INIT)",
 					fuse_kernel::Opcode(opcode),
+				),
+			),
+			ErrorKind::InvalidLockType(lock_type) => io::Error::new(
+				io::ErrorKind::InvalidData,
+				format!(
+					"Invalid fcntl() lock type {:?} (expected F_RDLCK or F_WRLCK)",
+					lock_type,
 				),
 			),
 		}

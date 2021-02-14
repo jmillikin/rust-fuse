@@ -20,6 +20,9 @@ mod bitflags;
 mod debug;
 pub(crate) use self::debug::*;
 
+pub(crate) mod file_lock;
+pub use self::file_lock::{Lock, LockRange};
+
 mod file_mode;
 pub use self::file_mode::*;
 

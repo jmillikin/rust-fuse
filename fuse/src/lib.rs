@@ -85,6 +85,8 @@ pub use crate::protocol::*;
 pub use self::protocol::common::{
 	FileMode,
 	FileType,
+	Lock,
+	LockRange,
 	Node,
 	NodeAttr,
 	NodeId,

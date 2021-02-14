@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::protocol::common::file_lock::{Lock, LockRange, F_UNLCK};
 use crate::protocol::prelude::*;
 
 #[cfg(rust_fuse_test = "setlk_test")]
@@ -21,15 +22,18 @@ mod setlk_test;
 
 // SetlkRequest {{{
 
+/// Request type for [`FuseHandlers::setlk`].
+///
+/// [`FuseHandlers::setlk`]: ../../trait.FuseHandlers.html#method.setlk
 pub struct SetlkRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
 	raw: &'a fuse_kernel::fuse_lk_in,
-	block: bool,
+	node_id: NodeId,
+	command: SetlkCommand,
 }
 
 impl SetlkRequest<'_> {
-	pub fn node_id(&self) -> u64 {
-		self.header.nodeid
+	pub fn node_id(&self) -> NodeId {
+		self.node_id
 	}
 
 	pub fn handle(&self) -> u64 {
@@ -40,14 +44,45 @@ impl SetlkRequest<'_> {
 		self.raw.owner
 	}
 
-	// TODO: the lock itself
-
-	pub fn flock(&self) -> bool {
-		(self.raw.lk_flags & fuse_kernel::FUSE_LK_FLOCK) > 0
+	pub fn command(&self) -> &SetlkCommand {
+		&self.command
 	}
 
-	pub fn block(&self) -> bool {
-		self.block
+	pub fn flags(&self) -> SetlkRequestFlags {
+		SetlkRequestFlags::from_bits(self.raw.lk_flags)
+	}
+}
+
+#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum SetlkCommand {
+	SetLock(Lock),
+	TrySetLock(Lock),
+
+	#[non_exhaustive]
+	ClearLocks {
+		range: LockRange,
+		process_id: u32,
+	},
+}
+
+bitflags_struct! {
+	/// Optional flags set on [`SetlkRequest`].
+	///
+	/// [`SetlkRequest`]: struct.SetlkRequest.html
+	pub struct SetlkRequestFlags(u32);
+
+	fuse_kernel::FUSE_LK_FLOCK: flock,
+}
+
+impl fmt::Debug for SetlkRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("SetlkRequest")
+			.field("node_id", &self.node_id)
+			.field("handle", &self.raw.fh)
+			.field("owner", &self.raw.owner)
+			.field("command", &self.command)
+			.field("flags", &self.flags())
+			.finish()
 	}
 }
 
@@ -56,15 +91,45 @@ impl<'a> fuse_io::DecodeRequest<'a> for SetlkRequest<'a> {
 		mut dec: fuse_io::RequestDecoder<'a>,
 	) -> Result<Self, Error> {
 		let header = dec.header();
-		let block: bool;
+
+		let is_setlkw: bool;
 		if header.opcode == fuse_kernel::FUSE_SETLKW {
-			block = true;
+			is_setlkw = true;
 		} else {
 			debug_assert!(header.opcode == fuse_kernel::FUSE_SETLK);
-			block = false;
+			is_setlkw = false;
 		}
-		let raw = dec.next_sized()?;
-		Ok(Self { header, raw, block })
+
+		let raw: &fuse_kernel::fuse_lk_in = dec.next_sized()?;
+		let node_id = try_node_id(header.nodeid)?;
+		let command = parse_setlk_cmd(is_setlkw, &raw.lk)?;
+
+		Ok(Self {
+			raw,
+			node_id,
+			command,
+		})
+	}
+}
+
+fn parse_setlk_cmd(
+	is_setlkw: bool,
+	raw: &fuse_kernel::fuse_file_lock,
+) -> Result<SetlkCommand, Error> {
+	if raw.r#type == F_UNLCK {
+		return Ok(SetlkCommand::ClearLocks {
+			range: LockRange::parse(*raw),
+			process_id: raw.pid,
+		});
+	}
+
+	match Lock::parse(*raw) {
+		Some(lock) => Ok(if is_setlkw {
+			SetlkCommand::SetLock(lock)
+		} else {
+			SetlkCommand::TrySetLock(lock)
+		}),
+		None => return Err(Error::invalid_lock_type(raw.r#type)),
 	}
 }
 
@@ -72,6 +137,9 @@ impl<'a> fuse_io::DecodeRequest<'a> for SetlkRequest<'a> {
 
 // SetlkResponse {{{
 
+/// Response type for [`FuseHandlers::setlk`].
+///
+/// [`FuseHandlers::setlk`]: ../../trait.FuseHandlers.html#method.setlk
 pub struct SetlkResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
