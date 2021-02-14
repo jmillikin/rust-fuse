@@ -14,6 +14,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#![allow(dead_code)]
+#![allow(unused_macros)]
+
 use std::cell::RefCell;
 use std::mem::size_of;
 use std::slice;

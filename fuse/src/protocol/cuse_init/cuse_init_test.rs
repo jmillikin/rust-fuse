@@ -68,8 +68,6 @@ fn encode_response(
 	response: CuseInitResponse,
 	maybe_device_name: Option<&[u8]>,
 ) -> Vec<u8> {
-	use crate::internal::fuse_io::ResponseEncoder;
-
 	let request_id = 0;
 	let mut channel = crate::internal::testutil::FakeChannel::new();
 	let encoder =

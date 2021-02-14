@@ -30,56 +30,159 @@ pub use self::common::{
 
 mod prelude;
 
-macro_rules! op_mod {
-	($name:ident, $path:expr) => {
-		#[path = $path]
-		pub mod $name;
-		pub use self::$name::*;
-	};
-	($name:ident, $path:expr, $feature:expr) => {
-		#[cfg(any(doc, feature = $feature))]
-		#[cfg_attr(doc, doc(cfg(feature = $feature)))]
-		#[path = $path]
-		pub mod $name;
-		#[cfg(any(doc, feature = $feature))]
-		pub use self::$name::*;
-	};
-}
+#[path = "access/access.rs"]
+pub mod access;
+pub use self::access::*;
 
-op_mod!(access,      "access/access.rs");
-op_mod!(bmap,        "bmap/bmap.rs",               "unstable_bmap");
-op_mod!(create,      "create/create.rs");
-op_mod!(cuse_init,   "cuse_init/cuse_init.rs");
-op_mod!(fallocate,   "fallocate/fallocate.rs");
-op_mod!(flush,       "flush/flush.rs");
-op_mod!(forget,      "forget/forget.rs");
-op_mod!(fsync,       "fsync/fsync.rs");
-op_mod!(fsyncdir,    "fsyncdir/fsyncdir.rs");
-op_mod!(fuse_init,   "fuse_init/fuse_init.rs");
-op_mod!(getattr,     "getattr/getattr.rs");
-op_mod!(getlk,       "getlk/getlk.rs");
-op_mod!(getxattr,    "getxattr/getxattr.rs");
-op_mod!(ioctl,       "ioctl/ioctl.rs",             "unstable_ioctl");
-op_mod!(link,        "link/link.rs");
-op_mod!(listxattr,   "listxattr/listxattr.rs");
-op_mod!(lookup,      "lookup/lookup.rs");
-op_mod!(lseek,       "lseek/lseek.rs");
-op_mod!(mkdir,       "mkdir/mkdir.rs");
-op_mod!(mknod,       "mknod/mknod.rs");
-op_mod!(open,        "open/open.rs");
-op_mod!(opendir,     "opendir/opendir.rs");
-op_mod!(read,        "read/read.rs");
-op_mod!(readdir,     "readdir/readdir.rs");
-op_mod!(readlink,    "readlink/readlink.rs");
-op_mod!(release,     "release/release.rs");
-op_mod!(releasedir,  "releasedir/releasedir.rs");
-op_mod!(removexattr, "removexattr/removexattr.rs");
-op_mod!(rename,      "rename/rename.rs");
-op_mod!(rmdir,       "rmdir/rmdir.rs");
-op_mod!(setattr,     "setattr/setattr.rs",         "unstable_setattr");
-op_mod!(setlk,       "setlk/setlk.rs");
-op_mod!(setxattr,    "setxattr/setxattr.rs");
-op_mod!(statfs,      "statfs/statfs.rs");
-op_mod!(symlink,     "symlink/symlink.rs");
-op_mod!(unlink,      "unlink/unlink.rs");
-op_mod!(write,       "write/write.rs");
+#[cfg(any(doc, feature = "unstable_bmap"))]
+#[cfg_attr(doc, doc(cfg(feature = "unstable_bmap")))]
+#[path = "bmap/bmap.rs"]
+pub mod bmap;
+#[cfg(any(doc, feature = "unstable_bmap"))]
+pub use self::bmap::*;
+
+#[path = "create/create.rs"]
+pub mod create;
+pub use self::create::*;
+
+#[path = "cuse_init/cuse_init.rs"]
+pub mod cuse_init;
+pub use self::cuse_init::*;
+
+#[path = "fallocate/fallocate.rs"]
+pub mod fallocate;
+pub use self::fallocate::*;
+
+#[path = "flush/flush.rs"]
+pub mod flush;
+pub use self::flush::*;
+
+#[path = "forget/forget.rs"]
+pub mod forget;
+pub use self::forget::*;
+
+#[path = "fsync/fsync.rs"]
+pub mod fsync;
+pub use self::fsync::*;
+
+#[path = "fsyncdir/fsyncdir.rs"]
+pub mod fsyncdir;
+pub use self::fsyncdir::*;
+
+#[path = "fuse_init/fuse_init.rs"]
+pub mod fuse_init;
+pub use self::fuse_init::*;
+
+#[path = "getattr/getattr.rs"]
+pub mod getattr;
+pub use self::getattr::*;
+
+#[path = "getlk/getlk.rs"]
+pub mod getlk;
+pub use self::getlk::*;
+
+#[path = "getxattr/getxattr.rs"]
+pub mod getxattr;
+pub use self::getxattr::*;
+
+#[cfg(any(doc, feature = "unstable_ioctl"))]
+#[cfg_attr(doc, doc(cfg(feature = "unstable_ioctl")))]
+#[path = "ioctl/ioctl.rs"]
+pub mod ioctl;
+#[cfg(any(doc, feature = "unstable_ioctl"))]
+pub use self::ioctl::*;
+
+#[path = "link/link.rs"]
+pub mod link;
+pub use self::link::*;
+
+#[path = "listxattr/listxattr.rs"]
+pub mod listxattr;
+pub use self::listxattr::*;
+
+#[path = "lookup/lookup.rs"]
+pub mod lookup;
+pub use self::lookup::*;
+
+#[path = "lseek/lseek.rs"]
+pub mod lseek;
+pub use self::lseek::*;
+
+#[path = "mkdir/mkdir.rs"]
+pub mod mkdir;
+pub use self::mkdir::*;
+
+#[path = "mknod/mknod.rs"]
+pub mod mknod;
+pub use self::mknod::*;
+
+#[path = "open/open.rs"]
+pub mod open;
+pub use self::open::*;
+
+#[path = "opendir/opendir.rs"]
+pub mod opendir;
+pub use self::opendir::*;
+
+#[path = "read/read.rs"]
+pub mod read;
+pub use self::read::*;
+
+#[path = "readdir/readdir.rs"]
+pub mod readdir;
+pub use self::readdir::*;
+
+#[path = "readlink/readlink.rs"]
+pub mod readlink;
+pub use self::readlink::*;
+
+#[path = "release/release.rs"]
+pub mod release;
+pub use self::release::*;
+
+#[path = "releasedir/releasedir.rs"]
+pub mod releasedir;
+pub use self::releasedir::*;
+
+#[path = "removexattr/removexattr.rs"]
+pub mod removexattr;
+pub use self::removexattr::*;
+
+#[path = "rename/rename.rs"]
+pub mod rename;
+pub use self::rename::*;
+
+#[path = "rmdir/rmdir.rs"]
+pub mod rmdir;
+pub use self::rmdir::*;
+
+#[cfg(any(doc, feature = "unstable_setattr"))]
+#[cfg_attr(doc, doc(cfg(feature = "unstable_setattr")))]
+#[path = "setattr/setattr.rs"]
+pub mod setattr;
+#[cfg(any(doc, feature = "unstable_setattr"))]
+pub use self::setattr::*;
+
+#[path = "setlk/setlk.rs"]
+pub mod setlk;
+pub use self::setlk::*;
+
+#[path = "setxattr/setxattr.rs"]
+pub mod setxattr;
+pub use self::setxattr::*;
+
+#[path = "statfs/statfs.rs"]
+pub mod statfs;
+pub use self::statfs::*;
+
+#[path = "symlink/symlink.rs"]
+pub mod symlink;
+pub use self::symlink::*;
+
+#[path = "unlink/unlink.rs"]
+pub mod unlink;
+pub use self::unlink::*;
+
+#[path = "write/write.rs"]
+pub mod write;
+pub use self::write::*;
