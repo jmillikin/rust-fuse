@@ -109,8 +109,9 @@ def _qemu_exec(ctx):
     content = """#!/bin/sh
 export RUST_FUSE_TEST_CPU={}
 export RUST_FUSE_TEST_OS={}
+export RUST_FUSE_TEST_ROOTFS={}
 exec build/testutil/qemu_exec_helper "$@"
-""".format(ctx.attr.cpu, ctx.attr.os)
+""".format(ctx.attr.cpu, ctx.attr.os, ctx.file.rootfs.short_path)
     ctx.actions.write(out, content, is_executable = True)
 
     return DefaultInfo(

@@ -18,6 +18,7 @@
 
 use std::convert::TryInto;
 use std::env;
+use std::ffi::OsString;
 use std::fs;
 use std::io::{self, BufRead, BufReader, Cursor, Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -186,6 +187,9 @@ impl Qemu {
 
 		let test_cpu = std::env::var("RUST_FUSE_TEST_CPU").unwrap();
 		let test_os = std::env::var("RUST_FUSE_TEST_OS").unwrap();
+		let test_rootfs = std::env::var("RUST_FUSE_TEST_ROOTFS").unwrap();
+
+		let rootfs_path = path::Path::new(&test_rootfs);
 
 		let qemu_common_args = |qemu: &mut Command| {
 			qemu.arg("-m").arg("512M");
@@ -206,17 +210,21 @@ impl Qemu {
 			("linux", "x86_64") => {
 				let mut qemu = Command::new("qemu-system-x86_64");
 				qemu_common_args(&mut qemu);
-				qemu.arg("-kernel").arg("build/testutil/linux_rootfs/boot/bzImage");
-				qemu.arg("-initrd").arg("build/testutil/linux_rootfs/boot/initrd.cpio.gz");
+				qemu.arg("-kernel").arg(rootfs_path.join("boot").join("bzImage"));
+				qemu.arg("-initrd").arg(rootfs_path.join("boot").join("initrd.cpio.gz"));
 				qemu.arg("-append").arg("console=ttyS0 rdinit=/bin/init");
 				qemu
 			},
 			("freebsd", "x86_64") => {
 				let mut qemu = Command::new("qemu-system-x86_64");
 				qemu_common_args(&mut qemu);
-				qemu.arg("-kernel").arg("build/testutil/freebsd_rootfs/boot/loader_simp.efi");
+				qemu.arg("-kernel").arg(rootfs_path.join("boot").join("loader_simp.efi"));
 				qemu.arg("-drive").arg("if=pflash,format=raw,unit=0,file=external/qemu_v5.2.0/pc-bios/edk2-x86_64-code.fd,readonly=on");
-				qemu.arg("-drive").arg("format=raw,file=fat:rw:build/testutil/freebsd_rootfs");
+
+				let mut drive_arg = OsString::from("format=raw,file=fat:rw:");
+				drive_arg.push(rootfs_path);
+				qemu.arg("-drive").arg(drive_arg);
+
 				qemu.arg("-append").arg("rootdev=disk0p1 currdev=disk0p1 autoboot_delay=-1 vfs.root.mountfrom=msdosfs:/dev/ada0s1 init_path=/sbin/init");
 				qemu
 			}

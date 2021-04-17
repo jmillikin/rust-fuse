@@ -17,6 +17,8 @@
 _CHECKSUMS = {
   "amd64/amd64/12.2-RELEASE/base.txz": "8bd49ce35c340a04029266fbbe82b1fdfeb914263e39579eecafb2e67d00693a",
   "amd64/amd64/12.2-RELEASE/kernel.txz": "729584a21f564cf9c1fa7d4a85ab6fa00a8c5370207396fa95d242b0bef750cb",
+  "amd64/amd64/13.0-RELEASE/base.txz": "be7ab3c21ca650b3763ad3605edd18c39d570abd40b0aad3058df64c3e38fb51",
+  "amd64/amd64/13.0-RELEASE/kernel.txz": "c4cd1c1ee104110035d190816c9b90874487ed0b83ea4cb5dc56756bc3798882",
 }
 
 _BUILD = """
@@ -75,6 +77,7 @@ def _freebsd_repository(ctx):
       "-xf",
       "base.tar.xz",
       "boot/loader_simp.efi",
+      "rescue/mv", # needed for hardlink targets in v13.0
       "rescue/mt",
       "rescue/init",
       "rescue/rescue",
@@ -101,6 +104,7 @@ freebsd_repository = repository_rule(
 			mandatory = True,
 			values = [
         "12.2",
+        "13.0",
       ],
 		),
 	}

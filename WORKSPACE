@@ -51,6 +51,12 @@ freebsd_repository(
     version = "12.2",
 )
 
+freebsd_repository(
+    name = "freebsd_amd64_v13.0",
+    platform = "amd64/amd64",
+    version = "13.0",
+)
+
 qemu_repository(
     name = "qemu_v5.2.0",
     version = "5.2.0",

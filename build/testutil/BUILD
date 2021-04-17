@@ -28,9 +28,16 @@ sh_binary(
 )
 
 freebsd_rootfs(
-    name = "freebsd_rootfs",
+    name = "freebsd_v12_rootfs",
     freebsd = select({
         "@platforms//cpu:x86_64": "@freebsd_amd64_v12.2//:freebsd",
+    }),
+)
+
+freebsd_rootfs(
+    name = "freebsd_v13_rootfs",
+    freebsd = select({
+        "@platforms//cpu:x86_64": "@freebsd_amd64_v13.0//:freebsd",
     }),
 )
 
@@ -46,7 +53,8 @@ qemu_exec(
     }),
     rootfs = select({
         "@platforms//os:linux": ":linux_rootfs",
-        "@platforms//os:freebsd": ":freebsd_rootfs",
+        "//build/platforms:freebsd_v12": ":freebsd_v12_rootfs",
+        "//build/platforms:freebsd_v13": ":freebsd_v13_rootfs",
     }),
 )
 
