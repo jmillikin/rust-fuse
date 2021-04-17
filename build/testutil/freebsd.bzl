@@ -54,7 +54,7 @@ def _freebsd_repository(ctx):
     sha256 = _CHECKSUMS[kernel_filename],
   )
 
-  ctx.execute(
+  rc = ctx.execute(
     [
       "tar",
       "-xf",
@@ -64,9 +64,12 @@ def _freebsd_repository(ctx):
       "boot/kernel/fusefs.ko",
       "boot/kernel/virtio_console.ko",
     ],
+    quiet = False,
   )
+  if rc.return_code != 0:
+    fail("tar -xf kernel.tar.xz")
 
-  ctx.execute(
+  rc = ctx.execute(
     [
       "tar",
       "-xf",
@@ -80,7 +83,10 @@ def _freebsd_repository(ctx):
       "lib/libgcc_s.so.1",
       "libexec/ld-elf.so.1",
     ],
+    quiet = False,
   )
+  if rc.return_code != 0:
+    fail("tar -xf base.tar.xz")
 
 freebsd_repository = repository_rule(
 	implementation = _freebsd_repository,
