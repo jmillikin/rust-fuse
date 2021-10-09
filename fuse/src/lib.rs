@@ -17,6 +17,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #![cfg_attr(doc, feature(doc_cfg))]
+#![feature(custom_inner_attributes)]
 
 // For direct syscalls in `fuse/src/os/linux/syscalls.rs`.
 #![cfg_attr(feature = "nightly_syscall_fuse_mount", feature(asm))]
