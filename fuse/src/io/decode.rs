@@ -14,7 +14,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::marker::PhantomData;
 use core::mem::size_of;
+use core::slice::from_raw_parts;
 
 use crate::internal::fuse_kernel;
 use crate::io::{Buffer, DecodeError};
@@ -39,7 +41,18 @@ impl Semantics for CUSE {}
 impl Semantics for FUSE {}
 
 #[derive(Copy, Clone)]
-pub(crate) struct RequestBuf<'a>(&'a [u8]);
+pub(crate) union RequestBuf<'a> {
+	buf: Slice<'a>,
+	header: &'a fuse_kernel::fuse_in_header,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+struct Slice<'a> {
+	ptr: *const u8,
+	len: usize,
+	_phantom: PhantomData<&'a [u8]>,
+}
 
 impl<'a> RequestBuf<'a> {
 	pub(crate) fn new(
@@ -69,11 +82,25 @@ impl<'a> RequestBuf<'a> {
 			return Err(DecodeError::UnexpectedEof);
 		}
 
-		Ok(RequestBuf(buf))
+		Ok(RequestBuf {
+			buf: Slice {
+				ptr: buf.as_ptr(),
+				len: buf.len(),
+				_phantom: PhantomData,
+			},
+		})
 	}
 
 	pub(crate) fn header(self) -> &'a fuse_kernel::fuse_in_header {
-		unsafe { &*(self.0.as_ptr() as *const fuse_kernel::fuse_in_header) }
+		unsafe { self.header }
+	}
+
+	fn as_ptr(&self) -> *const u8 {
+		unsafe { self.buf.ptr }
+	}
+
+	fn as_slice(&self) -> &'a [u8] {
+		unsafe { from_raw_parts(self.buf.ptr, self.buf.len) }
 	}
 }
 
@@ -120,7 +147,7 @@ impl<'a> RequestDecoder<'a> {
 		}
 		self.consume(size_of::<T>() as u32)?;
 		let out: &'a T = unsafe {
-			let out_p = self.buf.0.as_ptr().add(self.consumed as usize);
+			let out_p = self.buf.as_ptr().add(self.consumed as usize);
 			&*(out_p as *const T)
 		};
 		Ok(out)
@@ -139,7 +166,7 @@ impl<'a> RequestDecoder<'a> {
 		len: u32,
 	) -> Result<&'a [u8], DecodeError> {
 		let new_consumed = self.consume(len)?;
-		let (_, start) = self.buf.0.split_at(self.consumed as usize);
+		let (_, start) = self.buf.as_slice().split_at(self.consumed as usize);
 		let (out, _) = start.split_at(len as usize);
 		self.consumed = new_consumed;
 		Ok(out)
@@ -149,7 +176,7 @@ impl<'a> RequestDecoder<'a> {
 		&mut self,
 	) -> Result<NulTerminatedBytes<'a>, DecodeError> {
 		for off in self.consumed..self.header().len {
-			if self.buf.0[off as usize] == 0 {
+			if self.buf.as_slice()[off as usize] == 0 {
 				let len = off - self.consumed;
 				if len == 0 {
 					return Err(DecodeError::UnexpectedEof);

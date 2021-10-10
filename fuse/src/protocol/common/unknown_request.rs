@@ -17,7 +17,7 @@
 use core::cell::RefCell;
 
 use crate::protocol::prelude::*;
-use crate::RequestHeader;
+use crate::server::RequestHeader;
 
 pub struct UnknownRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,

@@ -25,13 +25,13 @@ impl fuse::ServerHooks for PrintHooks {
 		println!("\n[unknown_request]\n{:#?}", request);
 	}
 
-	fn unhandled_request(&self, request_header: &fuse::RequestHeader) {
+	fn unhandled_request(&self, request_header: &fuse::server::RequestHeader) {
 		println!("\n[unhandled_request]\n{:#?}", request_header);
 	}
 
 	fn request_error(
 		&self,
-		request_header: &fuse::RequestHeader,
+		request_header: &fuse::server::RequestHeader,
 		err: fuse::Error,
 	) {
 		println!("\n[request_error]\n{:#?}", request_header);
@@ -40,7 +40,7 @@ impl fuse::ServerHooks for PrintHooks {
 
 	fn response_error(
 		&self,
-		request_header: &fuse::RequestHeader,
+		request_header: &fuse::server::RequestHeader,
 		code: Option<NonZeroU16>,
 	) {
 		println!("\n[response_error]\n{:#?}", request_header);
@@ -49,7 +49,7 @@ impl fuse::ServerHooks for PrintHooks {
 
 	fn async_channel_error(
 		&self,
-		request_header: &fuse::RequestHeader,
+		request_header: &fuse::server::RequestHeader,
 		code: Option<NonZeroU16>,
 	) {
 		println!("\n[async_channel_error]\n{:#?}", request_header);

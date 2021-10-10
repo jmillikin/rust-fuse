@@ -23,10 +23,10 @@ use std::sync::Arc;
 use crate::channel::{self, ChannelError, WrapChannel};
 use crate::error::{Error, ErrorCode};
 use crate::internal::fuse_kernel;
-use crate::io::decode;
 use crate::io::encode;
 use crate::io::{Buffer, ProtocolVersion};
-use crate::protocol::common::{RequestHeader, UnknownRequest};
+use crate::protocol::common::UnknownRequest;
+use crate::server::RequestHeader;
 
 pub trait ServerChannel: channel::Channel {
 	fn try_clone(&self) -> Result<Self, Self::Error>
@@ -35,16 +35,16 @@ pub trait ServerChannel: channel::Channel {
 }
 
 pub struct ServerContext {
-	header: fuse_kernel::fuse_in_header,
+	header: RequestHeader,
 }
 
 impl<'a> ServerContext {
-	pub(crate) fn new(header: fuse_kernel::fuse_in_header) -> Self {
+	pub(crate) fn new(header: RequestHeader) -> Self {
 		Self { header }
 	}
 
 	pub fn request_header(&self) -> &RequestHeader {
-		RequestHeader::new_ref(&self.header)
+		&self.header
 	}
 }
 
@@ -123,7 +123,7 @@ pub(crate) fn main_loop<Buf, C, Cb>(
 where
 	Buf: Buffer,
 	C: channel::Channel,
-	Cb: Fn(decode::RequestBuf) -> Result<(), C::Error>,
+	Cb: Fn(&Buf, usize) -> Result<(), C::Error>,
 {
 	loop {
 		let recv_len = match channel.receive(read_buf.borrow_mut()) {
@@ -137,13 +137,7 @@ where
 			},
 			Ok(recv_len) => recv_len,
 		};
-		match decode::RequestBuf::new(read_buf, recv_len) {
-			Err(err) => {
-				let err: Error = err.into();
-				return Err(err.into());
-			},
-			Ok(request_buf) => cb(request_buf)?,
-		}
+		cb(read_buf, recv_len)?;
 	}
 }
 

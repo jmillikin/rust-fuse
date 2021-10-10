@@ -21,7 +21,6 @@
 pub(crate) mod common;
 
 pub use self::common::{
-	RequestHeader,
 	ResponseHeader,
 	UnknownRequest,
 	XattrError,

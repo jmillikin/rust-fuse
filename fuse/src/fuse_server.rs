@@ -25,11 +25,10 @@ use crate::error::{Error, ErrorCode};
 use crate::fuse_handlers::FuseHandlers;
 use crate::internal::fuse_kernel;
 use crate::io::{self, Buffer, ProtocolVersion};
-use crate::io::decode::{self, DecodeRequest, RequestBuf};
 use crate::io::encode::{self, EncodeReply};
-use crate::protocol::common::RequestHeader;
-use crate::protocol::{FuseInitRequest, FuseInitResponse};
 use crate::old_server as server;
+use crate::protocol::{FuseInitRequest, FuseInitResponse};
+use crate::server::FuseRequest;
 
 // FuseServerBuilder {{{
 
@@ -70,10 +69,11 @@ where
 
 	fn fuse_handshake(&mut self) -> Result<FuseInitResponse, C::Error> {
 		let mut read_buf = io::ArrayBuffer::new();
+		let v_minor = ProtocolVersion::LATEST.minor();
 
 		loop {
 			let recv_len = self.channel.receive(read_buf.borrow_mut())?;
-			let request_buf = match RequestBuf::new(&read_buf, recv_len) {
+			let request = match FuseRequest::new(&read_buf, recv_len, v_minor) {
 				Err(err) => {
 					let err: Error = err.into();
 					return Err(err.into());
@@ -81,16 +81,15 @@ where
 				Ok(x) => x,
 			};
 
-			let request_header = request_buf.header();
-			if request_header.opcode != fuse_kernel::FUSE_INIT {
+			if request.opcode() != fuse_kernel::FUSE_INIT {
 				return Err(
-					Error::expected_fuse_init(request_header.opcode.0).into()
+					Error::expected_fuse_init(request.opcode().0).into()
 				);
 			}
 
-			let request_id = request_header.unique;
+			let request_id = request.header().request_id();
 			let init_request: FuseInitRequest =
-				decode_fuse(request_buf, ProtocolVersion::LATEST.minor())?;
+				request.decode().map_err(Error::from)?;
 			let stream = WrapChannel(&self.channel);
 
 			let version =
@@ -268,21 +267,28 @@ where
 		let channel = self.channel.as_ref();
 		let handlers = self.handlers.as_ref();
 		let hooks = self.hooks.as_deref();
+		let v_minor = self.version.minor();
 		let mut buf = io::PinnedBuffer::new(self.read_buf_size);
-		server::main_loop(channel, &mut buf, false, |request| {
+		server::main_loop(channel, &mut buf, false, |buf, recv_len| {
+			let request = match FuseRequest::new(buf, recv_len, v_minor) {
+				Err(err) => {
+					let err: Error = err.into();
+					return Err(err.into());
+				},
+				Ok(x) => x,
+			};
 			let mut channel_err = Ok(());
 			let respond = server::RespondRef::new(
 				channel,
 				hooks,
 				&mut channel_err,
-				RequestHeader::new_ref(request.header()),
+				request.header(),
 				self.version,
 				&self.channel,
 				self.hooks.as_ref(),
 			);
 			fuse_request_dispatch::<C, Handlers, Hooks>(
 				request,
-				self.version,
 				handlers,
 				respond,
 				self.hooks.as_ref(),
@@ -305,25 +311,29 @@ where
 		let channel = &self.channel;
 		let handlers = &self.handlers;
 		let hooks = self.hooks.as_ref();
+		let v_minor = self.version.minor();
 		#[cfg(feature = "std")]
 		let mut buf = io::PinnedBuffer::new(self.read_buf_size);
 		#[cfg(not(feature = "std"))]
 		let mut buf = io::ArrayBuffer::new();
-		server::main_loop(channel, &mut buf, false, |request| {
+		server::main_loop(channel, &mut buf, false, |buf, recv_len| {
+			let request = match FuseRequest::new(buf, recv_len, v_minor) {
+				Err(err) => {
+					let err: Error = err.into();
+					return Err(err.into());
+				},
+				Ok(x) => x,
+			};
 			let mut channel_error = Ok(());
 			let respond = server::RespondRef::new(
 				channel,
 				hooks,
 				&mut channel_error,
-				RequestHeader::new_ref(request.header()),
+				request.header(),
 				self.version,
 			);
 			fuse_request_dispatch::<C, Handlers, Hooks>(
-				request,
-				self.version,
-				handlers,
-				respond,
-				hooks,
+				request, handlers, respond, hooks,
 			)?;
 			channel_error
 		})
@@ -333,8 +343,7 @@ where
 // }}}
 
 fn fuse_request_dispatch<C, Handlers, Hooks>(
-	request: RequestBuf,
-	version: ProtocolVersion,
+	request: FuseRequest,
 	handlers: &Handlers,
 	respond: server::RespondRef<C::T, Hooks::T>,
 	#[cfg(feature = "respond_async")] hooks: Option<&Arc<Hooks::T>>,
@@ -358,84 +367,74 @@ where
 
 	macro_rules! do_dispatch {
 		($handler:tt) => {{
-			match decode_fuse(request, version.minor()) {
+			match request.decode() {
 				Ok(request) => handlers.$handler(ctx, &request, respond),
 				Err(err) => {
 					if let Some(hooks) = hooks {
-						hooks.request_error(RequestHeader::new_ref(header), err)
+						hooks.request_error(header, err.into())
 					}
-					let send = encode::SyncSendOnce::new(&stream);
-					let request_id = request.header().unique;
-					let encoder = encode::ReplyEncoder::new(send, request_id);
-					encoder.encode_error(ErrorCode::EIO.into())?;
+					encode::ReplyEncoder::new(
+						encode::SyncSendOnce::new(&stream),
+						header.request_id(),
+					).encode_error(ErrorCode::EIO.into())?;
 				},
 			}
 		}};
 	}
 
-	match header.opcode {
-		fuse_kernel::FUSE_ACCESS => do_dispatch!(access),
+	use crate::server::FuseOperation as FuseOp;
+	match request.operation() {
+		Some(FuseOp::Access) => do_dispatch!(access),
 		#[cfg(feature = "unstable_bmap")]
-		fuse_kernel::FUSE_BMAP => do_dispatch!(bmap),
-		fuse_kernel::FUSE_CREATE => do_dispatch!(create),
-		fuse_kernel::FUSE_FALLOCATE => do_dispatch!(fallocate),
-		fuse_kernel::FUSE_FLUSH => do_dispatch!(flush),
-		fuse_kernel::FUSE_FORGET | fuse_kernel::FUSE_BATCH_FORGET => {
-			let request = decode_fuse(request, version.minor())?;
+		Some(FuseOp::Bmap) => do_dispatch!(bmap),
+		Some(FuseOp::Create) => do_dispatch!(create),
+		Some(FuseOp::Fallocate) => do_dispatch!(fallocate),
+		Some(FuseOp::Flush) => do_dispatch!(flush),
+		Some(FuseOp::Forget) => {
+			let request = request.decode().map_err(Error::from)?;
 			handlers.forget(ctx, &request);
 		},
-		fuse_kernel::FUSE_FSYNC => do_dispatch!(fsync),
-		fuse_kernel::FUSE_FSYNCDIR => do_dispatch!(fsyncdir),
-		fuse_kernel::FUSE_GETATTR => do_dispatch!(getattr),
-		fuse_kernel::FUSE_GETLK => do_dispatch!(getlk),
-		fuse_kernel::FUSE_GETXATTR => do_dispatch!(getxattr),
+		Some(FuseOp::Fsync) => do_dispatch!(fsync),
+		Some(FuseOp::Fsyncdir) => do_dispatch!(fsyncdir),
+		Some(FuseOp::Getattr) => do_dispatch!(getattr),
+		Some(FuseOp::Getlk) => do_dispatch!(getlk),
+		Some(FuseOp::Getxattr) => do_dispatch!(getxattr),
 		#[cfg(feature = "unstable_ioctl")]
-		fuse_kernel::FUSE_IOCTL => do_dispatch!(ioctl),
-		fuse_kernel::FUSE_LINK => do_dispatch!(link),
-		fuse_kernel::FUSE_LISTXATTR => do_dispatch!(listxattr),
-		fuse_kernel::FUSE_LOOKUP => do_dispatch!(lookup),
-		fuse_kernel::FUSE_LSEEK => do_dispatch!(lseek),
-		fuse_kernel::FUSE_MKDIR => do_dispatch!(mkdir),
-		fuse_kernel::FUSE_MKNOD => do_dispatch!(mknod),
-		fuse_kernel::FUSE_OPEN => do_dispatch!(open),
-		fuse_kernel::FUSE_OPENDIR => do_dispatch!(opendir),
-		fuse_kernel::FUSE_READ => do_dispatch!(read),
-		fuse_kernel::FUSE_READDIR => do_dispatch!(readdir),
-		fuse_kernel::FUSE_READLINK => do_dispatch!(readlink),
-		fuse_kernel::FUSE_RELEASE => do_dispatch!(release),
-		fuse_kernel::FUSE_RELEASEDIR => do_dispatch!(releasedir),
-		fuse_kernel::FUSE_REMOVEXATTR => do_dispatch!(removexattr),
-		fuse_kernel::FUSE_RENAME | fuse_kernel::FUSE_RENAME2 => {
-			do_dispatch!(rename)
-		},
-		fuse_kernel::FUSE_RMDIR => do_dispatch!(rmdir),
+		Some(FuseOp::Ioctl) => do_dispatch!(ioctl),
+		Some(FuseOp::Link) => do_dispatch!(link),
+		Some(FuseOp::Listxattr) => do_dispatch!(listxattr),
+		Some(FuseOp::Lookup) => do_dispatch!(lookup),
+		Some(FuseOp::Lseek) => do_dispatch!(lseek),
+		Some(FuseOp::Mkdir) => do_dispatch!(mkdir),
+		Some(FuseOp::Mknod) => do_dispatch!(mknod),
+		Some(FuseOp::Open) => do_dispatch!(open),
+		Some(FuseOp::Opendir) => do_dispatch!(opendir),
+		Some(FuseOp::Read) => do_dispatch!(read),
+		Some(FuseOp::Readdir) => do_dispatch!(readdir),
+		Some(FuseOp::Readlink) => do_dispatch!(readlink),
+		Some(FuseOp::Release) => do_dispatch!(release),
+		Some(FuseOp::Releasedir) => do_dispatch!(releasedir),
+		Some(FuseOp::Removexattr) => do_dispatch!(removexattr),
+		Some(FuseOp::Rename) => do_dispatch!(rename),
+		Some(FuseOp::Rmdir) => do_dispatch!(rmdir),
 		#[cfg(feature = "unstable_setattr")]
-		fuse_kernel::FUSE_SETATTR => do_dispatch!(setattr),
-		fuse_kernel::FUSE_SETLK | fuse_kernel::FUSE_SETLKW => {
-			do_dispatch!(setlk)
-		},
-		fuse_kernel::FUSE_SETXATTR => do_dispatch!(setxattr),
-		fuse_kernel::FUSE_STATFS => do_dispatch!(statfs),
-		fuse_kernel::FUSE_SYMLINK => do_dispatch!(symlink),
-		fuse_kernel::FUSE_UNLINK => do_dispatch!(unlink),
-		fuse_kernel::FUSE_WRITE => do_dispatch!(write),
+		Some(FuseOp::Setattr) => do_dispatch!(setattr),
+		Some(FuseOp::Setlk) => do_dispatch!(setlk),
+		Some(FuseOp::Setxattr) => do_dispatch!(setxattr),
+		Some(FuseOp::Statfs) => do_dispatch!(statfs),
+		Some(FuseOp::Symlink) => do_dispatch!(symlink),
+		Some(FuseOp::Unlink) => do_dispatch!(unlink),
+		Some(FuseOp::Write) => do_dispatch!(write),
 		_ => {
 			if let Some(hooks) = hooks {
-				let request = decode_fuse(request, version.minor())?;
+				let request = request.decode().map_err(Error::from)?;
 				hooks.unknown_request(&request);
 			}
-			let send = encode::SyncSendOnce::new(&stream);
-			let request_id = request.header().unique;
-			let encoder = encode::ReplyEncoder::new(send, request_id);
-			encoder.encode_error(ErrorCode::ENOSYS.into())?;
+			encode::ReplyEncoder::new(
+				encode::SyncSendOnce::new(&stream),
+				header.request_id(),
+			).encode_error(ErrorCode::ENOSYS.into())?;
 		},
 	}
 	Ok(())
-}
-
-fn decode_fuse<'a, R: DecodeRequest<'a, decode::FUSE>>(
-	request: RequestBuf<'a>,
-	version_minor: u32,
-) -> Result<R, Error> {
-	Ok(DecodeRequest::decode(request, version_minor)?)
 }

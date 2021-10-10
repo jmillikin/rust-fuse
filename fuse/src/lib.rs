@@ -52,7 +52,7 @@ pub use self::fuse_server::{
 	FuseServerExecutor,
 };
 
-pub mod server {}
+pub mod server;
 
 mod old_server;
 pub use self::old_server::{
