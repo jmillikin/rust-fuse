@@ -163,14 +163,15 @@ impl fmt::Debug for CuseInitResponse {
 	}
 }
 
-// Not an implementation of fuse_io::EncodeResponse because the device name
+// Not an implementation of encode::EncodeReply because the device name
 // must be provided as a parameter.
 impl CuseInitResponse {
-	pub(crate) fn encode_response<'a, S: io::OutputStream>(
-		&'a self,
-		enc: fuse_io::ResponseEncoder<S>,
+	pub(crate) fn encode<S: encode::SendOnce>(
+		&self,
+		send: S,
+		request_id: u64,
 		maybe_device_name: Option<&[u8]>,
-	) -> Result<(), S::Error> {
+	) -> S::Result {
 		let mut out = self.raw;
 		out.flags = self.flags.to_bits();
 		let out_buf: &[u8] = unsafe {
@@ -179,6 +180,7 @@ impl CuseInitResponse {
 				size_of::<fuse_kernel::cuse_init_out>(),
 			)
 		};
+		let enc = encode::ReplyEncoder::new(send, request_id);
 		match maybe_device_name {
 			None => enc.encode_bytes(out_buf),
 			Some(device_name) => {

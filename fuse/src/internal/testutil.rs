@@ -199,23 +199,23 @@ macro_rules! decode_request_opts {
 }
 
 macro_rules! encode_response {
-	($response:ident) => {
+	($response:expr) => {
 		encode_response!($response, {})
 	};
-	($response:ident, $opts:tt $(,)?) => {{
+	($response:expr, $opts:tt $(,)?) => {{
 		use crate::channel::WrapChannel;
-		use crate::internal::fuse_io::{EncodeResponse, ResponseEncoder};
 		use crate::internal::testutil::EncodeRequestOpts;
+		use crate::io::encode::EncodeReply;
 
 		let request_id = 0;
 		let opts = encode_request_opts!($opts);
 		let mut channel = crate::internal::testutil::FakeChannel::new();
-		let encoder = ResponseEncoder::new(
-			WrapChannel(&mut channel),
+		let stream = WrapChannel(&mut channel);
+		$response.encode(
+			encode::SyncSendOnce::new(&stream),
 			request_id,
-			opts.protocol_version(),
-		);
-		$response.encode_response(encoder).unwrap();
+			opts.protocol_version().minor(),
+		).unwrap();
 		channel.expect_write()
 	}};
 }

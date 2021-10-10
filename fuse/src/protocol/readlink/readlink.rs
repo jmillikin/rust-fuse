@@ -82,11 +82,14 @@ impl fmt::Debug for ReadlinkResponse<'_> {
 	}
 }
 
-impl fuse_io::EncodeResponse for ReadlinkResponse<'_> {
-	fn encode_response<'a, S: io::OutputStream>(
-		&'a self,
-		enc: fuse_io::ResponseEncoder<S>,
-	) -> Result<(), S::Error> {
+impl encode::EncodeReply for ReadlinkResponse<'_> {
+	fn encode<S: encode::SendOnce>(
+		&self,
+		send: S,
+		request_id: u64,
+		_version_minor: u32,
+	) -> S::Result {
+		let enc = encode::ReplyEncoder::new(send, request_id);
 		enc.encode_bytes(self.name.as_bytes())
 	}
 }

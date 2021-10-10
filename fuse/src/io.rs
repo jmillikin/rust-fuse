@@ -16,6 +16,7 @@
 
 mod buffer;
 pub(crate) mod decode;
+pub(crate) mod encode;
 mod error;
 mod stream;
 mod version;

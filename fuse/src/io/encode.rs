@@ -15,50 +15,85 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use core::mem::size_of;
+use core::num::NonZeroU16;
 
-use crate::error::ErrorCode;
 use crate::internal::fuse_kernel;
-use crate::io::{OutputStream, ProtocolVersion};
+use crate::io::{AsyncOutputStream, OutputStream};
 
-pub(crate) trait EncodeResponse {
-	fn encode_response<S: OutputStream>(
+pub(crate) trait EncodeReply {
+	fn encode<S: SendOnce>(
 		&self,
-		enc: ResponseEncoder<S>,
-	) -> Result<(), S::Error>;
+		send: S,
+		request_id: u64,
+		version_minor: u32,
+	) -> S::Result;
 }
 
-pub(crate) struct ResponseEncoder<'a, S> {
+pub(crate) trait SendOnce {
+	type Result;
+
+	fn send(self, buf: &[u8]) -> Self::Result;
+
+	fn send_vectored<const N: usize>(
+		self,
+		bufs: &[&[u8]; N],
+	) -> Self::Result;
+}
+
+pub(crate) struct SyncSendOnce<'a, S>(&'a S);
+pub(crate) struct AsyncSendOnce<'a, S>(&'a S);
+
+impl<'a, S: OutputStream> SyncSendOnce<'a, S> {
+	pub(crate) fn new(stream: &'a S) -> Self {
+		Self(stream)
+	}
+}
+
+impl<T: OutputStream> SendOnce for SyncSendOnce<'_, T> {
+	type Result = Result<(), T::Error>;
+
+	fn send(self, buf: &[u8]) -> Self::Result {
+		self.0.send(buf)
+	}
+
+	fn send_vectored<const N: usize>(
+		self,
+		bufs: &[&[u8]; N],
+	) -> Self::Result {
+		self.0.send_vectored(bufs)
+	}
+}
+
+impl<T: AsyncOutputStream> SendOnce for AsyncSendOnce<'_, T> {
+	type Result = T::Future;
+
+	fn send(self, buf: &[u8]) -> Self::Result {
+		self.0.send(buf)
+	}
+
+	fn send_vectored<const N: usize>(
+		self,
+		bufs: &[&[u8]; N],
+	) -> Self::Result {
+		self.0.send_vectored(bufs)
+	}
+}
+
+pub(crate) struct ReplyEncoder<S> {
 	stream: S,
 	request_id: u64,
-	version: ProtocolVersion,
-	_phantom: core::marker::PhantomData<&'a S>,
 }
 
-impl<'a, S> ResponseEncoder<'a, S> {
-	pub(crate) fn new(
-		stream: S,
-		request_id: u64,
-		version: ProtocolVersion,
-	) -> Self {
-		Self {
-			stream,
-			request_id,
-			version,
-			_phantom: core::marker::PhantomData,
-		}
+impl<S: SendOnce> ReplyEncoder<S> {
+	pub(crate) fn new(stream: S, request_id: u64) -> Self {
+		Self { stream, request_id }
 	}
 
-	pub(crate) fn version(&self) -> ProtocolVersion {
-		self.version
-	}
-}
-
-impl<S: OutputStream> ResponseEncoder<'_, S> {
-	pub(crate) fn encode_error(self, err: ErrorCode) -> Result<(), S::Error> {
+	pub(crate) fn encode_error(self, err: NonZeroU16) -> S::Result {
 		let len = size_of::<fuse_kernel::fuse_out_header>();
 		let out_hdr = fuse_kernel::fuse_out_header {
 			len: len as u32,
-			error: -(i32::from(err)),
+			error: -(i32::from(u16::from(err))),
 			unique: self.request_id,
 		};
 		let out_hdr_buf: &[u8] = unsafe {
@@ -71,7 +106,7 @@ impl<S: OutputStream> ResponseEncoder<'_, S> {
 		self.stream.send(out_hdr_buf)
 	}
 
-	pub(crate) fn encode_sized<T: Sized>(self, t: &T) -> Result<(), S::Error> {
+	pub(crate) fn encode_sized<T: Sized>(self, t: &T) -> S::Result {
 		let bytes: &[u8] = unsafe {
 			core::slice::from_raw_parts(
 				(t as *const T) as *const u8,
@@ -85,7 +120,7 @@ impl<S: OutputStream> ResponseEncoder<'_, S> {
 		self,
 		bytes_1: &[u8],
 		t: &T,
-	) -> Result<(), S::Error> {
+	) -> S::Result {
 		let bytes_2: &[u8] = unsafe {
 			core::slice::from_raw_parts(
 				(t as *const T) as *const u8,
@@ -99,7 +134,7 @@ impl<S: OutputStream> ResponseEncoder<'_, S> {
 		self,
 		t_1: &T1,
 		t_2: &T2,
-	) -> Result<(), S::Error> {
+	) -> S::Result {
 		let bytes_1: &[u8] = unsafe {
 			core::slice::from_raw_parts(
 				(t_1 as *const T1) as *const u8,
@@ -115,7 +150,7 @@ impl<S: OutputStream> ResponseEncoder<'_, S> {
 		self.encode_bytes_2(bytes_1, bytes_2)
 	}
 
-	pub(crate) fn encode_header_only(self) -> Result<(), S::Error> {
+	pub(crate) fn encode_header_only(self) -> S::Result {
 		let len = size_of::<fuse_kernel::fuse_out_header>();
 		let out_hdr = fuse_kernel::fuse_out_header {
 			len: len as u32,
@@ -132,7 +167,7 @@ impl<S: OutputStream> ResponseEncoder<'_, S> {
 		self.stream.send(out_hdr_buf)
 	}
 
-	pub(crate) fn encode_bytes(self, bytes: &[u8]) -> Result<(), S::Error> {
+	pub(crate) fn encode_bytes(self, bytes: &[u8]) -> S::Result {
 		let mut len = size_of::<fuse_kernel::fuse_out_header>();
 
 		match len.checked_add(bytes.len()) {
@@ -165,7 +200,7 @@ impl<S: OutputStream> ResponseEncoder<'_, S> {
 		self,
 		bytes_1: &[u8],
 		bytes_2: &[u8],
-	) -> Result<(), S::Error> {
+	) -> S::Result {
 		let mut len = size_of::<fuse_kernel::fuse_out_header>();
 
 		match len.checked_add(bytes_1.len()) {
@@ -204,7 +239,7 @@ impl<S: OutputStream> ResponseEncoder<'_, S> {
 		bytes_2: &[u8],
 		bytes_3: &[u8],
 		bytes_4: &[u8],
-	) -> Result<(), S::Error> {
+	) -> S::Result {
 		let mut len = size_of::<fuse_kernel::fuse_out_header>();
 
 		match len.checked_add(bytes_1.len()) {

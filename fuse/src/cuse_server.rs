@@ -22,9 +22,9 @@ use std::sync::Arc;
 use crate::channel::{self, WrapChannel};
 use crate::cuse_handlers::CuseHandlers;
 use crate::error::{Error, ErrorCode};
-use crate::internal::fuse_io;
 use crate::internal::fuse_kernel;
 use crate::io::decode::{self, DecodeRequest, RequestBuf};
+use crate::io::encode;
 use crate::io::{self, Buffer, ProtocolVersion};
 use crate::protocol::common::{
 	DebugBytesAsString,
@@ -162,13 +162,7 @@ where
 			let request_id = request_header.unique;
 			let init_request: CuseInitRequest =
 				decode_cuse(request_buf, ProtocolVersion::LATEST.minor())?;
-
-			let encoder = fuse_io::ResponseEncoder::new(
-				WrapChannel(&self.channel),
-				request_id,
-				// CuseInitResponse always encodes with its own version
-				ProtocolVersion::LATEST,
-			);
+			let stream = WrapChannel(&self.channel);
 
 			let version =
 				match server::negotiate_version(init_request.version()) {
@@ -176,7 +170,11 @@ where
 					None => {
 						let mut init_response = CuseInitResponse::new();
 						init_response.set_version(ProtocolVersion::LATEST);
-						init_response.encode_response(encoder, None)?;
+						init_response.encode(
+							encode::SyncSendOnce::new(&stream),
+							request_id,
+							None,
+						)?;
 						continue;
 					},
 				};
@@ -191,8 +189,11 @@ where
 				server::capped_max_write(),
 			));
 
-			init_response
-				.encode_response(encoder, Some(self.device_name.as_bytes()))?;
+			init_response.encode(
+				encode::SyncSendOnce::new(&stream),
+				request_id,
+				Some(self.device_name.as_bytes()),
+			)?;
 			return Ok(init_response);
 		}
 	}
@@ -423,6 +424,8 @@ where
 		hooks.request(ctx.request_header());
 	}
 
+	let stream = WrapChannel(respond.channel());
+
 	#[rustfmt::skip]
 	macro_rules! do_dispatch {
 		($handler:tt) => {{
@@ -435,7 +438,10 @@ where
 					if let Some(hooks) = hooks {
 						hooks.request_error(RequestHeader::new_ref(header), err);
 					}
-					respond.encoder().encode_error(ErrorCode::EIO)
+					let send = encode::SyncSendOnce::new(&stream);
+					let request_id = request.header().unique;
+					let encoder = encode::ReplyEncoder::new(send, request_id);
+					encoder.encode_error(ErrorCode::EIO.into())
 				},
 			}
 		}};
@@ -455,7 +461,10 @@ where
 				let request = decode_cuse(request, version.minor())?;
 				hooks.unknown_request(&request);
 			}
-			respond.encoder().encode_error(ErrorCode::ENOSYS)
+			let send = encode::SyncSendOnce::new(&stream);
+			let request_id = request.header().unique;
+			let encoder = encode::ReplyEncoder::new(send, request_id);
+			encoder.encode_error(ErrorCode::ENOSYS.into())
 		},
 	}
 }

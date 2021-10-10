@@ -15,15 +15,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use core::cmp::{max, min};
+use core::num::NonZeroU16;
 
 #[cfg(feature = "respond_async")]
 use std::sync::Arc;
 
 use crate::channel::{self, ChannelError, WrapChannel};
 use crate::error::{Error, ErrorCode};
-use crate::internal::fuse_io;
 use crate::internal::fuse_kernel;
 use crate::io::decode;
+use crate::io::encode;
 use crate::io::{Buffer, ProtocolVersion};
 use crate::protocol::common::{RequestHeader, UnknownRequest};
 
@@ -56,13 +57,13 @@ pub trait ServerHooks {
 	fn response_error(
 		&self,
 		request_header: &RequestHeader,
-		code: Option<ErrorCode>,
+		code: Option<NonZeroU16>,
 	) {
 	}
 	fn async_channel_error(
 		&self,
 		request_header: &RequestHeader,
-		code: Option<ErrorCode>,
+		code: Option<NonZeroU16>,
 	) {
 	}
 }
@@ -216,7 +217,7 @@ pub(crate) fn unhandled_request<T, R: Respond<T>>(respond: R) {
 /// **\[SEALED\]**
 pub trait Respond<R>: private::Respond<R> {
 	fn ok(self, response: &R);
-	fn err(self, err: ErrorCode);
+	fn err(self, err: impl Into<NonZeroU16>);
 }
 
 pub(crate) struct RespondRef<'a, C, Hooks>
@@ -263,28 +264,34 @@ where
 		}
 	}
 
-	pub(crate) fn encoder(&self) -> fuse_io::ResponseEncoder<WrapChannel<C>> {
-		fuse_io::ResponseEncoder::new(
-			WrapChannel(self.channel),
-			self.header.request_id(),
-			self.fuse_version,
-		)
+	pub(crate) fn channel(&self) -> &C {
+		self.channel
 	}
 
 	fn ok_impl<R>(self, response: &R)
 	where
-		R: fuse_io::EncodeResponse,
+		R: encode::EncodeReply,
 	{
-		if let Err(err) = response.encode_response(self.encoder()) {
+		let stream = WrapChannel(self.channel);
+		if let Err(err) = response.encode(
+			encode::SyncSendOnce::new(&stream),
+			self.header.request_id(),
+			self.fuse_version.minor(),
+		) {
 			if let Some(hooks) = &self.hooks {
-				hooks.response_error(self.header, err.error_code())
+				let err_code = err.error_code().map(|x| x.into());
+				hooks.response_error(self.header, err_code)
 			}
-			self.err_impl(ErrorCode::EIO);
+			self.err_impl(ErrorCode::EIO.into());
 		}
 	}
 
-	pub(crate) fn err_impl(self, err: ErrorCode) {
-		*self.channel_err = self.encoder().encode_error(err);
+	pub(crate) fn err_impl(self, err: NonZeroU16) {
+		let stream = WrapChannel(self.channel);
+		let send = encode::SyncSendOnce::new(&stream);
+		let request_id = self.header.request_id();
+		let encoder = encode::ReplyEncoder::new(send, request_id);
+		*self.channel_err = encoder.encode_error(err);
 	}
 }
 
@@ -293,7 +300,7 @@ impl<C, Hooks, R> private::Respond<R> for RespondRef<'_, C, Hooks>
 where
 	C: channel::Channel,
 	Hooks: ServerHooks,
-	R: fuse_io::EncodeResponse,
+	R: encode::EncodeReply,
 {
 	type Internal = RespondRefInternal;
 }
@@ -303,7 +310,7 @@ impl<C, Hooks, R> private::Respond<R> for RespondRef<'_, C, Hooks>
 where
 	C: channel::Channel + Send + Sync + 'static,
 	Hooks: ServerHooks + Send + Sync + 'static,
-	R: fuse_io::EncodeResponse,
+	R: encode::EncodeReply,
 {
 	type Internal = RespondRefInternal;
 }
@@ -316,7 +323,7 @@ impl<C, Hooks, R> private::RespondInternal<R, RespondRef<'_, C, Hooks>>
 where
 	C: channel::Channel,
 	Hooks: ServerHooks,
-	R: fuse_io::EncodeResponse,
+	R: encode::EncodeReply,
 {
 	fn unhandled_request(r: &RespondRef<C, Hooks>) {
 		if let Some(hooks) = r.hooks {
@@ -331,7 +338,7 @@ impl<C, Hooks, R> private::RespondInternal<R, RespondRef<'_, C, Hooks>>
 where
 	C: channel::Channel + Send + Sync + 'static,
 	Hooks: ServerHooks + Send + Sync + 'static,
-	R: fuse_io::EncodeResponse,
+	R: encode::EncodeReply,
 {
 	fn unhandled_request(r: &RespondRef<C, Hooks>) {
 		if let Some(hooks) = r.hooks {
@@ -354,14 +361,14 @@ impl<C, Hooks, R> Respond<R> for RespondRef<'_, C, Hooks>
 where
 	C: channel::Channel + Send + Sync + 'static,
 	Hooks: ServerHooks + Send + Sync + 'static,
-	R: fuse_io::EncodeResponse,
+	R: encode::EncodeReply,
 {
 	fn ok(self, response: &R) {
 		self.ok_impl(response)
 	}
 
-	fn err(self, err: ErrorCode) {
-		self.err_impl(err)
+	fn err(self, err: impl Into<NonZeroU16>) {
+		self.err_impl(err.into())
 	}
 }
 
@@ -370,14 +377,14 @@ impl<C, Hooks, R> Respond<R> for RespondRef<'_, C, Hooks>
 where
 	C: channel::Channel,
 	Hooks: ServerHooks,
-	R: fuse_io::EncodeResponse,
+	R: encode::EncodeReply,
 {
 	fn ok(self, response: &R) {
 		self.ok_impl(response)
 	}
 
-	fn err(self, err: ErrorCode) {
-		self.err_impl(err)
+	fn err(self, err: impl Into<NonZeroU16>) {
+		self.err_impl(err.into())
 	}
 }
 
@@ -396,15 +403,15 @@ impl<R> RespondAsync<R> {
 		self.0.ok(response)
 	}
 
-	pub fn err(self, err: ErrorCode) {
-		self.0.err(err)
+	pub fn err(self, err: impl Into<NonZeroU16>) {
+		self.0.err(err.into())
 	}
 }
 
 #[cfg(feature = "respond_async")]
 trait RespondAsyncInner<R>: Send + Sync {
 	fn ok(&self, response: &R);
-	fn err(&self, err: ErrorCode);
+	fn err(&self, err: NonZeroU16);
 }
 
 #[cfg(feature = "respond_async")]
@@ -421,18 +428,16 @@ where
 	C: channel::Channel,
 	Hooks: ServerHooks,
 {
-	fn encoder(&self) -> fuse_io::ResponseEncoder<WrapChannel<C>> {
-		fuse_io::ResponseEncoder::new(
-			WrapChannel(self.channel.as_ref()),
+	fn err_impl(&self, err: NonZeroU16) {
+		let stream = WrapChannel(self.channel.as_ref());
+		let enc = encode::ReplyEncoder::new(
+			encode::SyncSendOnce::new(&stream),
 			self.header.request_id(),
-			self.fuse_version,
-		)
-	}
-
-	fn err_impl(&self, err: ErrorCode) {
-		if let Err(err) = self.encoder().encode_error(err) {
+		);
+		if let Err(err) = enc.encode_error(err) {
 			if let Some(hooks) = &self.hooks {
-				hooks.async_channel_error(&self.header, err.error_code())
+				let err_code = err.error_code().map(|x| x.into());
+				hooks.async_channel_error(&self.header, err_code)
 			}
 		}
 	}
@@ -443,18 +448,24 @@ impl<C, Hooks, R> RespondAsyncInner<R> for RespondAsyncInnerImpl<C, Hooks>
 where
 	C: channel::Channel + Send + Sync,
 	Hooks: ServerHooks + Send + Sync,
-	R: fuse_io::EncodeResponse,
+	R: encode::EncodeReply,
 {
 	fn ok(&self, response: &R) {
-		if let Err(err) = response.encode_response(self.encoder()) {
+		let stream = WrapChannel(self.channel.as_ref());
+		if let Err(err) = response.encode(
+			encode::SyncSendOnce::new(&stream),
+			self.header.request_id(),
+			self.fuse_version.minor(),
+		) {
 			if let Some(hooks) = &self.hooks {
-				hooks.response_error(&self.header, err.error_code())
+				let err_code = err.error_code().map(|x| x.into());
+				hooks.response_error(&self.header, err_code)
 			}
-			self.err_impl(ErrorCode::EIO)
+			self.err_impl(ErrorCode::EIO.into())
 		}
 	}
 
-	fn err(&self, err: ErrorCode) {
+	fn err(&self, err: NonZeroU16) {
 		self.err_impl(err)
 	}
 }

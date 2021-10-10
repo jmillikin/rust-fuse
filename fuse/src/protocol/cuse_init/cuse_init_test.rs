@@ -78,10 +78,9 @@ fn encode_response(
 	let request_id = 0;
 	let channel = crate::internal::testutil::FakeChannel::new();
 	let stream = WrapChannel(&channel);
-	let encoder =
-		ResponseEncoder::new(stream, request_id, ProtocolVersion::LATEST);
+	let send_once = encode::SyncSendOnce::new(&stream);
 	response
-		.encode_response(encoder, maybe_device_name)
+		.encode(send_once, request_id, maybe_device_name)
 		.unwrap();
 	channel.expect_write()
 }

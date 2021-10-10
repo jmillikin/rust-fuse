@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::num::NonZeroU16;
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::{env, ffi, panic, path, sync, thread};
 
@@ -40,7 +41,7 @@ impl fuse::ServerHooks for PrintHooks {
 	fn response_error(
 		&self,
 		request_header: &fuse::RequestHeader,
-		code: Option<fuse::ErrorCode>,
+		code: Option<NonZeroU16>,
 	) {
 		println!("\n[response_error]\n{:#?}", request_header);
 		println!("{:#?}", code);
@@ -49,7 +50,7 @@ impl fuse::ServerHooks for PrintHooks {
 	fn async_channel_error(
 		&self,
 		request_header: &fuse::RequestHeader,
-		code: Option<fuse::ErrorCode>,
+		code: Option<NonZeroU16>,
 	) {
 		println!("\n[async_channel_error]\n{:#?}", request_header);
 		println!("{:#?}", code);

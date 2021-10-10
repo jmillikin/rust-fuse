@@ -177,13 +177,17 @@ impl fmt::Debug for SetattrResponse<'_> {
 	}
 }
 
-impl fuse_io::EncodeResponse for SetattrResponse<'_> {
-	fn encode_response<'a, S: io::OutputStream>(
-		&'a self,
-		enc: fuse_io::ResponseEncoder<S>,
-	) -> Result<(), S::Error> {
+impl encode::EncodeReply for SetattrResponse<'_> {
+	fn encode<S: encode::SendOnce>(
+		&self,
+		send: S,
+		request_id: u64,
+		version_minor: u32,
+	) -> S::Result {
+		let enc = encode::ReplyEncoder::new(send, request_id);
+
 		// The `fuse_attr::blksize` field was added in FUSE v7.9.
-		if enc.version().minor() < 9 {
+		if version_minor < 9 {
 			let buf: &[u8] = unsafe {
 				slice::from_raw_parts(
 					(&self.raw as *const fuse_kernel::fuse_attr_out)

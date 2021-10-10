@@ -23,10 +23,10 @@ use std::sync::Arc;
 use crate::channel::{self, WrapChannel};
 use crate::error::{Error, ErrorCode};
 use crate::fuse_handlers::FuseHandlers;
-use crate::internal::fuse_io::{self, EncodeResponse};
 use crate::internal::fuse_kernel;
-use crate::io::decode::{self, DecodeRequest, RequestBuf};
 use crate::io::{self, Buffer, ProtocolVersion};
+use crate::io::decode::{self, DecodeRequest, RequestBuf};
+use crate::io::encode::{self, EncodeReply};
 use crate::protocol::common::RequestHeader;
 use crate::protocol::{FuseInitRequest, FuseInitResponse};
 use crate::server;
@@ -91,13 +91,7 @@ where
 			let request_id = request_header.unique;
 			let init_request: FuseInitRequest =
 				decode_fuse(request_buf, ProtocolVersion::LATEST.minor())?;
-
-			let encoder = fuse_io::ResponseEncoder::new(
-				WrapChannel(&self.channel),
-				request_id,
-				// FuseInitResponse always encodes with its own version
-				ProtocolVersion::LATEST,
-			);
+			let stream = WrapChannel(&self.channel);
 
 			let version =
 				match server::negotiate_version(init_request.version()) {
@@ -105,7 +99,12 @@ where
 					None => {
 						let mut init_response = FuseInitResponse::new();
 						init_response.set_version(ProtocolVersion::LATEST);
-						init_response.encode_response(encoder)?;
+						init_response.encode(
+							encode::SyncSendOnce::new(&stream),
+							request_id,
+							// FuseInitResponse always encodes with its own version
+							ProtocolVersion::LATEST.minor(),
+						)?;
 						continue;
 					},
 				};
@@ -120,7 +119,12 @@ where
 				server::capped_max_write(),
 			));
 
-			init_response.encode_response(encoder)?;
+			init_response.encode(
+				encode::SyncSendOnce::new(&stream),
+				request_id,
+				// FuseInitResponse always encodes with its own version
+				ProtocolVersion::LATEST.minor(),
+			)?;
 			return Ok(init_response);
 		}
 	}
@@ -350,6 +354,8 @@ where
 		hooks.request(ctx.request_header());
 	}
 
+	let stream = WrapChannel(respond.channel());
+
 	macro_rules! do_dispatch {
 		($handler:tt) => {{
 			match decode_fuse(request, version.minor()) {
@@ -358,7 +364,10 @@ where
 					if let Some(hooks) = hooks {
 						hooks.request_error(RequestHeader::new_ref(header), err)
 					}
-					respond.encoder().encode_error(ErrorCode::EIO)?;
+					let send = encode::SyncSendOnce::new(&stream);
+					let request_id = request.header().unique;
+					let encoder = encode::ReplyEncoder::new(send, request_id);
+					encoder.encode_error(ErrorCode::EIO.into())?;
 				},
 			}
 		}};
@@ -415,7 +424,10 @@ where
 				let request = decode_fuse(request, version.minor())?;
 				hooks.unknown_request(&request);
 			}
-			respond.encoder().encode_error(ErrorCode::ENOSYS)?;
+			let send = encode::SyncSendOnce::new(&stream);
+			let request_id = request.header().unique;
+			let encoder = encode::ReplyEncoder::new(send, request_id);
+			encoder.encode_error(ErrorCode::ENOSYS.into())?;
 		},
 	}
 	Ok(())

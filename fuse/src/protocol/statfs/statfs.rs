@@ -118,12 +118,15 @@ impl fmt::Debug for StatfsResponse<'_> {
 	}
 }
 
-impl fuse_io::EncodeResponse for StatfsResponse<'_> {
-	fn encode_response<'a, S: io::OutputStream>(
-		&'a self,
-		enc: fuse_io::ResponseEncoder<S>,
-	) -> Result<(), S::Error> {
-		if enc.version().minor() < 4 {
+impl encode::EncodeReply for StatfsResponse<'_> {
+	fn encode<S: encode::SendOnce>(
+		&self,
+		send: S,
+		request_id: u64,
+		version_minor: u32,
+	) -> S::Result {
+		let enc = encode::ReplyEncoder::new(send, request_id);
+		if version_minor < 4 {
 			let buf: &[u8] = unsafe {
 				slice::from_raw_parts(
 					(&self.raw as *const fuse_kernel::fuse_statfs_out)

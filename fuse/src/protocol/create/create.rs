@@ -162,17 +162,20 @@ impl fmt::Debug for CreateResponse<'_> {
 	}
 }
 
-impl fuse_io::EncodeResponse for CreateResponse<'_> {
-	fn encode_response<'a, S: io::OutputStream>(
-		&'a self,
-		enc: fuse_io::ResponseEncoder<S>,
-	) -> Result<(), S::Error> {
+impl encode::EncodeReply for CreateResponse<'_> {
+	fn encode<S: encode::SendOnce>(
+		&self,
+		send: S,
+		request_id: u64,
+		version_minor: u32,
+	) -> S::Result {
+		let enc = encode::ReplyEncoder::new(send, request_id);
 		let open_out = fuse_kernel::fuse_open_out {
 			fh: self.handle,
 			open_flags: self.flags.to_bits(),
 			padding: 0,
 		};
-		self.node().encode_entry_sized(enc, &open_out)
+		self.node().encode_entry_sized(enc, version_minor, &open_out)
 	}
 }
 

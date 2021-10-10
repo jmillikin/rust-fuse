@@ -14,8 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-pub(crate) mod fuse_io;
-
 #[macro_use]
 mod fuse_kernel_util;
 

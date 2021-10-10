@@ -148,12 +148,15 @@ impl fmt::Debug for MknodResponse<'_> {
 	}
 }
 
-impl fuse_io::EncodeResponse for MknodResponse<'_> {
-	fn encode_response<'a, S: io::OutputStream>(
-		&'a self,
-		enc: fuse_io::ResponseEncoder<S>,
-	) -> Result<(), S::Error> {
-		self.node().encode_entry(enc)
+impl encode::EncodeReply for MknodResponse<'_> {
+	fn encode<S: encode::SendOnce>(
+		&self,
+		send: S,
+		request_id: u64,
+		version_minor: u32,
+	) -> S::Result {
+		let enc = encode::ReplyEncoder::new(send, request_id);
+		self.node().encode_entry(enc, version_minor)
 	}
 }
 

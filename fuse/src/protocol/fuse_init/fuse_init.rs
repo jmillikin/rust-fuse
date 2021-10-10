@@ -228,11 +228,14 @@ struct fuse_init_out_v7p5 {
 	max_write: u32,
 }
 
-impl fuse_io::EncodeResponse for FuseInitResponse {
-	fn encode_response<'a, S: io::OutputStream>(
-		&'a self,
-		enc: fuse_io::ResponseEncoder<S>,
-	) -> Result<(), S::Error> {
+impl encode::EncodeReply for FuseInitResponse {
+	fn encode<S: encode::SendOnce>(
+		&self,
+		send: S,
+		request_id: u64,
+		_version_minor: u32,
+	) -> S::Result {
+		let enc = encode::ReplyEncoder::new(send, request_id);
 		if self.raw.minor >= 23 {
 			let mut out = self.raw;
 			out.flags = self.flags.to_bits();

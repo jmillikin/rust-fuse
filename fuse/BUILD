@@ -11,7 +11,6 @@ filegroup(
 rust_library(
     name = "fuse",
     srcs = [src for src in ALL_SRCS if not src.endswith("_test.rs")] + [
-        "//fuse/src/internal:fuse_io.rs",
         "//fuse/src/internal:fuse_kernel_util.rs",
         "//fuse/src/internal:fuse_kernel.rs",
         "//fuse/src/internal:mod.rs",

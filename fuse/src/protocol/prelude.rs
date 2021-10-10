@@ -28,10 +28,10 @@ pub(super) use std::ffi::{CStr, CString};
 pub(super) use std::time;
 
 pub(super) use crate::error::{Error, ErrorCode};
-pub(super) use crate::internal::fuse_io;
 pub(super) use crate::internal::fuse_kernel;
 pub(super) use crate::io;
 pub(super) use crate::io::decode;
+pub(super) use crate::io::encode;
 pub(super) use crate::protocol::common::{
 	DebugBytesAsString,
 	DebugClosure,
@@ -44,11 +44,6 @@ pub(super) use crate::protocol::common::{
 	NodeName,
 	XattrError,
 	XattrName,
-};
-
-pub(super) use crate::internal::fuse_io::{
-	EncodeResponse,
-	ResponseEncoder,
 };
 
 pub(crate) fn try_node_id(raw: u64) -> Result<NodeId, io::DecodeError> {
