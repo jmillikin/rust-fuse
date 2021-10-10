@@ -104,53 +104,72 @@ struct fuse_write_in_v7p1 {
 	write_flags: u32,
 }
 
-impl<'a> fuse_io::DecodeRequest<'a> for WriteRequest<'a> {
-	fn decode_request(
-		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> Result<Self, Error> {
-		let header = dec.header();
-		debug_assert!(header.opcode == fuse_kernel::FUSE_WRITE);
+impl<'a> decode::DecodeRequest<'a, decode::CUSE> for WriteRequest<'a> {
+	fn decode(
+		buf: decode::RequestBuf<'a>,
+		version_minor: u32,
+	) -> Result<Self, io::DecodeError> {
+		decode_request(buf, version_minor, true)
+	}
+}
 
-		let node_id = if dec.is_cuse() {
-			crate::ROOT_ID
-		} else {
-			try_node_id(header.nodeid)?
-		};
+impl<'a> decode::DecodeRequest<'a, decode::FUSE> for WriteRequest<'a> {
+	fn decode(
+		buf: decode::RequestBuf<'a>,
+		version_minor: u32,
+	) -> Result<Self, io::DecodeError> {
+		decode_request(buf, version_minor, false)
+	}
+}
 
-		if dec.version().minor() < 9 {
-			let raw: &'a fuse_write_in_v7p1 = dec.next_sized()?;
-			let value = dec.next_bytes(raw.size)?;
-			return Ok(Self {
-				phantom: PhantomData,
-				node_id,
-				offset: raw.offset,
-				handle: raw.fh,
-				value,
-				flags: WriteRequestFlags::from_bits(raw.write_flags),
-				lock_owner: None,
-				open_flags: 0,
-			});
-		}
+fn decode_request<'a>(
+	buf: decode::RequestBuf<'a>,
+	version_minor: u32,
+	is_cuse: bool,
+) -> Result<WriteRequest<'a>, io::DecodeError> {
+	let header = buf.header();
+	debug_assert!(header.opcode == fuse_kernel::FUSE_WRITE);
 
-		let raw: &'a fuse_kernel::fuse_write_in = dec.next_sized()?;
+	let node_id = if is_cuse {
+		crate::ROOT_ID
+	} else {
+		try_node_id(header.nodeid)?
+	};
+
+	let mut dec = decode::RequestDecoder::new(buf);
+	if version_minor < 9 {
+		let raw: &'a fuse_write_in_v7p1 = dec.next_sized()?;
 		let value = dec.next_bytes(raw.size)?;
-
-		let mut lock_owner = None;
-		if raw.write_flags & fuse_kernel::FUSE_WRITE_LOCKOWNER != 0 {
-			lock_owner = Some(raw.lock_owner)
-		}
-
-		Ok(Self {
+		return Ok(WriteRequest {
 			phantom: PhantomData,
 			node_id,
 			offset: raw.offset,
 			handle: raw.fh,
 			value,
 			flags: WriteRequestFlags::from_bits(raw.write_flags),
-			lock_owner,
-			open_flags: raw.flags,
-		})
+			lock_owner: None,
+			open_flags: 0,
+		});
 	}
+
+	let raw: &'a fuse_kernel::fuse_write_in = dec.next_sized()?;
+	let value = dec.next_bytes(raw.size)?;
+
+	let mut lock_owner = None;
+	if raw.write_flags & fuse_kernel::FUSE_WRITE_LOCKOWNER != 0 {
+		lock_owner = Some(raw.lock_owner)
+	}
+
+	Ok(WriteRequest {
+		phantom: PhantomData,
+		node_id,
+		offset: raw.offset,
+		handle: raw.fh,
+		value,
+		flags: WriteRequestFlags::from_bits(raw.write_flags),
+		lock_owner,
+		open_flags: raw.flags,
+	})
 }
 
 // }}}

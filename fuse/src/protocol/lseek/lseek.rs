@@ -73,12 +73,14 @@ impl fmt::Debug for LseekWhence {
 	}
 }
 
-impl<'a> fuse_io::DecodeRequest<'a> for LseekRequest<'a> {
-	fn decode_request(
-		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> Result<Self, Error> {
-		let header = dec.header();
+impl<'a> decode::DecodeRequest<'a, decode::FUSE> for LseekRequest<'a> {
+	fn decode(
+		buf: decode::RequestBuf<'a>,
+		_version_minor: u32,
+	) -> Result<Self, io::DecodeError> {
+		let header = buf.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_LSEEK);
+		let mut dec = decode::RequestDecoder::new(buf);
 		let raw = dec.next_sized()?;
 		Ok(Self {
 			raw,

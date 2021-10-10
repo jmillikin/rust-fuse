@@ -41,12 +41,14 @@ impl IoctlRequest<'_> {
 	}
 }
 
-impl<'a> fuse_io::DecodeRequest<'a> for IoctlRequest<'a> {
-	fn decode_request(
-		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> Result<Self, Error> {
-		let header = dec.header();
+impl<'a> decode::DecodeRequest<'a, decode::FUSE> for IoctlRequest<'a> {
+	fn decode(
+		buf: decode::RequestBuf<'a>,
+		version_minor: u32,
+	) -> Result<Self, io::DecodeError> {
+		let header = buf.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_IOCTL);
+		let mut dec = decode::RequestDecoder::new(buf);
 		let raw: &'a fuse_kernel::fuse_ioctl_in = dec.next_sized()?;
 
 		/* TODO

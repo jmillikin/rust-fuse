@@ -16,12 +16,11 @@
 
 use std::mem::size_of;
 
-use crate::error::Error;
 use crate::internal::fuse_kernel;
 use crate::internal::testutil::MessageBuilder;
-use crate::io::ProtocolVersion;
+use crate::io::{Buffer, DecodeError};
 
-use super::{aligned_borrow, RequestDecoder, Semantics};
+use super::{RequestBuf, RequestDecoder};
 
 #[test]
 fn request_decoder_new() {
@@ -30,12 +29,8 @@ fn request_decoder_new() {
 		.push_bytes(&[1, 2, 3, 4, 5, 6, 7, 8, 9])
 		.build_aligned();
 
-	let decoder = RequestDecoder::new(
-		aligned_borrow(&buf),
-		ProtocolVersion::LATEST,
-		Semantics::FUSE,
-	)
-	.unwrap();
+	let request_buf = RequestBuf::new(&buf, buf.borrow().len()).unwrap();
+	let decoder = RequestDecoder::new(request_buf);
 
 	assert_eq!(
 		decoder.consumed,
@@ -50,19 +45,15 @@ fn request_decoder_eof_handling() {
 		.push_bytes(&[10, 20, 30, 40, 50, 60, 70, 80, 90])
 		.build_aligned();
 
-	let mut decoder = RequestDecoder::new(
-		aligned_borrow(&buf),
-		ProtocolVersion::LATEST,
-		Semantics::FUSE,
-	)
-	.unwrap();
+	let request_buf = RequestBuf::new(&buf, buf.borrow().len()).unwrap();
+	let mut decoder = RequestDecoder::new(request_buf);
 
 	// OK to read right up to the frame size.
 	decoder.next_bytes(8).unwrap();
 	assert_eq!(decoder.next_bytes(1), Ok(&[90u8] as &[u8]),);
 
 	// reading past the frame size is an error.
-	assert_eq!(decoder.next_bytes(1), Err(Error::unexpected_eof()));
+	assert_eq!(decoder.next_bytes(1), Err(DecodeError::UnexpectedEof));
 }
 
 /*
@@ -101,12 +92,8 @@ fn request_decoder_sized() {
 		.push_bytes(&[1, 2, 3, 4, 5, 6, 7, 8, 9])
 		.build_aligned();
 
-	let mut decoder = RequestDecoder::new(
-		aligned_borrow(&buf),
-		ProtocolVersion::LATEST,
-		Semantics::FUSE,
-	)
-	.unwrap();
+	let request_buf = RequestBuf::new(&buf, buf.borrow().len()).unwrap();
+	let mut decoder = RequestDecoder::new(request_buf);
 
 	// [0 .. 4]
 	let did_read: &[u8; 4] = decoder.next_sized().unwrap();
@@ -117,7 +104,7 @@ fn request_decoder_sized() {
 	assert_eq!(did_read, &[5, 6, 7, 8]);
 
 	// [8 .. 12] hits EOF
-	assert_eq!(decoder.next_sized::<u32>(), Err(Error::unexpected_eof()));
+	assert_eq!(decoder.next_sized::<u32>(), Err(DecodeError::UnexpectedEof));
 }
 
 #[test]
@@ -127,12 +114,8 @@ fn frame_decoder_bytes() {
 		.push_bytes(&[1, 2, 3, 4, 5, 6, 7, 8, 9])
 		.build_aligned();
 
-	let mut decoder = RequestDecoder::new(
-		aligned_borrow(&buf),
-		ProtocolVersion::LATEST,
-		Semantics::FUSE,
-	)
-	.unwrap();
+	let request_buf = RequestBuf::new(&buf, buf.borrow().len()).unwrap();
+	let mut decoder = RequestDecoder::new(request_buf);
 
 	// [0 .. 4)
 	let did_read = decoder.next_bytes(4).unwrap();
@@ -143,5 +126,5 @@ fn frame_decoder_bytes() {
 	assert_eq!(did_read, &[5, 6, 7, 8]);
 
 	// [8 .. 12) hits EOF
-	assert_eq!(decoder.next_bytes(4), Err(Error::unexpected_eof()));
+	assert_eq!(decoder.next_bytes(4), Err(DecodeError::UnexpectedEof));
 }

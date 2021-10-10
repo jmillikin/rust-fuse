@@ -78,17 +78,19 @@ impl fmt::Debug for ReaddirRequest<'_> {
 	}
 }
 
-impl<'a> fuse_io::DecodeRequest<'a> for ReaddirRequest<'a> {
-	fn decode_request(
-		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> Result<Self, Error> {
-		let header = dec.header();
+impl<'a> decode::DecodeRequest<'a, decode::FUSE> for ReaddirRequest<'a> {
+	fn decode(
+		buf: decode::RequestBuf<'a>,
+		version_minor: u32,
+	) -> Result<Self, io::DecodeError> {
+		let header = buf.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_READDIR);
 
 		let node_id = try_node_id(header.nodeid)?;
+		let mut dec = decode::RequestDecoder::new(buf);
 
 		// FUSE v7.9 added new fields to `fuse_read_in`.
-		if dec.version().minor() < 9 {
+		if version_minor < 9 {
 			let raw: &'a fuse_read_in_v7p1 = dec.next_sized()?;
 			return Ok(Self {
 				phantom: PhantomData,

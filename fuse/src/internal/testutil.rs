@@ -157,17 +157,15 @@ macro_rules! decode_request {
 		decode_request!($buf, {})
 	};
 	($buf: ident, $opts:tt $(,)?) => {{
-		use crate::internal::fuse_io;
 		use crate::internal::testutil::DecodeRequestOpts;
+		use crate::io::decode::{DecodeRequest, RequestBuf};
+		use crate::io::Buffer;
 
 		let opts = decode_request_opts!($opts);
-		let decoder = fuse_io::RequestDecoder::new(
-			fuse_io::aligned_borrow(&$buf),
-			opts.protocol_version(),
-			fuse_io::Semantics::FUSE,
-		)
-		.unwrap();
-		fuse_io::DecodeRequest::decode_request(decoder).unwrap()
+		let request_len = $buf.borrow().len();
+		let request = RequestBuf::new(&$buf, request_len).unwrap();
+		let version_minor = opts.protocol_version().minor();
+		DecodeRequest::<decode::FUSE>::decode(request, version_minor).unwrap()
 	}};
 }
 

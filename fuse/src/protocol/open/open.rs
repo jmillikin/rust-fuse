@@ -52,26 +52,44 @@ impl fmt::Debug for OpenRequest<'_> {
 	}
 }
 
-impl<'a> fuse_io::DecodeRequest<'a> for OpenRequest<'a> {
-	fn decode_request(
-		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> Result<Self, Error> {
-		let header = dec.header();
-		debug_assert!(header.opcode == fuse_kernel::FUSE_OPEN);
-
-		let node_id = if dec.is_cuse() {
-			crate::ROOT_ID
-		} else {
-			try_node_id(header.nodeid)?
-		};
-
-		let raw: &'a fuse_kernel::fuse_open_in = dec.next_sized()?;
-		Ok(Self {
-			phantom: PhantomData,
-			node_id,
-			flags: raw.flags,
-		})
+impl<'a> decode::DecodeRequest<'a, decode::CUSE> for OpenRequest<'a> {
+	fn decode(
+		buf: decode::RequestBuf<'a>,
+		_version_minor: u32,
+	) -> Result<Self, io::DecodeError> {
+		decode_request(buf, true)
 	}
+}
+
+impl<'a> decode::DecodeRequest<'a, decode::FUSE> for OpenRequest<'a> {
+	fn decode(
+		buf: decode::RequestBuf<'a>,
+		_version_minor: u32,
+	) -> Result<Self, io::DecodeError> {
+		decode_request(buf, false)
+	}
+}
+
+fn decode_request<'a>(
+	buf: decode::RequestBuf<'a>,
+	is_cuse: bool,
+) -> Result<OpenRequest<'a>, io::DecodeError> {
+	let header = buf.header();
+	debug_assert!(header.opcode == fuse_kernel::FUSE_OPEN);
+
+	let node_id = if is_cuse {
+		crate::ROOT_ID
+	} else {
+		try_node_id(header.nodeid)?
+	};
+	let mut dec = decode::RequestDecoder::new(buf);
+
+	let raw: &'a fuse_kernel::fuse_open_in = dec.next_sized()?;
+	Ok(OpenRequest {
+		phantom: PhantomData,
+		node_id,
+		flags: raw.flags,
+	})
 }
 
 // }}}

@@ -70,17 +70,19 @@ impl fmt::Debug for ReleasedirRequest<'_> {
 	}
 }
 
-impl<'a> fuse_io::DecodeRequest<'a> for ReleasedirRequest<'a> {
-	fn decode_request(
-		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> Result<Self, Error> {
-		let header = dec.header();
+impl<'a> decode::DecodeRequest<'a, decode::FUSE> for ReleasedirRequest<'a> {
+	fn decode(
+		buf: decode::RequestBuf<'a>,
+		version_minor: u32,
+	) -> Result<Self, io::DecodeError> {
+		let header = buf.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_RELEASEDIR);
 
 		let node_id = try_node_id(header.nodeid)?;
+		let mut dec = decode::RequestDecoder::new(buf);
 
 		// FUSE v7.8 added new fields to `fuse_release_in`.
-		if dec.version().minor() < 8 {
+		if version_minor < 8 {
 			let raw: &'a fuse_release_in_v7p1 = dec.next_sized()?;
 			return Ok(Self {
 				phantom: PhantomData,

@@ -45,13 +45,15 @@ impl fmt::Debug for RemovexattrRequest<'_> {
 	}
 }
 
-impl<'a> fuse_io::DecodeRequest<'a> for RemovexattrRequest<'a> {
-	fn decode_request(
-		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> Result<Self, Error> {
-		let header = dec.header();
+impl<'a> decode::DecodeRequest<'a, decode::FUSE> for RemovexattrRequest<'a> {
+	fn decode(
+		buf: decode::RequestBuf<'a>,
+		_version_minor: u32,
+	) -> Result<Self, io::DecodeError> {
+		let header = buf.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_REMOVEXATTR);
 
+		let mut dec = decode::RequestDecoder::new(buf);
 		let name = XattrName::new(dec.next_nul_terminated_bytes()?);
 		Ok(Self {
 			node_id: try_node_id(header.nodeid)?,

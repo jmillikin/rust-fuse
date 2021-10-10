@@ -86,11 +86,12 @@ impl fmt::Debug for SetlkRequest<'_> {
 	}
 }
 
-impl<'a> fuse_io::DecodeRequest<'a> for SetlkRequest<'a> {
-	fn decode_request(
-		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> Result<Self, Error> {
-		let header = dec.header();
+impl<'a> decode::DecodeRequest<'a, decode::FUSE> for SetlkRequest<'a> {
+	fn decode(
+		buf: decode::RequestBuf<'a>,
+		_version_minor: u32,
+	) -> Result<Self, io::DecodeError> {
+		let header = buf.header();
 
 		let is_setlkw: bool;
 		if header.opcode == fuse_kernel::FUSE_SETLKW {
@@ -100,6 +101,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for SetlkRequest<'a> {
 			is_setlkw = false;
 		}
 
+		let mut dec = decode::RequestDecoder::new(buf);
 		let raw: &fuse_kernel::fuse_lk_in = dec.next_sized()?;
 		let node_id = try_node_id(header.nodeid)?;
 		let command = parse_setlk_cmd(is_setlkw, &raw.lk)?;
@@ -115,7 +117,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for SetlkRequest<'a> {
 fn parse_setlk_cmd(
 	is_setlkw: bool,
 	raw: &fuse_kernel::fuse_file_lock,
-) -> Result<SetlkCommand, Error> {
+) -> Result<SetlkCommand, io::DecodeError> {
 	if raw.r#type == F_UNLCK {
 		return Ok(SetlkCommand::ClearLocks {
 			range: LockRange::parse(*raw),
@@ -129,7 +131,7 @@ fn parse_setlk_cmd(
 		} else {
 			SetlkCommand::TrySetLock(lock)
 		}),
-		None => return Err(Error::invalid_lock_type(raw.r#type)),
+		None => return Err(io::DecodeError::InvalidLockType),
 	}
 }
 

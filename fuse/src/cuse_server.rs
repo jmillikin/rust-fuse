@@ -22,18 +22,16 @@ use std::sync::Arc;
 use crate::channel::{self, WrapChannel};
 use crate::cuse_handlers::CuseHandlers;
 use crate::error::{Error, ErrorCode};
-use crate::internal::fuse_io::{self, DecodeRequest};
+use crate::internal::fuse_io;
 use crate::internal::fuse_kernel;
+use crate::io::decode::{self, DecodeRequest, RequestBuf};
 use crate::io::{self, Buffer, ProtocolVersion};
 use crate::protocol::common::{
 	DebugBytesAsString,
 	RequestHeader,
-	UnknownRequest,
 };
 use crate::protocol::{CuseInitRequest, CuseInitResponse};
 use crate::server;
-
-const CUSE: fuse_io::Semantics = fuse_io::Semantics::CUSE;
 
 // CuseDeviceName {{{
 
@@ -145,15 +143,16 @@ where
 		let mut read_buf = io::ArrayBuffer::new();
 
 		loop {
-			let request_size = self.channel.receive(read_buf.borrow_mut())?;
-			let request_buf = fuse_io::aligned_slice(&read_buf, request_size);
-			let request_decoder = fuse_io::RequestDecoder::new(
-				request_buf,
-				ProtocolVersion::LATEST,
-				CUSE,
-			)?;
+			let recv_len = self.channel.receive(read_buf.borrow_mut())?;
+			let request_buf = match RequestBuf::new(&read_buf, recv_len) {
+				Err(err) => {
+					let err: Error = err.into();
+					return Err(err.into());
+				},
+				Ok(x) => x,
+			};
 
-			let request_header = request_decoder.header();
+			let request_header = request_buf.header();
 			if request_header.opcode != fuse_kernel::CUSE_INIT {
 				return Err(
 					Error::expected_cuse_init(request_header.opcode.0).into()
@@ -161,8 +160,8 @@ where
 			}
 
 			let request_id = request_header.unique;
-			let init_request =
-				CuseInitRequest::decode_request(request_decoder)?;
+			let init_request: CuseInitRequest =
+				decode_cuse(request_buf, ProtocolVersion::LATEST.minor())?;
 
 			let encoder = fuse_io::ResponseEncoder::new(
 				WrapChannel(&self.channel),
@@ -338,19 +337,20 @@ where
 		let handlers = self.handlers.as_ref();
 		let hooks = self.hooks.as_deref();
 		let mut buf = io::PinnedBuffer::new(self.read_buf_size);
-		server::main_loop(channel, &mut buf, self.version, CUSE, |dec| {
+		server::main_loop(channel, &mut buf, true, |request| {
 			let mut channel_err = Ok(());
 			let respond = server::RespondRef::new(
 				channel,
 				hooks,
 				&mut channel_err,
-				RequestHeader::new_ref(dec.header()),
+				RequestHeader::new_ref(request.header()),
 				self.version,
 				&self.channel,
 				self.hooks.as_ref(),
 			);
 			cuse_request_dispatch::<C, Handlers, Hooks>(
-				dec,
+				request,
+				self.version,
 				handlers,
 				respond,
 				self.hooks.as_ref(),
@@ -378,17 +378,21 @@ where
 		let mut buf = io::PinnedBuffer::new(self.read_buf_size);
 		#[cfg(not(feature = "std"))]
 		let mut buf = io::ArrayBuffer::new();
-		server::main_loop(channel, &mut buf, self.version, CUSE, |dec| {
+		server::main_loop(channel, &mut buf, true, |request| {
 			let mut channel_error = Ok(());
 			let respond = server::RespondRef::new(
 				channel,
 				hooks,
 				&mut channel_error,
-				RequestHeader::new_ref(dec.header()),
+				RequestHeader::new_ref(request.header()),
 				self.version,
 			);
 			cuse_request_dispatch::<C, Handlers, Hooks>(
-				dec, handlers, respond, hooks,
+				request,
+				self.version,
+				handlers,
+				respond,
+				hooks,
 			)?;
 			channel_error
 		})
@@ -398,7 +402,8 @@ where
 // }}}
 
 fn cuse_request_dispatch<C, Handlers, Hooks>(
-	request_decoder: fuse_io::RequestDecoder,
+	request: RequestBuf,
+	version: ProtocolVersion,
 	handlers: &Handlers,
 	respond: server::RespondRef<C::T, Hooks::T>,
 	#[cfg(feature = "respond_async")] hooks: Option<&Arc<Hooks::T>>,
@@ -411,7 +416,7 @@ where
 {
 	use server::ServerHooks;
 
-	let header = request_decoder.header();
+	let header = request.header();
 	let ctx = server::ServerContext::new(*header);
 
 	if let Some(hooks) = hooks {
@@ -421,7 +426,7 @@ where
 	#[rustfmt::skip]
 	macro_rules! do_dispatch {
 		($handler:tt) => {{
-			match DecodeRequest::decode_request(request_decoder) {
+			match decode_cuse(request, version.minor()) {
 				Ok(request) => {
 					handlers.$handler(ctx, &request, respond);
 					Ok(())
@@ -447,10 +452,17 @@ where
 		fuse_kernel::FUSE_WRITE => do_dispatch!(write),
 		_ => {
 			if let Some(hooks) = hooks {
-				let request = UnknownRequest::decode_request(request_decoder)?;
+				let request = decode_cuse(request, version.minor())?;
 				hooks.unknown_request(&request);
 			}
 			respond.encoder().encode_error(ErrorCode::ENOSYS)
 		},
 	}
+}
+
+fn decode_cuse<'a, R: DecodeRequest<'a, decode::CUSE>>(
+	request: RequestBuf<'a>,
+	version_minor: u32,
+) -> Result<R, Error> {
+	Ok(DecodeRequest::decode(request, version_minor)?)
 }

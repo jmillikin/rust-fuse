@@ -30,7 +30,7 @@ pub enum ErrorKind {
 	UnexpectedEof,
 	ExpectedCuseInit(u32),
 	ExpectedFuseInit(u32),
-	InvalidLockType(u32),
+	InvalidLockType,
 }
 
 impl Error {
@@ -46,9 +46,9 @@ impl Error {
 		}
 	}
 
-	pub(crate) fn invalid_lock_type(t: u32) -> Error {
+	pub(crate) fn invalid_lock_type() -> Error {
 		Error {
-			kind: ErrorKind::InvalidLockType(t),
+			kind: ErrorKind::InvalidLockType,
 		}
 	}
 
@@ -73,6 +73,17 @@ impl fmt::Display for Error {
 
 #[cfg(feature = "std")]
 impl std::error::Error for Error {}
+
+impl From<crate::io::DecodeError> for Error {
+	fn from(err: crate::io::DecodeError) -> Error {
+		use crate::io::DecodeError;
+		match err {
+			DecodeError::InvalidLockType => Self::invalid_lock_type(),
+			DecodeError::MissingNodeId => Self::missing_node_id(),
+			DecodeError::UnexpectedEof => Self::unexpected_eof(),
+		}
+	}
+}
 
 #[cfg(feature = "std")]
 #[cfg_attr(doc, doc(cfg(feature = "std")))]
@@ -99,12 +110,9 @@ impl From<Error> for std::io::Error {
 					fuse_kernel::Opcode(opcode),
 				),
 			),
-			ErrorKind::InvalidLockType(lock_type) => io::Error::new(
+			ErrorKind::InvalidLockType => io::Error::new(
 				io::ErrorKind::InvalidData,
-				format!(
-					"Invalid fcntl() lock type {:?} (expected F_RDLCK or F_WRLCK)",
-					lock_type,
-				),
+				"Invalid fcntl() lock type (expected F_RDLCK or F_WRLCK)",
 			),
 		}
 	}

@@ -16,7 +16,7 @@
 
 use core::{cmp, fmt};
 
-use crate::internal::fuse_io;
+use crate::io::decode;
 
 #[derive(Hash)]
 #[repr(transparent)]
@@ -30,7 +30,7 @@ pub const NODE_NAME_MAX: usize = {
 
 impl NodeName {
 	pub(crate) fn new<'a>(
-		bytes: fuse_io::NulTerminatedBytes<'a>,
+		bytes: decode::NulTerminatedBytes<'a>,
 	) -> &'a NodeName {
 		let bytes = bytes.to_bytes_without_nul();
 		unsafe { &*(bytes as *const [u8] as *const NodeName) }

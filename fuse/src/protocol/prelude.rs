@@ -31,6 +31,7 @@ pub(super) use crate::error::{Error, ErrorCode};
 pub(super) use crate::internal::fuse_io;
 pub(super) use crate::internal::fuse_kernel;
 pub(super) use crate::io;
+pub(super) use crate::io::decode;
 pub(super) use crate::protocol::common::{
 	DebugBytesAsString,
 	DebugClosure,
@@ -46,15 +47,13 @@ pub(super) use crate::protocol::common::{
 };
 
 pub(super) use crate::internal::fuse_io::{
-	DecodeRequest,
 	EncodeResponse,
-	RequestDecoder,
 	ResponseEncoder,
 };
 
-pub(crate) fn try_node_id(raw: u64) -> Result<NodeId, Error> {
+pub(crate) fn try_node_id(raw: u64) -> Result<NodeId, io::DecodeError> {
 	match NodeId::new(raw) {
 		Some(x) => Ok(x),
-		None => Err(Error::missing_node_id()),
+		None => Err(io::DecodeError::MissingNodeId),
 	}
 }

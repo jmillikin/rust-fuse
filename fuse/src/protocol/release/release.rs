@@ -76,46 +76,65 @@ pub(crate) struct fuse_release_in_v7p1 {
 	pub(crate) padding: u32,
 }
 
-impl<'a> fuse_io::DecodeRequest<'a> for ReleaseRequest<'a> {
-	fn decode_request(
-		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> Result<Self, Error> {
-		let header = dec.header();
-		debug_assert!(header.opcode == fuse_kernel::FUSE_RELEASE);
+impl<'a> decode::DecodeRequest<'a, decode::CUSE> for ReleaseRequest<'a> {
+	fn decode(
+		buf: decode::RequestBuf<'a>,
+		version_minor: u32,
+	) -> Result<Self, io::DecodeError> {
+		decode_request(buf, version_minor, true)
+	}
+}
 
-		let node_id = if dec.is_cuse() {
-			crate::ROOT_ID
-		} else {
-			try_node_id(header.nodeid)?
-		};
+impl<'a> decode::DecodeRequest<'a, decode::FUSE> for ReleaseRequest<'a> {
+	fn decode(
+		buf: decode::RequestBuf<'a>,
+		version_minor: u32,
+	) -> Result<Self, io::DecodeError> {
+		decode_request(buf, version_minor, false)
+	}
+}
 
-		// FUSE v7.8 added new fields to `fuse_release_in`.
-		if dec.version().minor() < 8 {
-			let raw: &'a fuse_release_in_v7p1 = dec.next_sized()?;
-			return Ok(Self {
-				phantom: PhantomData,
-				node_id,
-				handle: raw.fh,
-				lock_owner: None,
-				open_flags: raw.flags,
-			});
-		}
+fn decode_request<'a>(
+	buf: decode::RequestBuf<'a>,
+	version_minor: u32,
+	is_cuse: bool,
+) -> Result<ReleaseRequest<'a>, io::DecodeError> {
+	let header = buf.header();
+	debug_assert!(header.opcode == fuse_kernel::FUSE_RELEASE);
 
-		let raw: &'a fuse_kernel::fuse_release_in = dec.next_sized()?;
+	let node_id = if is_cuse {
+		crate::ROOT_ID
+	} else {
+		try_node_id(header.nodeid)?
+	};
+	let mut dec = decode::RequestDecoder::new(buf);
 
-		let mut lock_owner = None;
-		if raw.release_flags & fuse_kernel::FUSE_RELEASE_FLOCK_UNLOCK != 0 {
-			lock_owner = Some(raw.lock_owner);
-		}
-
-		Ok(Self {
+	// FUSE v7.8 added new fields to `fuse_release_in`.
+	if version_minor < 8 {
+		let raw: &'a fuse_release_in_v7p1 = dec.next_sized()?;
+		return Ok(ReleaseRequest {
 			phantom: PhantomData,
 			node_id,
 			handle: raw.fh,
-			lock_owner,
+			lock_owner: None,
 			open_flags: raw.flags,
-		})
+		});
 	}
+
+	let raw: &'a fuse_kernel::fuse_release_in = dec.next_sized()?;
+
+	let mut lock_owner = None;
+	if raw.release_flags & fuse_kernel::FUSE_RELEASE_FLOCK_UNLOCK != 0 {
+		lock_owner = Some(raw.lock_owner);
+	}
+
+	Ok(ReleaseRequest {
+		phantom: PhantomData,
+		node_id,
+		handle: raw.fh,
+		lock_owner,
+		open_flags: raw.flags,
+	})
 }
 
 // }}}

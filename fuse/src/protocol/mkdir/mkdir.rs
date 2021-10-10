@@ -59,13 +59,15 @@ impl fmt::Debug for MkdirRequest<'_> {
 	}
 }
 
-impl<'a> fuse_io::DecodeRequest<'a> for MkdirRequest<'a> {
-	fn decode_request(
-		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> Result<Self, Error> {
-		let header = dec.header();
+impl<'a> decode::DecodeRequest<'a, decode::FUSE> for MkdirRequest<'a> {
+	fn decode(
+		buf: decode::RequestBuf<'a>,
+		_version_minor: u32,
+	) -> Result<Self, io::DecodeError> {
+		let header = buf.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_MKDIR);
 
+		let mut dec = decode::RequestDecoder::new(buf);
 		let raw: &fuse_kernel::fuse_mkdir_in = dec.next_sized()?;
 		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
 		Ok(Self {

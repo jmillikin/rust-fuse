@@ -60,19 +60,20 @@ impl fmt::Debug for GetlkRequest<'_> {
 	}
 }
 
-impl<'a> fuse_io::DecodeRequest<'a> for GetlkRequest<'a> {
-	fn decode_request(
-		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> Result<Self, Error> {
-		let header = dec.header();
+impl<'a> decode::DecodeRequest<'a, decode::FUSE> for GetlkRequest<'a> {
+	fn decode(
+		buf: decode::RequestBuf<'a>,
+		_version_minor: u32,
+	) -> Result<Self, io::DecodeError> {
+		let header = buf.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_GETLK);
+		let mut dec = decode::RequestDecoder::new(buf);
 		let raw: &fuse_kernel::fuse_lk_in = dec.next_sized()?;
 		let node_id = try_node_id(header.nodeid)?;
 
-		let lock_type = raw.lk.r#type;
 		let lock = match Lock::parse(raw.lk) {
 			Some(l) => l,
-			_ => return Err(Error::invalid_lock_type(lock_type)),
+			_ => return Err(io::DecodeError::InvalidLockType),
 		};
 		Ok(Self { raw, node_id, lock })
 	}

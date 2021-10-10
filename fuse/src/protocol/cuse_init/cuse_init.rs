@@ -54,12 +54,14 @@ impl fmt::Debug for CuseInitRequest<'_> {
 	}
 }
 
-impl<'a> fuse_io::DecodeRequest<'a> for CuseInitRequest<'_> {
-	fn decode_request(
-		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> Result<Self, Error> {
-		debug_assert!(dec.header().opcode == fuse_kernel::CUSE_INIT);
+impl<'a> decode::DecodeRequest<'a, decode::CUSE> for CuseInitRequest<'_> {
+	fn decode(
+		buf: decode::RequestBuf<'a>,
+		_version_minor: u32,
+	) -> Result<Self, io::DecodeError> {
+		debug_assert!(buf.header().opcode == fuse_kernel::CUSE_INIT);
 
+		let mut dec = decode::RequestDecoder::new(buf);
 		let raw: &'a fuse_kernel::cuse_init_in = dec.next_sized()?;
 		Ok(CuseInitRequest {
 			phantom: PhantomData,

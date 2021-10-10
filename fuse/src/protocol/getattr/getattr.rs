@@ -49,17 +49,18 @@ impl fmt::Debug for GetattrRequest<'_> {
 	}
 }
 
-impl<'a> fuse_io::DecodeRequest<'a> for GetattrRequest<'a> {
-	fn decode_request(
-		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> Result<Self, Error> {
-		let header = dec.header();
+impl<'a> decode::DecodeRequest<'a, decode::FUSE> for GetattrRequest<'a> {
+	fn decode(
+		buf: decode::RequestBuf<'a>,
+		version_minor: u32,
+	) -> Result<Self, io::DecodeError> {
+		let header = buf.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_GETATTR);
 
 		let node_id = try_node_id(header.nodeid)?;
 
 		// FUSE versions before v7.9 had no request type for `getattr()`.
-		if dec.version().minor() < 9 {
+		if version_minor < 9 {
 			return Ok(Self {
 				phantom: PhantomData,
 				node_id,
@@ -67,6 +68,7 @@ impl<'a> fuse_io::DecodeRequest<'a> for GetattrRequest<'a> {
 			});
 		}
 
+		let mut dec = decode::RequestDecoder::new(buf);
 		let raw: &'a fuse_kernel::fuse_getattr_in = dec.next_sized()?;
 		let mut handle = None;
 		if (raw.getattr_flags & fuse_kernel::FUSE_GETATTR_FH) > 0 {

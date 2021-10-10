@@ -14,30 +14,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-mod buffer;
-pub(crate) mod decode;
-mod error;
-mod stream;
-mod version;
-
-pub use self::buffer::{ArrayBuffer, Buffer, MIN_READ_BUFFER};
-
-#[cfg(feature = "std")]
-pub use self::buffer::PinnedBuffer;
-
-pub use self::error::DecodeError;
-
-pub use self::stream::{
-	AsyncInputStream,
-	AsyncOutputStream,
-	InputStream,
-	OutputStream,
-};
-
-pub use self::version::ProtocolVersion;
-
-// compatibility
-pub use crate::channel::{Channel, ChannelError};
-pub use crate::cuse_server::CuseServerChannel;
-pub use crate::fuse_server::FuseServerChannel;
-pub use crate::server::ServerChannel;
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum DecodeError {
+	InvalidLockType,
+	MissingNodeId,
+	UnexpectedEof,
+}

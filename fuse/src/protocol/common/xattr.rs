@@ -16,7 +16,7 @@
 
 use core::{cmp, fmt};
 
-use crate::internal::fuse_io;
+use crate::io::decode;
 
 // XattrError {{{
 
@@ -124,7 +124,7 @@ pub const XATTR_SIZE_MAX: usize = {
 
 impl XattrName {
 	pub(crate) fn new<'a>(
-		bytes: fuse_io::NulTerminatedBytes<'a>,
+		bytes: decode::NulTerminatedBytes<'a>,
 	) -> &'a XattrName {
 		Self::new_unchecked(bytes.to_bytes_without_nul())
 	}

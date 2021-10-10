@@ -63,13 +63,15 @@ impl fmt::Debug for FsyncdirRequest<'_> {
 	}
 }
 
-impl<'a> fuse_io::DecodeRequest<'a> for FsyncdirRequest<'a> {
-	fn decode_request(
-		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> Result<Self, Error> {
-		let header = dec.header();
+impl<'a> decode::DecodeRequest<'a, decode::FUSE> for FsyncdirRequest<'a> {
+	fn decode(
+		buf: decode::RequestBuf<'a>,
+		_version_minor: u32,
+	) -> Result<Self, io::DecodeError> {
+		let header = buf.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_FSYNCDIR);
 
+		let mut dec = decode::RequestDecoder::new(buf);
 		let raw: &fuse_kernel::fuse_fsync_in = dec.next_sized()?;
 		Ok(Self {
 			phantom: PhantomData,

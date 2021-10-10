@@ -23,6 +23,7 @@ use crate::channel::{self, ChannelError, WrapChannel};
 use crate::error::{Error, ErrorCode};
 use crate::internal::fuse_io;
 use crate::internal::fuse_kernel;
+use crate::io::decode;
 use crate::io::{Buffer, ProtocolVersion};
 use crate::protocol::common::{RequestHeader, UnknownRequest};
 
@@ -115,33 +116,33 @@ pub(crate) fn negotiate_version(
 pub(crate) fn main_loop<Buf, C, Cb>(
 	channel: &C,
 	read_buf: &mut Buf,
-	fuse_version: ProtocolVersion,
-	semantics: fuse_io::Semantics,
+	is_cuse: bool,
 	cb: Cb,
 ) -> Result<(), C::Error>
 where
 	Buf: Buffer,
 	C: channel::Channel,
-	Cb: Fn(fuse_io::RequestDecoder) -> Result<(), C::Error>,
+	Cb: Fn(decode::RequestBuf) -> Result<(), C::Error>,
 {
 	loop {
-		let request_size = match channel.receive(read_buf.borrow_mut()) {
+		let recv_len = match channel.receive(read_buf.borrow_mut()) {
 			Err(err) => {
-				if semantics == fuse_io::Semantics::FUSE {
+				if !is_cuse {
 					if err.error_code() == Some(ErrorCode::ENODEV) {
 						return Ok(());
 					}
 				}
 				return Err(err);
 			},
-			Ok(request_size) => request_size,
+			Ok(recv_len) => recv_len,
 		};
-		let request_buf = fuse_io::aligned_slice(read_buf, request_size);
-		cb(fuse_io::RequestDecoder::new(
-			request_buf,
-			fuse_version,
-			semantics,
-		)?)?;
+		match decode::RequestBuf::new(read_buf, recv_len) {
+			Err(err) => {
+				let err: Error = err.into();
+				return Err(err.into());
+			},
+			Ok(request_buf) => cb(request_buf)?,
+		}
 	}
 }
 

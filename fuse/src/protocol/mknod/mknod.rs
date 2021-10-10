@@ -75,16 +75,18 @@ pub(crate) struct fuse_mknod_in_v7p1 {
 	pub rdev: u32,
 }
 
-impl<'a> fuse_io::DecodeRequest<'a> for MknodRequest<'a> {
-	fn decode_request(
-		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> Result<Self, Error> {
-		let header = dec.header();
+impl<'a> decode::DecodeRequest<'a, decode::FUSE> for MknodRequest<'a> {
+	fn decode(
+		buf: decode::RequestBuf<'a>,
+		version_minor: u32,
+	) -> Result<Self, io::DecodeError> {
+		let header = buf.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_MKNOD);
 
 		let parent_id = try_node_id(header.nodeid)?;
 
-		if dec.version().minor() < 12 {
+		let mut dec = decode::RequestDecoder::new(buf);
+		if version_minor < 12 {
 			let raw: &fuse_mknod_in_v7p1 = dec.next_sized()?;
 			let name = NodeName::new(dec.next_nul_terminated_bytes()?);
 			return Ok(Self {

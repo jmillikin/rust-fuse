@@ -70,11 +70,13 @@ struct fuse_init_in_v7p1 {
 	minor: u32,
 }
 
-impl<'a> fuse_io::DecodeRequest<'a> for FuseInitRequest<'_> {
-	fn decode_request(
-		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> Result<Self, Error> {
-		debug_assert!(dec.header().opcode == fuse_kernel::FUSE_INIT);
+impl<'a> decode::DecodeRequest<'a, decode::FUSE> for FuseInitRequest<'_> {
+	fn decode(
+		buf: decode::RequestBuf<'a>,
+		_version_minor: u32,
+	) -> Result<Self, io::DecodeError> {
+		debug_assert!(buf.header().opcode == fuse_kernel::FUSE_INIT);
+		let mut dec = decode::RequestDecoder::new(buf);
 
 		// There are two cases where we can't read past the version fields:
 		//

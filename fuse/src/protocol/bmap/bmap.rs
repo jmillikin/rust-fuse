@@ -37,12 +37,14 @@ impl BmapRequest<'_> {
 	}
 }
 
-impl<'a> fuse_io::DecodeRequest<'a> for BmapRequest<'a> {
-	fn decode_request(
-		mut dec: fuse_io::RequestDecoder<'a>,
-	) -> Result<Self, Error> {
-		let header = dec.header();
+impl<'a> decode::DecodeRequest<'a, decode::FUSE> for BmapRequest<'a> {
+	fn decode(
+		buf: decode::RequestBuf<'a>,
+		version_minor: u32,
+	) -> Result<Self, io::DecodeError> {
+		let header = buf.header();
 		debug_assert!(header.opcode == fuse_kernel::FUSE_BMAP);
+		let mut dec = decode::RequestDecoder::new(buf);
 		let raw = dec.next_sized()?;
 		Ok(Self { header, raw })
 	}

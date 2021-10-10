@@ -16,7 +16,8 @@
 
 use crate::channel::WrapChannel;
 use crate::internal::testutil::MessageBuilder;
-use crate::io::ProtocolVersion;
+use crate::io::decode::{DecodeRequest, RequestBuf};
+use crate::io::{Buffer, ProtocolVersion};
 use crate::protocol::prelude::*;
 
 use super::{CuseInitFlags, CuseInitRequest, CuseInitResponse};
@@ -33,7 +34,12 @@ fn request() {
 		})
 		.build_aligned();
 
-	let req: CuseInitRequest = decode_request!(buf);
+	let request_buf = RequestBuf::new(&buf, buf.borrow().len()).unwrap();
+	let req: CuseInitRequest = DecodeRequest::<decode::CUSE>::decode(
+		request_buf,
+		ProtocolVersion::LATEST.minor(),
+	)
+	.unwrap();
 
 	assert_eq!(req.version().major(), 7);
 	assert_eq!(req.version().minor(), 6);

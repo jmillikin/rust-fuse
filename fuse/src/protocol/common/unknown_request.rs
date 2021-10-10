@@ -25,8 +25,8 @@ pub struct UnknownRequest<'a> {
 }
 
 enum UnknownBody<'a> {
-	Raw(fuse_io::RequestDecoder<'a>),
-	Parsed(Result<&'a [u8], Error>),
+	Raw(decode::RequestBuf<'a>),
+	Parsed(Result<&'a [u8], io::DecodeError>),
 }
 
 impl<'a> UnknownRequest<'a> {
@@ -34,12 +34,13 @@ impl<'a> UnknownRequest<'a> {
 		RequestHeader::new_ref(&self.header)
 	}
 
-	pub fn body(&self) -> Result<&'a [u8], Error> {
-		let mut result: Result<&'a [u8], Error> = Ok(&[]);
+	pub fn body(&self) -> Result<&'a [u8], io::DecodeError> {
+		let mut result: Result<&'a [u8], io::DecodeError> = Ok(&[]);
 		self.body.replace_with(|body| match body {
-			UnknownBody::Raw(dec) => {
+			UnknownBody::Raw(buf) => {
 				let body_offset =
 					size_of::<fuse_kernel::fuse_in_header>() as u32;
+				let mut dec = decode::RequestDecoder::new(*buf);
 				result = dec.next_bytes(self.header.len - body_offset);
 				UnknownBody::Parsed(result)
 			},
@@ -61,11 +62,14 @@ impl fmt::Debug for UnknownRequest<'_> {
 	}
 }
 
-impl<'a> fuse_io::DecodeRequest<'a> for UnknownRequest<'a> {
-	fn decode_request(dec: fuse_io::RequestDecoder<'a>) -> Result<Self, Error> {
+impl<'a, T> decode::DecodeRequest<'a, T> for UnknownRequest<'a> {
+	fn decode(
+		buf: decode::RequestBuf<'a>,
+		_version_minor: u32,
+	) -> Result<Self, io::DecodeError> {
 		Ok(Self {
-			header: dec.header(),
-			body: RefCell::new(UnknownBody::Raw(dec)),
+			header: buf.header(),
+			body: RefCell::new(UnknownBody::Raw(buf)),
 		})
 	}
 }
