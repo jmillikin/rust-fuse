@@ -31,7 +31,7 @@ use crate::protocol::common::{
 	RequestHeader,
 };
 use crate::protocol::{CuseInitRequest, CuseInitResponse};
-use crate::server;
+use crate::old_server as server;
 
 // CuseDeviceName {{{
 

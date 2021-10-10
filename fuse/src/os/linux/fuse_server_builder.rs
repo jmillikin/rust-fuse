@@ -19,7 +19,7 @@ use std::path;
 use crate::channel::Channel;
 use crate::fuse_handlers::FuseHandlers;
 use crate::fuse_server::{self, FuseServer};
-use crate::server;
+use crate::old_server as server;
 
 #[cfg_attr(doc, doc(cfg(feature = "std")))]
 pub trait FuseMount {

@@ -29,7 +29,7 @@ use crate::io::decode::{self, DecodeRequest, RequestBuf};
 use crate::io::encode::{self, EncodeReply};
 use crate::protocol::common::RequestHeader;
 use crate::protocol::{FuseInitRequest, FuseInitResponse};
-use crate::server;
+use crate::old_server as server;
 
 // FuseServerBuilder {{{
 
@@ -345,7 +345,7 @@ where
 	Handlers: FuseHandlers,
 	Hooks: server::MaybeSendHooks,
 {
-	use crate::server::ServerHooks;
+	use crate::old_server::ServerHooks;
 
 	let header = request.header();
 	let ctx = server::ServerContext::new(*header);

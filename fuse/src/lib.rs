@@ -52,15 +52,17 @@ pub use self::fuse_server::{
 	FuseServerExecutor,
 };
 
-mod server;
-pub use self::server::{
+pub mod server {}
+
+mod old_server;
+pub use self::old_server::{
 	ServerContext,
 	ServerHooks,
 	Respond,
 };
 
 #[cfg(feature = "respond_async")]
-pub use self::server::RespondAsync;
+pub use self::old_server::RespondAsync;
 
 pub mod os {
 	#[cfg(any(doc, target_os = "linux"))]

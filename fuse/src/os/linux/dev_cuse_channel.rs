@@ -18,7 +18,7 @@ use std::{fs, io};
 
 use crate::channel;
 use crate::cuse_server;
-use crate::server;
+use crate::old_server as server;
 
 #[cfg_attr(doc, doc(cfg(feature = "std")))]
 pub struct DevCuseChannel(channel::FileChannel);

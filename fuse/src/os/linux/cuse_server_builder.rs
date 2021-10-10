@@ -20,7 +20,7 @@ use std::{ffi, fs, io, path};
 use super::DevCuseChannel;
 use crate::cuse_handlers::CuseHandlers;
 use crate::cuse_server::{self, CuseDeviceName, CuseServer};
-use crate::server;
+use crate::old_server as server;
 
 #[cfg_attr(doc, doc(cfg(feature = "std")))]
 pub struct CuseServerBuilder<Handlers, Hooks> {

@@ -41,4 +41,4 @@ pub use self::version::ProtocolVersion;
 pub use crate::channel::{Channel, ChannelError};
 pub use crate::cuse_server::CuseServerChannel;
 pub use crate::fuse_server::FuseServerChannel;
-pub use crate::server::ServerChannel;
+pub use crate::old_server::ServerChannel;

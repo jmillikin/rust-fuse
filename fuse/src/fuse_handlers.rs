@@ -15,7 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::protocol;
-use crate::server;
+use crate::old_server as server;
 
 /// User-provided handlers for FUSE operations.
 ///
