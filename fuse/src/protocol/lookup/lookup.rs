@@ -92,10 +92,10 @@ impl fmt::Debug for LookupResponse<'_> {
 }
 
 impl fuse_io::EncodeResponse for LookupResponse<'_> {
-	fn encode_response<'a, Chan: fuse_io::Channel>(
+	fn encode_response<'a, S: io::OutputStream>(
 		&'a self,
-		enc: fuse_io::ResponseEncoder<Chan>,
-	) -> Result<(), Chan::Error> {
+		enc: fuse_io::ResponseEncoder<S>,
+	) -> Result<(), S::Error> {
 		// In early versions of FUSE, `fuse_entry_out::nodeid` was a required
 		// field and must be non-zero. FUSE v7.4 relaxed this so that a zero
 		// node ID was the same as returning ENOENT, but with a cache hint.

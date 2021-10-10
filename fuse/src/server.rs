@@ -19,11 +19,11 @@ use core::cmp::{max, min};
 #[cfg(feature = "respond_async")]
 use std::sync::Arc;
 
-use crate::channel::{self, ChannelError};
+use crate::channel::{self, ChannelError, WrapChannel};
 use crate::error::{Error, ErrorCode};
 use crate::internal::fuse_io;
 use crate::internal::fuse_kernel;
-use crate::internal::types::ProtocolVersion;
+use crate::io::{Buffer, ProtocolVersion};
 use crate::protocol::common::{RequestHeader, UnknownRequest};
 
 pub trait ServerChannel: channel::Channel {
@@ -120,12 +120,12 @@ pub(crate) fn main_loop<Buf, C, Cb>(
 	cb: Cb,
 ) -> Result<(), C::Error>
 where
-	Buf: fuse_io::AlignedBuffer,
+	Buf: Buffer,
 	C: channel::Channel,
 	Cb: Fn(fuse_io::RequestDecoder) -> Result<(), C::Error>,
 {
 	loop {
-		let request_size = match channel.receive(read_buf.get_mut()) {
+		let request_size = match channel.receive(read_buf.borrow_mut()) {
 			Err(err) => {
 				if semantics == fuse_io::Semantics::FUSE {
 					if err.error_code() == Some(ErrorCode::ENODEV) {
@@ -262,9 +262,9 @@ where
 		}
 	}
 
-	pub(crate) fn encoder(&self) -> fuse_io::ResponseEncoder<C> {
+	pub(crate) fn encoder(&self) -> fuse_io::ResponseEncoder<WrapChannel<C>> {
 		fuse_io::ResponseEncoder::new(
-			self.channel,
+			WrapChannel(self.channel),
 			self.header.request_id(),
 			self.fuse_version,
 		)
@@ -420,9 +420,9 @@ where
 	C: channel::Channel,
 	Hooks: ServerHooks,
 {
-	fn encoder(&self) -> fuse_io::ResponseEncoder<C> {
+	fn encoder(&self) -> fuse_io::ResponseEncoder<WrapChannel<C>> {
 		fuse_io::ResponseEncoder::new(
-			self.channel.as_ref(),
+			WrapChannel(self.channel.as_ref()),
 			self.header.request_id(),
 			self.fuse_version,
 		)

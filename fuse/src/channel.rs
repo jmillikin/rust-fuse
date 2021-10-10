@@ -132,3 +132,20 @@ impl ChannelError for io::Error {
 		None
 	}
 }
+
+pub(crate) struct WrapChannel<'a, C>(pub(crate) &'a C);
+
+impl<C: Channel> crate::io::OutputStream for WrapChannel<'_, C> {
+	type Error = C::Error;
+
+	fn send(&self, buf: &[u8]) -> Result<(), Self::Error> {
+		self.0.send(buf)
+	}
+
+	fn send_vectored<const N: usize>(
+		&self,
+		bufs: &[&[u8]; N],
+	) -> Result<(), Self::Error> {
+		self.0.send_vectored(bufs)
+	}
+}

@@ -161,10 +161,10 @@ impl fmt::Debug for CreateResponse<'_> {
 }
 
 impl fuse_io::EncodeResponse for CreateResponse<'_> {
-	fn encode_response<'a, Chan: fuse_io::Channel>(
+	fn encode_response<'a, S: io::OutputStream>(
 		&'a self,
-		enc: fuse_io::ResponseEncoder<Chan>,
-	) -> Result<(), Chan::Error> {
+		enc: fuse_io::ResponseEncoder<S>,
+	) -> Result<(), S::Error> {
 		let open_out = fuse_kernel::fuse_open_out {
 			fh: self.handle,
 			open_flags: self.flags.to_bits(),

@@ -1,4 +1,4 @@
-// Copyright 2020 John Millikin and the rust-fuse contributors.
+// Copyright 2021 John Millikin and the rust-fuse contributors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,20 +14,26 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-pub(crate) mod fuse_io;
+mod buffer;
+mod stream;
+mod version;
 
-#[macro_use]
-mod fuse_kernel_util;
+pub use self::buffer::{ArrayBuffer, Buffer, MIN_READ_BUFFER};
 
-#[allow(dead_code, non_camel_case_types)]
-#[path = "fuse_kernel.rs"]
-mod fuse_kernel_impl;
+#[cfg(feature = "std")]
+pub use self::buffer::PinnedBuffer;
 
-pub(crate) mod fuse_kernel {
-	pub use super::fuse_kernel_impl::*;
-	pub use super::fuse_kernel_util::Opcode;
-}
+pub use self::stream::{
+	AsyncInputStream,
+	AsyncOutputStream,
+	InputStream,
+	OutputStream,
+};
 
-#[cfg(test)]
-#[macro_use]
-pub(crate) mod testutil;
+pub use self::version::ProtocolVersion;
+
+// compatibility
+pub use crate::channel::{Channel, ChannelError};
+pub use crate::cuse_server::CuseServerChannel;
+pub use crate::fuse_server::FuseServerChannel;
+pub use crate::server::ServerChannel;

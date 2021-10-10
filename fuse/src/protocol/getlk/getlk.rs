@@ -116,10 +116,10 @@ impl fmt::Debug for GetlkResponse<'_> {
 }
 
 impl fuse_io::EncodeResponse for GetlkResponse<'_> {
-	fn encode_response<'a, Chan: fuse_io::Channel>(
+	fn encode_response<'a, S: io::OutputStream>(
 		&'a self,
-		enc: fuse_io::ResponseEncoder<Chan>,
-	) -> Result<(), Chan::Error> {
+		enc: fuse_io::ResponseEncoder<S>,
+	) -> Result<(), S::Error> {
 		let lock = match self.lock {
 			None => fuse_kernel::fuse_file_lock {
 				start: 0,

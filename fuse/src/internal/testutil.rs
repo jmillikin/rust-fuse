@@ -22,9 +22,8 @@ use std::mem::size_of;
 use std::slice;
 
 use crate::channel;
-use crate::internal::fuse_io::{self, AlignedBuffer};
 use crate::internal::fuse_kernel;
-use crate::internal::types::ProtocolVersion;
+use crate::io::{self, Buffer, ProtocolVersion};
 
 pub(crate) struct MessageBuilder {
 	header: Option<fuse_kernel::fuse_in_header>,
@@ -53,10 +52,10 @@ impl MessageBuilder {
 		out
 	}
 
-	pub(crate) fn build_aligned(self) -> fuse_io::MinReadBuffer {
+	pub(crate) fn build_aligned(self) -> io::ArrayBuffer {
 		let buf = self.build();
-		let mut out = fuse_io::MinReadBuffer::new();
-		out.get_mut()[0..buf.len()].copy_from_slice(&buf);
+		let mut out = io::ArrayBuffer::new();
+		out.borrow_mut()[0..buf.len()].copy_from_slice(&buf);
 		out
 	}
 
@@ -163,7 +162,7 @@ macro_rules! decode_request {
 
 		let opts = decode_request_opts!($opts);
 		let decoder = fuse_io::RequestDecoder::new(
-			$buf.borrow(),
+			fuse_io::aligned_borrow(&$buf),
 			opts.protocol_version(),
 			fuse_io::Semantics::FUSE,
 		)
@@ -206,6 +205,7 @@ macro_rules! encode_response {
 		encode_response!($response, {})
 	};
 	($response:ident, $opts:tt $(,)?) => {{
+		use crate::channel::WrapChannel;
 		use crate::internal::fuse_io::{EncodeResponse, ResponseEncoder};
 		use crate::internal::testutil::EncodeRequestOpts;
 
@@ -213,7 +213,7 @@ macro_rules! encode_response {
 		let opts = encode_request_opts!($opts);
 		let mut channel = crate::internal::testutil::FakeChannel::new();
 		let encoder = ResponseEncoder::new(
-			&mut channel,
+			WrapChannel(&mut channel),
 			request_id,
 			opts.protocol_version(),
 		);

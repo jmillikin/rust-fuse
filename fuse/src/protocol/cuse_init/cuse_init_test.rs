@@ -14,8 +14,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::channel::WrapChannel;
 use crate::internal::testutil::MessageBuilder;
-use crate::internal::types::ProtocolVersion;
+use crate::io::ProtocolVersion;
 use crate::protocol::prelude::*;
 
 use super::{CuseInitFlags, CuseInitRequest, CuseInitResponse};
@@ -69,9 +70,10 @@ fn encode_response(
 	maybe_device_name: Option<&[u8]>,
 ) -> Vec<u8> {
 	let request_id = 0;
-	let mut channel = crate::internal::testutil::FakeChannel::new();
+	let channel = crate::internal::testutil::FakeChannel::new();
+	let stream = WrapChannel(&channel);
 	let encoder =
-		ResponseEncoder::new(&mut channel, request_id, ProtocolVersion::LATEST);
+		ResponseEncoder::new(stream, request_id, ProtocolVersion::LATEST);
 	response
 		.encode_response(encoder, maybe_device_name)
 		.unwrap();

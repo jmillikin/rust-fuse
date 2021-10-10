@@ -262,10 +262,10 @@ impl fmt::Debug for DebugListxattrNames<'_> {
 }
 
 impl fuse_io::EncodeResponse for ListxattrResponse<'_> {
-	fn encode_response<'a, Chan: fuse_io::Channel>(
+	fn encode_response<'a, S: io::OutputStream>(
 		&'a self,
-		enc: fuse_io::ResponseEncoder<Chan>,
-	) -> Result<(), Chan::Error> {
+		enc: fuse_io::ResponseEncoder<S>,
+	) -> Result<(), S::Error> {
 		match &self.buf {
 			ListxattrBuf::SizeOnly { size } => {
 				enc.encode_sized(&fuse_kernel::fuse_getxattr_out {

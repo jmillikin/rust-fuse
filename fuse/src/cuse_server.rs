@@ -19,12 +19,12 @@ use core::{cmp, fmt};
 #[cfg(feature = "respond_async")]
 use std::sync::Arc;
 
-use crate::channel;
+use crate::channel::{self, WrapChannel};
 use crate::cuse_handlers::CuseHandlers;
 use crate::error::{Error, ErrorCode};
-use crate::internal::fuse_io::{self, AlignedBuffer, DecodeRequest};
+use crate::internal::fuse_io::{self, DecodeRequest};
 use crate::internal::fuse_kernel;
-use crate::internal::types::ProtocolVersion;
+use crate::io::{self, Buffer, ProtocolVersion};
 use crate::protocol::common::{
 	DebugBytesAsString,
 	RequestHeader,
@@ -142,10 +142,10 @@ where
 	}
 
 	fn cuse_handshake(&mut self) -> Result<CuseInitResponse, C::Error> {
-		let mut read_buf = fuse_io::MinReadBuffer::new();
+		let mut read_buf = io::ArrayBuffer::new();
 
 		loop {
-			let request_size = self.channel.receive(read_buf.get_mut())?;
+			let request_size = self.channel.receive(read_buf.borrow_mut())?;
 			let request_buf = fuse_io::aligned_slice(&read_buf, request_size);
 			let request_decoder = fuse_io::RequestDecoder::new(
 				request_buf,
@@ -165,7 +165,7 @@ where
 				CuseInitRequest::decode_request(request_decoder)?;
 
 			let encoder = fuse_io::ResponseEncoder::new(
-				&self.channel,
+				WrapChannel(&self.channel),
 				request_id,
 				// CuseInitResponse always encodes with its own version
 				ProtocolVersion::LATEST,
@@ -337,7 +337,7 @@ where
 		let channel = self.channel.as_ref();
 		let handlers = self.handlers.as_ref();
 		let hooks = self.hooks.as_deref();
-		let mut buf = fuse_io::AlignedVec::new(self.read_buf_size);
+		let mut buf = io::PinnedBuffer::new(self.read_buf_size);
 		server::main_loop(channel, &mut buf, self.version, CUSE, |dec| {
 			let mut channel_err = Ok(());
 			let respond = server::RespondRef::new(
@@ -375,9 +375,9 @@ where
 		let handlers = &self.handlers;
 		let hooks = self.hooks.as_ref();
 		#[cfg(feature = "std")]
-		let mut buf = fuse_io::AlignedVec::new(self.read_buf_size);
+		let mut buf = io::PinnedBuffer::new(self.read_buf_size);
 		#[cfg(not(feature = "std"))]
-		let mut buf = fuse_io::MinReadBuffer::new();
+		let mut buf = io::ArrayBuffer::new();
 		server::main_loop(channel, &mut buf, self.version, CUSE, |dec| {
 			let mut channel_error = Ok(());
 			let respond = server::RespondRef::new(

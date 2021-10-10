@@ -15,7 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::internal::testutil::MessageBuilder;
-use crate::internal::types::ProtocolVersion;
+use crate::io::ProtocolVersion;
 use crate::protocol::prelude::*;
 
 use super::{FuseInitFlags, FuseInitRequest, FuseInitResponse};

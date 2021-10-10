@@ -18,6 +18,7 @@ use core::{fmt, slice, time};
 
 use crate::internal::fuse_io;
 use crate::internal::fuse_kernel;
+use crate::io;
 use crate::protocol::common::{NodeAttr, NodeId};
 
 pub struct Node(fuse_kernel::fuse_entry_out);
@@ -89,10 +90,10 @@ impl fmt::Debug for Node {
 }
 
 impl Node {
-	pub(crate) fn encode_entry<'a, Chan: fuse_io::Channel>(
+	pub(crate) fn encode_entry<'a, S: io::OutputStream>(
 		&self,
-		enc: fuse_io::ResponseEncoder<Chan>,
-	) -> Result<(), Chan::Error> {
+		enc: fuse_io::ResponseEncoder<S>,
+	) -> Result<(), S::Error> {
 		// The `fuse_attr::blksize` field was added in FUSE v7.9.
 		if enc.version().minor() < 9 {
 			let buf: &[u8] = unsafe {
@@ -108,11 +109,11 @@ impl Node {
 		enc.encode_sized(&self.0)
 	}
 
-	pub(crate) fn encode_entry_sized<'a, Chan: fuse_io::Channel, T: Sized>(
+	pub(crate) fn encode_entry_sized<'a, S: io::OutputStream, T: Sized>(
 		&self,
-		enc: fuse_io::ResponseEncoder<Chan>,
+		enc: fuse_io::ResponseEncoder<S>,
 		t: &T,
-	) -> Result<(), Chan::Error> {
+	) -> Result<(), S::Error> {
 		// The `fuse_attr::blksize` field was added in FUSE v7.9.
 		if enc.version().minor() < 9 {
 			let buf: &[u8] = unsafe {

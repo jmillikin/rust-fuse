@@ -25,11 +25,12 @@ pub(super) use core::{cmp, fmt, mem, num, ptr, slice};
 #[cfg(feature = "std")]
 pub(super) use std::ffi::{CStr, CString};
 #[cfg(feature = "std")]
-pub(super) use std::{io, time};
+pub(super) use std::time;
 
 pub(super) use crate::error::{Error, ErrorCode};
 pub(super) use crate::internal::fuse_io;
 pub(super) use crate::internal::fuse_kernel;
+pub(super) use crate::io;
 pub(super) use crate::protocol::common::{
 	DebugBytesAsString,
 	DebugClosure,

@@ -116,10 +116,10 @@ impl fmt::Debug for StatfsResponse<'_> {
 }
 
 impl fuse_io::EncodeResponse for StatfsResponse<'_> {
-	fn encode_response<'a, Chan: fuse_io::Channel>(
+	fn encode_response<'a, S: io::OutputStream>(
 		&'a self,
-		enc: fuse_io::ResponseEncoder<Chan>,
-	) -> Result<(), Chan::Error> {
+		enc: fuse_io::ResponseEncoder<S>,
+	) -> Result<(), S::Error> {
 		if enc.version().minor() < 4 {
 			let buf: &[u8] = unsafe {
 				slice::from_raw_parts(

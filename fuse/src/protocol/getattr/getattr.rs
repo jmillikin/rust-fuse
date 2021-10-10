@@ -128,10 +128,10 @@ impl fmt::Debug for GetattrResponse<'_> {
 }
 
 impl fuse_io::EncodeResponse for GetattrResponse<'_> {
-	fn encode_response<'a, Chan: fuse_io::Channel>(
+	fn encode_response<'a, S: io::OutputStream>(
 		&'a self,
-		enc: fuse_io::ResponseEncoder<Chan>,
-	) -> Result<(), Chan::Error> {
+		enc: fuse_io::ResponseEncoder<S>,
+	) -> Result<(), S::Error> {
 		// The `fuse_attr::blksize` field was added in FUSE v7.9.
 		if enc.version().minor() < 9 {
 			let buf: &[u8] = unsafe {

@@ -14,63 +14,32 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#[cfg(feature = "std")]
-use core::mem::align_of;
 use core::mem::size_of;
-#[cfg(feature = "std")]
-use core::pin::Pin;
 
 use crate::error::{Error, ErrorCode};
 use crate::internal::fuse_kernel;
-use crate::internal::types::ProtocolVersion;
+use crate::io::{Buffer, OutputStream, ProtocolVersion};
 
 #[cfg(rust_fuse_test = "fuse_io_test")]
 #[path = "fuse_io_test.rs"]
 mod fuse_io_test;
 
-pub(crate) use crate::channel::Channel;
-
-pub(crate) trait AlignedBuffer {
-	fn get(&self) -> &[u8];
-	fn get_mut(&mut self) -> &mut [u8];
+#[allow(dead_code)]
+pub(crate) fn aligned_borrow<'a, Buf: Buffer>(
+	buf: &'a Buf,
+) -> AlignedSlice<'a> {
+	AlignedSlice {
+		buf: &buf.borrow(),
+	}
 }
 
-pub(crate) fn aligned_slice<Buf: AlignedBuffer>(
-	buf: &Buf,
+pub(crate) fn aligned_slice<'a, Buf: Buffer>(
+	buf: &'a Buf,
 	size: usize,
-) -> AlignedSlice {
+) -> AlignedSlice<'a> {
 	// TODO: validate size
 	AlignedSlice {
-		buf: &buf.get()[0..size],
-	}
-}
-
-pub(crate) struct MinReadBuffer {
-	_align: [u64; 0],
-	buf: [u8; fuse_kernel::FUSE_MIN_READ_BUFFER],
-}
-
-impl MinReadBuffer {
-	pub(crate) fn new() -> Self {
-		Self {
-			_align: [0; 0],
-			buf: [0; fuse_kernel::FUSE_MIN_READ_BUFFER],
-		}
-	}
-
-	#[cfg(test)]
-	pub(crate) fn borrow(&self) -> AlignedSlice {
-		AlignedSlice { buf: &self.buf }
-	}
-}
-
-impl AlignedBuffer for MinReadBuffer {
-	fn get(&self) -> &[u8] {
-		&self.buf
-	}
-
-	fn get_mut(&mut self) -> &mut [u8] {
-		&mut self.buf
+		buf: &buf.borrow()[0..size],
 	}
 }
 
@@ -81,49 +50,6 @@ pub(crate) struct AlignedSlice<'a> {
 impl<'a> AlignedSlice<'a> {
 	pub fn get(self) -> &'a [u8] {
 		self.buf
-	}
-}
-
-#[cfg(feature = "std")]
-pub(crate) struct AlignedVec {
-	pinned: Pin<Box<[u8]>>,
-	offset: usize,
-	size: usize,
-}
-
-#[cfg(feature = "std")]
-impl AlignedVec {
-	pub(crate) fn new(size: usize) -> Self {
-		let mut vec = Vec::with_capacity(size + 7);
-		vec.resize(size + 7, 0u8);
-		let pinned = Pin::new(vec.into_boxed_slice());
-		let offset = pinned.as_ptr().align_offset(align_of::<u64>());
-		Self {
-			pinned,
-			offset,
-			size,
-		}
-	}
-}
-
-#[cfg(feature = "std")]
-impl AlignedBuffer for AlignedVec {
-	fn get(&self) -> &[u8] {
-		if self.offset == 0 {
-			let (aligned, _) = self.pinned.split_at(self.size);
-			return aligned;
-		}
-		let (_, aligned) = self.pinned.split_at(self.offset);
-		aligned
-	}
-
-	fn get_mut(&mut self) -> &mut [u8] {
-		if self.offset == 0 {
-			let (aligned, _) = self.pinned.split_at_mut(self.size);
-			return aligned;
-		}
-		let (_, aligned) = self.pinned.split_at_mut(self.offset);
-		aligned
 	}
 }
 
@@ -266,28 +192,30 @@ impl<'a> RequestDecoder<'a> {
 }
 
 pub(crate) trait EncodeResponse {
-	fn encode_response<Chan: Channel>(
+	fn encode_response<S: OutputStream>(
 		&self,
-		enc: ResponseEncoder<Chan>,
-	) -> Result<(), Chan::Error>;
+		enc: ResponseEncoder<S>,
+	) -> Result<(), S::Error>;
 }
 
-pub(crate) struct ResponseEncoder<'a, Chan> {
-	channel: &'a Chan,
+pub(crate) struct ResponseEncoder<'a, S> {
+	stream: S,
 	request_id: u64,
 	version: ProtocolVersion,
+	_phantom: core::marker::PhantomData<&'a S>,
 }
 
-impl<'a, Chan> ResponseEncoder<'a, Chan> {
+impl<'a, S> ResponseEncoder<'a, S> {
 	pub(crate) fn new(
-		channel: &'a Chan,
+		stream: S,
 		request_id: u64,
 		version: ProtocolVersion,
 	) -> Self {
 		Self {
-			channel,
+			stream,
 			request_id,
 			version,
+			_phantom: core::marker::PhantomData {},
 		}
 	}
 
@@ -296,11 +224,8 @@ impl<'a, Chan> ResponseEncoder<'a, Chan> {
 	}
 }
 
-impl<Chan: Channel> ResponseEncoder<'_, Chan> {
-	pub(crate) fn encode_error(
-		self,
-		err: ErrorCode,
-	) -> Result<(), Chan::Error> {
+impl<S: OutputStream> ResponseEncoder<'_, S> {
+	pub(crate) fn encode_error(self, err: ErrorCode) -> Result<(), S::Error> {
 		let len = size_of::<fuse_kernel::fuse_out_header>();
 		let out_hdr = fuse_kernel::fuse_out_header {
 			len: len as u32,
@@ -314,13 +239,10 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 			)
 		};
 
-		self.channel.send(out_hdr_buf)
+		self.stream.send(out_hdr_buf)
 	}
 
-	pub(crate) fn encode_sized<T: Sized>(
-		self,
-		t: &T,
-	) -> Result<(), Chan::Error> {
+	pub(crate) fn encode_sized<T: Sized>(self, t: &T) -> Result<(), S::Error> {
 		let bytes: &[u8] = unsafe {
 			core::slice::from_raw_parts(
 				(t as *const T) as *const u8,
@@ -334,7 +256,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 		self,
 		bytes_1: &[u8],
 		t: &T,
-	) -> Result<(), Chan::Error> {
+	) -> Result<(), S::Error> {
 		let bytes_2: &[u8] = unsafe {
 			core::slice::from_raw_parts(
 				(t as *const T) as *const u8,
@@ -348,7 +270,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 		self,
 		t_1: &T1,
 		t_2: &T2,
-	) -> Result<(), Chan::Error> {
+	) -> Result<(), S::Error> {
 		let bytes_1: &[u8] = unsafe {
 			core::slice::from_raw_parts(
 				(t_1 as *const T1) as *const u8,
@@ -364,7 +286,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 		self.encode_bytes_2(bytes_1, bytes_2)
 	}
 
-	pub(crate) fn encode_header_only(self) -> Result<(), Chan::Error> {
+	pub(crate) fn encode_header_only(self) -> Result<(), S::Error> {
 		let len = size_of::<fuse_kernel::fuse_out_header>();
 		let out_hdr = fuse_kernel::fuse_out_header {
 			len: len as u32,
@@ -378,10 +300,10 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 			)
 		};
 
-		self.channel.send(out_hdr_buf)
+		self.stream.send(out_hdr_buf)
 	}
 
-	pub(crate) fn encode_bytes(self, bytes: &[u8]) -> Result<(), Chan::Error> {
+	pub(crate) fn encode_bytes(self, bytes: &[u8]) -> Result<(), S::Error> {
 		let mut len = size_of::<fuse_kernel::fuse_out_header>();
 
 		match len.checked_add(bytes.len()) {
@@ -407,14 +329,14 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 			)
 		};
 
-		self.channel.send_vectored(&[out_hdr_buf, bytes])
+		self.stream.send_vectored(&[out_hdr_buf, bytes])
 	}
 
 	pub(crate) fn encode_bytes_2(
 		self,
 		bytes_1: &[u8],
 		bytes_2: &[u8],
-	) -> Result<(), Chan::Error> {
+	) -> Result<(), S::Error> {
 		let mut len = size_of::<fuse_kernel::fuse_out_header>();
 
 		match len.checked_add(bytes_1.len()) {
@@ -444,7 +366,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 			)
 		};
 
-		self.channel.send_vectored(&[out_hdr_buf, bytes_1, bytes_2])
+		self.stream.send_vectored(&[out_hdr_buf, bytes_1, bytes_2])
 	}
 
 	pub(crate) fn encode_bytes_4(
@@ -453,7 +375,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 		bytes_2: &[u8],
 		bytes_3: &[u8],
 		bytes_4: &[u8],
-	) -> Result<(), Chan::Error> {
+	) -> Result<(), S::Error> {
 		let mut len = size_of::<fuse_kernel::fuse_out_header>();
 
 		match len.checked_add(bytes_1.len()) {
@@ -491,7 +413,7 @@ impl<Chan: Channel> ResponseEncoder<'_, Chan> {
 			)
 		};
 
-		self.channel.send_vectored(&[
+		self.stream.send_vectored(&[
 			out_hdr_buf,
 			bytes_1,
 			bytes_2,

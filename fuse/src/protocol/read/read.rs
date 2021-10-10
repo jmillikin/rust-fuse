@@ -166,10 +166,10 @@ impl fmt::Debug for ReadResponse<'_> {
 }
 
 impl fuse_io::EncodeResponse for ReadResponse<'_> {
-	fn encode_response<'a, Chan: fuse_io::Channel>(
+	fn encode_response<'a, S: io::OutputStream>(
 		&'a self,
-		enc: fuse_io::ResponseEncoder<Chan>,
-	) -> Result<(), Chan::Error> {
+		enc: fuse_io::ResponseEncoder<S>,
+	) -> Result<(), S::Error> {
 		enc.encode_bytes(self.bytes)
 	}
 }

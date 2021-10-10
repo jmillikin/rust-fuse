@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::internal::types::ProtocolVersion;
+use crate::io::ProtocolVersion;
 use crate::protocol::prelude::*;
 
 #[cfg(rust_fuse_test = "fuse_init_test")]
@@ -227,10 +227,10 @@ struct fuse_init_out_v7p5 {
 }
 
 impl fuse_io::EncodeResponse for FuseInitResponse {
-	fn encode_response<'a, Chan: fuse_io::Channel>(
+	fn encode_response<'a, S: io::OutputStream>(
 		&'a self,
-		enc: fuse_io::ResponseEncoder<Chan>,
-	) -> Result<(), Chan::Error> {
+		enc: fuse_io::ResponseEncoder<S>,
+	) -> Result<(), S::Error> {
 		if self.raw.minor >= 23 {
 			let mut out = self.raw;
 			out.flags = self.flags.to_bits();

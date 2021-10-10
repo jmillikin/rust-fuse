@@ -140,10 +140,10 @@ impl fmt::Debug for GetxattrResponse<'_> {
 }
 
 impl fuse_io::EncodeResponse for GetxattrResponse<'_> {
-	fn encode_response<'a, Chan: fuse_io::Channel>(
+	fn encode_response<'a, S: io::OutputStream>(
 		&'a self,
-		enc: fuse_io::ResponseEncoder<Chan>,
-	) -> Result<(), Chan::Error> {
+		enc: fuse_io::ResponseEncoder<S>,
+	) -> Result<(), S::Error> {
 		if self.raw.size != 0 {
 			enc.encode_sized(&self.raw)
 		} else {

@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::internal::types::ProtocolVersion;
+use crate::io::ProtocolVersion;
 use crate::protocol::prelude::*;
 
 #[cfg(rust_fuse_test = "cuse_init_test")]
@@ -164,11 +164,11 @@ impl fmt::Debug for CuseInitResponse {
 // Not an implementation of fuse_io::EncodeResponse because the device name
 // must be provided as a parameter.
 impl CuseInitResponse {
-	pub(crate) fn encode_response<'a, Chan: fuse_io::Channel>(
+	pub(crate) fn encode_response<'a, S: io::OutputStream>(
 		&'a self,
-		enc: fuse_io::ResponseEncoder<Chan>,
+		enc: fuse_io::ResponseEncoder<S>,
 		maybe_device_name: Option<&[u8]>,
-	) -> Result<(), Chan::Error> {
+	) -> Result<(), S::Error> {
 		let mut out = self.raw;
 		out.flags = self.flags.to_bits();
 		let out_buf: &[u8] = unsafe {

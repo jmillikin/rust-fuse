@@ -68,15 +68,7 @@ pub mod os {
 	pub mod linux;
 }
 
-pub mod io {
-	pub use crate::internal::types::ProtocolVersion;
-	
-	pub use crate::channel::{Channel, ChannelError};
-	pub use crate::server::ServerChannel;
-
-	pub use crate::cuse_server::CuseServerChannel;
-	pub use crate::fuse_server::FuseServerChannel;
-}
+pub mod io;
 
 pub use crate::error::{Error, ErrorCode};
 
