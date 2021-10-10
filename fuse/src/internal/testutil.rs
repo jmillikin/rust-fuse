@@ -59,7 +59,7 @@ impl MessageBuilder {
 		out
 	}
 
-	pub(crate) fn set_opcode(self, opcode: fuse_kernel::Opcode) -> Self {
+	pub(crate) fn set_opcode(self, opcode: fuse_kernel::fuse_opcode) -> Self {
 		self.set_header(|h| {
 			h.opcode = opcode;
 		})
@@ -72,7 +72,7 @@ impl MessageBuilder {
 		let mut header = match self.header {
 			None => fuse_kernel::fuse_in_header {
 				len: 0,
-				opcode: fuse_kernel::Opcode(0),
+				opcode: fuse_kernel::fuse_opcode(0),
 				unique: 0,
 				nodeid: 0,
 				uid: 0,

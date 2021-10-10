@@ -100,14 +100,14 @@ impl From<Error> for std::io::Error {
 				io::ErrorKind::InvalidData,
 				format!(
 					"Received opcode {:?} from kernel (expected CUSE_INIT)",
-					fuse_kernel::Opcode(opcode),
+					fuse_kernel::fuse_opcode(opcode),
 				),
 			),
 			ErrorKind::ExpectedFuseInit(opcode) => io::Error::new(
 				io::ErrorKind::InvalidData,
 				format!(
 					"Received opcode {:?} from kernel (expected FUSE_INIT)",
-					fuse_kernel::Opcode(opcode),
+					fuse_kernel::fuse_opcode(opcode),
 				),
 			),
 			ErrorKind::InvalidLockType => io::Error::new(

@@ -18,13 +18,7 @@
 mod fuse_kernel_util;
 
 #[allow(dead_code, non_camel_case_types)]
-#[path = "fuse_kernel.rs"]
-mod fuse_kernel_impl;
-
-pub(crate) mod fuse_kernel {
-	pub use super::fuse_kernel_impl::*;
-	pub use super::fuse_kernel_util::Opcode;
-}
+pub(crate) mod fuse_kernel;
 
 #[cfg(test)]
 #[macro_use]

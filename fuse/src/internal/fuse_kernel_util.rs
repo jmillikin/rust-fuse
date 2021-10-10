@@ -14,65 +14,30 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#[repr(C)]
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub struct Opcode(pub u32);
-
 macro_rules! enum_fuse_opcode {
-    ($( $(#[$meta:meta])* $name:ident = $val:expr,)+ ) => {
-        use core::fmt;
+	($( $(#[$meta:meta])* $name:ident = $val:expr,)+ ) => {
+		use core::fmt;
 
-        // OpcodeEnum is part of the crate's public API
+		#[repr(transparent)]
+		#[derive(Copy, Clone, PartialEq, Eq)]
+		pub struct fuse_opcode(pub(crate) u32);
 
-        #[non_exhaustive]
-        #[repr(u32)]
-        #[derive(Copy, Clone, PartialEq, Eq, Ord, PartialOrd)]
-        pub enum OpcodeEnum {
-        $(
-            $name = $val,
-        )*
-        }
-        impl fmt::Display for OpcodeEnum {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-                fmt::Debug::fmt(self, fmt)
-            }
-        }
-        impl fmt::Debug for OpcodeEnum {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-                match self {
-                $(
-                    Self::$name => fmt.write_str(&stringify!($name)),
-                )*
-                }
-            }
-        }
+		$(
+			$(#[$meta])*
+			pub const $name: fuse_opcode = fuse_opcode($val);
+		)*
 
-        pub use crate::internal::fuse_kernel::Opcode;
-        $(
-            $(#[$meta])*
-            pub const $name: Opcode = Opcode($val);
-        )*
-        impl Opcode {
-            pub(crate) fn to_enum(self) -> Option<OpcodeEnum> {
-                match self {
-                $(
-                    Opcode($val) => Some(OpcodeEnum::$name),
-                )*
-                    _ => None,
-                }
-            }
-        }
-        impl fmt::Debug for Opcode {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-                match self {
-                $(
-                    Opcode($val) => fmt.write_str(&stringify!($name)),
-                )*
-                    Opcode(x) => write!(fmt, "{}", x),
-                }
-            }
-        }
-    }
+		impl fmt::Debug for fuse_opcode {
+			fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+				match self {
+				$(
+					fuse_opcode($val) => fmt.write_str(&stringify!($name)),
+				)*
+					fuse_opcode(x) => write!(fmt, "{}", x),
+				}
+			}
+		}
+	}
 }
 
 #[cfg(all(

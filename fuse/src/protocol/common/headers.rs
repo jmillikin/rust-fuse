@@ -21,8 +21,6 @@ use crate::error::ErrorCode;
 use crate::internal::fuse_kernel;
 use crate::protocol::common::NodeId;
 
-pub use fuse_kernel::OpcodeEnum as Opcode;
-
 #[repr(transparent)]
 #[derive(Copy, Clone)]
 pub struct RequestHeader(fuse_kernel::fuse_in_header);
@@ -37,10 +35,6 @@ impl RequestHeader {
 
 	pub fn opcode(&self) -> u32 {
 		self.0.opcode.0
-	}
-
-	pub fn opcode_enum(&self) -> Option<Opcode> {
-		self.0.opcode.to_enum()
 	}
 
 	pub fn request_id(&self) -> u64 {
@@ -77,7 +71,6 @@ impl fmt::Debug for RequestHeader {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("RequestHeader")
 			.field("opcode", &self.0.opcode.0)
-			.field("opcode_enum", &format_args!("{:?}", self.opcode_enum()))
 			.field("request_id", &self.0.unique)
 			.field("node_id", &format_args!("{:?}", self.node_id()))
 			.field("user_id", &self.0.uid)

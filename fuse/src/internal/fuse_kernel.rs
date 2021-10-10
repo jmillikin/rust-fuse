@@ -776,7 +776,7 @@ pub struct fuse_fallocate_in {
 #[derive(Clone, Copy, Debug)]
 pub struct fuse_in_header {
 	pub len:     u32,
-	pub opcode:  Opcode,
+	pub opcode:  fuse_opcode,
 	pub unique:  u64,
 	pub nodeid:  u64,
 	pub uid:     u32,
