@@ -29,6 +29,17 @@ pub unsafe trait Buffer {
 	fn borrow_mut(&mut self) -> &mut [u8];
 }
 
+#[derive(Copy, Clone)]
+pub struct AlignedSlice<'a>(&'a [u8]);
+
+impl<'a> AlignedSlice<'a> {
+	pub(crate) fn new(buf: &'a impl Buffer) -> Self {
+		Self(buf.borrow())
+	}
+
+	pub(crate) fn get(&self) -> &'a [u8] { self.0 }
+}
+
 pub struct ArrayBuffer(ArrayBufferImpl);
 
 #[repr(align(8))]

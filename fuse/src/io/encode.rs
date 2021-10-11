@@ -49,6 +49,12 @@ impl<'a, S: OutputStream> SyncSendOnce<'a, S> {
 	}
 }
 
+impl<'a, S: AsyncOutputStream> AsyncSendOnce<'a, S> {
+	pub(crate) fn new(stream: &'a S) -> Self {
+		Self(stream)
+	}
+}
+
 impl<T: OutputStream> SendOnce for SyncSendOnce<'_, T> {
 	type Result = Result<(), T::Error>;
 

@@ -21,7 +21,7 @@ mod error;
 mod stream;
 mod version;
 
-pub use self::buffer::{ArrayBuffer, Buffer, MIN_READ_BUFFER};
+pub use self::buffer::{AlignedSlice, ArrayBuffer, Buffer, MIN_READ_BUFFER};
 
 #[cfg(feature = "std")]
 pub use self::buffer::PinnedBuffer;

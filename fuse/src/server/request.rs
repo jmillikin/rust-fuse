@@ -15,11 +15,32 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use core::fmt;
+use core::marker::PhantomData;
 use core::mem::transmute;
 
 use crate::internal::fuse_kernel::fuse_in_header;
+use crate::io::{AlignedSlice, DecodeError};
 use crate::io::decode::RequestBuf;
 use crate::NodeId;
+
+pub trait Request<'a, T> {
+	fn decode(recv: Recv<'a, T>) -> Result<Self, DecodeError>
+	where
+		Self: Sized;
+}
+
+#[derive(Copy, Clone)]
+pub struct Recv<'a, T> {
+	pub(super) buf: RecvBuf<'a>,
+	pub(super) version_minor: u32,
+	pub(super) _phantom: PhantomData<&'a T>,
+}
+
+#[derive(Copy, Clone)]
+pub(super) enum RecvBuf<'a> {
+	Raw(AlignedSlice<'a>, usize),
+	Decoded(RequestBuf<'a>),
+}
 
 #[derive(Copy, Clone)]
 pub struct RequestHeader(fuse_in_header);

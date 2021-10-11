@@ -16,8 +16,10 @@
 
 mod cuse_request;
 mod fuse_request;
+mod reply;
 mod request;
 
 pub use self::cuse_request::{CuseOperation, CuseRequest};
 pub use self::fuse_request::{FuseOperation, FuseRequest};
-pub use self::request::RequestHeader;
+pub use self::reply::{Reply, ReplyInfo};
+pub use self::request::{Recv, Request, RequestHeader};

@@ -23,6 +23,7 @@ use crate::channel::{self, WrapChannel};
 use crate::cuse_handlers::CuseHandlers;
 use crate::error::{Error, ErrorCode};
 use crate::internal::fuse_kernel;
+use crate::io::decode::{DecodeRequest, RequestBuf};
 use crate::io::encode;
 use crate::io::{self, Buffer, ProtocolVersion};
 use crate::old_server as server;
@@ -142,7 +143,7 @@ where
 
 		loop {
 			let recv_len = self.channel.receive(read_buf.borrow_mut())?;
-			let request = match CuseRequest::new(&read_buf, recv_len, v_minor) {
+			let request_buf = match RequestBuf::new(&read_buf, recv_len) {
 				Err(err) => {
 					let err: Error = err.into();
 					return Err(err.into());
@@ -150,14 +151,14 @@ where
 				Ok(x) => x,
 			};
 
-			if request.opcode() != fuse_kernel::CUSE_INIT {
-				return Err(
-					Error::expected_cuse_init(request.opcode().0).into()
-				);
+			let header = request_buf.header();
+			if header.opcode != fuse_kernel::CUSE_INIT {
+				return Err(Error::expected_cuse_init(header.opcode.0).into());
 			}
-			let request_id = request.header().request_id();
-			let init_request: CuseInitRequest =
-				request.decode().map_err(Error::from)?;
+
+			let request_id = header.unique;
+			let init_request = CuseInitRequest::decode(request_buf, v_minor)
+				.map_err(Error::from)?;
 			let stream = WrapChannel(&self.channel);
 
 			let version =

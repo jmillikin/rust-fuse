@@ -19,7 +19,7 @@ use core::mem::size_of;
 use core::slice::from_raw_parts;
 
 use crate::internal::fuse_kernel;
-use crate::io::{Buffer, DecodeError};
+use crate::io::{AlignedSlice, Buffer, DecodeError};
 
 #[cfg(rust_fuse_test = "decode_test")]
 #[path = "decode_test.rs"]
@@ -59,8 +59,15 @@ impl<'a> RequestBuf<'a> {
 		buf: &'a impl Buffer,
 		recv_len: usize,
 	) -> Result<Self, DecodeError> {
+		Self::from_slice(AlignedSlice::new(buf), recv_len)
+	}
+
+	pub(crate) fn from_slice(
+		buf: AlignedSlice<'a>,
+		recv_len: usize,
+	) -> Result<Self, DecodeError> {
 		// TODO: validate recv_len
-		let buf = &buf.borrow()[..recv_len];
+		let buf = &buf.get()[..recv_len];
 		if buf.len() < size_of::<fuse_kernel::fuse_in_header>() {
 			return Err(DecodeError::UnexpectedEof);
 		}
