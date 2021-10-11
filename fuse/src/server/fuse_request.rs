@@ -16,6 +16,7 @@
 
 use core::marker::PhantomData;
 use core::mem::transmute;
+use core::num::NonZeroUsize;
 
 use crate::internal::fuse_kernel;
 use crate::io::{Buffer, DecodeError};
@@ -30,7 +31,7 @@ pub struct FuseRequest<'a> {
 impl<'a> FuseRequest<'a> {
 	pub(crate) fn new(
 		buf: &'a impl Buffer,
-		recv_len: usize,
+		recv_len: NonZeroUsize,
 		version_minor: u32,
 	) -> Result<Self, DecodeError> {
 		let request_buf = RequestBuf::new(buf, recv_len)?;

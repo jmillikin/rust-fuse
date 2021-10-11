@@ -15,7 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use core::cmp::{max, min};
-use core::num::NonZeroU16;
+use core::num::{NonZeroU16, NonZeroUsize};
 
 #[cfg(feature = "respond_async")]
 use std::sync::Arc;
@@ -123,7 +123,7 @@ pub(crate) fn main_loop<Buf, C, Cb>(
 where
 	Buf: Buffer,
 	C: channel::Channel,
-	Cb: Fn(&Buf, usize) -> Result<(), C::Error>,
+	Cb: Fn(&Buf, NonZeroUsize) -> Result<(), C::Error>,
 {
 	loop {
 		let recv_len = match channel.receive(read_buf.borrow_mut()) {
@@ -137,6 +137,7 @@ where
 			},
 			Ok(recv_len) => recv_len,
 		};
+		let recv_len = NonZeroUsize::new(recv_len).unwrap(); // TODO
 		cb(read_buf, recv_len)?;
 	}
 }

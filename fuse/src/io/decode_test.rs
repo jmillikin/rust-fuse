@@ -15,6 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::mem::size_of;
+use core::num::NonZeroUsize;
 
 use crate::internal::fuse_kernel;
 use crate::internal::testutil::MessageBuilder;
@@ -29,7 +30,8 @@ fn request_decoder_new() {
 		.push_bytes(&[1, 2, 3, 4, 5, 6, 7, 8, 9])
 		.build_aligned();
 
-	let request_buf = RequestBuf::new(&buf, buf.borrow().len()).unwrap();
+	let buf_len = NonZeroUsize::new(buf.borrow().len()).unwrap();
+	let request_buf = RequestBuf::new(&buf, buf_len).unwrap();
 	let decoder = RequestDecoder::new(request_buf);
 
 	assert_eq!(
@@ -45,7 +47,8 @@ fn request_decoder_eof_handling() {
 		.push_bytes(&[10, 20, 30, 40, 50, 60, 70, 80, 90])
 		.build_aligned();
 
-	let request_buf = RequestBuf::new(&buf, buf.borrow().len()).unwrap();
+	let buf_len = NonZeroUsize::new(buf.borrow().len()).unwrap();
+	let request_buf = RequestBuf::new(&buf, buf_len).unwrap();
 	let mut decoder = RequestDecoder::new(request_buf);
 
 	// OK to read right up to the frame size.
@@ -92,7 +95,8 @@ fn request_decoder_sized() {
 		.push_bytes(&[1, 2, 3, 4, 5, 6, 7, 8, 9])
 		.build_aligned();
 
-	let request_buf = RequestBuf::new(&buf, buf.borrow().len()).unwrap();
+	let buf_len = NonZeroUsize::new(buf.borrow().len()).unwrap();
+	let request_buf = RequestBuf::new(&buf, buf_len).unwrap();
 	let mut decoder = RequestDecoder::new(request_buf);
 
 	// [0 .. 4]
@@ -114,7 +118,8 @@ fn frame_decoder_bytes() {
 		.push_bytes(&[1, 2, 3, 4, 5, 6, 7, 8, 9])
 		.build_aligned();
 
-	let request_buf = RequestBuf::new(&buf, buf.borrow().len()).unwrap();
+	let buf_len = NonZeroUsize::new(buf.borrow().len()).unwrap();
+	let request_buf = RequestBuf::new(&buf, buf_len).unwrap();
 	let mut decoder = RequestDecoder::new(request_buf);
 
 	// [0 .. 4)

@@ -17,6 +17,7 @@
 use core::fmt;
 use core::marker::PhantomData;
 use core::mem::transmute;
+use core::num::NonZeroUsize;
 
 use crate::internal::fuse_kernel::fuse_in_header;
 use crate::io::{AlignedSlice, DecodeError};
@@ -38,7 +39,7 @@ pub struct Recv<'a, T> {
 
 #[derive(Copy, Clone)]
 pub(super) enum RecvBuf<'a> {
-	Raw(AlignedSlice<'a>, usize),
+	Raw(AlignedSlice<'a>, NonZeroUsize),
 	Decoded(RequestBuf<'a>),
 }
 

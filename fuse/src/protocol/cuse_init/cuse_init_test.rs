@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::num::NonZeroUsize;
+
 use crate::channel::WrapChannel;
 use crate::internal::testutil::MessageBuilder;
 use crate::io::decode::{DecodeRequest, RequestBuf};
@@ -34,7 +36,8 @@ fn request() {
 		})
 		.build_aligned();
 
-	let request_buf = RequestBuf::new(&buf, buf.borrow().len()).unwrap();
+	let buf_len = NonZeroUsize::new(buf.borrow().len()).unwrap();
+	let request_buf = RequestBuf::new(&buf, buf_len).unwrap();
 	let req: CuseInitRequest = DecodeRequest::<decode::CUSE>::decode(
 		request_buf,
 		ProtocolVersion::LATEST.minor(),

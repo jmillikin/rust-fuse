@@ -15,6 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use core::{cmp, fmt};
+use core::num::NonZeroUsize;
 
 #[cfg(feature = "respond_async")]
 use std::sync::Arc;
@@ -143,6 +144,7 @@ where
 
 		loop {
 			let recv_len = self.channel.receive(read_buf.borrow_mut())?;
+			let recv_len = NonZeroUsize::new(recv_len).unwrap(); // TODO
 			let request_buf = match RequestBuf::new(&read_buf, recv_len) {
 				Err(err) => {
 					let err: Error = err.into();

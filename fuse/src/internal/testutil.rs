@@ -157,12 +157,13 @@ macro_rules! decode_request {
 		decode_request!($buf, {})
 	};
 	($buf: ident, $opts:tt $(,)?) => {{
+		use core::num::NonZeroUsize;
 		use crate::internal::testutil::DecodeRequestOpts;
 		use crate::io::decode::{DecodeRequest, RequestBuf};
 		use crate::io::Buffer;
 
 		let opts = decode_request_opts!($opts);
-		let request_len = $buf.borrow().len();
+		let request_len = NonZeroUsize::new($buf.borrow().len()).unwrap();
 		let request = RequestBuf::new(&$buf, request_len).unwrap();
 		let version_minor = opts.protocol_version().minor();
 		DecodeRequest::<decode::FUSE>::decode(request, version_minor).unwrap()

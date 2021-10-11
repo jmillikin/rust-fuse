@@ -16,6 +16,7 @@
 
 use core::marker::PhantomData;
 use core::mem::size_of;
+use core::num::NonZeroUsize;
 use core::slice::from_raw_parts;
 
 use crate::internal::fuse_kernel;
@@ -57,16 +58,17 @@ struct Slice<'a> {
 impl<'a> RequestBuf<'a> {
 	pub(crate) fn new(
 		buf: &'a impl Buffer,
-		recv_len: usize,
+		recv_len: NonZeroUsize,
 	) -> Result<Self, DecodeError> {
 		Self::from_slice(AlignedSlice::new(buf), recv_len)
 	}
 
 	pub(crate) fn from_slice(
 		buf: AlignedSlice<'a>,
-		recv_len: usize,
+		recv_len: NonZeroUsize,
 	) -> Result<Self, DecodeError> {
 		// TODO: validate recv_len
+		let recv_len: usize = recv_len.into();
 		let buf = &buf.get()[..recv_len];
 		if buf.len() < size_of::<fuse_kernel::fuse_in_header>() {
 			return Err(DecodeError::UnexpectedEof);
