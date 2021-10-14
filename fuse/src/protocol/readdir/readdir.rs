@@ -83,10 +83,9 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for ReaddirRequest<'a> {
 		buf: decode::RequestBuf<'a>,
 		version_minor: u32,
 	) -> Result<Self, io::DecodeError> {
-		let header = buf.header();
-		debug_assert!(header.opcode == fuse_kernel::FUSE_READDIR);
+		buf.expect_opcode(fuse_kernel::FUSE_READDIR)?;
 
-		let node_id = try_node_id(header.nodeid)?;
+		let node_id = try_node_id(buf.header().nodeid)?;
 		let mut dec = decode::RequestDecoder::new(buf);
 
 		// FUSE v7.9 added new fields to `fuse_read_in`.

@@ -97,7 +97,7 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for SetlkRequest<'a> {
 		if header.opcode == fuse_kernel::FUSE_SETLKW {
 			is_setlkw = true;
 		} else {
-			debug_assert!(header.opcode == fuse_kernel::FUSE_SETLK);
+			buf.expect_opcode(fuse_kernel::FUSE_SETLK)?;
 			is_setlkw = false;
 		}
 

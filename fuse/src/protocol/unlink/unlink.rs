@@ -45,12 +45,11 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for UnlinkRequest<'a> {
 		buf: decode::RequestBuf<'a>,
 		_version_minor: u32,
 	) -> Result<Self, io::DecodeError> {
-		let header = buf.header();
-		debug_assert!(header.opcode == fuse_kernel::FUSE_UNLINK);
+		buf.expect_opcode(fuse_kernel::FUSE_UNLINK)?;
 
 		let mut dec = decode::RequestDecoder::new(buf);
 		Ok(Self {
-			parent_id: try_node_id(header.nodeid)?,
+			parent_id: try_node_id(buf.header().nodeid)?,
 			name: NodeName::new(dec.next_nul_terminated_bytes()?),
 		})
 	}

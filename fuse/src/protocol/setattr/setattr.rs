@@ -112,8 +112,8 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for SetattrRequest<'a> {
 		buf: decode::RequestBuf<'a>,
 		_version_minor: u32,
 	) -> Result<Self, io::DecodeError> {
+		buf.expect_opcode(fuse_kernel::FUSE_SETATTR)?;
 		let header = buf.header();
-		debug_assert!(header.opcode == fuse_kernel::FUSE_SETATTR);
 		let mut dec = decode::RequestDecoder::new(buf);
 		let raw = dec.next_sized()?;
 		Ok(Self { header, raw })

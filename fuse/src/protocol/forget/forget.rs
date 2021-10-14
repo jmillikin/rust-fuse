@@ -91,7 +91,7 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for ForgetRequest<'a> {
 			});
 		}
 
-		debug_assert!(header.opcode == fuse_kernel::FUSE_FORGET);
+		buf.expect_opcode(fuse_kernel::FUSE_FORGET)?;
 		let raw: &fuse_kernel::fuse_forget_in = dec.next_sized()?;
 		Ok(Self {
 			forget: Some(fuse_kernel::fuse_forget_one {

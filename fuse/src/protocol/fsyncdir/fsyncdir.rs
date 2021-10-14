@@ -68,14 +68,13 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for FsyncdirRequest<'a> {
 		buf: decode::RequestBuf<'a>,
 		_version_minor: u32,
 	) -> Result<Self, io::DecodeError> {
-		let header = buf.header();
-		debug_assert!(header.opcode == fuse_kernel::FUSE_FSYNCDIR);
+		buf.expect_opcode(fuse_kernel::FUSE_FSYNCDIR)?;
 
 		let mut dec = decode::RequestDecoder::new(buf);
 		let raw: &fuse_kernel::fuse_fsync_in = dec.next_sized()?;
 		Ok(Self {
 			phantom: PhantomData,
-			node_id: try_node_id(header.nodeid)?,
+			node_id: try_node_id(buf.header().nodeid)?,
 			handle: raw.fh,
 			flags: FsyncdirRequestFlags::from_bits(raw.fsync_flags),
 		})

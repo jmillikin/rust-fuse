@@ -80,10 +80,9 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for MknodRequest<'a> {
 		buf: decode::RequestBuf<'a>,
 		version_minor: u32,
 	) -> Result<Self, io::DecodeError> {
-		let header = buf.header();
-		debug_assert!(header.opcode == fuse_kernel::FUSE_MKNOD);
+		buf.expect_opcode(fuse_kernel::FUSE_MKNOD)?;
 
-		let parent_id = try_node_id(header.nodeid)?;
+		let parent_id = try_node_id(buf.header().nodeid)?;
 
 		let mut dec = decode::RequestDecoder::new(buf);
 		if version_minor < 12 {

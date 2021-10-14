@@ -65,11 +65,11 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for GetlkRequest<'a> {
 		buf: decode::RequestBuf<'a>,
 		_version_minor: u32,
 	) -> Result<Self, io::DecodeError> {
-		let header = buf.header();
-		debug_assert!(header.opcode == fuse_kernel::FUSE_GETLK);
+		buf.expect_opcode(fuse_kernel::FUSE_GETLK)?;
+
 		let mut dec = decode::RequestDecoder::new(buf);
 		let raw: &fuse_kernel::fuse_lk_in = dec.next_sized()?;
-		let node_id = try_node_id(header.nodeid)?;
+		let node_id = try_node_id(buf.header().nodeid)?;
 
 		let lock = match Lock::parse(raw.lk) {
 			Some(l) => l,

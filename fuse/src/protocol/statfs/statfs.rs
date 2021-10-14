@@ -44,11 +44,11 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for StatfsRequest<'a> {
 		buf: decode::RequestBuf<'a>,
 		_version_minor: u32,
 	) -> Result<Self, io::DecodeError> {
-		let header = buf.header();
-		debug_assert!(header.opcode == fuse_kernel::FUSE_STATFS);
+		buf.expect_opcode(fuse_kernel::FUSE_STATFS)?;
+
 		Ok(Self {
 			phantom: PhantomData,
-			node_id: try_node_id(header.nodeid)?,
+			node_id: try_node_id(buf.header().nodeid)?,
 		})
 	}
 }

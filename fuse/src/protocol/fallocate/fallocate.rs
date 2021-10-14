@@ -87,13 +87,13 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for FallocateRequest<'a> {
 		buf: decode::RequestBuf<'a>,
 		_version_minor: u32,
 	) -> Result<Self, io::DecodeError> {
-		let header = buf.header();
-		debug_assert!(header.opcode == fuse_kernel::FUSE_FALLOCATE);
+		buf.expect_opcode(fuse_kernel::FUSE_FALLOCATE)?;
+
 		let mut dec = decode::RequestDecoder::new(buf);
 		let raw = dec.next_sized()?;
 		Ok(Self {
 			raw,
-			node_id: try_node_id(header.nodeid)?,
+			node_id: try_node_id(buf.header().nodeid)?,
 			mode: FallocateMode::from_bits(raw.mode),
 		})
 	}

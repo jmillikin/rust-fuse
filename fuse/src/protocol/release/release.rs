@@ -99,13 +99,12 @@ fn decode_request<'a>(
 	version_minor: u32,
 	is_cuse: bool,
 ) -> Result<ReleaseRequest<'a>, io::DecodeError> {
-	let header = buf.header();
-	debug_assert!(header.opcode == fuse_kernel::FUSE_RELEASE);
+	buf.expect_opcode(fuse_kernel::FUSE_RELEASE)?;
 
 	let node_id = if is_cuse {
 		crate::ROOT_ID
 	} else {
-		try_node_id(header.nodeid)?
+		try_node_id(buf.header().nodeid)?
 	};
 	let mut dec = decode::RequestDecoder::new(buf);
 

@@ -19,5 +19,6 @@
 pub enum DecodeError {
 	InvalidLockType,
 	MissingNodeId,
+	OpcodeMismatch,
 	UnexpectedEof,
 }

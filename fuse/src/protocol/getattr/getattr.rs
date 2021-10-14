@@ -54,10 +54,9 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for GetattrRequest<'a> {
 		buf: decode::RequestBuf<'a>,
 		version_minor: u32,
 	) -> Result<Self, io::DecodeError> {
-		let header = buf.header();
-		debug_assert!(header.opcode == fuse_kernel::FUSE_GETATTR);
+		buf.expect_opcode(fuse_kernel::FUSE_GETATTR)?;
 
-		let node_id = try_node_id(header.nodeid)?;
+		let node_id = try_node_id(buf.header().nodeid)?;
 
 		// FUSE versions before v7.9 had no request type for `getattr()`.
 		if version_minor < 9 {

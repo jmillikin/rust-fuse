@@ -59,13 +59,12 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for GetxattrRequest<'a> {
 		buf: decode::RequestBuf<'a>,
 		_version_minor: u32,
 	) -> Result<Self, io::DecodeError> {
-		let header = buf.header();
-		debug_assert!(header.opcode == fuse_kernel::FUSE_GETXATTR);
+		buf.expect_opcode(fuse_kernel::FUSE_GETXATTR)?;
 
 		let mut dec = decode::RequestDecoder::new(buf);
 		let raw: &'a fuse_kernel::fuse_getxattr_in = dec.next_sized()?;
 		Ok(Self {
-			node_id: try_node_id(header.nodeid)?,
+			node_id: try_node_id(buf.header().nodeid)?,
 			size: num::NonZeroU32::new(raw.size),
 			name: XattrName::new(dec.next_nul_terminated_bytes()?),
 		})

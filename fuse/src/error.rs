@@ -31,6 +31,7 @@ pub enum ErrorKind {
 	ExpectedCuseInit(u32),
 	ExpectedFuseInit(u32),
 	InvalidLockType,
+	OpcodeMismatch,
 }
 
 impl Error {
@@ -80,6 +81,9 @@ impl From<crate::io::DecodeError> for Error {
 		match err {
 			DecodeError::InvalidLockType => Self::invalid_lock_type(),
 			DecodeError::MissingNodeId => Self::missing_node_id(),
+			DecodeError::OpcodeMismatch => Self {
+				kind: ErrorKind::OpcodeMismatch,
+			},
 			DecodeError::UnexpectedEof => Self::unexpected_eof(),
 		}
 	}
@@ -113,6 +117,10 @@ impl From<Error> for std::io::Error {
 			ErrorKind::InvalidLockType => io::Error::new(
 				io::ErrorKind::InvalidData,
 				"Invalid fcntl() lock type (expected F_RDLCK or F_WRLCK)",
+			),
+			ErrorKind::OpcodeMismatch => io::Error::new(
+				io::ErrorKind::InvalidData,
+				"Opcode mismatch",
 			),
 		}
 	}

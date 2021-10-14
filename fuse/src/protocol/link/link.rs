@@ -50,15 +50,14 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for LinkRequest<'a> {
 		buf: decode::RequestBuf<'a>,
 		_version_minor: u32,
 	) -> Result<Self, io::DecodeError> {
-		let header = buf.header();
-		debug_assert!(header.opcode == fuse_kernel::FUSE_LINK);
+		buf.expect_opcode(fuse_kernel::FUSE_LINK)?;
 
 		let mut dec = decode::RequestDecoder::new(buf);
 		let raw: &fuse_kernel::fuse_link_in = dec.next_sized()?;
 		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
 		Ok(Self {
 			node_id: try_node_id(raw.oldnodeid)?,
-			new_parent_id: try_node_id(header.nodeid)?,
+			new_parent_id: try_node_id(buf.header().nodeid)?,
 			new_name: name,
 		})
 	}

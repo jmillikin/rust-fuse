@@ -96,7 +96,7 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for RenameRequest<'a> {
 			flags = parsed.flags;
 			new_dir = parsed.newdir;
 		} else {
-			debug_assert!(header.opcode == fuse_kernel::FUSE_RENAME);
+			buf.expect_opcode(fuse_kernel::FUSE_RENAME)?;
 			let parsed: &fuse_kernel::fuse_rename_in = dec.next_sized()?;
 			new_dir = parsed.newdir;
 		}

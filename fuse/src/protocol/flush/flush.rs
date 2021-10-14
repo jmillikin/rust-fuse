@@ -74,13 +74,12 @@ fn decode_request<'a>(
 	buf: decode::RequestBuf<'a>,
 	is_cuse: bool,
 ) -> Result<FlushRequest<'a>, io::DecodeError> {
-	let header = buf.header();
-	debug_assert!(header.opcode == fuse_kernel::FUSE_FLUSH);
+	buf.expect_opcode(fuse_kernel::FUSE_FLUSH)?;
 
 	let node_id = if is_cuse {
 		crate::ROOT_ID
 	} else {
-		try_node_id(header.nodeid)?
+		try_node_id(buf.header().nodeid)?
 	};
 	let mut dec = decode::RequestDecoder::new(buf);
 

@@ -75,15 +75,14 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for SetxattrRequest<'a> {
 		buf: decode::RequestBuf<'a>,
 		_version_minor: u32,
 	) -> Result<Self, io::DecodeError> {
-		let header = buf.header();
-		debug_assert!(header.opcode == fuse_kernel::FUSE_SETXATTR);
+		buf.expect_opcode(fuse_kernel::FUSE_SETXATTR)?;
 
 		let mut dec = decode::RequestDecoder::new(buf);
 		let raw: &'a fuse_kernel::fuse_setxattr_in = dec.next_sized()?;
 		let name = XattrName::new(dec.next_nul_terminated_bytes()?);
 		let value = dec.next_bytes(raw.size)?;
 		Ok(Self {
-			node_id: try_node_id(header.nodeid)?,
+			node_id: try_node_id(buf.header().nodeid)?,
 			flags: SetxattrRequestFlags::from_bits(raw.flags),
 			name,
 			value,

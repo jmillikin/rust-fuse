@@ -46,8 +46,9 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for IoctlRequest<'a> {
 		buf: decode::RequestBuf<'a>,
 		version_minor: u32,
 	) -> Result<Self, io::DecodeError> {
+		buf.expect_opcode(fuse_kernel::FUSE_IOCTL)?;
+
 		let header = buf.header();
-		debug_assert!(header.opcode == fuse_kernel::FUSE_IOCTL);
 		let mut dec = decode::RequestDecoder::new(buf);
 		let raw: &'a fuse_kernel::fuse_ioctl_in = dec.next_sized()?;
 

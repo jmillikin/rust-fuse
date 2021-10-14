@@ -104,6 +104,16 @@ impl<'a> RequestBuf<'a> {
 		unsafe { self.header }
 	}
 
+	pub(crate) fn expect_opcode(
+		&self,
+		opcode: fuse_kernel::fuse_opcode,
+	) -> Result<(), DecodeError> {
+		if self.header().opcode != opcode {
+			return Err(DecodeError::OpcodeMismatch);
+		}
+		Ok(())
+	}
+
 	fn as_ptr(&self) -> *const u8 {
 		unsafe { self.buf.ptr }
 	}

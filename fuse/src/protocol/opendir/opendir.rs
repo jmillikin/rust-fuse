@@ -57,14 +57,13 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for OpendirRequest<'a> {
 		buf: decode::RequestBuf<'a>,
 		_version_minor: u32,
 	) -> Result<Self, io::DecodeError> {
-		let header = buf.header();
-		debug_assert!(header.opcode == fuse_kernel::FUSE_OPENDIR);
+		buf.expect_opcode(fuse_kernel::FUSE_OPENDIR)?;
 
 		let mut dec = decode::RequestDecoder::new(buf);
 		let raw: &'a fuse_kernel::fuse_open_in = dec.next_sized()?;
 		Ok(Self {
 			phantom: PhantomData,
-			node_id: try_node_id(header.nodeid)?,
+			node_id: try_node_id(buf.header().nodeid)?,
 			flags: raw.flags,
 		})
 	}

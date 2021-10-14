@@ -59,7 +59,7 @@ impl<'a> decode::DecodeRequest<'a, decode::CUSE> for CuseInitRequest<'_> {
 		buf: decode::RequestBuf<'a>,
 		_version_minor: u32,
 	) -> Result<Self, io::DecodeError> {
-		debug_assert!(buf.header().opcode == fuse_kernel::CUSE_INIT);
+		buf.expect_opcode(fuse_kernel::CUSE_INIT)?;
 
 		let mut dec = decode::RequestDecoder::new(buf);
 		let raw: &'a fuse_kernel::cuse_init_in = dec.next_sized()?;
