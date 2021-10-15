@@ -14,89 +14,17 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::{cmp, fmt};
-use core::num::NonZeroUsize;
-
 #[cfg(feature = "respond_async")]
 use std::sync::Arc;
 
 use crate::channel::{self, WrapChannel};
 use crate::cuse_handlers::CuseHandlers;
 use crate::error::{Error, ErrorCode};
-use crate::internal::fuse_kernel;
-use crate::io::decode::{DecodeRequest, RequestBuf};
 use crate::io::encode;
-use crate::io::{self, Buffer, ProtocolVersion};
+use crate::io::{self, ProtocolVersion};
 use crate::old_server as server;
-use crate::protocol::common::DebugBytesAsString;
-use crate::protocol::{CuseInitRequest, CuseInitResponse};
-use crate::server::CuseRequest;
-
-// CuseDeviceName {{{
-
-#[derive(Hash)]
-#[repr(transparent)]
-pub struct CuseDeviceName([u8]);
-
-impl CuseDeviceName {
-	pub fn from_bytes<'a>(bytes: &'a [u8]) -> Option<&'a CuseDeviceName> {
-		if bytes.len() == 0 || bytes.contains(&0) {
-			return None;
-		}
-		Some(unsafe { &*(bytes as *const [u8] as *const CuseDeviceName) })
-	}
-
-	pub fn as_bytes(&self) -> &[u8] {
-		&self.0
-	}
-}
-
-impl fmt::Debug for CuseDeviceName {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt::Display::fmt(self, fmt)
-	}
-}
-
-impl fmt::Display for CuseDeviceName {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		use core::fmt::Debug;
-		DebugBytesAsString(&self.0).fmt(fmt)
-	}
-}
-
-impl Eq for CuseDeviceName {}
-
-impl PartialEq for CuseDeviceName {
-	fn eq(&self, other: &Self) -> bool {
-		self.as_bytes().eq(other.as_bytes())
-	}
-}
-
-impl PartialEq<[u8]> for CuseDeviceName {
-	fn eq(&self, other: &[u8]) -> bool {
-		self.as_bytes().eq(other)
-	}
-}
-
-impl Ord for CuseDeviceName {
-	fn cmp(&self, other: &Self) -> cmp::Ordering {
-		self.as_bytes().cmp(&other.as_bytes())
-	}
-}
-
-impl PartialEq<CuseDeviceName> for [u8] {
-	fn eq(&self, other: &CuseDeviceName) -> bool {
-		self.eq(other.as_bytes())
-	}
-}
-
-impl PartialOrd for CuseDeviceName {
-	fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
-		self.as_bytes().partial_cmp(&other.as_bytes())
-	}
-}
-
-// }}}
+use crate::protocol::{CuseDeviceName, CuseInitResponse};
+use crate::server::{CuseConnection, CuseRequest};
 
 // CuseServerBuilder {{{
 
@@ -133,68 +61,25 @@ where
 		self
 	}
 
-	pub fn build(mut self) -> Result<CuseServer<C, Handlers, Hooks>, C::Error> {
-		let init_response = self.cuse_handshake()?;
-		CuseServer::new(self.channel, self.handlers, self.hooks, &init_response)
-	}
-
-	fn cuse_handshake(&mut self) -> Result<CuseInitResponse, C::Error> {
-		let mut read_buf = io::ArrayBuffer::new();
-		let v_minor = ProtocolVersion::LATEST.minor();
-
-		loop {
-			let recv_len = self.channel.receive(read_buf.borrow_mut())?;
-			let recv_len = NonZeroUsize::new(recv_len).unwrap(); // TODO
-			let request_buf = match RequestBuf::new(&read_buf, recv_len) {
-				Err(err) => {
-					let err: Error = err.into();
-					return Err(err.into());
-				},
-				Ok(x) => x,
-			};
-
-			let header = request_buf.header();
-			if header.opcode != fuse_kernel::CUSE_INIT {
-				return Err(Error::expected_cuse_init(header.opcode.0).into());
-			}
-
-			let request_id = header.unique;
-			let init_request = CuseInitRequest::decode(request_buf, v_minor)
-				.map_err(Error::from)?;
-			let stream = WrapChannel(&self.channel);
-
-			let version =
-				match server::negotiate_version(init_request.version()) {
-					Some(x) => x,
-					None => {
-						let mut init_response = CuseInitResponse::new();
-						init_response.set_version(ProtocolVersion::LATEST);
-						init_response.encode(
-							encode::SyncSendOnce::new(&stream),
-							request_id,
-							None,
-						)?;
-						continue;
-					},
-				};
-
-			#[allow(unused_mut)]
-			let mut init_response = self.handlers.cuse_init(&init_request);
-			init_response.set_version(version);
-
-			#[cfg(not(feature = "std"))]
-			init_response.set_max_write(cmp::min(
-				init_response.max_write(),
-				server::capped_max_write(),
-			));
-
-			init_response.encode(
-				encode::SyncSendOnce::new(&stream),
-				request_id,
-				Some(self.device_name.as_bytes()),
-			)?;
-			return Ok(init_response);
-		}
+	pub fn build(self) -> Result<CuseServer<C, Handlers, Hooks>, C::Error> {
+		let dev_name = self.device_name;
+		let mut handlers = self.handlers;
+		let stream = WrapChannel(&self.channel);
+		let mut max_write: u32 = 0;
+		let conn = CuseConnection::accept(stream, dev_name, |init_request| {
+			let reply = handlers.cuse_init(init_request);
+			max_write = reply.max_write();
+			reply
+		}).map_err(|err| match err {
+			io::Error::InvalidReply(err) => crate::Error::from(err).into(),
+			io::Error::InvalidRequest(err) => crate::Error::from(err).into(),
+			io::Error::RecvFail(err) => err,
+			io::Error::SendFail(err) => err,
+		})?;
+		let mut init_response = CuseInitResponse::new();
+		init_response.set_version(conn.version());
+		init_response.set_max_write(max_write);
+		CuseServer::new(self.channel, handlers, self.hooks, &init_response)
 	}
 }
 

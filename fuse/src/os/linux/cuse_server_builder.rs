@@ -19,8 +19,9 @@ use std::{ffi, fs, io, path};
 
 use super::DevCuseChannel;
 use crate::cuse_handlers::CuseHandlers;
-use crate::cuse_server::{self, CuseDeviceName, CuseServer};
+use crate::cuse_server::{self, CuseServer};
 use crate::old_server as server;
+use crate::protocol::CuseDeviceName;
 
 #[cfg_attr(doc, doc(cfg(feature = "std")))]
 pub struct CuseServerBuilder<Handlers, Hooks> {

@@ -14,17 +14,20 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-mod connection;
-mod cuse_connection;
-mod cuse_request;
-mod fuse_connection;
-mod fuse_request;
-mod reply;
-mod request;
+use core::cmp::min;
 
-pub use self::cuse_connection::CuseConnection;
-pub use self::cuse_request::{CuseOperation, CuseRequest};
-pub use self::fuse_connection::FuseConnection;
-pub use self::fuse_request::{FuseOperation, FuseRequest};
-pub use self::reply::{Reply, ReplyInfo};
-pub use self::request::{Request, RequestHeader};
+use crate::internal::fuse_kernel;
+use crate::io;
+
+pub(super) fn negotiate_version(
+	kernel: io::ProtocolVersion,
+) -> Option<io::ProtocolVersion> {
+	if kernel.major() != fuse_kernel::FUSE_KERNEL_VERSION {
+		// TODO: hard error on kernel major version < FUSE_KERNEL_VERSION
+		return None;
+	}
+	Some(io::ProtocolVersion::new(
+		fuse_kernel::FUSE_KERNEL_VERSION,
+		min(kernel.minor(), fuse_kernel::FUSE_KERNEL_MINOR_VERSION),
+	))
+}

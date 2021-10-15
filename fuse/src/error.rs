@@ -24,6 +24,7 @@ pub struct Error {
 	kind: ErrorKind,
 }
 
+#[allow(dead_code)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ErrorKind {
 	MissingNodeId,
@@ -35,18 +36,6 @@ pub enum ErrorKind {
 }
 
 impl Error {
-	pub(crate) fn expected_cuse_init(opcode: u32) -> Error {
-		Error {
-			kind: ErrorKind::ExpectedCuseInit(opcode),
-		}
-	}
-
-	pub(crate) fn expected_fuse_init(opcode: u32) -> Error {
-		Error {
-			kind: ErrorKind::ExpectedFuseInit(opcode),
-		}
-	}
-
 	pub(crate) fn invalid_lock_type() -> Error {
 		Error {
 			kind: ErrorKind::InvalidLockType,
@@ -74,6 +63,12 @@ impl fmt::Display for Error {
 
 #[cfg(feature = "std")]
 impl std::error::Error for Error {}
+
+impl From<crate::io::ReplyError> for Error {
+	fn from(err: crate::io::ReplyError) -> Error {
+		match err {}
+	}
+}
 
 impl From<crate::io::RequestError> for Error {
 	fn from(err: crate::io::RequestError) -> Error {

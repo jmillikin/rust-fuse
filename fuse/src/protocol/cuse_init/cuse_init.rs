@@ -20,6 +20,71 @@ use crate::protocol::prelude::*;
 #[cfg(rust_fuse_test = "cuse_init_test")]
 mod cuse_init_test;
 
+// CuseDeviceName {{{
+
+#[derive(Hash)]
+pub struct CuseDeviceName([u8]);
+
+impl CuseDeviceName {
+	pub fn from_bytes<'a>(bytes: &'a [u8]) -> Option<&'a CuseDeviceName> {
+		if bytes.len() == 0 || bytes.contains(&0) {
+			return None;
+		}
+		Some(unsafe { &*(bytes as *const [u8] as *const CuseDeviceName) })
+	}
+
+	pub fn as_bytes(&self) -> &[u8] {
+		&self.0
+	}
+}
+
+impl fmt::Debug for CuseDeviceName {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt::Display::fmt(self, fmt)
+	}
+}
+
+impl fmt::Display for CuseDeviceName {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		use core::fmt::Debug;
+		DebugBytesAsString(&self.0).fmt(fmt)
+	}
+}
+
+impl Eq for CuseDeviceName {}
+
+impl PartialEq for CuseDeviceName {
+	fn eq(&self, other: &Self) -> bool {
+		self.as_bytes().eq(other.as_bytes())
+	}
+}
+
+impl PartialEq<[u8]> for CuseDeviceName {
+	fn eq(&self, other: &[u8]) -> bool {
+		self.as_bytes().eq(other)
+	}
+}
+
+impl Ord for CuseDeviceName {
+	fn cmp(&self, other: &Self) -> cmp::Ordering {
+		self.as_bytes().cmp(&other.as_bytes())
+	}
+}
+
+impl PartialEq<CuseDeviceName> for [u8] {
+	fn eq(&self, other: &CuseDeviceName) -> bool {
+		self.eq(other.as_bytes())
+	}
+}
+
+impl PartialOrd for CuseDeviceName {
+	fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+		self.as_bytes().partial_cmp(&other.as_bytes())
+	}
+}
+
+// }}}
+
 // CuseInitRequest {{{
 
 /// Request type for [`CuseHandlers::cuse_init`].

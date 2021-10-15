@@ -16,7 +16,6 @@
 
 #[cfg(not(feature = "std"))]
 use core::cmp;
-use core::num::NonZeroUsize;
 
 #[cfg(feature = "respond_async")]
 use std::sync::Arc;
@@ -24,13 +23,11 @@ use std::sync::Arc;
 use crate::channel::{self, WrapChannel};
 use crate::error::{Error, ErrorCode};
 use crate::fuse_handlers::FuseHandlers;
-use crate::internal::fuse_kernel;
-use crate::io::{self, Buffer, ProtocolVersion};
-use crate::io::decode::{DecodeRequest, RequestBuf};
-use crate::io::encode::{self, EncodeReply};
+use crate::io::{self, ProtocolVersion};
+use crate::io::encode;
 use crate::old_server as server;
-use crate::protocol::{FuseInitRequest, FuseInitResponse};
-use crate::server::FuseRequest;
+use crate::protocol::FuseInitResponse;
+use crate::server::{FuseConnection, FuseRequest};
 
 // FuseServerBuilder {{{
 
@@ -64,70 +61,24 @@ where
 		self
 	}
 
-	pub fn build(mut self) -> Result<FuseServer<C, Handlers, Hooks>, C::Error> {
-		let init_response = self.fuse_handshake()?;
-		FuseServer::new(self.channel, self.handlers, self.hooks, &init_response)
-	}
-
-	fn fuse_handshake(&mut self) -> Result<FuseInitResponse, C::Error> {
-		let mut read_buf = io::ArrayBuffer::new();
-		let v_minor = ProtocolVersion::LATEST.minor();
-
-		loop {
-			let recv_len = self.channel.receive(read_buf.borrow_mut())?;
-			let recv_len = NonZeroUsize::new(recv_len).unwrap(); // TODO
-			let request_buf = match RequestBuf::new(&read_buf, recv_len) {
-				Err(err) => {
-					let err: Error = err.into();
-					return Err(err.into());
-				},
-				Ok(x) => x,
-			};
-
-			let header = request_buf.header();
-			if header.opcode != fuse_kernel::FUSE_INIT {
-				return Err(Error::expected_fuse_init(header.opcode.0).into());
-			}
-
-			let request_id = header.unique;
-			let init_request = FuseInitRequest::decode(request_buf, v_minor)
-				.map_err(Error::from)?;
-			let stream = WrapChannel(&self.channel);
-
-			let version =
-				match server::negotiate_version(init_request.version()) {
-					Some(x) => x,
-					None => {
-						let mut init_response = FuseInitResponse::new();
-						init_response.set_version(ProtocolVersion::LATEST);
-						init_response.encode(
-							encode::SyncSendOnce::new(&stream),
-							request_id,
-							// FuseInitResponse always encodes with its own version
-							ProtocolVersion::LATEST.minor(),
-						)?;
-						continue;
-					},
-				};
-
-			#[allow(unused_mut)]
-			let mut init_response = self.handlers.fuse_init(&init_request);
-			init_response.set_version(version);
-
-			#[cfg(not(feature = "std"))]
-			init_response.set_max_write(cmp::min(
-				init_response.max_write(),
-				server::capped_max_write(),
-			));
-
-			init_response.encode(
-				encode::SyncSendOnce::new(&stream),
-				request_id,
-				// FuseInitResponse always encodes with its own version
-				ProtocolVersion::LATEST.minor(),
-			)?;
-			return Ok(init_response);
-		}
+	pub fn build(self) -> Result<FuseServer<C, Handlers, Hooks>, C::Error> {
+		let mut handlers = self.handlers;
+		let stream = WrapChannel(&self.channel);
+		let mut max_write: u32 = 0;
+		let conn = FuseConnection::accept(stream, |init_request| {
+			let reply = handlers.fuse_init(init_request);
+			max_write = reply.max_write();
+			reply
+		}).map_err(|err| match err {
+			io::Error::InvalidReply(err) => crate::Error::from(err).into(),
+			io::Error::InvalidRequest(err) => crate::Error::from(err).into(),
+			io::Error::RecvFail(err) => err,
+			io::Error::SendFail(err) => err,
+		})?;
+		let mut init_response = FuseInitResponse::new();
+		init_response.set_version(conn.version());
+		init_response.set_max_write(max_write);
+		FuseServer::new(self.channel, handlers, self.hooks, &init_response)
 	}
 }
 

@@ -18,6 +18,7 @@
 use core::convert::TryInto;
 
 use core::mem::{self, MaybeUninit};
+use core::num::NonZeroUsize;
 
 #[cfg(feature = "std")]
 use std::io::{self, IoSlice, Read, Write};
@@ -134,6 +135,14 @@ impl ChannelError for io::Error {
 }
 
 pub(crate) struct WrapChannel<'a, C>(pub(crate) &'a C);
+
+impl<C: Channel> crate::io::InputStream for WrapChannel<'_, C> {
+	type Error = C::Error;
+
+	fn recv(&self, buf: &mut [u8]) -> Result<Option<NonZeroUsize>, C::Error> {
+		Ok(NonZeroUsize::new(self.0.receive(buf)?))
+	}
+}
 
 impl<C: Channel> crate::io::OutputStream for WrapChannel<'_, C> {
 	type Error = C::Error;

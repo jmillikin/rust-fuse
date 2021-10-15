@@ -36,7 +36,6 @@ pub use self::cuse_handlers::CuseHandlers;
 
 mod cuse_server;
 pub use self::cuse_server::{
-	CuseDeviceName,
 	CuseServer,
 	CuseServerBuilder,
 	CuseServerExecutor,

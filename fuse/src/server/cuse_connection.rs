@@ -16,13 +16,82 @@
 
 use core::num::NonZeroU16;
 
-use crate::io;
+use crate::io::{self, Buffer};
+use crate::io::decode::{DecodeRequest, RequestBuf};
 use crate::io::encode::{ReplyEncoder, SyncSendOnce};
+use crate::protocol::{CuseDeviceName, CuseInitRequest, CuseInitResponse};
 use crate::server::{CuseRequest, Reply, ReplyInfo};
+use crate::server::connection::negotiate_version;
 
 pub struct CuseConnection<Stream> {
 	stream: Stream,
 	version: io::ProtocolVersion,
+}
+
+impl<S, E> CuseConnection<S>
+where
+	S: io::InputStream<Error = E> + io::OutputStream<Error = E>
+{
+	pub(crate) fn accept(
+		stream: S,
+		device_name: &CuseDeviceName,
+		init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse,
+	) -> Result<Self, io::Error<E>> {
+		let init_reply = Self::handshake(&stream, device_name, init_fn)?;
+		Ok(Self {
+			stream,
+			version: init_reply.version(),
+		})
+	}
+
+	fn handshake(
+		stream: &S,
+		device_name: &crate::CuseDeviceName,
+		mut init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse,
+	) -> Result<CuseInitResponse, io::Error<E>> {
+		let mut read_buf = io::ArrayBuffer::new();
+		let v_latest = io::ProtocolVersion::LATEST;
+		let v_minor = v_latest.minor();
+
+		loop {
+			let recv_len = match stream.recv(read_buf.borrow_mut()) {
+				Ok(Some(x)) => x,
+				Ok(None) => {
+					// TODO
+					return Err(io::RequestError::UnexpectedEof.into())
+				},
+				Err(err) => return Err(io::Error::RecvFail(err)),
+			};
+			let request_buf = RequestBuf::new(&read_buf, recv_len)?;
+			let init_request = CuseInitRequest::decode(request_buf, v_minor)?;
+			let request_id = request_buf.header().unique;
+
+			let mut done = false;
+			let init_reply = match negotiate_version(init_request.version()) {
+				Some(version) => {
+					let mut init_reply = init_fn(&init_request);
+					init_reply.set_version(version);
+					done = true;
+					init_reply
+				},
+				None => {
+					let mut init_reply = CuseInitResponse::new();
+					init_reply.set_version(v_latest);
+					init_reply
+				},
+			};
+
+			init_reply.encode(
+				SyncSendOnce::new(stream),
+				request_id,
+				if done { Some(device_name.as_bytes()) } else { None },
+			).map_err(|err| io::Error::SendFail(err))?;
+
+			if done {
+				return Ok(init_reply);
+			}
+		}
+	}
 }
 
 impl<S> CuseConnection<S> {
