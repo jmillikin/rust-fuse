@@ -14,11 +14,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::marker::PhantomData;
 use core::num::NonZeroUsize;
 
 use crate::internal::fuse_kernel;
-use crate::io::{Buffer, DecodeError};
+use crate::io::{Buffer, RequestError};
 use crate::io::decode::RequestBuf;
 use crate::server::request::{Request, RequestHeader};
 
@@ -32,7 +31,7 @@ impl<'a> CuseRequest<'a> {
 		buf: &'a impl Buffer,
 		recv_len: NonZeroUsize,
 		version_minor: u32,
-	) -> Result<Self, DecodeError> {
+	) -> Result<Self, RequestError> {
 		let request_buf = RequestBuf::new(buf, recv_len)?;
 		Ok(Self {
 			buf: request_buf,
@@ -60,17 +59,11 @@ impl<'a> CuseRequest<'a> {
 		}
 	}
 
-	pub fn decode<R>(self) -> Result<R, DecodeError>
+	pub fn decode<R>(&self) -> Result<R, RequestError>
 	where
 		R: Request<'a, Self>,
 	{
-		use crate::server::request::{Recv, RecvBuf};
-
-		Request::decode(Recv {
-			buf: RecvBuf::Decoded(self.buf),
-			version_minor: self.version_minor,
-			_phantom: PhantomData,
-		})
+		Request::decode(self)
 	}
 }
 
@@ -89,48 +82,27 @@ pub enum CuseOperation {
 }
 
 mod impls {
-	use crate::io::DecodeError;
-	use crate::io::decode::{self, DecodeRequest, RequestBuf};
+	use crate::io::RequestError;
+	use crate::io::decode::{self, DecodeRequest};
 	use crate::protocol::*;
-	use crate::server::request::{Recv, RecvBuf, Request};
+	use crate::server::request::Request;
 
 	use super::CuseRequest;
 
 	fn decode_impl<'a, T: DecodeRequest<'a, decode::CUSE>>(
-		recv: Recv<'a, CuseRequest>,
-	) -> Result<T, DecodeError> {
-		let buf = match recv.buf {
-			RecvBuf::Raw(slice, len) => RequestBuf::from_slice(slice, len)?,
-			RecvBuf::Decoded(buf) => buf,
-		};
-		DecodeRequest::<decode::CUSE>::decode(buf, recv.version_minor)
+		raw: &CuseRequest<'a>,
+	) -> Result<T, RequestError> {
+		DecodeRequest::<decode::CUSE>::decode(raw.buf, raw.version_minor)
 	}
-
-	type RecvCuse<'a> = Recv<'a, CuseRequest<'a>>;
 
 	macro_rules! cuse_request {
 		($t:ty) => {
 			impl<'a> Request<'a, CuseRequest<'a>> for $t {
-				fn decode(recv: RecvCuse<'a>) -> Result<Self, DecodeError> {
-					decode_impl(recv)
+				fn decode(raw: &CuseRequest<'a>) -> Result<Self, RequestError> {
+					decode_impl(raw)
 				}
 			}
 		};
-	}
-
-	impl<'a> Request<'a, CuseRequest<'a>> for CuseRequest<'a> {
-		fn decode(
-			recv: Recv<'a, CuseRequest<'a>>,
-		) -> Result<Self, DecodeError> {
-			let buf = match recv.buf {
-				RecvBuf::Raw(slice, len) => RequestBuf::from_slice(slice, len)?,
-				RecvBuf::Decoded(buf) => buf,
-			};
-			Ok(Self {
-				buf,
-				version_minor: recv.version_minor,
-			})
-		}
 	}
 
 	cuse_request! { OpenRequest<'a>    }

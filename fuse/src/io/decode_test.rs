@@ -14,12 +14,12 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use std::mem::size_of;
+use core::mem::size_of;
 use core::num::NonZeroUsize;
 
 use crate::internal::fuse_kernel;
 use crate::internal::testutil::MessageBuilder;
-use crate::io::{Buffer, DecodeError};
+use crate::io::{Buffer, RequestError};
 
 use super::{RequestBuf, RequestDecoder};
 
@@ -56,7 +56,7 @@ fn request_decoder_eof_handling() {
 	assert_eq!(decoder.next_bytes(1), Ok(&[90u8] as &[u8]),);
 
 	// reading past the frame size is an error.
-	assert_eq!(decoder.next_bytes(1), Err(DecodeError::UnexpectedEof));
+	assert_eq!(decoder.next_bytes(1), Err(RequestError::UnexpectedEof));
 }
 
 /*
@@ -108,7 +108,10 @@ fn request_decoder_sized() {
 	assert_eq!(did_read, &[5, 6, 7, 8]);
 
 	// [8 .. 12] hits EOF
-	assert_eq!(decoder.next_sized::<u32>(), Err(DecodeError::UnexpectedEof));
+	assert_eq!(
+		decoder.next_sized::<u32>(),
+		Err(RequestError::UnexpectedEof)
+	);
 }
 
 #[test]
@@ -131,5 +134,5 @@ fn frame_decoder_bytes() {
 	assert_eq!(did_read, &[5, 6, 7, 8]);
 
 	// [8 .. 12) hits EOF
-	assert_eq!(decoder.next_bytes(4), Err(DecodeError::UnexpectedEof));
+	assert_eq!(decoder.next_bytes(4), Err(RequestError::UnexpectedEof));
 }

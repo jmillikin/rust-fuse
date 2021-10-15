@@ -58,7 +58,7 @@ impl<'a> decode::DecodeRequest<'a, decode::CUSE> for CuseInitRequest<'_> {
 	fn decode(
 		buf: decode::RequestBuf<'a>,
 		_version_minor: u32,
-	) -> Result<Self, io::DecodeError> {
+	) -> Result<Self, io::RequestError> {
 		buf.expect_opcode(fuse_kernel::CUSE_INIT)?;
 
 		let mut dec = decode::RequestDecoder::new(buf);

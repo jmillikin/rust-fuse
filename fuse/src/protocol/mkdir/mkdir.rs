@@ -63,7 +63,7 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for MkdirRequest<'a> {
 	fn decode(
 		buf: decode::RequestBuf<'a>,
 		_version_minor: u32,
-	) -> Result<Self, io::DecodeError> {
+	) -> Result<Self, io::RequestError> {
 		buf.expect_opcode(fuse_kernel::FUSE_MKDIR)?;
 
 		let mut dec = decode::RequestDecoder::new(buf);

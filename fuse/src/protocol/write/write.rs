@@ -108,7 +108,7 @@ impl<'a> decode::DecodeRequest<'a, decode::CUSE> for WriteRequest<'a> {
 	fn decode(
 		buf: decode::RequestBuf<'a>,
 		version_minor: u32,
-	) -> Result<Self, io::DecodeError> {
+	) -> Result<Self, io::RequestError> {
 		decode_request(buf, version_minor, true)
 	}
 }
@@ -117,7 +117,7 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for WriteRequest<'a> {
 	fn decode(
 		buf: decode::RequestBuf<'a>,
 		version_minor: u32,
-	) -> Result<Self, io::DecodeError> {
+	) -> Result<Self, io::RequestError> {
 		decode_request(buf, version_minor, false)
 	}
 }
@@ -126,7 +126,7 @@ fn decode_request<'a>(
 	buf: decode::RequestBuf<'a>,
 	version_minor: u32,
 	is_cuse: bool,
-) -> Result<WriteRequest<'a>, io::DecodeError> {
+) -> Result<WriteRequest<'a>, io::RequestError> {
 	buf.expect_opcode(fuse_kernel::FUSE_WRITE)?;
 
 	let node_id = if is_cuse {

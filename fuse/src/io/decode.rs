@@ -20,7 +20,7 @@ use core::num::NonZeroUsize;
 use core::slice::from_raw_parts;
 
 use crate::internal::fuse_kernel;
-use crate::io::{AlignedSlice, Buffer, DecodeError};
+use crate::io::{Buffer, RequestError};
 
 #[cfg(rust_fuse_test = "decode_test")]
 #[path = "decode_test.rs"]
@@ -30,7 +30,7 @@ pub(crate) trait DecodeRequest<'a, Semantics>: Sized {
 	fn decode(
 		buf: RequestBuf<'a>,
 		version_minor: u32,
-	) -> Result<Self, DecodeError>;
+	) -> Result<Self, RequestError>;
 }
 
 pub(crate) trait Semantics {}
@@ -59,19 +59,12 @@ impl<'a> RequestBuf<'a> {
 	pub(crate) fn new(
 		buf: &'a impl Buffer,
 		recv_len: NonZeroUsize,
-	) -> Result<Self, DecodeError> {
-		Self::from_slice(AlignedSlice::new(buf), recv_len)
-	}
-
-	pub(crate) fn from_slice(
-		buf: AlignedSlice<'a>,
-		recv_len: NonZeroUsize,
-	) -> Result<Self, DecodeError> {
+	) -> Result<Self, RequestError> {
 		// TODO: validate recv_len
 		let recv_len: usize = recv_len.into();
-		let buf = &buf.get()[..recv_len];
+		let buf = &buf.borrow()[..recv_len];
 		if buf.len() < size_of::<fuse_kernel::fuse_in_header>() {
-			return Err(DecodeError::UnexpectedEof);
+			return Err(RequestError::UnexpectedEof);
 		}
 
 		let header: &'a fuse_kernel::fuse_in_header =
@@ -88,7 +81,7 @@ impl<'a> RequestBuf<'a> {
 			buf_len = buf.len() as u32;
 		}
 		if buf_len < header.len {
-			return Err(DecodeError::UnexpectedEof);
+			return Err(RequestError::UnexpectedEof);
 		}
 
 		Ok(RequestBuf {
@@ -107,9 +100,9 @@ impl<'a> RequestBuf<'a> {
 	pub(crate) fn expect_opcode(
 		&self,
 		opcode: fuse_kernel::fuse_opcode,
-	) -> Result<(), DecodeError> {
+	) -> Result<(), RequestError> {
 		if self.header().opcode != opcode {
-			return Err(DecodeError::OpcodeMismatch);
+			return Err(RequestError::OpcodeMismatch);
 		}
 		Ok(())
 	}
@@ -140,7 +133,7 @@ impl<'a> RequestDecoder<'a> {
 		self.buf.header()
 	}
 
-	fn consume(&self, len: u32) -> Result<u32, DecodeError> {
+	fn consume(&self, len: u32) -> Result<u32, RequestError> {
 		let new_consumed: u32;
 		let eof: bool;
 		match self.consumed.checked_add(len) {
@@ -154,13 +147,13 @@ impl<'a> RequestDecoder<'a> {
 			},
 		}
 		if eof {
-			return Err(DecodeError::UnexpectedEof);
+			return Err(RequestError::UnexpectedEof);
 		}
 		debug_assert!(new_consumed <= self.header().len);
 		Ok(new_consumed)
 	}
 
-	pub(crate) fn peek_sized<T: Sized>(&self) -> Result<&'a T, DecodeError> {
+	pub(crate) fn peek_sized<T: Sized>(&self) -> Result<&'a T, RequestError> {
 		if size_of::<usize>() > size_of::<u32>() {
 			debug_assert!(size_of::<T>() < u32::MAX as usize);
 		}
@@ -174,7 +167,7 @@ impl<'a> RequestDecoder<'a> {
 
 	pub(crate) fn next_sized<T: Sized>(
 		&mut self,
-	) -> Result<&'a T, DecodeError> {
+	) -> Result<&'a T, RequestError> {
 		let out = self.peek_sized()?;
 		self.consumed = self.consume(size_of::<T>() as u32)?;
 		Ok(out)
@@ -183,7 +176,7 @@ impl<'a> RequestDecoder<'a> {
 	pub(crate) fn next_bytes(
 		&mut self,
 		len: u32,
-	) -> Result<&'a [u8], DecodeError> {
+	) -> Result<&'a [u8], RequestError> {
 		let new_consumed = self.consume(len)?;
 		let (_, start) = self.buf.as_slice().split_at(self.consumed as usize);
 		let (out, _) = start.split_at(len as usize);
@@ -193,18 +186,18 @@ impl<'a> RequestDecoder<'a> {
 
 	pub(crate) fn next_nul_terminated_bytes(
 		&mut self,
-	) -> Result<NulTerminatedBytes<'a>, DecodeError> {
+	) -> Result<NulTerminatedBytes<'a>, RequestError> {
 		for off in self.consumed..self.header().len {
 			if self.buf.as_slice()[off as usize] == 0 {
 				let len = off - self.consumed;
 				if len == 0 {
-					return Err(DecodeError::UnexpectedEof);
+					return Err(RequestError::UnexpectedEof);
 				}
 				let buf = self.next_bytes(len + 1)?;
 				return Ok(NulTerminatedBytes(buf));
 			}
 		}
-		Err(DecodeError::UnexpectedEof)
+		Err(RequestError::UnexpectedEof)
 	}
 }
 

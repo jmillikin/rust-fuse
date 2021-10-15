@@ -46,9 +46,9 @@ pub(super) use crate::protocol::common::{
 	XattrName,
 };
 
-pub(crate) fn try_node_id(raw: u64) -> Result<NodeId, io::DecodeError> {
+pub(crate) fn try_node_id(raw: u64) -> Result<NodeId, io::RequestError> {
 	match NodeId::new(raw) {
 		Some(x) => Ok(x),
-		None => Err(io::DecodeError::MissingNodeId),
+		None => Err(io::RequestError::MissingNodeId),
 	}
 }

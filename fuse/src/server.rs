@@ -26,4 +26,4 @@ pub use self::cuse_request::{CuseOperation, CuseRequest};
 pub use self::fuse_connection::FuseConnection;
 pub use self::fuse_request::{FuseOperation, FuseRequest};
 pub use self::reply::{Reply, ReplyInfo};
-pub use self::request::{Recv, Request, RequestHeader};
+pub use self::request::{Request, RequestHeader};

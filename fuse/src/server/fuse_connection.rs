@@ -14,26 +14,19 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::marker::PhantomData;
 use core::num::NonZeroU16;
 
-use crate::io::{
-	AlignedSlice,
-	Buffer,
-	InputStream,
-	OutputStream,
-	ProtocolVersion,
-};
+use crate::io;
 use crate::io::encode::{ReplyEncoder, SyncSendOnce};
-use crate::server::{FuseRequest, Recv, Reply, ReplyInfo};
+use crate::server::{FuseRequest, Reply, ReplyInfo};
 
 pub struct FuseConnection<Stream> {
 	stream: Stream,
-	version: ProtocolVersion,
+	version: io::ProtocolVersion,
 }
 
 impl<S> FuseConnection<S> {
-	pub fn version(&self) -> ProtocolVersion {
+	pub fn version(&self) -> io::ProtocolVersion {
 		self.version
 	}
 
@@ -48,47 +41,45 @@ impl<S> FuseConnection<S> {
 	}
 }
 
-impl<S: InputStream> FuseConnection<S> {
+impl<S: io::InputStream> FuseConnection<S> {
 	pub fn recv<'a>(
 		&self,
-		buf: &'a mut impl Buffer,
-	) -> Result<Option<Recv<'a, FuseRequest<'a>>>, S::Error> {
-		use crate::server::request::RecvBuf;
-
-		let recv_len = match self.stream.recv(buf.borrow_mut())? {
-			None => return Ok(None),
-			Some(x) => x,
+		buf: &'a mut impl io::Buffer,
+	) -> Result<Option<FuseRequest<'a>>, io::Error<S::Error>> {
+		let recv_len = match self.stream.recv(buf.borrow_mut()) {
+			Ok(Some(x)) => x,
+			Ok(None) => return Ok(None),
+			Err(err) => return Err(io::Error::RecvFail(err)),
 		};
-		Ok(Some(Recv {
-			buf: RecvBuf::Raw(AlignedSlice::new(buf), recv_len),
-			version_minor: self.version.minor(),
-			_phantom: PhantomData,
-		}))
+		let v_minor = self.version.minor();
+		Ok(Some(FuseRequest::new(buf, recv_len, v_minor)?))
 	}
 }
 
-impl<S: OutputStream> FuseConnection<S> {
+impl<S: io::OutputStream> FuseConnection<S> {
 	pub fn reply_ok(
 		&self,
 		request_id: u64,
 		reply: &impl Reply,
-	) -> Result<(), S::Error> {
-		reply.send(
+	) -> Result<(), io::Error<S::Error>> {
+		let res = reply.send(
 			&self.stream,
 			ReplyInfo {
 				request_id,
 				version_minor: self.version.minor(),
 			},
-		)
+		);
+		res.map_err(|err| io::Error::SendFail(err))
 	}
 
 	pub fn reply_err(
 		&self,
 		request_id: u64,
 		error_code: NonZeroU16,
-	) -> Result<(), S::Error> {
+	) -> Result<(), io::Error<S::Error>> {
 		let send = SyncSendOnce::new(&self.stream);
 		let enc = ReplyEncoder::new(send, request_id);
-		enc.encode_error(error_code)
+		let res = enc.encode_error(error_code);
+		res.map_err(|err| io::Error::SendFail(err))
 	}
 }

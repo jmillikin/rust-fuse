@@ -75,16 +75,16 @@ impl fmt::Display for Error {
 #[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
-impl From<crate::io::DecodeError> for Error {
-	fn from(err: crate::io::DecodeError) -> Error {
-		use crate::io::DecodeError;
+impl From<crate::io::RequestError> for Error {
+	fn from(err: crate::io::RequestError) -> Error {
+		use crate::io::RequestError;
 		match err {
-			DecodeError::InvalidLockType => Self::invalid_lock_type(),
-			DecodeError::MissingNodeId => Self::missing_node_id(),
-			DecodeError::OpcodeMismatch => Self {
+			RequestError::InvalidLockType => Self::invalid_lock_type(),
+			RequestError::MissingNodeId => Self::missing_node_id(),
+			RequestError::OpcodeMismatch => Self {
 				kind: ErrorKind::OpcodeMismatch,
 			},
-			DecodeError::UnexpectedEof => Self::unexpected_eof(),
+			RequestError::UnexpectedEof => Self::unexpected_eof(),
 		}
 	}
 }

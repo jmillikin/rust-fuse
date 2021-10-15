@@ -26,7 +26,7 @@ pub struct UnknownRequest<'a> {
 
 enum UnknownBody<'a> {
 	Raw(decode::RequestBuf<'a>),
-	Parsed(Result<&'a [u8], io::DecodeError>),
+	Parsed(Result<&'a [u8], io::RequestError>),
 }
 
 impl<'a> UnknownRequest<'a> {
@@ -34,8 +34,8 @@ impl<'a> UnknownRequest<'a> {
 		RequestHeader::new_ref(&self.header)
 	}
 
-	pub fn body(&self) -> Result<&'a [u8], io::DecodeError> {
-		let mut result: Result<&'a [u8], io::DecodeError> = Ok(&[]);
+	pub fn body(&self) -> Result<&'a [u8], io::RequestError> {
+		let mut result: Result<&'a [u8], io::RequestError> = Ok(&[]);
 		self.body.replace_with(|body| match body {
 			UnknownBody::Raw(buf) => {
 				let body_offset =
@@ -66,7 +66,7 @@ impl<'a, T> decode::DecodeRequest<'a, T> for UnknownRequest<'a> {
 	fn decode(
 		buf: decode::RequestBuf<'a>,
 		_version_minor: u32,
-	) -> Result<Self, io::DecodeError> {
+	) -> Result<Self, io::RequestError> {
 		Ok(Self {
 			header: buf.header(),
 			body: RefCell::new(UnknownBody::Raw(buf)),

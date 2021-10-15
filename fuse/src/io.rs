@@ -21,12 +21,12 @@ mod error;
 mod stream;
 mod version;
 
-pub use self::buffer::{AlignedSlice, ArrayBuffer, Buffer, MIN_READ_BUFFER};
+pub use self::buffer::{ArrayBuffer, Buffer, MIN_READ_BUFFER};
 
 #[cfg(feature = "std")]
 pub use self::buffer::PinnedBuffer;
 
-pub use self::error::DecodeError;
+pub use self::error::{Error, ReplyError, RequestError};
 
 pub use self::stream::{
 	AsyncInputStream,

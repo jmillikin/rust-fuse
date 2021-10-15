@@ -85,7 +85,7 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for RenameRequest<'a> {
 	fn decode(
 		buf: decode::RequestBuf<'a>,
 		_version_minor: u32,
-	) -> Result<Self, io::DecodeError> {
+	) -> Result<Self, io::RequestError> {
 		let header = buf.header();
 		let mut dec = decode::RequestDecoder::new(buf);
 

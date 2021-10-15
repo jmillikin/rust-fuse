@@ -90,7 +90,7 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for SetlkRequest<'a> {
 	fn decode(
 		buf: decode::RequestBuf<'a>,
 		_version_minor: u32,
-	) -> Result<Self, io::DecodeError> {
+	) -> Result<Self, io::RequestError> {
 		let header = buf.header();
 
 		let is_setlkw: bool;
@@ -117,7 +117,7 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for SetlkRequest<'a> {
 fn parse_setlk_cmd(
 	is_setlkw: bool,
 	raw: &fuse_kernel::fuse_file_lock,
-) -> Result<SetlkCommand, io::DecodeError> {
+) -> Result<SetlkCommand, io::RequestError> {
 	if raw.r#type == F_UNLCK {
 		return Ok(SetlkCommand::ClearLocks {
 			range: LockRange::parse(*raw),
@@ -131,7 +131,7 @@ fn parse_setlk_cmd(
 		} else {
 			SetlkCommand::TrySetLock(lock)
 		}),
-		None => return Err(io::DecodeError::InvalidLockType),
+		None => return Err(io::RequestError::InvalidLockType),
 	}
 }
 

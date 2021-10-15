@@ -16,9 +16,35 @@
 
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum DecodeError {
+pub enum Error<StreamError> {
+	InvalidReply(ReplyError),
+	InvalidRequest(RequestError),
+	RecvFail(StreamError),
+	SendFail(StreamError),
+}
+
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ReplyError {
+}
+
+impl<E> From<ReplyError> for Error<E> {
+	fn from(err: ReplyError) -> Self {
+		Error::InvalidReply(err)
+	}
+}
+
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum RequestError {
 	InvalidLockType,
 	MissingNodeId,
 	OpcodeMismatch,
 	UnexpectedEof,
+}
+
+impl<E> From<RequestError> for Error<E> {
+	fn from(err: RequestError) -> Self {
+		Error::InvalidRequest(err)
+	}
 }

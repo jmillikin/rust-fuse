@@ -67,7 +67,7 @@ impl<'a> decode::DecodeRequest<'a, decode::CUSE> for FsyncRequest<'a> {
 	fn decode(
 		buf: decode::RequestBuf<'a>,
 		_version_minor: u32,
-	) -> Result<Self, io::DecodeError> {
+	) -> Result<Self, io::RequestError> {
 		decode_request(buf, true)
 	}
 }
@@ -76,7 +76,7 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for FsyncRequest<'a> {
 	fn decode(
 		buf: decode::RequestBuf<'a>,
 		_version_minor: u32,
-	) -> Result<Self, io::DecodeError> {
+	) -> Result<Self, io::RequestError> {
 		decode_request(buf, false)
 	}
 }
@@ -84,7 +84,7 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for FsyncRequest<'a> {
 fn decode_request<'a>(
 	buf: decode::RequestBuf<'a>,
 	is_cuse: bool,
-) -> Result<FsyncRequest<'a>, io::DecodeError> {
+) -> Result<FsyncRequest<'a>, io::RequestError> {
 	buf.expect_opcode(fuse_kernel::FUSE_FSYNC)?;
 
 	let node_id = if is_cuse {

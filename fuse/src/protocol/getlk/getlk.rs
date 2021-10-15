@@ -64,7 +64,7 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for GetlkRequest<'a> {
 	fn decode(
 		buf: decode::RequestBuf<'a>,
 		_version_minor: u32,
-	) -> Result<Self, io::DecodeError> {
+	) -> Result<Self, io::RequestError> {
 		buf.expect_opcode(fuse_kernel::FUSE_GETLK)?;
 
 		let mut dec = decode::RequestDecoder::new(buf);
@@ -73,7 +73,7 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for GetlkRequest<'a> {
 
 		let lock = match Lock::parse(raw.lk) {
 			Some(l) => l,
-			_ => return Err(io::DecodeError::InvalidLockType),
+			_ => return Err(io::RequestError::InvalidLockType),
 		};
 		Ok(Self { raw, node_id, lock })
 	}
