@@ -16,7 +16,8 @@
 
 use core::num::NonZeroU16;
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
-use std::{env, ffi, panic, path, sync, thread};
+use std::{env, ffi, fs, io, panic, path, sync, thread};
+use core::mem::{self, MaybeUninit};
 
 struct PrintHooks {}
 
@@ -115,6 +116,200 @@ pub fn interop_test(
 			Ok(_) => {
 				//fuse_result.unwrap();
 				assert_eq!(umount_rc, 0);
+			},
+		}
+	}
+}
+
+struct DevCuse {
+	dev_cuse: fs::File,
+	pipe_r: fs::File,
+}
+
+impl DevCuse {
+	fn new() -> (Self, /* pipe_w */ fs::File) {
+		use std::os::unix::io::FromRawFd;
+
+		let mut pipe_fds = [(0 as libc::c_int); 2];
+		let pipe_rc = unsafe { libc::pipe(pipe_fds.as_mut_ptr()) };
+		assert_eq!(pipe_rc, 0);
+
+		let dev_cuse = fs::OpenOptions::new()
+			.read(true)
+			.write(true)
+			.open("/dev/cuse")
+			.unwrap();
+
+		let pipe_r = unsafe { fs::File::from_raw_fd(pipe_fds[0]) };
+		let pipe_w = unsafe { fs::File::from_raw_fd(pipe_fds[1]) };
+
+		(Self { dev_cuse, pipe_r}, pipe_w)
+	}
+}
+
+impl fuse::io::Channel for DevCuse {
+	type Error = io::Error;
+
+	fn send(&self, buf: &[u8]) -> Result<(), io::Error> {
+		use std::io::Write;
+
+		let write_size = Write::write(&mut &self.dev_cuse, buf)?;
+		if write_size < buf.len() {
+			return Err(io::Error::new(
+				io::ErrorKind::Other,
+				"incomplete send",
+			));
+		}
+		Ok(())
+	}
+
+	fn send_vectored<const N: usize>(
+		&self,
+		bufs: &[&[u8]; N],
+	) -> Result<(), io::Error> {
+		use std::io::Write;
+
+		let mut bufs_len: usize = 0;
+		let io_slices: &[io::IoSlice] = {
+			let mut uninit_bufs: [MaybeUninit<io::IoSlice>; N] =
+				unsafe { MaybeUninit::uninit().assume_init() };
+			for ii in 0..N {
+				bufs_len += bufs[ii].len();
+				uninit_bufs[ii] = MaybeUninit::new(io::IoSlice::new(bufs[ii]));
+			}
+			unsafe { mem::transmute::<_, &[io::IoSlice; N]>(&uninit_bufs) }
+		};
+
+		let write_size = Write::write_vectored(&mut &self.dev_cuse, io_slices)?;
+		if write_size < bufs_len {
+			return Err(io::Error::new(
+				io::ErrorKind::Other,
+				"incomplete send",
+			));
+		}
+		Ok(())
+	}
+
+	fn receive(&self, buf: &mut [u8]) -> Result<usize, io::Error> {
+		use std::io::Read;
+		use std::os::unix::io::AsRawFd;
+		use fuse::io::ChannelError;
+
+		let mut poll_fds: [libc::pollfd; 2] = [
+			libc::pollfd {
+				fd: self.dev_cuse.as_raw_fd(),
+				events: libc::POLLIN,
+				revents: 0,
+			},
+			libc::pollfd {
+				fd: self.pipe_r.as_raw_fd(),
+				events: 0,
+				revents: 0,
+			},
+		];
+
+		loop {
+			let poll_rc = unsafe { libc::poll(
+				poll_fds.as_mut_ptr(),
+				poll_fds.len() as libc::nfds_t,
+				-1, // timeout
+			) };
+			if poll_rc == libc::EINTR {
+				continue;
+			}
+			assert!(poll_rc > 0);
+
+			if (poll_fds[1].revents & libc::POLLERR) > 0 ||
+			   (poll_fds[1].revents & libc::POLLHUP) > 0 {
+				return Ok(0);
+			}
+
+			if (poll_fds[0].revents & libc::POLLIN) == 0 {
+				continue;
+			}
+
+			match Read::read(&mut &self.dev_cuse, buf) {
+				Ok(size) => return Ok(size),
+				Err(err) => match err.error_code() {
+					Some(fuse::ErrorCode::ENOENT) => {
+						// The next request in the kernel buffer was interrupted before
+						// it could be deleted. Try again.
+					},
+					Some(fuse::ErrorCode::EINTR) => {
+						// Interrupted by signal. Try again.
+					},
+					_ => return Err(err),
+				},
+			}
+		}
+	}
+}
+
+impl fuse::io::ServerChannel for DevCuse {
+	fn try_clone(&self) -> Result<Self, io::Error> {
+		unimplemented!()
+	}
+}
+
+impl fuse::io::CuseServerChannel for DevCuse {}
+
+extern "C" {
+	#[link_name = "mktemp"]
+	fn libc_mktemp(template: *mut libc::c_char) -> *mut libc::c_char;
+}
+
+pub fn cuse_interop_test(
+	chardev: impl fuse::CuseHandlers + Send + 'static,
+	test_fn: impl FnOnce(&path::Path) + panic::UnwindSafe,
+) {
+	let mut mktemp_template = {
+		let mut tmp = path::PathBuf::from("/dev/");
+		tmp.push("rust-cuse.XXXXXX\x00");
+		tmp.into_os_string().into_vec()
+	};
+
+	{
+		let template_ptr = mktemp_template.as_mut_ptr() as *mut libc::c_char;
+		let mktemp_ret = unsafe { libc_mktemp(template_ptr) };
+		assert!(!mktemp_ret.is_null());
+	}
+	mktemp_template.truncate(mktemp_template.len() - 1);
+	let device_path_cstr = ffi::CString::new(mktemp_template.clone()).unwrap();
+	let device_path = path::Path::new(ffi::OsStr::from_bytes(&mktemp_template))
+		.to_path_buf();
+
+	mktemp_template = mktemp_template.split_off("/dev/".len());
+
+	let (dev_cuse, dev_cuse_closer) = DevCuse::new();
+
+	let server_ready = sync::Arc::new(sync::Barrier::new(2));
+	let server_thread = {
+		let ready = sync::Arc::clone(&server_ready);
+		thread::spawn(move || {
+			use fuse::CuseServerBuilder as SrvBuilder;
+			let devname = fuse::CuseDeviceName::from_bytes(&mktemp_template)
+				.unwrap();
+			let mut srv = SrvBuilder::new(devname, dev_cuse, chardev)
+				.set_hooks(PrintHooks {})
+				.build()?;
+			ready.wait();
+			srv.executor_mut().run()
+		})
+	};
+
+	server_ready.wait();
+	let test_result = panic::catch_unwind(|| test_fn(&device_path));
+
+	drop(dev_cuse_closer);
+	let server_result = server_thread.join();
+
+	if let Err(err) = test_result {
+		panic::resume_unwind(err);
+	} else {
+		match server_result {
+			Err(err) => panic::resume_unwind(err),
+			Ok(_) => {
+				//fuse_result.unwrap();
 			},
 		}
 	}

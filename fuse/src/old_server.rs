@@ -117,6 +117,9 @@ where
 			},
 			Ok(recv_len) => recv_len,
 		};
+		if is_cuse && recv_len == 0 {
+			return Ok(());
+		}
 		let recv_len = NonZeroUsize::new(recv_len).unwrap(); // TODO
 		cb(read_buf, recv_len)?;
 	}
