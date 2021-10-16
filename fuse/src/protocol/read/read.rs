@@ -75,7 +75,7 @@ impl fmt::Debug for ReadRequest<'_> {
 			.field("size", &self.size)
 			.field("offset", &self.offset)
 			.field("handle", &self.handle)
-			.field("lock_owner", &self.lock_owner)
+			.field("lock_owner", &format_args!("{:?}", &self.lock_owner))
 			.field("open_flags", &DebugHexU32(self.open_flags))
 			.finish()
 	}

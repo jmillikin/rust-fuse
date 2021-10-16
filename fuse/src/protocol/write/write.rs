@@ -88,9 +88,9 @@ impl fmt::Debug for WriteRequest<'_> {
 			.field("node_id", &self.node_id)
 			.field("offset", &self.offset)
 			.field("handle", &self.handle)
-			.field("value", &self.value)
+			.field("value", &DebugBytesAsString(self.value))
 			.field("flags", &self.flags)
-			.field("lock_owner", &self.lock_owner())
+			.field("lock_owner", &format_args!("{:?}", &self.lock_owner))
 			.field("open_flags", &DebugHexU32(self.open_flags))
 			.finish()
 	}
