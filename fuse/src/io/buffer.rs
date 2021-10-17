@@ -73,7 +73,7 @@ pub struct PinnedBuffer {
 #[cfg(feature = "std")]
 impl PinnedBuffer {
 	pub fn new(size: usize) -> Self {
-		let size = core::cmp::min(size, MIN_READ_BUFFER);
+		let size = core::cmp::max(size, MIN_READ_BUFFER);
 		let mut vec = Vec::with_capacity(size + 7);
 		vec.resize(size + 7, 0u8);
 		let mut pinned = Pin::new(vec.into_boxed_slice());
