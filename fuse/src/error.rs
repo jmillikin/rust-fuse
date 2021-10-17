@@ -299,6 +299,10 @@ impl ErrorCode {
 	pub const ERANGE: ErrorCode = target::ERANGE;
 	pub const ENOATTR: ErrorCode = target::ENOATTR;
 
+	pub(crate) const EINTR_I32: i32 = target_i32::EINTR;
+	pub(crate) const ENODEV_I32: i32 = target_i32::ENODEV;
+	pub(crate) const ENOENT_I32: i32 = target_i32::ENOENT;
+
 	fn name_impl(&self) -> Option<&'static str> {
 		match *self {
 			Self::EINTR => Some("EINTR"),
@@ -321,6 +325,13 @@ macro_rules! target_error_codes {
 				pub(super) const $name: super::ErrorCode = super::ErrorCode(unsafe{
 					core::num::NonZeroU16::new_unchecked($value)
 				});
+			)*
+		}
+
+		#[allow(dead_code)]
+		mod target_i32 {
+			$(
+				pub(super) const $name: i32 = $value;
 			)*
 		}
 	}
