@@ -30,7 +30,7 @@ impl<S: fuse::io::OutputStream> basic::CuseHandlers<S> for TestCharDev {
 		_ctx: basic::ServerContext,
 		request: &fuse::OpenRequest,
 		send_reply: impl for<'a> basic::SendReply<S, fuse::OpenResponse<'a>>,
-	)  -> Result<(), fuse::io::Error<S::Error>> {
+	) -> Result<(), fuse::io::Error<S::Error>> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut resp = fuse::OpenResponse::new();
@@ -43,7 +43,7 @@ impl<S: fuse::io::OutputStream> basic::CuseHandlers<S> for TestCharDev {
 		_ctx: basic::ServerContext,
 		request: &fuse::ReadRequest,
 		send_reply: impl for<'a> basic::SendReply<S, fuse::ReadResponse<'a>>,
-	)  -> Result<(), fuse::io::Error<S::Error>> {
+	) -> Result<(), fuse::io::Error<S::Error>> {
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the lock owner, which is non-deterministic.
@@ -66,7 +66,7 @@ impl<S: fuse::io::OutputStream> basic::CuseHandlers<S> for TestCharDev {
 		_ctx: basic::ServerContext,
 		request: &fuse::ReleaseRequest,
 		send_reply: impl for<'a> basic::SendReply<S, fuse::ReleaseResponse<'a>>,
-	)  -> Result<(), fuse::io::Error<S::Error>> {
+	) -> Result<(), fuse::io::Error<S::Error>> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let resp = fuse::ReleaseResponse::new();

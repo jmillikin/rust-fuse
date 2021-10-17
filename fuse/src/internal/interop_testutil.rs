@@ -15,14 +15,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use core::mem::{self, MaybeUninit};
-use core::num::{NonZeroU16, NonZeroUsize};
+use core::num::NonZeroUsize;
 
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::{env, ffi, fs, io, panic, path, sync, thread};
 
+use fuse::os::unix::DevFuse;
+use fuse::protocol::fuse_init;
+use fuse::server::basic;
+
 struct PrintHooks {}
 
-impl fuse::server::basic::ServerHooks for PrintHooks {
+impl basic::ServerHooks for PrintHooks {
 	fn unknown_request(&self, request: &fuse::UnknownRequest) {
 		println!("\n[unknown_request]\n{:#?}", request);
 	}
@@ -41,45 +45,18 @@ impl fuse::server::basic::ServerHooks for PrintHooks {
 	}
 }
 
-impl fuse::ServerHooks for PrintHooks {
-	fn unknown_request(&self, request: &fuse::UnknownRequest) {
-		println!("\n[unknown_request]\n{:#?}", request);
-	}
-
-	fn unhandled_request(&self, request_header: &fuse::server::RequestHeader) {
-		println!("\n[unhandled_request]\n{:#?}", request_header);
-	}
-
-	fn request_error(
+pub trait TestFS : basic::FuseHandlers<DevFuse> {
+	fn fuse_init(
 		&self,
-		request_header: &fuse::server::RequestHeader,
-		err: fuse::Error,
-	) {
-		println!("\n[request_error]\n{:#?}", request_header);
-		println!("{:#?}", err);
-	}
-
-	fn response_error(
-		&self,
-		request_header: &fuse::server::RequestHeader,
-		code: Option<NonZeroU16>,
-	) {
-		println!("\n[response_error]\n{:#?}", request_header);
-		println!("{:#?}", code);
-	}
-
-	fn async_channel_error(
-		&self,
-		request_header: &fuse::server::RequestHeader,
-		code: Option<NonZeroU16>,
-	) {
-		println!("\n[async_channel_error]\n{:#?}", request_header);
-		println!("{:#?}", code);
+		init_request: &fuse_init::FuseInitRequest,
+	) -> fuse_init::FuseInitResponse {
+		let _ = init_request;
+		fuse_init::FuseInitResponse::new()
 	}
 }
 
 pub fn fuse_interop_test(
-	fs: impl fuse::FuseHandlers + Send + 'static,
+	handlers: impl TestFS + Send + 'static,
 	test_fn: impl FnOnce(&std::path::Path) + panic::UnwindSafe,
 ) {
 	let mut mkdtemp_template = {
@@ -104,16 +81,24 @@ pub fn fuse_interop_test(
 		let mount_path = mount_path.clone();
 		thread::spawn(move || {
 			use fuse::os::linux;
-			let mut srv = linux::FuseServerBuilder::new(mount_path, fs)
-				.set_mount(
-					linux::SyscallFuseMount::new()
-						.set_mount_source("ruse_fuse_test")
-						.set_mount_subtype("ruse_fuse_test"),
-				)
-				.set_hooks(PrintHooks {})
-				.build()?;
+			use fuse::server::FuseConnection;
+			use basic::FuseServerBuilder;
+
+			let dev_fuse = linux::SyscallFuseMount::new()
+				.set_mount_source("rust_fuse_test")
+				.set_mount_subtype("rust_fuse_test")
+				.mount(&mount_path)
+				.unwrap();
+			let conn = FuseConnection::new(dev_fuse, |init_request| {
+				handlers.fuse_init(init_request)
+			}).unwrap();
+			let srv = FuseServerBuilder::new(conn, handlers)
+				.server_hooks(PrintHooks {})
+				.build();
 			ready.wait();
-			srv.executor_mut().run()
+
+			let mut buf = fuse::io::ArrayBuffer::new();
+			srv.serve(&mut buf).unwrap();
 		})
 	};
 
@@ -217,7 +202,6 @@ impl fuse::io::InputStream for DevCuse {
 	fn recv(&self, buf: &mut [u8]) -> Result<Option<NonZeroUsize>, io::Error> {
 		use std::io::Read;
 		use std::os::unix::io::AsRawFd;
-		use fuse::io::ChannelError;
 
 		let mut poll_fds: [libc::pollfd; 2] = [
 			libc::pollfd {
@@ -253,13 +237,18 @@ impl fuse::io::InputStream for DevCuse {
 			}
 
 			match Read::read(&mut &self.dev_cuse, buf) {
-				Ok(size) => return Ok(NonZeroUsize::new(size)),
-				Err(err) => match err.error_code() {
-					Some(fuse::ErrorCode::ENOENT) => {
+				Ok(size) => {
+					return match NonZeroUsize::new(size) {
+						Some(size) => Ok(Some(size)),
+						None => Err(io::ErrorKind::UnexpectedEof.into()),
+					};
+				},
+				Err(err) => match err.raw_os_error() {
+					Some(libc::ENOENT) => {
 						// The next request in the kernel buffer was interrupted before
 						// it could be deleted. Try again.
 					},
-					Some(fuse::ErrorCode::EINTR) => {
+					Some(libc::EINTR) => {
 						// Interrupted by signal. Try again.
 					},
 					_ => return Err(err),
@@ -278,7 +267,7 @@ const CUSE_DEV_MAJOR: libc::c_uint = 240; // "LOCAL/EXPERIMENTAL USE"
 const CUSE_DEV_MINOR: libc::c_uint = 1;
 
 pub fn cuse_interop_test(
-	handlers: impl fuse::server::basic::CuseHandlers<DevCuse> + Send + 'static,
+	handlers: impl basic::CuseHandlers<DevCuse> + Send + 'static,
 	test_fn: impl FnOnce(&path::Path) + panic::UnwindSafe,
 ) {
 	let mut mktemp_template = {
@@ -312,7 +301,7 @@ pub fn cuse_interop_test(
 		let ready = sync::Arc::clone(&server_ready);
 		thread::spawn(move || {
 			use fuse::server::CuseConnectionBuilder;
-			use fuse::server::basic::CuseServerBuilder;
+			use basic::CuseServerBuilder;
 
 			let devname = fuse::CuseDeviceName::from_bytes(&mktemp_template)
 				.unwrap();

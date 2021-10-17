@@ -17,27 +17,28 @@
 use std::sync::mpsc;
 use std::{fmt, mem, panic};
 
+use fuse::server::basic;
 use interop_testutil::{diff_str, fuse_interop_test, path_cstr};
 
 struct TestFS {
 	requests: mpsc::Sender<String>,
 }
 
-impl fuse::FuseHandlers for TestFS {
+impl interop_testutil::TestFS for TestFS {}
+
+impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 	fn lookup(
 		&self,
-		_ctx: fuse::ServerContext,
+		_ctx: basic::ServerContext,
 		request: &fuse::LookupRequest,
-		respond: impl for<'a> fuse::Respond<fuse::LookupResponse<'a>>,
-	) {
+		send_reply: impl for<'a> basic::SendReply<S, fuse::LookupResponse<'a>>,
+	) -> Result<(), fuse::io::Error<S::Error>> {
 		if request.parent_id() != fuse::ROOT_ID {
-			respond.err(fuse::ErrorCode::ENOENT);
-			return;
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 		if request.name() != fuse::NodeName::from_bytes(b"statfs.txt").unwrap()
 		{
-			respond.err(fuse::ErrorCode::ENOENT);
-			return;
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -49,15 +50,15 @@ impl fuse::FuseHandlers for TestFS {
 		attr.set_mode(fuse::FileType::Regular | 0o644);
 		attr.set_nlink(1);
 
-		respond.ok(&resp);
+		send_reply.ok(&resp)
 	}
 
 	fn statfs(
 		&self,
-		_ctx: fuse::ServerContext,
+		_ctx: basic::ServerContext,
 		request: &fuse::StatfsRequest,
-		respond: impl for<'a> fuse::Respond<fuse::StatfsResponse<'a>>,
-	) {
+		send_reply: impl for<'a> basic::SendReply<S, fuse::StatfsResponse<'a>>,
+	) -> Result<(), fuse::io::Error<S::Error>> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 		let mut response = fuse::StatfsResponse::new();
 		response.set_block_size(10);
@@ -68,7 +69,7 @@ impl fuse::FuseHandlers for TestFS {
 		response.set_inodes_free(60);
 		response.set_max_filename_length(70);
 		response.set_fragment_size(80);
-		respond.ok(&response);
+		send_reply.ok(&response)
 	}
 }
 

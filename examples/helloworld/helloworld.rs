@@ -16,6 +16,8 @@
 
 use std::num::NonZeroU64;
 
+use fuse::server::basic;
+
 const HELLO_WORLD: &[u8] = b"Hello, world!\n";
 
 struct HelloTxt {}
@@ -42,20 +44,18 @@ const HELLO_TXT: HelloTxt = HelloTxt {};
 
 struct HelloWorldFS {}
 
-impl fuse::FuseHandlers for HelloWorldFS {
+impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for HelloWorldFS {
 	fn lookup(
 		&self,
-		_ctx: fuse::ServerContext,
+		_ctx: basic::ServerContext,
 		request: &fuse::LookupRequest,
-		respond: impl for<'a> fuse::Respond<fuse::LookupResponse<'a>>,
-	) {
+		send_reply: impl for<'a> basic::SendReply<S, fuse::LookupResponse<'a>>,
+	) -> Result<(), fuse::io::Error<S::Error>> {
 		if request.parent_id() != fuse::ROOT_ID {
-			respond.err(fuse::ErrorCode::ENOENT);
-			return;
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 		if request.name() != HELLO_TXT.name() {
-			respond.err(fuse::ErrorCode::ENOENT);
-			return;
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -63,15 +63,15 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		node.set_id(HELLO_TXT.node_id());
 		HELLO_TXT.set_attr(node.attr_mut());
 
-		respond.ok(&resp);
+		send_reply.ok(&resp)
 	}
 
 	fn getattr(
 		&self,
-		_ctx: fuse::ServerContext,
+		_ctx: basic::ServerContext,
 		request: &fuse::GetattrRequest,
-		respond: impl for<'a> fuse::Respond<fuse::GetattrResponse<'a>>,
-	) {
+		send_reply: impl for<'a> basic::SendReply<S, fuse::GetattrResponse<'a>>,
+	) -> Result<(), fuse::io::Error<S::Error>> {
 		let mut resp = fuse::GetattrResponse::new();
 		let attr = resp.attr_mut();
 
@@ -80,80 +80,73 @@ impl fuse::FuseHandlers for HelloWorldFS {
 			attr.set_group_id(getgid());
 			attr.set_mode(fuse::FileType::Directory | 0o755);
 			attr.set_nlink(2);
-			respond.ok(&resp);
-			return;
+			return send_reply.ok(&resp);
 		}
 
 		if request.node_id() == HELLO_TXT.node_id() {
 			HELLO_TXT.set_attr(attr);
-			respond.ok(&resp);
-			return;
+			return send_reply.ok(&resp);
 		}
 
-		respond.err(fuse::ErrorCode::ENOENT);
+		send_reply.err(fuse::ErrorCode::ENOENT)
 	}
 
 	fn open(
 		&self,
-		_ctx: fuse::ServerContext,
+		_ctx: basic::ServerContext,
 		request: &fuse::OpenRequest,
-		respond: impl for<'a> fuse::Respond<fuse::OpenResponse<'a>>,
-	) {
+		send_reply: impl for<'a> basic::SendReply<S, fuse::OpenResponse<'a>>,
+	) -> Result<(), fuse::io::Error<S::Error>> {
 		if request.node_id() != HELLO_TXT.node_id() {
-			respond.err(fuse::ErrorCode::ENOENT);
-			return;
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 
 		let mut resp = fuse::OpenResponse::new();
 		resp.set_handle(1001);
-		respond.ok(&resp);
+		send_reply.ok(&resp)
 	}
 
 	fn read(
 		&self,
-		_ctx: fuse::ServerContext,
+		_ctx: basic::ServerContext,
 		request: &fuse::ReadRequest,
-		respond: impl for<'a> fuse::Respond<fuse::ReadResponse<'a>>,
-	) {
+		send_reply: impl for<'a> basic::SendReply<S, fuse::ReadResponse<'a>>,
+	) -> Result<(), fuse::io::Error<S::Error>> {
 		if request.handle() != 1001 {
-			respond.err(fuse::ErrorCode::EIO);
-			return;
+			return send_reply.err(fuse::ErrorCode::EIO);
 		}
 
 		let resp = fuse::ReadResponse::from_bytes(HELLO_WORLD);
-		respond.ok(&resp);
+		send_reply.ok(&resp)
 	}
 
 	fn opendir(
 		&self,
-		_ctx: fuse::ServerContext,
+		_ctx: basic::ServerContext,
 		request: &fuse::OpendirRequest,
-		respond: impl for<'a> fuse::Respond<fuse::OpendirResponse<'a>>,
-	) {
+		send_reply: impl for<'a> basic::SendReply<S, fuse::OpendirResponse<'a>>,
+	) -> Result<(), fuse::io::Error<S::Error>> {
 		if request.node_id() != fuse::ROOT_ID {
-			respond.err(fuse::ErrorCode::ENOENT);
-			return;
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 
 		let mut resp = fuse::OpendirResponse::new();
 		resp.set_handle(1002);
-		respond.ok(&resp);
+		send_reply.ok(&resp)
 	}
 
 	fn readdir(
 		&self,
-		_ctx: fuse::ServerContext,
+		_ctx: basic::ServerContext,
 		request: &fuse::ReaddirRequest,
-		respond: impl for<'a> fuse::Respond<fuse::ReaddirResponse<'a>>,
-	) {
+		send_reply: impl for<'a> basic::SendReply<S, fuse::ReaddirResponse<'a>>,
+	) -> Result<(), fuse::io::Error<S::Error>> {
 		if request.handle() != 1002 {
-			respond.err(fuse::ErrorCode::EIO);
-			return;
+			return send_reply.err(fuse::ErrorCode::EIO);
 		}
 
 		if request.cursor().is_some() {
-			respond.ok(fuse::ReaddirResponse::EMPTY);
-			return;
+			return send_reply.ok(fuse::ReaddirResponse::EMPTY);
 		}
 
 		let mut resp = fuse::ReaddirResponse::with_max_size(request.size());
@@ -162,22 +155,21 @@ impl fuse::FuseHandlers for HelloWorldFS {
 		resp.add_entry(HELLO_TXT.node_id(), HELLO_TXT.name(), node_offset)
 			.set_file_type(fuse::FileType::Regular);
 
-		respond.ok(&resp);
+		send_reply.ok(&resp)
 	}
 
 	fn releasedir(
 		&self,
-		_ctx: fuse::ServerContext,
+		_ctx: basic::ServerContext,
 		request: &fuse::ReleasedirRequest,
-		respond: impl for<'a> fuse::Respond<fuse::ReleasedirResponse<'a>>,
-	) {
+		send_reply: impl for<'a> basic::SendReply<S, fuse::ReleasedirResponse<'a>>,
+	) -> Result<(), fuse::io::Error<S::Error>> {
 		if request.handle() != 1002 {
-			respond.err(fuse::ErrorCode::EIO);
-			return;
+			return send_reply.err(fuse::ErrorCode::EIO);
 		}
 
 		let resp = fuse::ReleasedirResponse::new();
-		respond.ok(&resp);
+		send_reply.ok(&resp)
 	}
 }
 
@@ -194,13 +186,17 @@ fn main() {
 	let mount_target = std::env::args_os().nth(1).unwrap();
 
 	let handlers = HelloWorldFS {};
-	let mut srv = linux::FuseServerBuilder::new(&mount_target, handlers)
-		.set_mount(
-			linux::LibcFuseMount::new()
-				.set_mount_source("helloworld")
-				.set_mount_subtype("helloworld"),
-		)
+
+	let dev_fuse = linux::LibcFuseMount::new()
+		.set_mount_source("helloworld")
+		.set_mount_subtype("helloworld")
+		.mount(mount_target.as_ref())
+		.unwrap();
+	let conn = fuse::server::FuseConnectionBuilder::new(dev_fuse)
 		.build()
 		.unwrap();
-	srv.executor_mut().run().unwrap();
+	let srv = basic::FuseServerBuilder::new(conn, handlers).build();
+
+	let mut buf = fuse::io::ArrayBuffer::new();
+	srv.serve(&mut buf).unwrap();
 }

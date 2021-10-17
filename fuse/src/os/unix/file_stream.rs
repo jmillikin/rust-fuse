@@ -130,12 +130,9 @@ impl OutputStream for DevCuse {
 pub struct DevFuse(File);
 
 impl DevFuse {
-	pub fn new() -> Result<Self, io::Error> {
-		let dev_cuse = fs::OpenOptions::new()
-			.read(true)
-			.write(true)
-			.open("/dev/fuse")?;
-		Ok(Self(dev_cuse))
+	#[allow(dead_code)]
+	pub(crate) fn from_file(file: File) -> Self {
+		Self(file)
 	}
 }
 

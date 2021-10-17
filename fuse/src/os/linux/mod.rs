@@ -19,12 +19,6 @@
 #[cfg(feature = "nightly_syscall_fuse_mount")]
 mod linux_syscalls;
 
-mod dev_fuse_channel;
-pub use self::dev_fuse_channel::*;
-
-mod fuse_server_builder;
-pub use self::fuse_server_builder::*;
-
 #[cfg(any(
 	doc,
 	feature = "libc_fuse_mount",

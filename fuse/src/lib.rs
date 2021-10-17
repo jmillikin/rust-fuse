@@ -28,30 +28,9 @@ extern crate libc;
 #[macro_use]
 mod internal;
 
-mod channel;
 mod error;
 
-mod fuse_handlers;
-pub use self::fuse_handlers::FuseHandlers;
-
-mod fuse_server;
-pub use self::fuse_server::{
-	FuseServer,
-	FuseServerBuilder,
-	FuseServerExecutor,
-};
-
 pub mod server;
-
-mod old_server;
-pub use self::old_server::{
-	ServerContext,
-	ServerHooks,
-	Respond,
-};
-
-#[cfg(feature = "respond_async")]
-pub use self::old_server::RespondAsync;
 
 pub mod os {
 	#[cfg(any(doc, target_os = "linux"))]

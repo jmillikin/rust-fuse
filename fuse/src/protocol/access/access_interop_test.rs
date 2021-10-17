@@ -17,27 +17,28 @@
 use std::panic;
 use std::sync::mpsc;
 
+use fuse::server::basic;
 use interop_testutil::{diff_str, fuse_interop_test, path_cstr};
 
 struct TestFS {
 	requests: mpsc::Sender<String>,
 }
 
-impl fuse::FuseHandlers for TestFS {
+impl interop_testutil::TestFS for TestFS {}
+
+impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 	fn lookup(
 		&self,
-		_ctx: fuse::ServerContext,
+		_ctx: basic::ServerContext,
 		request: &fuse::LookupRequest,
-		respond: impl for<'a> fuse::Respond<fuse::LookupResponse<'a>>,
-	) {
+		send_reply: impl for<'a> basic::SendReply<S, fuse::LookupResponse<'a>>,
+	) -> Result<(), fuse::io::Error<S::Error>> {
 		if request.parent_id() != fuse::ROOT_ID {
-			respond.err(fuse::ErrorCode::ENOENT);
-			return;
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 		if request.name() != fuse::NodeName::from_bytes(b"access.txt").unwrap()
 		{
-			respond.err(fuse::ErrorCode::ENOENT);
-			return;
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -49,27 +50,27 @@ impl fuse::FuseHandlers for TestFS {
 		attr.set_mode(fuse::FileType::Regular | 0o755);
 		attr.set_nlink(2);
 
-		respond.ok(&resp);
+		send_reply.ok(&resp)
 	}
 
 	fn access(
 		&self,
-		_ctx: fuse::ServerContext,
+		_ctx: basic::ServerContext,
 		request: &fuse::AccessRequest,
-		respond: impl for<'a> fuse::Respond<fuse::AccessResponse<'a>>,
-	) {
+		send_reply: impl for<'a> basic::SendReply<S, fuse::AccessResponse<'a>>,
+	) -> Result<(), fuse::io::Error<S::Error>> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let resp = fuse::AccessResponse::new();
-		respond.ok(&resp);
+		send_reply.ok(&resp)
 	}
 
 	fn getattr(
 		&self,
-		_ctx: fuse::ServerContext,
+		_ctx: basic::ServerContext,
 		request: &fuse::GetattrRequest,
-		respond: impl for<'a> fuse::Respond<fuse::GetattrResponse<'a>>,
-	) {
+		send_reply: impl for<'a> basic::SendReply<S, fuse::GetattrResponse<'a>>,
+	) -> Result<(), fuse::io::Error<S::Error>> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut resp = fuse::GetattrResponse::new();
@@ -77,7 +78,7 @@ impl fuse::FuseHandlers for TestFS {
 		attr.set_mode(fuse::FileType::Regular | 0o755);
 		attr.set_nlink(2);
 
-		respond.ok(&resp);
+		send_reply.ok(&resp)
 	}
 }
 

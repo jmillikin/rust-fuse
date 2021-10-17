@@ -36,8 +36,3 @@ pub use self::stream::{
 };
 
 pub use self::version::ProtocolVersion;
-
-// compatibility
-pub use crate::channel::{Channel, ChannelError};
-pub use crate::fuse_server::FuseServerChannel;
-pub use crate::old_server::ServerChannel;

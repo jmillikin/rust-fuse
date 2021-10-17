@@ -16,10 +16,14 @@
 
 mod cuse_handlers;
 mod cuse_server;
+mod fuse_handlers;
+mod fuse_server;
 mod server;
 mod server_hooks;
 
 pub use self::cuse_handlers::CuseHandlers;
 pub use self::cuse_server::{CuseServer, CuseServerBuilder};
+pub use self::fuse_handlers::FuseHandlers;
+pub use self::fuse_server::{FuseServer, FuseServerBuilder};
 pub use self::server::{SendReply, ServerContext};
 pub use self::server_hooks::{NoopServerHooks, ServerHooks};

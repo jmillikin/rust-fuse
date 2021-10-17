@@ -19,9 +19,44 @@ use core::num::NonZeroU16;
 use crate::io::{self, Buffer};
 use crate::io::decode::{DecodeRequest, RequestBuf};
 use crate::io::encode::{EncodeReply, ReplyEncoder, SyncSendOnce};
-use crate::protocol::{FuseInitRequest, FuseInitResponse};
+use crate::protocol::fuse_init::{
+	FuseInitFlags,
+	FuseInitRequest,
+	FuseInitResponse,
+};
 use crate::server::{FuseRequest, Reply, ReplyInfo};
 use crate::server::connection::negotiate_version;
+
+pub struct FuseConnectionBuilder<Stream> {
+	stream: Stream,
+	flags: FuseInitFlags,
+}
+
+impl<'a, Stream> FuseConnectionBuilder<Stream> {
+	pub fn new(stream: Stream) -> Self {
+		Self {
+			stream,
+			flags: FuseInitFlags::new(),
+		}
+	}
+}
+
+impl<S> FuseConnectionBuilder<S> {
+}
+
+impl<S, E> FuseConnectionBuilder<S>
+where
+	S: io::InputStream<Error = E> + io::OutputStream<Error = E>,
+{
+	pub fn build(self) -> Result<FuseConnection<S>, io::Error<E>> {
+		let flags = self.flags;
+		FuseConnection::new(self.stream, |_request| {
+			let mut reply = FuseInitResponse::new();
+			*reply.flags_mut() = flags;
+			reply
+		})
+	}
+}
 
 pub struct FuseConnection<Stream> {
 	stream: Stream,
@@ -30,9 +65,9 @@ pub struct FuseConnection<Stream> {
 
 impl<S, E> FuseConnection<S>
 where
-	S: io::InputStream<Error = E> + io::OutputStream<Error = E>
+	S: io::InputStream<Error = E> + io::OutputStream<Error = E>,
 {
-	pub(crate) fn accept(
+	pub fn new(
 		stream: S,
 		init_fn: impl FnMut(&FuseInitRequest) -> FuseInitResponse,
 	) -> Result<Self, io::Error<E>> {
@@ -56,7 +91,7 @@ where
 				Ok(Some(x)) => x,
 				Ok(None) => {
 					// TODO
-					return Err(io::RequestError::UnexpectedEof.into())
+					return Err(io::RequestError::UnexpectedEof.into());
 				},
 				Err(err) => return Err(io::Error::RecvFail(err)),
 			};

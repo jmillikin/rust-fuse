@@ -21,7 +21,6 @@ use std::cell::RefCell;
 use std::mem::size_of;
 use std::slice;
 
-use crate::channel;
 use crate::internal::fuse_kernel;
 use crate::io::{self, Buffer, ProtocolVersion};
 
@@ -105,11 +104,11 @@ impl MessageBuilder {
 	}
 }
 
-pub(crate) struct FakeChannel {
+pub(crate) struct FakeStream {
 	pub(crate) write: RefCell<Option<Vec<u8>>>,
 }
 
-impl FakeChannel {
+impl FakeStream {
 	pub(crate) fn new() -> Self {
 		Self {
 			write: RefCell::new(None),
@@ -119,17 +118,17 @@ impl FakeChannel {
 	pub(crate) fn expect_write(&self) -> Vec<u8> {
 		match &*self.write.borrow() {
 			Some(w) => w.clone(),
-			None => panic!("expected exactly one write to FakeChannel"),
+			None => panic!("expected exactly one write to FakeStream"),
 		}
 	}
 }
 
-impl channel::Channel for FakeChannel {
+impl io::OutputStream for FakeStream {
 	type Error = std::io::Error;
 
 	fn send(&self, buf: &[u8]) -> Result<(), Self::Error> {
 		if self.write.borrow().is_some() {
-			panic!("expected exactly one write to FakeChannel");
+			panic!("expected exactly one write to FakeStream");
 		}
 		self.write.replace(Some(buf.into()));
 		Ok(())
@@ -144,11 +143,6 @@ impl channel::Channel for FakeChannel {
 			vec.extend(buf.to_vec());
 		}
 		self.send(&vec)
-	}
-
-	fn receive(&self, buf: &mut [u8]) -> Result<usize, Self::Error> {
-		let _ = buf;
-		unimplemented!()
 	}
 }
 
@@ -204,20 +198,18 @@ macro_rules! encode_response {
 		encode_response!($response, {})
 	};
 	($response:expr, $opts:tt $(,)?) => {{
-		use crate::channel::WrapChannel;
 		use crate::internal::testutil::EncodeRequestOpts;
 		use crate::io::encode::EncodeReply;
 
 		let request_id = 0;
 		let opts = encode_request_opts!($opts);
-		let mut channel = crate::internal::testutil::FakeChannel::new();
-		let stream = WrapChannel(&mut channel);
+		let stream = crate::internal::testutil::FakeStream::new();
 		$response.encode(
 			encode::SyncSendOnce::new(&stream),
 			request_id,
 			opts.protocol_version().minor(),
 		).unwrap();
-		channel.expect_write()
+		stream.expect_write()
 	}};
 }
 

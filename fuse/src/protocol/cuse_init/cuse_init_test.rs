@@ -16,7 +16,6 @@
 
 use core::num::NonZeroUsize;
 
-use crate::channel::WrapChannel;
 use crate::internal::testutil::MessageBuilder;
 use crate::io::decode::{DecodeRequest, RequestBuf};
 use crate::io::{Buffer, ProtocolVersion};
@@ -79,13 +78,12 @@ fn encode_response(
 	maybe_device_name: Option<&[u8]>,
 ) -> Vec<u8> {
 	let request_id = 0;
-	let channel = crate::internal::testutil::FakeChannel::new();
-	let stream = WrapChannel(&channel);
+	let stream = crate::internal::testutil::FakeStream::new();
 	let send_once = encode::SyncSendOnce::new(&stream);
 	response
 		.encode(send_once, request_id, maybe_device_name)
 		.unwrap();
-	channel.expect_write()
+	stream.expect_write()
 }
 
 #[test]

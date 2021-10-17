@@ -69,7 +69,6 @@ pub use self::fsyncdir::*;
 
 #[path = "fuse_init/fuse_init.rs"]
 pub mod fuse_init;
-pub use self::fuse_init::*;
 
 #[path = "getattr/getattr.rs"]
 pub mod getattr;

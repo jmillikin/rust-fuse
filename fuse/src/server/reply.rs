@@ -90,6 +90,7 @@ mod impls {
 	impl_reply! { OpenResponse        }
 	impl_reply! { OpendirResponse     }
 	impl_reply! { ReadResponse        }
+	impl_reply! { ReaddirResponse     }
 	impl_reply! { ReadlinkResponse    }
 	impl_reply! { ReleaseResponse     }
 	impl_reply! { ReleasedirResponse  }

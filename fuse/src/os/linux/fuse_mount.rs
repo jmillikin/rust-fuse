@@ -20,10 +20,10 @@ use std::os::unix::fs::MetadataExt;
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::{fs, io, path};
 
+use crate::os::unix::DevFuse;
+
 #[cfg(feature = "nightly_syscall_fuse_mount")]
 use super::linux_syscalls as syscalls;
-use super::DevFuseChannel;
-use super::FuseMount;
 
 const MS_NOSUID: u32 = 0x2;
 const MS_NODEV: u32 = 0x4;
@@ -147,16 +147,11 @@ impl LibcFuseMount {
 		self.0.root_mode = Some(mode);
 		self
 	}
-}
 
-#[cfg(any(doc, feature = "libc_fuse_mount"))]
-impl FuseMount for LibcFuseMount {
-	type Channel = DevFuseChannel;
-
-	fn fuse_mount(
+	pub fn mount(
 		self,
 		mount_target: &path::Path,
-	) -> io::Result<DevFuseChannel> {
+	) -> Result<DevFuse, io::Error> {
 		let mount_target_cstr = cstr_from_osstr(mount_target.as_os_str())?;
 		let mount_source_cstr = self.0.mount_source_cstr()?;
 		let mount_type_cstr = self.0.mount_type_cstr()?;
@@ -193,7 +188,7 @@ impl FuseMount for LibcFuseMount {
 				return Err(std::io::Error::last_os_error());
 			}
 		};
-		Ok(DevFuseChannel::new(file))
+		Ok(DevFuse::from_file(file))
 	}
 }
 
@@ -239,16 +234,11 @@ impl SyscallFuseMount {
 		self.0.root_mode = Some(mode);
 		self
 	}
-}
 
-#[cfg(any(doc, feature = "nightly_syscall_fuse_mount"))]
-impl FuseMount for SyscallFuseMount {
-	type Channel = DevFuseChannel;
-
-	fn fuse_mount(
+	pub fn mount(
 		self,
 		mount_target: &path::Path,
-	) -> io::Result<DevFuseChannel> {
+	) -> Result<DevFuse, io::Error> {
 		let mount_target_cstr = cstr_from_osstr(mount_target.as_os_str())?;
 		let mount_source_cstr = self.0.mount_source_cstr()?;
 		let mount_type_cstr = self.0.mount_type_cstr()?;
@@ -279,7 +269,7 @@ impl FuseMount for SyscallFuseMount {
 			mount_data.to_bytes_with_nul(),
 		)?;
 
-		Ok(DevFuseChannel::new(file))
+		Ok(DevFuse::from_file(file))
 	}
 }
 
