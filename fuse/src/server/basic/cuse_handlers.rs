@@ -14,35 +14,29 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::old_server as server;
+use crate::io::{Error, OutputStream};
 use crate::protocol;
+use crate::server::basic::server::{self, SendReply};
 
 /// User-provided handlers for CUSE operations.
 #[allow(unused_variables)]
-pub trait CuseHandlers {
-	fn cuse_init(
-		&mut self,
-		request: &protocol::CuseInitRequest,
-	) -> protocol::CuseInitResponse {
-		protocol::CuseInitResponse::new()
-	}
-
+pub trait CuseHandlers<S: OutputStream> {
 	fn flush(
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::FlushRequest,
-		respond: impl for<'a> server::Respond<protocol::FlushResponse<'a>>,
-	) {
-		server::unhandled_request(respond);
+		send_reply: impl for<'a> SendReply<S, protocol::FlushResponse<'a>>,
+	) -> Result<(), Error<S::Error>> {
+		server::unhandled_request(ctx, send_reply)
 	}
 
 	fn fsync(
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::FsyncRequest,
-		respond: impl for<'a> server::Respond<protocol::FsyncResponse<'a>>,
-	) {
-		server::unhandled_request(respond);
+		send_reply: impl for<'a> SendReply<S, protocol::FsyncResponse<'a>>,
+	) -> Result<(), Error<S::Error>> {
+		server::unhandled_request(ctx, send_reply)
 	}
 
 	#[cfg(any(doc, feature = "unstable_ioctl"))]
@@ -51,44 +45,44 @@ pub trait CuseHandlers {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::IoctlRequest,
-		respond: impl for<'a> server::Respond<protocol::IoctlResponse<'a>>,
-	) {
-		server::unhandled_request(respond);
+		send_reply: impl for<'a> SendReply<S, protocol::IoctlResponse<'a>>,
+	) -> Result<(), Error<S::Error>> {
+		server::unhandled_request(ctx, send_reply)
 	}
 
 	fn open(
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::OpenRequest,
-		respond: impl for<'a> server::Respond<protocol::OpenResponse<'a>>,
-	) {
-		server::unhandled_request(respond);
+		send_reply: impl for<'a> SendReply<S, protocol::OpenResponse<'a>>,
+	) -> Result<(), Error<S::Error>> {
+		server::unhandled_request(ctx, send_reply)
 	}
 
 	fn read(
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::ReadRequest,
-		respond: impl for<'a> server::Respond<protocol::ReadResponse<'a>>,
-	) {
-		server::unhandled_request(respond);
+		send_reply: impl for<'a> SendReply<S, protocol::ReadResponse<'a>>,
+	) -> Result<(), Error<S::Error>> {
+		server::unhandled_request(ctx, send_reply)
 	}
 
 	fn release(
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::ReleaseRequest,
-		respond: impl for<'a> server::Respond<protocol::ReleaseResponse<'a>>,
-	) {
-		server::unhandled_request(respond);
+		send_reply: impl for<'a> SendReply<S, protocol::ReleaseResponse<'a>>,
+	) -> Result<(), Error<S::Error>> {
+		server::unhandled_request(ctx, send_reply)
 	}
 
 	fn write(
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::WriteRequest,
-		respond: impl for<'a> server::Respond<protocol::WriteResponse<'a>>,
-	) {
-		server::unhandled_request(respond);
+		send_reply: impl for<'a> SendReply<S, protocol::WriteResponse<'a>>,
+	) -> Result<(), Error<S::Error>> {
+		server::unhandled_request(ctx, send_reply)
 	}
 }

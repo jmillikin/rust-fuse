@@ -14,12 +14,32 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::num::NonZeroU16;
+use core::mem::{self, MaybeUninit};
+use core::num::{NonZeroU16, NonZeroUsize};
+
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::{env, ffi, fs, io, panic, path, sync, thread};
-use core::mem::{self, MaybeUninit};
 
 struct PrintHooks {}
+
+impl fuse::server::basic::ServerHooks for PrintHooks {
+	fn unknown_request(&self, request: &fuse::UnknownRequest) {
+		println!("\n[unknown_request]\n{:#?}", request);
+	}
+
+	fn unhandled_request(&self, header: &fuse::server::RequestHeader) {
+		println!("\n[unhandled_request]\n{:#?}", header);
+	}
+
+	fn request_error(
+		&self,
+		header: &fuse::server::RequestHeader,
+		err: fuse::io::RequestError,
+	) {
+		println!("\n[request_error]\n{:#?}", header);
+		println!("{:#?}", err);
+	}
+}
 
 impl fuse::ServerHooks for PrintHooks {
 	fn unknown_request(&self, request: &fuse::UnknownRequest) {
@@ -121,7 +141,7 @@ pub fn interop_test(
 	}
 }
 
-struct DevCuse {
+pub struct DevCuse {
 	dev_cuse: fs::File,
 	pipe_r: fs::File,
 }
@@ -143,11 +163,11 @@ impl DevCuse {
 		let pipe_r = unsafe { fs::File::from_raw_fd(pipe_fds[0]) };
 		let pipe_w = unsafe { fs::File::from_raw_fd(pipe_fds[1]) };
 
-		(Self { dev_cuse, pipe_r}, pipe_w)
+		(Self { dev_cuse, pipe_r }, pipe_w)
 	}
 }
 
-impl fuse::io::Channel for DevCuse {
+impl fuse::io::OutputStream for DevCuse {
 	type Error = io::Error;
 
 	fn send(&self, buf: &[u8]) -> Result<(), io::Error> {
@@ -189,8 +209,12 @@ impl fuse::io::Channel for DevCuse {
 		}
 		Ok(())
 	}
+}
 
-	fn receive(&self, buf: &mut [u8]) -> Result<usize, io::Error> {
+impl fuse::io::InputStream for DevCuse {
+	type Error = io::Error;
+
+	fn recv(&self, buf: &mut [u8]) -> Result<Option<NonZeroUsize>, io::Error> {
 		use std::io::Read;
 		use std::os::unix::io::AsRawFd;
 		use fuse::io::ChannelError;
@@ -221,7 +245,7 @@ impl fuse::io::Channel for DevCuse {
 
 			if (poll_fds[1].revents & libc::POLLERR) > 0 ||
 			   (poll_fds[1].revents & libc::POLLHUP) > 0 {
-				return Ok(0);
+				return Ok(None);
 			}
 
 			if (poll_fds[0].revents & libc::POLLIN) == 0 {
@@ -229,7 +253,7 @@ impl fuse::io::Channel for DevCuse {
 			}
 
 			match Read::read(&mut &self.dev_cuse, buf) {
-				Ok(size) => return Ok(size),
+				Ok(size) => return Ok(NonZeroUsize::new(size)),
 				Err(err) => match err.error_code() {
 					Some(fuse::ErrorCode::ENOENT) => {
 						// The next request in the kernel buffer was interrupted before
@@ -245,21 +269,16 @@ impl fuse::io::Channel for DevCuse {
 	}
 }
 
-impl fuse::io::ServerChannel for DevCuse {
-	fn try_clone(&self) -> Result<Self, io::Error> {
-		unimplemented!()
-	}
-}
-
-impl fuse::io::CuseServerChannel for DevCuse {}
-
 extern "C" {
 	#[link_name = "mktemp"]
 	fn libc_mktemp(template: *mut libc::c_char) -> *mut libc::c_char;
 }
 
+const CUSE_DEV_MAJOR: libc::c_uint = 240; // "LOCAL/EXPERIMENTAL USE"
+const CUSE_DEV_MINOR: libc::c_uint = 1;
+
 pub fn cuse_interop_test(
-	chardev: impl fuse::CuseHandlers + Send + 'static,
+	handlers: impl fuse::server::basic::CuseHandlers<DevCuse> + Send + 'static,
 	test_fn: impl FnOnce(&path::Path) + panic::UnwindSafe,
 ) {
 	let mut mktemp_template = {
@@ -278,6 +297,12 @@ pub fn cuse_interop_test(
 	let device_path = path::Path::new(ffi::OsStr::from_bytes(&mktemp_template))
 		.to_path_buf();
 
+	let mknod_rc = unsafe {
+		let dev_t = libc::makedev(CUSE_DEV_MAJOR, CUSE_DEV_MINOR);
+		libc::mknod(device_path_cstr.as_ptr(), libc::S_IFCHR | 0o777, dev_t)
+	};
+	assert_eq!(mknod_rc, 0);
+
 	mktemp_template = mktemp_template.split_off("/dev/".len());
 
 	let (dev_cuse, dev_cuse_closer) = DevCuse::new();
@@ -286,14 +311,22 @@ pub fn cuse_interop_test(
 	let server_thread = {
 		let ready = sync::Arc::clone(&server_ready);
 		thread::spawn(move || {
-			use fuse::CuseServerBuilder as SrvBuilder;
+			use fuse::server::CuseConnectionBuilder;
+			use fuse::server::basic::CuseServerBuilder;
+
 			let devname = fuse::CuseDeviceName::from_bytes(&mktemp_template)
 				.unwrap();
-			let mut srv = SrvBuilder::new(devname, dev_cuse, chardev)
-				.set_hooks(PrintHooks {})
-				.build()?;
+			let conn = CuseConnectionBuilder::new(dev_cuse, devname)
+				.device_number(CUSE_DEV_MAJOR, CUSE_DEV_MINOR)
+				.build()
+				.unwrap();
+			let srv = CuseServerBuilder::new(conn, handlers)
+				.server_hooks(PrintHooks {})
+				.build();
 			ready.wait();
-			srv.executor_mut().run()
+
+			let mut buf = fuse::io::ArrayBuffer::new();
+			srv.serve(&mut buf).unwrap();
 		})
 	};
 

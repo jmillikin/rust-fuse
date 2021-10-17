@@ -14,27 +14,21 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#![cfg(feature = "std")]
+use crate::io::RequestError;
+use crate::protocol::common::UnknownRequest;
+use crate::server::RequestHeader;
 
-#[cfg(feature = "nightly_syscall_fuse_mount")]
-mod linux_syscalls;
+#[allow(unused_variables)]
+pub trait ServerHooks {
+	fn request(&self, header: &RequestHeader) {}
 
-mod dev_fuse_channel;
-pub use self::dev_fuse_channel::*;
+	fn unknown_request(&self, request: &UnknownRequest) {}
 
-mod fuse_server_builder;
-pub use self::fuse_server_builder::*;
+	fn unhandled_request(&self, header: &RequestHeader) {}
 
-#[cfg(any(
-	doc,
-	feature = "libc_fuse_mount",
-	feature = "nightly_syscall_fuse_mount",
-))]
-mod fuse_mount;
+	fn request_error(&self, header: &RequestHeader, err: RequestError) {}
+}
 
-#[cfg(any(
-	doc,
-	feature = "libc_fuse_mount",
-	feature = "nightly_syscall_fuse_mount",
-))]
-pub use self::fuse_mount::*;
+pub enum NoopServerHooks {}
+
+impl ServerHooks for NoopServerHooks {}

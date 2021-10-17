@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+pub mod basic;
 mod connection;
 mod cuse_connection;
 mod cuse_request;
@@ -22,7 +23,7 @@ mod fuse_request;
 mod reply;
 mod request;
 
-pub use self::cuse_connection::CuseConnection;
+pub use self::cuse_connection::{CuseConnection, CuseConnectionBuilder};
 pub use self::cuse_request::{CuseOperation, CuseRequest};
 pub use self::fuse_connection::FuseConnection;
 pub use self::fuse_request::{FuseOperation, FuseRequest};

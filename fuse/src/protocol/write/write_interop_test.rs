@@ -17,54 +17,45 @@
 use std::panic;
 use std::sync::mpsc;
 
+use fuse::server::basic;
 use interop_testutil::{cuse_interop_test, diff_str, path_cstr};
 
 struct TestCharDev {
 	requests: mpsc::Sender<String>,
 }
 
-impl fuse::CuseHandlers for TestCharDev {
-	fn cuse_init(
-		&mut self,
-		_request: &fuse::CuseInitRequest,
-	) -> fuse::CuseInitResponse {
-		let mut reply = fuse::CuseInitResponse::new();
-		reply.set_dev_major(100);
-		reply.set_dev_minor(101);
-		reply
-	}
-
+impl<S: fuse::io::OutputStream> basic::CuseHandlers<S> for TestCharDev {
 	fn open(
 		&self,
-		_ctx: fuse::ServerContext,
+		_ctx: basic::ServerContext,
 		request: &fuse::OpenRequest,
-		respond: impl for<'a> fuse::Respond<fuse::OpenResponse<'a>>,
-	) {
+		send_reply: impl for<'a> basic::SendReply<S, fuse::OpenResponse<'a>>,
+	)  -> Result<(), fuse::io::Error<S::Error>> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut resp = fuse::OpenResponse::new();
 		resp.set_handle(12345);
-		respond.ok(&resp);
+		send_reply.ok(&resp)
 	}
 
 	fn release(
 		&self,
-		_ctx: fuse::ServerContext,
+		_ctx: basic::ServerContext,
 		request: &fuse::ReleaseRequest,
-		respond: impl for<'a> fuse::Respond<fuse::ReleaseResponse<'a>>,
-	) {
+		send_reply: impl for<'a> basic::SendReply<S, fuse::ReleaseResponse<'a>>,
+	)  -> Result<(), fuse::io::Error<S::Error>> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let resp = fuse::ReleaseResponse::new();
-		respond.ok(&resp);
+		send_reply.ok(&resp)
 	}
 
 	fn write(
 		&self,
-		_ctx: fuse::ServerContext,
+		_ctx: basic::ServerContext,
 		request: &fuse::WriteRequest,
-		respond: impl for<'a> fuse::Respond<fuse::WriteResponse<'a>>,
-	) {
+		send_reply: impl for<'a> basic::SendReply<S, fuse::WriteResponse<'a>>,
+	)  -> Result<(), fuse::io::Error<S::Error>> {
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the lock owner, which is non-deterministic.
@@ -80,7 +71,7 @@ impl fuse::CuseHandlers for TestCharDev {
 
 		let mut resp = fuse::WriteResponse::new();
 		resp.set_size(request.value().len() as u32);
-		respond.ok(&resp);
+		send_reply.ok(&resp)
 	}
 }
 
@@ -99,12 +90,6 @@ fn cuse_write_test(
 fn cuse_write() {
 	let requests = cuse_write_test(|dev_path| {
 		let path = path_cstr(dev_path.to_owned());
-
-		let mknod_rc = unsafe {
-			let dev_t = libc::makedev(100, 101);
-			libc::mknod(path.as_ptr(), libc::S_IFCHR | 0o777, dev_t)
-		};
-		assert_eq!(mknod_rc, 0);
 
 		let file_fd = unsafe { libc::open(path.as_ptr(), libc::O_RDWR) };
 		assert_ne!(file_fd, -1);

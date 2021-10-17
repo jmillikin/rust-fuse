@@ -1,4 +1,4 @@
-// Copyright 2020 John Millikin and the rust-fuse contributors.
+// Copyright 2021 John Millikin and the rust-fuse contributors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,27 +14,12 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#![cfg(feature = "std")]
+mod cuse_handlers;
+mod cuse_server;
+mod server;
+mod server_hooks;
 
-#[cfg(feature = "nightly_syscall_fuse_mount")]
-mod linux_syscalls;
-
-mod dev_fuse_channel;
-pub use self::dev_fuse_channel::*;
-
-mod fuse_server_builder;
-pub use self::fuse_server_builder::*;
-
-#[cfg(any(
-	doc,
-	feature = "libc_fuse_mount",
-	feature = "nightly_syscall_fuse_mount",
-))]
-mod fuse_mount;
-
-#[cfg(any(
-	doc,
-	feature = "libc_fuse_mount",
-	feature = "nightly_syscall_fuse_mount",
-))]
-pub use self::fuse_mount::*;
+pub use self::cuse_handlers::CuseHandlers;
+pub use self::cuse_server::{CuseServer, CuseServerBuilder};
+pub use self::server::{SendReply, ServerContext};
+pub use self::server_hooks::{NoopServerHooks, ServerHooks};

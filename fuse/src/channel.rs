@@ -49,6 +49,10 @@ pub(crate) struct FileChannel {
 
 #[cfg(feature = "std")]
 impl FileChannel {
+	#[cfg(any(
+		feature = "libc_fuse_mount",
+		feature = "nightly_syscall_fuse_mount",
+	))]
 	pub(crate) fn new(file: std::fs::File) -> Self {
 		Self { file }
 	}

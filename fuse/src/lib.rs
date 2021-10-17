@@ -31,16 +31,6 @@ mod internal;
 mod channel;
 mod error;
 
-mod cuse_handlers;
-pub use self::cuse_handlers::CuseHandlers;
-
-mod cuse_server;
-pub use self::cuse_server::{
-	CuseServer,
-	CuseServerBuilder,
-	CuseServerExecutor,
-};
-
 mod fuse_handlers;
 pub use self::fuse_handlers::FuseHandlers;
 
