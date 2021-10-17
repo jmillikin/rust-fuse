@@ -78,7 +78,7 @@ impl fuse::ServerHooks for PrintHooks {
 	}
 }
 
-pub fn interop_test(
+pub fn fuse_interop_test(
 	fs: impl fuse::FuseHandlers + Send + 'static,
 	test_fn: impl FnOnce(&std::path::Path) + panic::UnwindSafe,
 ) {

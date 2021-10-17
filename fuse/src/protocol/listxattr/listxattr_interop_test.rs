@@ -17,7 +17,7 @@
 use std::panic;
 use std::sync::mpsc;
 
-use interop_testutil::{diff_str, errno, interop_test, path_cstr};
+use interop_testutil::{diff_str, errno, fuse_interop_test, path_cstr};
 
 struct TestFS {
 	requests: mpsc::Sender<String>,
@@ -104,7 +104,7 @@ fn listxattr_test(
 	let fs = TestFS {
 		requests: request_send,
 	};
-	interop_test(fs, test_fn);
+	fuse_interop_test(fs, test_fn);
 	request_recv.iter().collect()
 }
 
