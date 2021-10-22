@@ -20,6 +20,7 @@ use core::num::NonZeroUsize;
 use crate::internal::fuse_kernel;
 use crate::io::{Buffer, RequestError};
 use crate::io::decode::RequestBuf;
+use crate::protocol::UnknownRequest;
 use crate::server::request::{Request, RequestHeader};
 
 pub struct FuseRequest<'a> {
@@ -42,6 +43,10 @@ impl<'a> FuseRequest<'a> {
 
 	pub fn header(&self) -> &'a RequestHeader {
 		RequestHeader::from_buf(self.buf)
+	}
+
+	pub fn into_unknown(self) -> UnknownRequest<'a> {
+		UnknownRequest::new(self.buf)
 	}
 
 	pub fn operation(&self) -> Option<FuseOperation> {
@@ -169,7 +174,6 @@ mod impls {
 	fuse_request! { SymlinkRequest<'a>     }
 	fuse_request! { UnlinkRequest<'a>      }
 	fuse_request! { WriteRequest<'a>       }
-	fuse_request! { UnknownRequest<'a>     }
 
 	#[cfg(any(doc, feature = "unstable_bmap"))]
 	fuse_request! { BmapRequest<'a> }

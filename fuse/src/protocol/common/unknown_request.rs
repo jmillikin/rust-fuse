@@ -30,6 +30,13 @@ enum UnknownBody<'a> {
 }
 
 impl<'a> UnknownRequest<'a> {
+	pub(crate) fn new(buf: decode::RequestBuf<'a>) -> Self {
+		Self {
+			header: buf.header(),
+			body: RefCell::new(UnknownBody::Raw(buf)),
+		}
+	}
+
 	pub fn header(&self) -> &RequestHeader {
 		RequestHeader::new_ref(&self.header)
 	}
@@ -59,17 +66,5 @@ impl fmt::Debug for UnknownRequest<'_> {
 			.field("header", &self.header())
 			.field("body", &format_args!("{:?}", self.body()))
 			.finish()
-	}
-}
-
-impl<'a, T> decode::DecodeRequest<'a, T> for UnknownRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		Ok(Self {
-			header: buf.header(),
-			body: RefCell::new(UnknownBody::Raw(buf)),
-		})
 	}
 }

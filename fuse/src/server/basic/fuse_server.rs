@@ -187,7 +187,7 @@ fn fuse_request_dispatch<S: OutputStream>(
 		Some(FuseOp::Write) => do_dispatch!(write),
 		_ => {
 			if let Some(hooks) = hooks {
-				let request = request.decode()?;
+				let request = request.into_unknown();
 				hooks.unknown_request(&request);
 			}
 			conn.reply_err(request_id, ErrorCode::ENOSYS.into())

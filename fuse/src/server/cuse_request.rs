@@ -19,6 +19,7 @@ use core::num::NonZeroUsize;
 use crate::internal::fuse_kernel;
 use crate::io::{Buffer, RequestError};
 use crate::io::decode::RequestBuf;
+use crate::protocol::UnknownRequest;
 use crate::server::request::{Request, RequestHeader};
 
 pub struct CuseRequest<'a> {
@@ -41,6 +42,10 @@ impl<'a> CuseRequest<'a> {
 
 	pub fn header(&self) -> &'a RequestHeader {
 		RequestHeader::from_buf(self.buf)
+	}
+
+	pub fn into_unknown(self) -> UnknownRequest<'a> {
+		UnknownRequest::new(self.buf)
 	}
 
 	pub fn operation(&self) -> Option<CuseOperation> {
@@ -111,7 +116,6 @@ mod impls {
 	cuse_request! { ReleaseRequest<'a> }
 	cuse_request! { FsyncRequest<'a>   }
 	cuse_request! { FlushRequest<'a>   }
-	cuse_request! { UnknownRequest<'a> }
 
 	#[cfg(any(doc, feature = "unstable_ioctl"))]
 	cuse_request! { IoctlRequest<'a> }
