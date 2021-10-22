@@ -24,18 +24,20 @@ struct TestCharDev {
 	requests: mpsc::Sender<String>,
 }
 
-impl<S: fuse::io::OutputStream> basic::CuseHandlers<S> for TestCharDev {
+type S = interop_testutil::DevCuse;
+
+impl basic::CuseHandlers<S> for TestCharDev {
 	fn open(
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::OpenRequest,
 		send_reply: impl for<'a> basic::SendReply<S, fuse::OpenResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+	) {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut resp = fuse::OpenResponse::new();
 		resp.set_handle(12345);
-		send_reply.ok(&resp)
+		send_reply.ok(&resp).unwrap()
 	}
 
 	fn read(
@@ -43,7 +45,7 @@ impl<S: fuse::io::OutputStream> basic::CuseHandlers<S> for TestCharDev {
 		_ctx: basic::ServerContext,
 		request: &fuse::ReadRequest,
 		send_reply: impl for<'a> basic::SendReply<S, fuse::ReadResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+	) {
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the lock owner, which is non-deterministic.
@@ -58,7 +60,7 @@ impl<S: fuse::io::OutputStream> basic::CuseHandlers<S> for TestCharDev {
 		self.requests.send(request_str).unwrap();
 
 		let resp = fuse::ReadResponse::from_bytes(b"file_content");
-		send_reply.ok(&resp)
+		send_reply.ok(&resp).unwrap()
 	}
 
 	fn release(
@@ -66,11 +68,11 @@ impl<S: fuse::io::OutputStream> basic::CuseHandlers<S> for TestCharDev {
 		_ctx: basic::ServerContext,
 		request: &fuse::ReleaseRequest,
 		send_reply: impl for<'a> basic::SendReply<S, fuse::ReleaseResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+	) {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let resp = fuse::ReleaseResponse::new();
-		send_reply.ok(&resp)
+		let _ = send_reply.ok(&resp);
 	}
 }
 

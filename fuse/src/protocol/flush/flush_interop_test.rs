@@ -26,15 +26,17 @@ struct TestFS {
 
 impl interop_testutil::TestFS for TestFS {}
 
-impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
+type S = fuse::os::unix::DevFuse;
+
+impl basic::FuseHandlers<S> for TestFS {
 	fn lookup(
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::LookupRequest,
 		send_reply: impl for<'a> basic::SendReply<S, fuse::LookupResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+	) {
 		if request.parent_id() != fuse::ROOT_ID {
-			return send_reply.err(fuse::ErrorCode::ENOENT);
+			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
 		}
 
 		let node_id: u64;
@@ -45,7 +47,7 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 		{
 			node_id = 3;
 		} else {
-			return send_reply.err(fuse::ErrorCode::ENOENT);
+			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -57,7 +59,7 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 		attr.set_mode(fuse::FileType::Regular | 0o644);
 		attr.set_nlink(2);
 
-		send_reply.ok(&resp)
+		send_reply.ok(&resp).unwrap()
 	}
 
 	fn open(
@@ -65,14 +67,14 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 		_ctx: basic::ServerContext,
 		request: &fuse::OpenRequest,
 		send_reply: impl for<'a> basic::SendReply<S, fuse::OpenResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+	) {
 		let mut resp = fuse::OpenResponse::new();
 		if request.node_id() == fuse::NodeId::new(2).unwrap() {
 			resp.set_handle(1002);
 		} else {
 			resp.set_handle(1003);
 		}
-		send_reply.ok(&resp)
+		send_reply.ok(&resp).unwrap()
 	}
 
 	fn flush(
@@ -80,7 +82,7 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 		_ctx: basic::ServerContext,
 		request: &fuse::FlushRequest,
 		send_reply: impl for<'a> basic::SendReply<S, fuse::FlushResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+	) {
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the lock owner, which is non-deterministic.
@@ -96,9 +98,9 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 
 		if request.handle() == 1002 {
 			let resp = fuse::FlushResponse::new();
-			send_reply.ok(&resp)
+			send_reply.ok(&resp).unwrap()
 		} else {
-			send_reply.err(fuse::ErrorCode::E2BIG)
+			send_reply.err(fuse::ErrorCode::E2BIG).unwrap()
 		}
 	}
 }

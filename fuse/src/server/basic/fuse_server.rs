@@ -46,7 +46,7 @@ where
 				&self.handlers,
 				self.hooks.as_ref(),
 				request,
-			)?;
+			)
 		}
 		Ok(())
 	}
@@ -109,7 +109,7 @@ fn fuse_request_dispatch<S: OutputStream>(
 	handlers: &impl FuseHandlers<S>,
 	hooks: Option<&impl ServerHooks>,
 	request: FuseRequest,
-) -> Result<(), io::Error<S::Error>> {
+) {
 	let header = request.header();
 	let request_id = header.request_id();
 	if let Some(hooks) = hooks {
@@ -135,7 +135,7 @@ fn fuse_request_dispatch<S: OutputStream>(
 					if let Some(ref hooks) = hooks {
 						hooks.request_error(header, err);
 					}
-					conn.reply_err(request_id, ErrorCode::EIO.into())
+					let _ = conn.reply_err(request_id, ErrorCode::EIO.into());
 				},
 			}
 		}};
@@ -150,9 +150,17 @@ fn fuse_request_dispatch<S: OutputStream>(
 		Some(FuseOp::Fallocate) => do_dispatch!(fallocate),
 		Some(FuseOp::Flush) => do_dispatch!(flush),
 		Some(FuseOp::Forget) => {
-			let request = request.decode()?;
-			handlers.forget(ctx, &request);
-			Ok(())
+			match request.decode() {
+				Ok(request) => {
+					handlers.forget(ctx, &request);
+				},
+				Err(err) => {
+					if let Some(ref hooks) = hooks {
+						hooks.request_error(header, err);
+					}
+					let _ = conn.reply_err(request_id, ErrorCode::EIO.into());
+				},
+			}
 		},
 		Some(FuseOp::Fsync) => do_dispatch!(fsync),
 		Some(FuseOp::Fsyncdir) => do_dispatch!(fsyncdir),
@@ -190,7 +198,7 @@ fn fuse_request_dispatch<S: OutputStream>(
 				let request = request.into_unknown();
 				hooks.unknown_request(&request);
 			}
-			conn.reply_err(request_id, ErrorCode::ENOSYS.into())
+			let _ = conn.reply_err(request_id, ErrorCode::ENOSYS.into());
 		},
 	}
 }

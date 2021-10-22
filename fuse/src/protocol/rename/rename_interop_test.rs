@@ -26,15 +26,17 @@ struct TestFS {
 
 impl interop_testutil::TestFS for TestFS {}
 
-impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
+type S = fuse::os::unix::DevFuse;
+
+impl basic::FuseHandlers<S> for TestFS {
 	fn lookup(
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::LookupRequest,
 		send_reply: impl for<'a> basic::SendReply<S, fuse::LookupResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+	) {
 		if request.parent_id() != fuse::ROOT_ID {
-			return send_reply.err(fuse::ErrorCode::ENOENT);
+			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -50,7 +52,7 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 			attr.set_mode(fuse::FileType::Regular | 0o644);
 			attr.set_nlink(1);
 
-			return send_reply.ok(&resp);
+			return send_reply.ok(&resp).unwrap();
 		}
 
 		if request.name()
@@ -62,7 +64,7 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 			attr.set_mode(fuse::FileType::Regular | 0o644);
 			attr.set_nlink(1);
 
-			return send_reply.ok(&resp);
+			return send_reply.ok(&resp).unwrap();
 		}
 
 		if request.name()
@@ -74,10 +76,10 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 			attr.set_mode(fuse::FileType::Directory | 0o755);
 			attr.set_nlink(2);
 
-			return send_reply.ok(&resp);
+			return send_reply.ok(&resp).unwrap();
 		}
 
-		send_reply.err(fuse::ErrorCode::ENOENT)
+		send_reply.err(fuse::ErrorCode::ENOENT).unwrap()
 	}
 
 	fn rename(
@@ -85,10 +87,10 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 		_ctx: basic::ServerContext,
 		request: &fuse::RenameRequest,
 		send_reply: impl for<'a> basic::SendReply<S, fuse::RenameResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+	) {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 		let resp = fuse::RenameResponse::new();
-		send_reply.ok(&resp)
+		send_reply.ok(&resp).unwrap()
 	}
 }
 

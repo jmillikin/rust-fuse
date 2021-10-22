@@ -28,18 +28,20 @@ struct TestFS {
 
 impl interop_testutil::TestFS for TestFS {}
 
-impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
+type S = fuse::os::unix::DevFuse;
+
+impl basic::FuseHandlers<S> for TestFS {
 	fn lookup(
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::LookupRequest,
 		send_reply: impl for<'a> basic::SendReply<S, fuse::LookupResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+	) {
 		if request.parent_id() != fuse::ROOT_ID {
-			return send_reply.err(fuse::ErrorCode::ENOENT);
+			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
 		}
 		if request.name() != fuse::NodeName::from_bytes(b"readdir.d").unwrap() {
-			return send_reply.err(fuse::ErrorCode::ENOENT);
+			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -51,7 +53,7 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 		attr.set_mode(fuse::FileType::Directory | 0o755);
 		attr.set_nlink(2);
 
-		send_reply.ok(&resp)
+		send_reply.ok(&resp).unwrap()
 	}
 
 	fn opendir(
@@ -59,10 +61,10 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 		_ctx: basic::ServerContext,
 		_request: &fuse::OpendirRequest,
 		send_reply: impl for<'a> basic::SendReply<S, fuse::OpendirResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+	) {
 		let mut resp = fuse::OpendirResponse::new();
 		resp.set_handle(12345);
-		send_reply.ok(&resp)
+		send_reply.ok(&resp).unwrap()
 	}
 
 	fn readdir(
@@ -70,7 +72,7 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 		_ctx: basic::ServerContext,
 		request: &fuse::ReaddirRequest,
 		send_reply: impl for<'a> basic::SendReply<S, fuse::ReaddirResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+	) {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut cursor: u64 = match request.cursor() {
@@ -97,7 +99,7 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 			);
 			entry.set_file_type(fuse::FileType::Symlink);
 
-			return send_reply.ok(&resp);
+			return send_reply.ok(&resp).unwrap();
 		}
 
 		if cursor == 2 {
@@ -110,7 +112,7 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 			entry.set_file_type(fuse::FileType::Directory);
 		}
 
-		send_reply.ok(&resp)
+		send_reply.ok(&resp).unwrap()
 	}
 
 	fn releasedir(
@@ -118,9 +120,9 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 		_ctx: basic::ServerContext,
 		_request: &fuse::ReleasedirRequest,
 		send_reply: impl for<'a> basic::SendReply<S, fuse::ReleasedirResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+	) {
 		let resp = fuse::ReleasedirResponse::new();
-		send_reply.ok(&resp)
+		let _ = send_reply.ok(&resp);
 	}
 }
 

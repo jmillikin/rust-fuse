@@ -46,7 +46,7 @@ where
 				&self.handlers,
 				self.hooks.as_ref(),
 				request,
-			)?;
+			)
 		}
 		Ok(())
 	}
@@ -109,7 +109,7 @@ fn cuse_request_dispatch<S: OutputStream>(
 	handlers: &impl CuseHandlers<S>,
 	hooks: Option<&impl ServerHooks>,
 	request: CuseRequest,
-) -> Result<(), io::Error<S::Error>> {
+) {
 	let header = request.header();
 	let request_id = header.request_id();
 	if let Some(hooks) = hooks {
@@ -136,7 +136,7 @@ fn cuse_request_dispatch<S: OutputStream>(
 					if let Some(ref hooks) = hooks {
 						hooks.request_error(header, err);
 					}
-					conn.reply_err(request_id, ErrorCode::EIO.into())
+					let _ = conn.reply_err(request_id, ErrorCode::EIO.into());
 				},
 			}
 		}};
@@ -157,7 +157,7 @@ fn cuse_request_dispatch<S: OutputStream>(
 				let request = request.into_unknown();
 				hooks.unknown_request(&request);
 			}
-			conn.reply_err(request_id, ErrorCode::ENOSYS.into())
+			let _ = conn.reply_err(request_id, ErrorCode::ENOSYS.into());
 		},
 	}
 }

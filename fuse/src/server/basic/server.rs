@@ -40,9 +40,9 @@ pub trait SendReply<S: OutputStream, R> {
 pub(super) fn unhandled_request<S: OutputStream, R>(
 	ctx: ServerContext,
 	send_reply: impl SendReply<S, R>,
-) -> Result<(), Error<S::Error>> {
+) {
 	if let Some(hooks) = ctx.hooks {
 		hooks.unhandled_request(ctx.header);
 	}
-	send_reply.err(ErrorCode::ENOSYS)
+	let _ = send_reply.err(ErrorCode::ENOSYS);
 }

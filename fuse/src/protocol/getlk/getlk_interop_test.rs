@@ -37,15 +37,17 @@ impl interop_testutil::TestFS for TestFS {
 	}
 }
 
-impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
+type S = fuse::os::unix::DevFuse;
+
+impl basic::FuseHandlers<S> for TestFS {
 	fn lookup(
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::LookupRequest,
 		send_reply: impl for<'a> basic::SendReply<S, fuse::LookupResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+	) {
 		if request.parent_id() != fuse::ROOT_ID {
-			return send_reply.err(fuse::ErrorCode::ENOENT);
+			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -62,7 +64,7 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 		{
 			node.set_id(fuse::NodeId::new(4).unwrap());
 		} else {
-			return send_reply.err(fuse::ErrorCode::ENOENT);
+			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
 		}
 
 		node.set_cache_timeout(std::time::Duration::from_secs(60));
@@ -71,7 +73,7 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 		attr.set_mode(fuse::FileType::Regular | 0o644);
 		attr.set_nlink(2);
 
-		send_reply.ok(&resp)
+		send_reply.ok(&resp).unwrap()
 	}
 
 	fn open(
@@ -79,10 +81,10 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 		_ctx: basic::ServerContext,
 		request: &fuse::OpenRequest,
 		send_reply: impl for<'a> basic::SendReply<S, fuse::OpenResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+	) {
 		let mut resp = fuse::OpenResponse::new();
 		resp.set_handle(1000 + request.node_id().get());
-		send_reply.ok(&resp)
+		send_reply.ok(&resp).unwrap()
 	}
 
 	fn getlk(
@@ -90,7 +92,7 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 		_ctx: basic::ServerContext,
 		request: &fuse::GetlkRequest,
 		send_reply: impl for<'a> basic::SendReply<S, fuse::GetlkResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+	) {
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the lock owner, which is non-deterministic.
@@ -118,7 +120,7 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 		} else {
 			resp.set_lock(None);
 		}
-		send_reply.ok(&resp)
+		send_reply.ok(&resp).unwrap()
 	}
 }
 

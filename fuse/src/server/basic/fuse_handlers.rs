@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::io::{Error, OutputStream};
+use crate::io::OutputStream;
 use crate::protocol;
 use crate::server::basic::server::{self, SendReply};
 
@@ -39,7 +39,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::AccessRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::AccessResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -50,7 +50,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::BmapRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::BmapResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -59,7 +59,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::CreateRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::CreateResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -68,7 +68,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::FallocateRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::FallocateResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -77,7 +77,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::FlushRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::FlushResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -93,7 +93,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::FsyncRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::FsyncResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -102,7 +102,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::FsyncdirRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::FsyncdirResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -111,7 +111,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::GetattrRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::GetattrResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -120,7 +120,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::GetlkRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::GetlkResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -129,7 +129,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::GetxattrRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::GetxattrResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -140,7 +140,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::IoctlRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::IoctlResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -149,7 +149,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::LinkRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::LinkResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -158,7 +158,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::ListxattrRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::ListxattrResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -167,7 +167,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::LookupRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::LookupResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -176,7 +176,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::LseekRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::LseekResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -185,7 +185,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::MkdirRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::MkdirResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -194,7 +194,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::MknodRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::MknodResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -203,7 +203,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::OpenRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::OpenResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -212,7 +212,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::OpendirRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::OpendirResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -221,7 +221,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::ReadRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::ReadResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -230,7 +230,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::ReaddirRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::ReaddirResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -239,7 +239,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::ReadlinkRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::ReadlinkResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -248,7 +248,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::ReleaseRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::ReleaseResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -257,7 +257,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::ReleasedirRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::ReleasedirResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -266,7 +266,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::RemovexattrRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::RemovexattrResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -275,7 +275,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::RenameRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::RenameResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -284,7 +284,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::RmdirRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::RmdirResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -295,7 +295,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::SetattrRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::SetattrResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -304,7 +304,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::SetlkRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::SetlkResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -313,7 +313,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::SetxattrRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::SetxattrResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -322,7 +322,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::StatfsRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::StatfsResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -331,7 +331,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::SymlinkRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::SymlinkResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -340,7 +340,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::UnlinkRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::UnlinkResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -349,7 +349,7 @@ pub trait FuseHandlers<S: OutputStream> {
 		ctx: server::ServerContext,
 		request: &protocol::WriteRequest,
 		send_reply: impl for<'a> SendReply<S, protocol::WriteResponse<'a>>,
-	) -> Result<(), Error<S::Error>> {
+	) {
 		server::unhandled_request(ctx, send_reply)
 	}
 }

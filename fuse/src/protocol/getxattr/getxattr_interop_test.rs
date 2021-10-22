@@ -26,19 +26,21 @@ struct TestFS {
 
 impl interop_testutil::TestFS for TestFS {}
 
-impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
+type S = fuse::os::unix::DevFuse;
+
+impl basic::FuseHandlers<S> for TestFS {
 	fn lookup(
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::LookupRequest,
 		send_reply: impl for<'a> basic::SendReply<S, fuse::LookupResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+	) {
 		if request.parent_id() != fuse::ROOT_ID {
-			return send_reply.err(fuse::ErrorCode::ENOENT);
+			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
 		}
 		if request.name() != fuse::NodeName::from_bytes(b"xattrs.txt").unwrap()
 		{
-			return send_reply.err(fuse::ErrorCode::ENOENT);
+			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -50,7 +52,7 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 		attr.set_mode(fuse::FileType::Regular | 0o644);
 		attr.set_nlink(1);
 
-		send_reply.ok(&resp)
+		send_reply.ok(&resp).unwrap()
 	}
 
 	fn getxattr(
@@ -58,7 +60,7 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 		_ctx: basic::ServerContext,
 		request: &fuse::GetxattrRequest,
 		send_reply: impl for<'a> basic::SendReply<S, fuse::GetxattrResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+	) {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let xattr_small =
@@ -69,23 +71,21 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 		if request.name() == xattr_small {
 			let mut resp = fuse::GetxattrResponse::new(request.size());
 			return match resp.try_set_value(b"small xattr value") {
-				Ok(_) => {
-					send_reply.ok(&resp)
-				},
+				Ok(_) => send_reply.ok(&resp).unwrap(),
 				Err(_) => {
 					// TODO: error should either have enough public info to let the caller
 					// return an appropriate error code, or ERANGE should be handled by
 					// the response dispatcher.
-					send_reply.err(fuse::ErrorCode::ERANGE)
+					send_reply.err(fuse::ErrorCode::ERANGE).unwrap()
 				},
-			}
+			};
 		}
 
 		if request.name() == xattr_toobig {
-			return send_reply.err(fuse::ErrorCode::E2BIG);
+			return send_reply.err(fuse::ErrorCode::E2BIG).unwrap();
 		}
 
-		send_reply.err(fuse::ErrorCode::ENOATTR)
+		send_reply.err(fuse::ErrorCode::ENOATTR).unwrap()
 	}
 }
 

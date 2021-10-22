@@ -26,14 +26,16 @@ struct TestFS {
 
 impl interop_testutil::TestFS for TestFS {}
 
-impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
+type S = fuse::os::unix::DevFuse;
+
+impl basic::FuseHandlers<S> for TestFS {
 	fn lookup(
 		&self,
 		_ctx: basic::ServerContext,
 		_request: &fuse::LookupRequest,
 		send_reply: impl for<'a> basic::SendReply<S, fuse::LookupResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
-		send_reply.err(fuse::ErrorCode::ENOENT)
+	) {
+		send_reply.err(fuse::ErrorCode::ENOENT).unwrap()
 	}
 
 	fn create(
@@ -41,7 +43,7 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 		_ctx: basic::ServerContext,
 		request: &fuse::CreateRequest,
 		send_reply: impl for<'a> basic::SendReply<S, fuse::CreateResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+	) {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut resp = fuse::CreateResponse::new();
@@ -55,7 +57,7 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for TestFS {
 		attr.set_mode(fuse::FileType::Regular | 0o644);
 		attr.set_nlink(2);
 
-		send_reply.ok(&resp)
+		send_reply.ok(&resp).unwrap()
 	}
 }
 
