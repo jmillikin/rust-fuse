@@ -30,6 +30,8 @@ mod internal;
 
 mod error;
 
+pub mod client;
+
 pub mod server;
 
 pub mod os {

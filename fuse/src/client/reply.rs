@@ -15,49 +15,46 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use core::fmt;
-use core::mem::size_of;
+use core::mem::transmute;
+use core::num::{NonZeroI32, NonZeroU64};
 
-use crate::error::ErrorCode;
-use crate::internal::fuse_kernel;
+use crate::internal::fuse_kernel::fuse_out_header;
+use crate::io;
 
-#[repr(transparent)]
+pub trait Reply<'a, T> {
+	fn decode(raw: &T) -> Result<Self, io::ReplyError>
+	where
+		Self: Sized;
+}
+
 #[derive(Copy, Clone)]
-pub struct ResponseHeader(fuse_kernel::fuse_out_header);
+pub struct ReplyHeader(fuse_out_header);
 
-impl ResponseHeader {
-	pub fn request_id(&self) -> u64 {
-		self.0.unique
+impl ReplyHeader {
+	#[allow(dead_code)]
+	pub(crate) fn new_ref<'a>(raw: &'a fuse_out_header) -> &'a ReplyHeader {
+		unsafe { transmute(raw) }
 	}
 
-	pub fn error(&self) -> Option<ErrorCode> {
-		let code = core::num::NonZeroU16::new((-self.0.error) as u16)?;
-		Some(ErrorCode::new(code))
+	pub fn request_id(&self) -> Option<NonZeroU64> {
+		NonZeroU64::new(self.0.unique)
 	}
 
-	pub fn error_name(&self) -> Option<&'static str> {
-		let code = self.error()?;
-		code.name()
+	pub fn error(&self) -> Option<NonZeroI32> {
+		NonZeroI32::new(self.0.error)
 	}
 
-	pub fn size(&self) -> u32 {
+	pub fn len(&self) -> u32 {
 		self.0.len
-	}
-
-	pub fn body_len(&self) -> u32 {
-		const BODY_START: u32 =
-			size_of::<fuse_kernel::fuse_out_header>() as u32;
-		return self.0.len.saturating_sub(BODY_START);
 	}
 }
 
-impl fmt::Debug for ResponseHeader {
+impl fmt::Debug for ReplyHeader {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("ResponseHeader")
-			.field("request_id", &self.0.unique)
+			.field("request_id", &format_args!("{:?}", &self.request_id()))
 			.field("error", &format_args!("{:?}", &self.error()))
-			.field("error_name", &format_args!("{:?}", &self.error_name()))
-			.field("size", &self.0.len)
-			.field("body_len", &self.body_len())
+			.field("len", &self.0.len)
 			.finish()
 	}
 }
