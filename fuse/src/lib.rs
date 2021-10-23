@@ -46,7 +46,7 @@ pub mod os {
 
 pub mod io;
 
-pub use crate::error::{Error, ErrorCode};
+pub use crate::error::ErrorCode;
 
 pub mod protocol;
 pub use crate::protocol::*;
