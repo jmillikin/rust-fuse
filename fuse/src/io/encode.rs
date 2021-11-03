@@ -18,7 +18,7 @@ use core::mem::size_of;
 use core::num::NonZeroU16;
 
 use crate::internal::fuse_kernel;
-use crate::io::{AsyncOutputStream, OutputStream};
+use crate::io::{AsyncOutputStream, OutputStream, SendError};
 
 pub(crate) trait EncodeReply {
 	fn encode<S: SendOnce>(
@@ -34,10 +34,7 @@ pub(crate) trait SendOnce {
 
 	fn send(self, buf: &[u8]) -> Self::Result;
 
-	fn send_vectored<const N: usize>(
-		self,
-		bufs: &[&[u8]; N],
-	) -> Self::Result;
+	fn send_vectored<const N: usize>(self, bufs: &[&[u8]; N]) -> Self::Result;
 }
 
 pub(crate) struct SyncSendOnce<'a, S>(&'a S);
@@ -56,16 +53,13 @@ impl<'a, S: AsyncOutputStream> AsyncSendOnce<'a, S> {
 }
 
 impl<T: OutputStream> SendOnce for SyncSendOnce<'_, T> {
-	type Result = Result<(), T::Error>;
+	type Result = Result<(), SendError<T::Error>>;
 
 	fn send(self, buf: &[u8]) -> Self::Result {
 		self.0.send(buf)
 	}
 
-	fn send_vectored<const N: usize>(
-		self,
-		bufs: &[&[u8]; N],
-	) -> Self::Result {
+	fn send_vectored<const N: usize>(self, bufs: &[&[u8]; N]) -> Self::Result {
 		self.0.send_vectored(bufs)
 	}
 }
@@ -77,10 +71,7 @@ impl<T: AsyncOutputStream> SendOnce for AsyncSendOnce<'_, T> {
 		self.0.send(buf)
 	}
 
-	fn send_vectored<const N: usize>(
-		self,
-		bufs: &[&[u8]; N],
-	) -> Self::Result {
+	fn send_vectored<const N: usize>(self, bufs: &[&[u8]; N]) -> Self::Result {
 		self.0.send_vectored(bufs)
 	}
 }

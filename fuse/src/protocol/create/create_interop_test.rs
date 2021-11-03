@@ -33,17 +33,17 @@ impl basic::FuseHandlers<S> for TestFS {
 		&self,
 		_ctx: basic::ServerContext,
 		_request: &fuse::LookupRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::LookupResponse<'a>>,
-	) {
-		send_reply.err(fuse::ErrorCode::ENOENT).unwrap()
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::LookupResponse, std::io::Error> {
+		send_reply.err(fuse::ErrorCode::ENOENT)
 	}
 
 	fn create(
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::CreateRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::CreateResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::CreateResponse, std::io::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut resp = fuse::CreateResponse::new();
@@ -57,7 +57,7 @@ impl basic::FuseHandlers<S> for TestFS {
 		attr.set_mode(fuse::FileType::Regular | 0o644);
 		attr.set_nlink(2);
 
-		send_reply.ok(&resp).unwrap()
+		send_reply.ok(&resp)
 	}
 }
 

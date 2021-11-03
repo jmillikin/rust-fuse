@@ -14,9 +14,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::io::OutputStream;
+use crate::io::{OutputStream, SendError};
 use crate::protocol;
-use crate::server::basic::server::{self, SendReply};
+use crate::server::basic::server::{self, SendReply, SentReply};
 
 /// User-provided handlers for CUSE operations.
 #[allow(unused_variables)]
@@ -25,8 +25,8 @@ pub trait CuseHandlers<S: OutputStream> {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::FlushRequest,
-		send_reply: impl for<'a> SendReply<S, protocol::FlushResponse<'a>>,
-	) {
+		send_reply: impl SendReply<S>,
+	) -> Result<SentReply<protocol::FlushResponse>, SendError<S::Error>> {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -34,8 +34,8 @@ pub trait CuseHandlers<S: OutputStream> {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::FsyncRequest,
-		send_reply: impl for<'a> SendReply<S, protocol::FsyncResponse<'a>>,
-	) {
+		send_reply: impl SendReply<S>,
+	) -> Result<SentReply<protocol::FsyncResponse>, SendError<S::Error>> {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -45,8 +45,8 @@ pub trait CuseHandlers<S: OutputStream> {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::IoctlRequest,
-		send_reply: impl for<'a> SendReply<S, protocol::IoctlResponse<'a>>,
-	) {
+		send_reply: impl SendReply<S>,
+	) -> Result<SentReply<protocol::IoctlResponse>, SendError<S::Error>> {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -54,8 +54,8 @@ pub trait CuseHandlers<S: OutputStream> {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::OpenRequest,
-		send_reply: impl for<'a> SendReply<S, protocol::OpenResponse<'a>>,
-	) {
+		send_reply: impl SendReply<S>,
+	) -> Result<SentReply<protocol::OpenResponse>, SendError<S::Error>> {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -63,8 +63,8 @@ pub trait CuseHandlers<S: OutputStream> {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::ReadRequest,
-		send_reply: impl for<'a> SendReply<S, protocol::ReadResponse<'a>>,
-	) {
+		send_reply: impl SendReply<S>,
+	) -> Result<SentReply<protocol::ReadResponse>, SendError<S::Error>> {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -72,8 +72,8 @@ pub trait CuseHandlers<S: OutputStream> {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::ReleaseRequest,
-		send_reply: impl for<'a> SendReply<S, protocol::ReleaseResponse<'a>>,
-	) {
+		send_reply: impl SendReply<S>,
+	) -> Result<SentReply<protocol::ReleaseResponse>, SendError<S::Error>> {
 		server::unhandled_request(ctx, send_reply)
 	}
 
@@ -81,8 +81,8 @@ pub trait CuseHandlers<S: OutputStream> {
 		&self,
 		ctx: server::ServerContext,
 		request: &protocol::WriteRequest,
-		send_reply: impl for<'a> SendReply<S, protocol::WriteResponse<'a>>,
-	) {
+		send_reply: impl SendReply<S>,
+	) -> Result<SentReply<protocol::WriteResponse>, SendError<S::Error>> {
 		server::unhandled_request(ctx, send_reply)
 	}
 }

@@ -33,16 +33,16 @@ impl basic::FuseHandlers<S> for TestFS {
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::LookupRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::LookupResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::LookupResponse, std::io::Error> {
 		if request.parent_id() != fuse::ROOT_ID {
-			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 		if request.name() != fuse::NodeName::from_bytes(b"exists.txt").unwrap()
 			&& request.name()
 				!= fuse::NodeName::from_bytes(b"link_target.txt").unwrap()
 		{
-			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -54,15 +54,15 @@ impl basic::FuseHandlers<S> for TestFS {
 		attr.set_mode(fuse::FileType::Regular | 0o644);
 		attr.set_nlink(1);
 
-		send_reply.ok(&resp).unwrap()
+		send_reply.ok(&resp)
 	}
 
 	fn link(
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::LinkRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::LinkResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::LinkResponse, std::io::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut resp = fuse::LinkResponse::new();
@@ -73,7 +73,7 @@ impl basic::FuseHandlers<S> for TestFS {
 		attr.set_mode(fuse::FileType::Regular | 0o644);
 		attr.set_nlink(1);
 
-		send_reply.ok(&resp).unwrap()
+		send_reply.ok(&resp)
 	}
 }
 

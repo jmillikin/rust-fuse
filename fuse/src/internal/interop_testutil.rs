@@ -15,12 +15,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use core::mem::{self, MaybeUninit};
-use core::num::NonZeroUsize;
 
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::{env, ffi, fs, io, panic, path, sync, thread};
 
 use fuse::os::unix::DevFuse;
+use fuse::io::{SendError, RecvError};
 use fuse::protocol::fuse_init;
 use fuse::server::basic;
 
@@ -155,15 +155,18 @@ impl DevCuse {
 impl fuse::io::OutputStream for DevCuse {
 	type Error = io::Error;
 
-	fn send(&self, buf: &[u8]) -> Result<(), io::Error> {
+	fn send(&self, buf: &[u8]) -> Result<(), SendError<io::Error>> {
 		use std::io::Write;
 
-		let write_size = Write::write(&mut &self.dev_cuse, buf)?;
+		let write_size = match Write::write(&mut &self.dev_cuse, buf) {
+			Err(err) => return Err(SendError::Other(err)),
+			Ok(x) => x,
+		};
 		if write_size < buf.len() {
-			return Err(io::Error::new(
+			return Err(SendError::Other(io::Error::new(
 				io::ErrorKind::Other,
 				"incomplete send",
-			));
+			)));
 		}
 		Ok(())
 	}
@@ -171,7 +174,7 @@ impl fuse::io::OutputStream for DevCuse {
 	fn send_vectored<const N: usize>(
 		&self,
 		bufs: &[&[u8]; N],
-	) -> Result<(), io::Error> {
+	) -> Result<(), SendError<io::Error>> {
 		use std::io::Write;
 
 		let mut bufs_len: usize = 0;
@@ -185,12 +188,15 @@ impl fuse::io::OutputStream for DevCuse {
 			unsafe { mem::transmute::<_, &[io::IoSlice; N]>(&uninit_bufs) }
 		};
 
-		let write_size = Write::write_vectored(&mut &self.dev_cuse, io_slices)?;
+		let write_size = match Write::write_vectored(&mut &self.dev_cuse, io_slices) {
+			Err(err) => return Err(SendError::Other(err)),
+			Ok(x) => x,
+		};
 		if write_size < bufs_len {
-			return Err(io::Error::new(
+			return Err(SendError::Other(io::Error::new(
 				io::ErrorKind::Other,
 				"incomplete send",
-			));
+			)));
 		}
 		Ok(())
 	}
@@ -199,7 +205,7 @@ impl fuse::io::OutputStream for DevCuse {
 impl fuse::io::InputStream for DevCuse {
 	type Error = io::Error;
 
-	fn recv(&self, buf: &mut [u8]) -> Result<Option<NonZeroUsize>, io::Error> {
+	fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<io::Error>> {
 		use std::io::Read;
 		use std::os::unix::io::AsRawFd;
 
@@ -229,7 +235,7 @@ impl fuse::io::InputStream for DevCuse {
 
 			if (poll_fds[1].revents & libc::POLLERR) > 0 ||
 			   (poll_fds[1].revents & libc::POLLHUP) > 0 {
-				return Ok(None);
+				return Err(RecvError::ConnectionClosed);
 			}
 
 			if (poll_fds[0].revents & libc::POLLIN) == 0 {
@@ -237,12 +243,7 @@ impl fuse::io::InputStream for DevCuse {
 			}
 
 			match Read::read(&mut &self.dev_cuse, buf) {
-				Ok(size) => {
-					return match NonZeroUsize::new(size) {
-						Some(size) => Ok(Some(size)),
-						None => Err(io::ErrorKind::UnexpectedEof.into()),
-					};
-				},
+				Ok(size) => return Ok(size),
 				Err(err) => match err.raw_os_error() {
 					Some(libc::ENOENT) => {
 						// The next request in the kernel buffer was interrupted before
@@ -251,7 +252,7 @@ impl fuse::io::InputStream for DevCuse {
 					Some(libc::EINTR) => {
 						// Interrupted by signal. Try again.
 					},
-					_ => return Err(err),
+					_ => return Err(RecvError::Other(err)),
 				},
 			}
 		}

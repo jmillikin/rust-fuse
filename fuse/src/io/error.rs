@@ -16,11 +16,37 @@
 
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Error<StreamError> {
+pub enum Error<IoError> {
 	InvalidReply(ReplyError),
 	InvalidRequest(RequestError),
-	RecvFail(StreamError),
-	SendFail(StreamError),
+	RecvFail(RecvError<IoError>),
+	SendFail(SendError<IoError>),
+}
+
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum RecvError<IoError> {
+	ConnectionClosed,
+	Other(IoError),
+}
+
+impl<T> From<RecvError<T>> for Error<T> {
+	fn from(err: RecvError<T>) -> Error<T> {
+		Error::RecvFail(err)
+	}
+}
+
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum SendError<IoError> {
+	NotFound,
+	Other(IoError),
+}
+
+impl<T> From<SendError<T>> for Error<T> {
+	fn from(err: SendError<T>) -> Error<T> {
+		Error::SendFail(err)
+	}
 }
 
 #[non_exhaustive]

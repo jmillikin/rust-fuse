@@ -33,13 +33,13 @@ impl basic::FuseHandlers<S> for TestFS {
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::LookupRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::LookupResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::LookupResponse, std::io::Error> {
 		if request.parent_id() != fuse::ROOT_ID {
-			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 		if request.name() != fuse::NodeName::from_bytes(b"opendir.d").unwrap() {
-			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -51,20 +51,20 @@ impl basic::FuseHandlers<S> for TestFS {
 		attr.set_mode(fuse::FileType::Directory | 0o755);
 		attr.set_nlink(2);
 
-		send_reply.ok(&resp).unwrap()
+		send_reply.ok(&resp)
 	}
 
 	fn opendir(
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::OpendirRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::OpendirResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::OpendirResponse, std::io::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut resp = fuse::OpendirResponse::new();
 		resp.set_handle(12345);
-		send_reply.ok(&resp).unwrap()
+		send_reply.ok(&resp)
 	}
 }
 

@@ -33,14 +33,14 @@ impl basic::FuseHandlers<S> for TestFS {
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::LookupRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::LookupResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::LookupResponse, std::io::Error> {
 		if request.parent_id() != fuse::ROOT_ID {
-			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 		if request.name() != fuse::NodeName::from_bytes(b"xattrs.txt").unwrap()
 		{
-			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -52,15 +52,15 @@ impl basic::FuseHandlers<S> for TestFS {
 		attr.set_mode(fuse::FileType::Regular | 0o644);
 		attr.set_nlink(1);
 
-		send_reply.ok(&resp).unwrap()
+		send_reply.ok(&resp)
 	}
 
 	fn getxattr(
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::GetxattrRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::GetxattrResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::GetxattrResponse, std::io::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let xattr_small =
@@ -71,21 +71,21 @@ impl basic::FuseHandlers<S> for TestFS {
 		if request.name() == xattr_small {
 			let mut resp = fuse::GetxattrResponse::new(request.size());
 			return match resp.try_set_value(b"small xattr value") {
-				Ok(_) => send_reply.ok(&resp).unwrap(),
+				Ok(_) => send_reply.ok(&resp),
 				Err(_) => {
 					// TODO: error should either have enough public info to let the caller
 					// return an appropriate error code, or ERANGE should be handled by
 					// the response dispatcher.
-					send_reply.err(fuse::ErrorCode::ERANGE).unwrap()
+					send_reply.err(fuse::ErrorCode::ERANGE)
 				},
 			};
 		}
 
 		if request.name() == xattr_toobig {
-			return send_reply.err(fuse::ErrorCode::E2BIG).unwrap();
+			return send_reply.err(fuse::ErrorCode::E2BIG);
 		}
 
-		send_reply.err(fuse::ErrorCode::ENOATTR).unwrap()
+		send_reply.err(fuse::ErrorCode::ENOATTR)
 	}
 }
 

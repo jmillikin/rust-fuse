@@ -33,10 +33,10 @@ impl basic::FuseHandlers<S> for TestFS {
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::LookupRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::LookupResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::LookupResponse, std::io::Error> {
 		if request.parent_id() != fuse::ROOT_ID {
-			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 
 		let node_id;
@@ -48,7 +48,7 @@ impl basic::FuseHandlers<S> for TestFS {
 		{
 			node_id = fuse::NodeId::new(3).unwrap();
 		} else {
-			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -60,15 +60,15 @@ impl basic::FuseHandlers<S> for TestFS {
 		attr.set_mode(fuse::FileType::Regular | 0o644);
 		attr.set_nlink(1);
 
-		send_reply.ok(&resp).unwrap()
+		send_reply.ok(&resp)
 	}
 
 	fn listxattr(
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::ListxattrRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::ListxattrResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::ListxattrResponse, std::io::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let xattr_small =
@@ -84,16 +84,16 @@ impl basic::FuseHandlers<S> for TestFS {
 		};
 
 		if request.node_id() == fuse::NodeId::new(3).unwrap() {
-			return send_reply.err(fuse::ErrorCode::E2BIG).unwrap();
+			return send_reply.err(fuse::ErrorCode::E2BIG);
 		}
 
 		if let Err(_) = resp.try_add_name(xattr_small) {
-			return send_reply.err(fuse::ErrorCode::ERANGE).unwrap();
+			return send_reply.err(fuse::ErrorCode::ERANGE);
 		}
 		if let Err(_) = resp.try_add_name(xattr_toobig) {
-			return send_reply.err(fuse::ErrorCode::ERANGE).unwrap();
+			return send_reply.err(fuse::ErrorCode::ERANGE);
 		}
-		send_reply.ok(&resp).unwrap()
+		send_reply.ok(&resp)
 	}
 }
 

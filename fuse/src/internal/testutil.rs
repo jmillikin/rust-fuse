@@ -22,7 +22,7 @@ use std::mem::size_of;
 use std::slice;
 
 use crate::internal::fuse_kernel;
-use crate::io::{self, Buffer, ProtocolVersion};
+use crate::io::{self, Buffer, ProtocolVersion, SendError};
 
 pub(crate) struct MessageBuilder {
 	header: Option<fuse_kernel::fuse_in_header>,
@@ -126,7 +126,7 @@ impl FakeStream {
 impl io::OutputStream for FakeStream {
 	type Error = std::io::Error;
 
-	fn send(&self, buf: &[u8]) -> Result<(), Self::Error> {
+	fn send(&self, buf: &[u8]) -> Result<(), SendError<Self::Error>> {
 		if self.write.borrow().is_some() {
 			panic!("expected exactly one write to FakeStream");
 		}
@@ -137,7 +137,7 @@ impl io::OutputStream for FakeStream {
 	fn send_vectored<const N: usize>(
 		&self,
 		bufs: &[&[u8]; N],
-	) -> Result<(), Self::Error> {
+	) -> Result<(), SendError<Self::Error>> {
 		let mut vec = Vec::new();
 		for buf in bufs {
 			vec.extend(buf.to_vec());
@@ -151,13 +151,12 @@ macro_rules! decode_request {
 		decode_request!($buf, {})
 	};
 	($buf: ident, $opts:tt $(,)?) => {{
-		use core::num::NonZeroUsize;
 		use crate::internal::testutil::DecodeRequestOpts;
 		use crate::io::decode::{DecodeRequest, RequestBuf};
 		use crate::io::Buffer;
 
 		let opts = decode_request_opts!($opts);
-		let request_len = NonZeroUsize::new($buf.borrow().len()).unwrap();
+		let request_len = $buf.borrow().len();
 		let request = RequestBuf::new(&$buf, request_len).unwrap();
 		let version_minor = opts.protocol_version().minor();
 		DecodeRequest::<decode::FUSE>::decode(request, version_minor).unwrap()

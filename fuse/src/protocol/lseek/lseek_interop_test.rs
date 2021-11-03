@@ -33,13 +33,13 @@ impl basic::FuseHandlers<S> for TestFS {
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::LookupRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::LookupResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::LookupResponse, std::io::Error> {
 		if request.parent_id() != fuse::ROOT_ID {
-			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 		if request.name() != fuse::NodeName::from_bytes(b"lseek.txt").unwrap() {
-			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -51,31 +51,31 @@ impl basic::FuseHandlers<S> for TestFS {
 		attr.set_mode(fuse::FileType::Regular | 0o644);
 		attr.set_nlink(2);
 
-		send_reply.ok(&resp).unwrap()
+		send_reply.ok(&resp)
 	}
 
 	fn open(
 		&self,
 		_ctx: basic::ServerContext,
 		_request: &fuse::OpenRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::OpenResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::OpenResponse, std::io::Error> {
 		let mut resp = fuse::OpenResponse::new();
 		resp.set_handle(12345);
-		send_reply.ok(&resp).unwrap()
+		send_reply.ok(&resp)
 	}
 
 	fn lseek(
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::LseekRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::LseekResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::LseekResponse, std::io::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut resp = fuse::LseekResponse::new();
 		resp.set_offset(4096);
-		send_reply.ok(&resp).unwrap()
+		send_reply.ok(&resp)
 	}
 }
 

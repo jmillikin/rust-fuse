@@ -33,10 +33,10 @@ impl basic::FuseHandlers<S> for TestFS {
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::LookupRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::LookupResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::LookupResponse, std::io::Error> {
 		if request.parent_id() != fuse::ROOT_ID {
-			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 
 		let node_id: u64;
@@ -47,7 +47,7 @@ impl basic::FuseHandlers<S> for TestFS {
 		{
 			node_id = 3;
 		} else {
-			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -59,30 +59,30 @@ impl basic::FuseHandlers<S> for TestFS {
 		attr.set_mode(fuse::FileType::Regular | 0o644);
 		attr.set_nlink(2);
 
-		send_reply.ok(&resp).unwrap()
+		send_reply.ok(&resp)
 	}
 
 	fn open(
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::OpenRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::OpenResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::OpenResponse, std::io::Error> {
 		let mut resp = fuse::OpenResponse::new();
 		if request.node_id() == fuse::NodeId::new(2).unwrap() {
 			resp.set_handle(1002);
 		} else {
 			resp.set_handle(1003);
 		}
-		send_reply.ok(&resp).unwrap()
+		send_reply.ok(&resp)
 	}
 
 	fn flush(
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::FlushRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::FlushResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::FlushResponse, std::io::Error> {
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the lock owner, which is non-deterministic.
@@ -98,9 +98,9 @@ impl basic::FuseHandlers<S> for TestFS {
 
 		if request.handle() == 1002 {
 			let resp = fuse::FlushResponse::new();
-			send_reply.ok(&resp).unwrap()
+			send_reply.ok(&resp)
 		} else {
-			send_reply.err(fuse::ErrorCode::E2BIG).unwrap()
+			send_reply.err(fuse::ErrorCode::E2BIG)
 		}
 	}
 }

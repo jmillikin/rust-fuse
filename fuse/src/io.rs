@@ -26,7 +26,7 @@ pub use self::buffer::{ArrayBuffer, Buffer, MIN_READ_BUFFER};
 #[cfg(feature = "std")]
 pub use self::buffer::PinnedBuffer;
 
-pub use self::error::{Error, ReplyError, RequestError};
+pub use self::error::{Error, RecvError, ReplyError, RequestError, SendError};
 
 pub use self::stream::{
 	AsyncInputStream,

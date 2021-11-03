@@ -17,11 +17,12 @@
 use core::num::NonZeroU16;
 
 use crate::error::ErrorCode;
-use crate::io::{self, Error, OutputStream};
+use crate::io::{self, OutputStream, SendError};
 use crate::server::{FuseConnection, FuseRequest, Reply};
 use crate::server::basic::{
 	NoopServerHooks,
 	SendReply,
+	SentReply,
 	ServerContext,
 	ServerHooks,
 };
@@ -41,12 +42,17 @@ where
 {
 	pub fn serve(&self, buf: &mut impl io::Buffer) -> Result<(), io::Error<E>> {
 		while let Some(request) = self.conn.recv(buf)? {
-			fuse_request_dispatch(
+			let result = fuse_request_dispatch(
 				&self.conn,
 				&self.handlers,
 				self.hooks.as_ref(),
 				request,
-			)
+			);
+			match result {
+				Ok(()) => {},
+				Err(SendError::NotFound) => {},
+				Err(err) => return Err(io::Error::SendFail(err)),
+			};
 		}
 		Ok(())
 	}
@@ -89,18 +95,41 @@ impl<S, Handlers, Hooks> FuseServerBuilder<S, Handlers, Hooks> {
 	}
 }
 
-pub(super) struct FuseReplySender<'a, S> {
-	pub(super) conn: &'a FuseConnection<S>,
-	pub(super) request_id: u64,
+struct FuseReplySender<'a, S> {
+	conn: &'a FuseConnection<S>,
+	request_id: u64,
+	sent_reply: &'a mut bool,
 }
 
-impl<S: OutputStream, R: Reply> SendReply<S, R> for FuseReplySender<'_, S> {
-	fn ok(self, reply: &R) -> Result<(), Error<S::Error>> {
-		self.conn.reply_ok(self.request_id, reply)
+impl<S: OutputStream> SendReply<S> for FuseReplySender<'_, S> {
+	fn ok<R: Reply>(
+		self,
+		reply: &R,
+	) -> Result<SentReply<R>, SendError<S::Error>> {
+		match self.conn.reply_ok(self.request_id, reply) {
+			Ok(()) => {
+				*self.sent_reply = true;
+				Ok(SentReply {
+					_phantom: core::marker::PhantomData,
+				})
+			},
+			Err(err) => Err(err),
+		}
 	}
 
-	fn err(self, err: impl Into<NonZeroU16>) -> Result<(), Error<S::Error>> {
-		self.conn.reply_err(self.request_id, err.into())
+	fn err<R>(
+		self,
+		err: impl Into<NonZeroU16>,
+	) -> Result<SentReply<R>, SendError<S::Error>> {
+		match self.conn.reply_err(self.request_id, err.into()) {
+			Ok(()) => {
+				*self.sent_reply = true;
+				Ok(SentReply {
+					_phantom: core::marker::PhantomData,
+				})
+			},
+			Err(err) => Err(err),
+		}
 	}
 }
 
@@ -109,7 +138,7 @@ fn fuse_request_dispatch<S: OutputStream>(
 	handlers: &impl FuseHandlers<S>,
 	hooks: Option<&impl ServerHooks>,
 	request: FuseRequest,
-) {
+) -> Result<(), SendError<S::Error>> {
 	let header = request.header();
 	let request_id = header.request_id();
 	if let Some(hooks) = hooks {
@@ -128,14 +157,27 @@ fn fuse_request_dispatch<S: OutputStream>(
 		($handler:tt) => {{
 			match request.decode() {
 				Ok(request) => {
-					let reply_sender = FuseReplySender { conn, request_id };
-					handlers.$handler(ctx, &request, reply_sender)
+					let mut sent_reply = false;
+					let reply_sender = FuseReplySender {
+						conn,
+						request_id,
+						sent_reply: &mut sent_reply,
+					};
+					let handler_result = handlers.$handler(ctx, &request, reply_sender);
+					if sent_reply {
+						handler_result?;
+					} else {
+						let err_result = conn.reply_err(request_id, ErrorCode::EIO.into());
+						handler_result?;
+						err_result?;
+					}
+					Ok(())
 				},
 				Err(err) => {
 					if let Some(ref hooks) = hooks {
 						hooks.request_error(header, err);
 					}
-					let _ = conn.reply_err(request_id, ErrorCode::EIO.into());
+					conn.reply_err(request_id, ErrorCode::EIO.into())
 				},
 			}
 		}};
@@ -151,16 +193,14 @@ fn fuse_request_dispatch<S: OutputStream>(
 		Some(FuseOp::Flush) => do_dispatch!(flush),
 		Some(FuseOp::Forget) => {
 			match request.decode() {
-				Ok(request) => {
-					handlers.forget(ctx, &request);
-				},
+				Ok(request) => handlers.forget(ctx, &request),
 				Err(err) => {
 					if let Some(ref hooks) = hooks {
 						hooks.request_error(header, err);
 					}
-					let _ = conn.reply_err(request_id, ErrorCode::EIO.into());
 				},
-			}
+			};
+			Ok(())
 		},
 		Some(FuseOp::Fsync) => do_dispatch!(fsync),
 		Some(FuseOp::Fsyncdir) => do_dispatch!(fsyncdir),
@@ -198,7 +238,7 @@ fn fuse_request_dispatch<S: OutputStream>(
 				let request = request.into_unknown();
 				hooks.unknown_request(&request);
 			}
-			let _ = conn.reply_err(request_id, ErrorCode::ENOSYS.into());
+			conn.reply_err(request_id, ErrorCode::ENOSYS.into())
 		},
 	}
 }

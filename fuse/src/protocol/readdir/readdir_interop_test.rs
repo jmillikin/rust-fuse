@@ -35,13 +35,13 @@ impl basic::FuseHandlers<S> for TestFS {
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::LookupRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::LookupResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::LookupResponse, std::io::Error> {
 		if request.parent_id() != fuse::ROOT_ID {
-			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 		if request.name() != fuse::NodeName::from_bytes(b"readdir.d").unwrap() {
-			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -53,26 +53,26 @@ impl basic::FuseHandlers<S> for TestFS {
 		attr.set_mode(fuse::FileType::Directory | 0o755);
 		attr.set_nlink(2);
 
-		send_reply.ok(&resp).unwrap()
+		send_reply.ok(&resp)
 	}
 
 	fn opendir(
 		&self,
 		_ctx: basic::ServerContext,
 		_request: &fuse::OpendirRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::OpendirResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::OpendirResponse, std::io::Error> {
 		let mut resp = fuse::OpendirResponse::new();
 		resp.set_handle(12345);
-		send_reply.ok(&resp).unwrap()
+		send_reply.ok(&resp)
 	}
 
 	fn readdir(
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::ReaddirRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::ReaddirResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::ReaddirResponse, std::io::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut cursor: u64 = match request.cursor() {
@@ -99,7 +99,7 @@ impl basic::FuseHandlers<S> for TestFS {
 			);
 			entry.set_file_type(fuse::FileType::Symlink);
 
-			return send_reply.ok(&resp).unwrap();
+			return send_reply.ok(&resp);
 		}
 
 		if cursor == 2 {
@@ -112,17 +112,17 @@ impl basic::FuseHandlers<S> for TestFS {
 			entry.set_file_type(fuse::FileType::Directory);
 		}
 
-		send_reply.ok(&resp).unwrap()
+		send_reply.ok(&resp)
 	}
 
 	fn releasedir(
 		&self,
 		_ctx: basic::ServerContext,
 		_request: &fuse::ReleasedirRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::ReleasedirResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::ReleasedirResponse, std::io::Error> {
 		let resp = fuse::ReleasedirResponse::new();
-		let _ = send_reply.ok(&resp);
+		send_reply.ok(&resp)
 	}
 }
 

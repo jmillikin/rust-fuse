@@ -17,8 +17,8 @@
 use core::num::NonZeroU16;
 
 use crate::error::ErrorCode;
-use crate::io::{Error, OutputStream};
-use crate::server::RequestHeader;
+use crate::io::{OutputStream, SendError};
+use crate::server::{Reply, RequestHeader};
 use crate::server::basic::server_hooks::ServerHooks;
 
 pub struct ServerContext<'a> {
@@ -32,17 +32,30 @@ impl<'a> ServerContext<'a> {
 	}
 }
 
-pub trait SendReply<S: OutputStream, R> {
-	fn ok(self, reply: &R) -> Result<(), Error<S::Error>>;
-	fn err(self, err: impl Into<NonZeroU16>) -> Result<(), Error<S::Error>>;
+pub type SendResult<R, E> = Result<SentReply<R>, SendError<E>>;
+
+pub struct SentReply<T> {
+	pub(super) _phantom: core::marker::PhantomData<fn(&T)>,
+}
+
+pub trait SendReply<S: OutputStream> {
+	fn ok<R: Reply>(
+		self,
+		reply: &R,
+	) -> Result<SentReply<R>, SendError<S::Error>>;
+
+	fn err<R>(
+		self,
+		err: impl Into<NonZeroU16>,
+	) -> Result<SentReply<R>, SendError<S::Error>>;
 }
 
 pub(super) fn unhandled_request<S: OutputStream, R>(
 	ctx: ServerContext,
-	send_reply: impl SendReply<S, R>,
-) {
+	send_reply: impl SendReply<S>,
+) -> Result<SentReply<R>, SendError<S::Error>> {
 	if let Some(hooks) = ctx.hooks {
 		hooks.unhandled_request(ctx.header);
 	}
-	let _ = send_reply.err(ErrorCode::ENOSYS);
+	send_reply.err(ErrorCode::ENOSYS)
 }

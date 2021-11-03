@@ -14,14 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::io::{AsyncOutputStream, OutputStream};
+use crate::io::{AsyncOutputStream, OutputStream, SendError};
 
 pub trait Reply {
 	fn send<Stream: OutputStream>(
 		&self,
 		stream: &Stream,
 		reply_info: ReplyInfo,
-	) -> Result<(), Stream::Error>;
+	) -> Result<(), SendError<Stream::Error>>;
 
 	fn send_async<Stream: AsyncOutputStream>(
 		&self,
@@ -37,7 +37,7 @@ pub struct ReplyInfo {
 
 mod impls {
 	use crate::io::encode::{self, EncodeReply};
-	use crate::io::{AsyncOutputStream, OutputStream};
+	use crate::io::{AsyncOutputStream, OutputStream, SendError};
 	use crate::protocol::*;
 
 	use super::{Reply, ReplyInfo};
@@ -49,7 +49,7 @@ mod impls {
 					&self,
 					stream: &Stream,
 					reply_info: ReplyInfo,
-				) -> Result<(), Stream::Error> {
+				) -> Result<(), SendError<Stream::Error>> {
 					self.encode(
 						encode::SyncSendOnce::new(stream),
 						reply_info.request_id,

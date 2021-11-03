@@ -15,7 +15,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use core::mem::transmute;
-use core::num::NonZeroUsize;
 
 use crate::internal::fuse_kernel;
 use crate::io::{Buffer, RequestError};
@@ -31,7 +30,7 @@ pub struct FuseRequest<'a> {
 impl<'a> FuseRequest<'a> {
 	pub(crate) fn new(
 		buf: &'a impl Buffer,
-		recv_len: NonZeroUsize,
+		recv_len: usize,
 		version_minor: u32,
 	) -> Result<Self, RequestError> {
 		let request_buf = RequestBuf::new(buf, recv_len)?;

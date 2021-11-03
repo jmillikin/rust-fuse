@@ -15,17 +15,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use core::future::Future;
-use core::num::NonZeroUsize;
+
+use crate::io::error::{RecvError, SendError};
 
 pub trait InputStream {
 	type Error;
 
-	fn recv(&self, buf: &mut [u8]) -> Result<Option<NonZeroUsize>, Self::Error>;
+	fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<Self::Error>>;
 }
 
 pub trait AsyncInputStream {
 	type Error;
-	type Future: Future<Output = Result<Option<NonZeroUsize>, Self::Error>>;
+	type Future: Future<Output = Result<usize, RecvError<Self::Error>>>;
 
 	fn recv(&self, buf: &mut [u8]) -> Self::Future;
 }
@@ -33,17 +34,17 @@ pub trait AsyncInputStream {
 pub trait OutputStream {
 	type Error;
 
-	fn send(&self, buf: &[u8]) -> Result<(), Self::Error>;
+	fn send(&self, buf: &[u8]) -> Result<(), SendError<Self::Error>>;
 
 	fn send_vectored<const N: usize>(
 		&self,
 		bufs: &[&[u8]; N],
-	) -> Result<(), Self::Error>;
+	) -> Result<(), SendError<Self::Error>>;
 }
 
 pub trait AsyncOutputStream {
 	type Error;
-	type Future: Future<Output = Result<(), Self::Error>>;
+	type Future: Future<Output = Result<(), SendError<Self::Error>>>;
 
 	fn send(&self, buf: &[u8]) -> Self::Future;
 

@@ -33,10 +33,10 @@ impl basic::FuseHandlers<S> for TestFS {
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::LookupRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::LookupResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::LookupResponse, std::io::Error> {
 		if request.parent_id() != fuse::ROOT_ID {
-			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -52,7 +52,7 @@ impl basic::FuseHandlers<S> for TestFS {
 			attr.set_mode(fuse::FileType::Regular | 0o644);
 			attr.set_nlink(1);
 
-			return send_reply.ok(&resp).unwrap();
+			return send_reply.ok(&resp);
 		}
 
 		if request.name()
@@ -64,7 +64,7 @@ impl basic::FuseHandlers<S> for TestFS {
 			attr.set_mode(fuse::FileType::Regular | 0o644);
 			attr.set_nlink(1);
 
-			return send_reply.ok(&resp).unwrap();
+			return send_reply.ok(&resp);
 		}
 
 		if request.name()
@@ -76,21 +76,21 @@ impl basic::FuseHandlers<S> for TestFS {
 			attr.set_mode(fuse::FileType::Directory | 0o755);
 			attr.set_nlink(2);
 
-			return send_reply.ok(&resp).unwrap();
+			return send_reply.ok(&resp);
 		}
 
-		send_reply.err(fuse::ErrorCode::ENOENT).unwrap()
+		send_reply.err(fuse::ErrorCode::ENOENT)
 	}
 
 	fn rename(
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::RenameRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::RenameResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::RenameResponse, std::io::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 		let resp = fuse::RenameResponse::new();
-		send_reply.ok(&resp).unwrap()
+		send_reply.ok(&resp)
 	}
 }
 

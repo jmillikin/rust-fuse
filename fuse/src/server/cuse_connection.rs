@@ -14,9 +14,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::num::{NonZeroU16, NonZeroUsize};
+use core::num::NonZeroU16;
 
-use crate::io::{self, Buffer};
+use crate::io::{self, Buffer, RecvError};
 use crate::io::decode::{DecodeRequest, RequestBuf};
 use crate::io::encode::{AsyncSendOnce, ReplyEncoder, SyncSendOnce};
 use crate::protocol::cuse_init::{
@@ -149,14 +149,14 @@ where
 	) -> Result<CuseInitResponse, io::Error<E>> {
 		let mut buf = io::ArrayBuffer::new();
 		loop {
-			let recv = stream.recv(buf.borrow_mut());
+			let recv = stream.recv(buf.borrow_mut())?;
 			let (reply, request_id, ok) = handshake(&buf, recv, &mut init_fn)?;
 
 			reply.encode(
 				SyncSendOnce::new(stream),
 				request_id,
 				if ok { Some(device_name.as_bytes()) } else { None },
-			).map_err(|err| io::Error::SendFail(err))?;
+			)?;
 
 			if ok {
 				return Ok(reply);
@@ -187,8 +187,8 @@ impl<S: io::InputStream> CuseConnection<S> {
 		buf: &'a mut impl io::Buffer,
 	) -> Result<Option<CuseRequest<'a>>, io::Error<S::Error>> {
 		let recv_len = match self.stream.recv(buf.borrow_mut()) {
-			Ok(Some(x)) => x,
-			Ok(None) => return Ok(None),
+			Ok(x) => x,
+			Err(RecvError::ConnectionClosed) => return Ok(None),
 			Err(err) => return Err(io::Error::RecvFail(err)),
 		};
 		let v_minor = self.version.minor();
@@ -201,26 +201,26 @@ impl<S: io::OutputStream> CuseConnection<S> {
 		&self,
 		request_id: u64,
 		reply: &impl Reply,
-	) -> Result<(), io::Error<S::Error>> {
-		let res = reply.send(
+	) -> Result<(), io::SendError<S::Error>> {
+		reply.send(
 			&self.stream,
 			ReplyInfo {
 				request_id,
 				version_minor: self.version.minor(),
 			},
-		);
-		res.map_err(|err| io::Error::SendFail(err))
+		)?;
+		Ok(())
 	}
 
 	pub fn reply_err(
 		&self,
 		request_id: u64,
 		error_code: NonZeroU16,
-	) -> Result<(), io::Error<S::Error>> {
+	) -> Result<(), io::SendError<S::Error>> {
 		let send = SyncSendOnce::new(&self.stream);
 		let enc = ReplyEncoder::new(send, request_id);
-		let res = enc.encode_error(error_code);
-		res.map_err(|err| io::Error::SendFail(err))
+		enc.encode_error(error_code)?;
+		Ok(())
 	}
 }
 
@@ -253,14 +253,14 @@ where
 		let mut buf = io::ArrayBuffer::new();
 
 		loop {
-			let recv = stream.recv(buf.borrow_mut()).await;
+			let recv = stream.recv(buf.borrow_mut()).await?;
 			let (reply, req_id, done) = handshake(&buf, recv, &mut init_fn)?;
 
 			reply.encode(
 				AsyncSendOnce::new(stream),
 				req_id,
 				if done { Some(device_name.as_bytes()) } else { None },
-			).await.map_err(|err| io::Error::SendFail(err))?;
+			).await?;
 
 			if done {
 				return Ok(reply);
@@ -291,8 +291,8 @@ impl<S: io::AsyncInputStream> AsyncCuseConnection<S> {
 		buf: &'a mut impl io::Buffer,
 	) -> Result<Option<CuseRequest<'a>>, io::Error<S::Error>> {
 		let recv_len = match self.stream.recv(buf.borrow_mut()).await {
-			Ok(Some(x)) => x,
-			Ok(None) => return Ok(None),
+			Ok(x) => x,
+			Err(RecvError::ConnectionClosed) => return Ok(None),
 			Err(err) => return Err(io::Error::RecvFail(err)),
 		};
 		let v_minor = self.version.minor();
@@ -305,45 +305,37 @@ impl<S: io::AsyncOutputStream> AsyncCuseConnection<S> {
 		&self,
 		request_id: u64,
 		reply: &impl Reply,
-	) -> Result<(), io::Error<S::Error>> {
-		let res = reply.send_async(
+	) -> Result<(), io::SendError<S::Error>> {
+		reply.send_async(
 			&self.stream,
 			ReplyInfo {
 				request_id,
 				version_minor: self.version.minor(),
 			},
-		).await;
-		res.map_err(|err| io::Error::SendFail(err))
+		).await?;
+		Ok(())
 	}
 
 	pub async fn reply_err(
 		&self,
 		request_id: u64,
 		error_code: NonZeroU16,
-	) -> Result<(), io::Error<S::Error>> {
+	) -> Result<(), io::SendError<S::Error>> {
 		let send = AsyncSendOnce::new(&self.stream);
 		let enc = ReplyEncoder::new(send, request_id);
-		let res = enc.encode_error(error_code).await;
-		res.map_err(|err| io::Error::SendFail(err))
+		enc.encode_error(error_code).await?;
+		Ok(())
 	}
 }
 
 fn handshake<E>(
 	recv_buf: &impl Buffer,
-	recv: Result<Option<NonZeroUsize>, E>,
+	recv_len: usize,
 	init_fn: &mut impl FnMut(&CuseInitRequest) -> CuseInitResponse,
 ) -> Result<(CuseInitResponse, u64, bool), io::Error<E>> {
 	let v_latest = io::ProtocolVersion::LATEST;
 	let v_minor = v_latest.minor();
 
-	let recv_len = match recv {
-		Ok(Some(x)) => x,
-		Ok(None) => {
-			// TODO
-			return Err(io::RequestError::UnexpectedEof.into());
-		},
-		Err(err) => return Err(io::Error::RecvFail(err)),
-	};
 	let request_buf = RequestBuf::new(recv_buf, recv_len)?;
 	let init_request = CuseInitRequest::decode(request_buf, v_minor)?;
 

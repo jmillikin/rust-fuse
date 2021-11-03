@@ -33,14 +33,14 @@ impl basic::FuseHandlers<S> for TestFS {
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::LookupRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::LookupResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::LookupResponse, std::io::Error> {
 		if request.parent_id() != fuse::ROOT_ID {
-			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 		if request.name() != fuse::NodeName::from_bytes(b"statfs.txt").unwrap()
 		{
-			return send_reply.err(fuse::ErrorCode::ENOENT).unwrap();
+			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -52,15 +52,15 @@ impl basic::FuseHandlers<S> for TestFS {
 		attr.set_mode(fuse::FileType::Regular | 0o644);
 		attr.set_nlink(1);
 
-		send_reply.ok(&resp).unwrap()
+		send_reply.ok(&resp)
 	}
 
 	fn statfs(
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::StatfsRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::StatfsResponse<'a>>,
-	) {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::StatfsResponse, std::io::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 		let mut response = fuse::StatfsResponse::new();
 		response.set_block_size(10);
@@ -71,7 +71,7 @@ impl basic::FuseHandlers<S> for TestFS {
 		response.set_inodes_free(60);
 		response.set_max_filename_length(70);
 		response.set_fragment_size(80);
-		send_reply.ok(&response).unwrap()
+		send_reply.ok(&response)
 	}
 }
 
