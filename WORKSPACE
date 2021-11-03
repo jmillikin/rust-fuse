@@ -123,8 +123,8 @@ rust_library(
     visibility = ["//visibility:public"],
 )
 """,
-    sha256 = "a2f02823cf78b754822df5f7f268fb59822e7296276d3e069d8e8cb26a14bd10",
-    strip_prefix = "libc-0.2.74",
+    sha256 = "4d58d1b70b004888f764dfbf6a26a3b0342a1632d33968e4a179d8011c760614",
+    strip_prefix = "libc-0.2.80",
     type = "tar.gz",
-    url = "https://crates.io/api/v1/crates/libc/0.2.74/download",
+    url = "https://crates.io/api/v1/crates/libc/0.2.80/download",
 )
