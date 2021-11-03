@@ -123,6 +123,7 @@ fn fcntl_setlk(path: std::path::PathBuf, mut lock: libc::flock) {
 	assert_eq!(rc, 0);
 }
 
+#[cfg(not(target_os = "freebsd"))] // https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=253500
 fn fcntl_setlkw(path: std::path::PathBuf, mut lock: libc::flock) {
 	let path_cstr = path_cstr(path);
 

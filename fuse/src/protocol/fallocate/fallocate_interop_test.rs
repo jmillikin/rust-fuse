@@ -92,7 +92,6 @@ fn fallocate_test(
 }
 
 #[test]
-#[cfg(target_os = "linux")]
 fn fallocate() {
 	let requests = fallocate_test(|root| {
 		let path = path_cstr(root.join("fallocate.txt"));
@@ -128,7 +127,6 @@ fn fallocate() {
 }
 
 #[test]
-#[cfg_attr(target_os = "freebsd", ignore)]
 fn posix_fallocate() {
 	let requests = fallocate_test(|root| {
 		let path = path_cstr(root.join("fallocate.txt"));
@@ -164,7 +162,6 @@ fn posix_fallocate() {
 }
 
 #[test]
-#[cfg(target_os = "linux")]
 fn fallocate_keep_size() {
 	let requests = fallocate_test(|root| {
 		let path = path_cstr(root.join("fallocate.txt"));
@@ -202,7 +199,6 @@ fn fallocate_keep_size() {
 }
 
 #[test]
-#[cfg(target_os = "linux")]
 fn fallocate_punch_hole() {
 	let requests = fallocate_test(|root| {
 		let path = path_cstr(root.join("fallocate.txt"));

@@ -19,15 +19,17 @@ def rust_fuse_protocol_module():
         )
 
     if name + "_interop_test.rs" in files:
-        rust_test(
-            name = name + "_interop_test",
-            srcs = [name + "_interop_test.rs"],
-            crate_features = [
-                "std",
-            ],
-            deps = [
-                "//fuse",
-                "//fuse/src/internal:interop_testutil",
-                "@rust_libc//:libc",
-            ],
-        )
+        test_name = name + "_interop_test"
+        if test_name not in native.existing_rules():
+            rust_test(
+                name = test_name,
+                srcs = [name + "_interop_test.rs"],
+                crate_features = [
+                    "std",
+                ],
+                deps = [
+                    "//fuse",
+                    "//fuse/src/internal:interop_testutil",
+                    "@rust_libc//:libc",
+                ],
+            )
