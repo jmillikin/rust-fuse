@@ -17,7 +17,13 @@
 use std::panic;
 use std::sync::mpsc;
 
-use fuse::server::basic;
+mod fuse {
+	pub use ::fuse::*;
+	pub use ::fuse::io::*;
+	pub use ::fuse::protocol::*;
+	pub use ::fuse::server::basic::*;
+}
+
 use interop_testutil::{diff_str, fuse_interop_test, path_cstr};
 
 struct TestFS {
@@ -26,24 +32,22 @@ struct TestFS {
 
 impl interop_testutil::TestFS for TestFS {}
 
-type S = fuse::os::unix::DevFuse;
-
-impl basic::FuseHandlers<S> for TestFS {
+impl<S: fuse::OutputStream> fuse::FuseHandlers<S> for TestFS {
 	fn lookup(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse::ServerContext,
 		_request: &fuse::LookupRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::LookupResponse, std::io::Error> {
+		send_reply: impl fuse::SendReply<S>,
+	) -> fuse::SendResult<fuse::LookupResponse, S::Error> {
 		send_reply.err(fuse::ErrorCode::ENOENT)
 	}
 
 	fn create(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse::ServerContext,
 		request: &fuse::CreateRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::CreateResponse, std::io::Error> {
+		send_reply: impl fuse::SendReply<S>,
+	) -> fuse::SendResult<fuse::CreateResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut resp = fuse::CreateResponse::new();

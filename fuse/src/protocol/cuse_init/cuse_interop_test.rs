@@ -17,22 +17,26 @@
 use std::panic;
 use std::sync::mpsc;
 
-use fuse::server::basic;
+mod fuse {
+	pub use ::fuse::*;
+	pub use ::fuse::io::*;
+	pub use ::fuse::protocol::*;
+	pub use ::fuse::server::basic::*;
+}
+
 use interop_testutil::{cuse_interop_test, diff_str, path_cstr};
 
 struct TestCharDev {
 	requests: mpsc::Sender<String>,
 }
 
-type S = interop_testutil::DevCuse;
-
-impl basic::CuseHandlers<S> for TestCharDev {
+impl<S: fuse::OutputStream> fuse::CuseHandlers<S> for TestCharDev {
 	fn open(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse::ServerContext,
 		request: &fuse::OpenRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::OpenResponse, std::io::Error> {
+		send_reply: impl fuse::SendReply<S>,
+	) -> fuse::SendResult<fuse::OpenResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut resp = fuse::OpenResponse::new();
@@ -42,10 +46,10 @@ impl basic::CuseHandlers<S> for TestCharDev {
 
 	fn read(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse::ServerContext,
 		request: &fuse::ReadRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::ReadResponse, std::io::Error> {
+		send_reply: impl fuse::SendReply<S>,
+	) -> fuse::SendResult<fuse::ReadResponse, S::Error> {
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the lock owner, which is non-deterministic.
@@ -65,10 +69,10 @@ impl basic::CuseHandlers<S> for TestCharDev {
 
 	fn release(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse::ServerContext,
 		request: &fuse::ReleaseRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::ReleaseResponse, std::io::Error> {
+		send_reply: impl fuse::SendReply<S>,
+	) -> fuse::SendResult<fuse::ReleaseResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let resp = fuse::ReleaseResponse::new();
@@ -77,10 +81,10 @@ impl basic::CuseHandlers<S> for TestCharDev {
 
 	fn write(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse::ServerContext,
 		request: &fuse::WriteRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::WriteResponse, std::io::Error> {
+		send_reply: impl fuse::SendReply<S>,
+	) -> fuse::SendResult<fuse::WriteResponse, S::Error> {
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the lock owner, which is non-deterministic.

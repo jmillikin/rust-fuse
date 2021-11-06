@@ -19,7 +19,13 @@ use std::os::unix::ffi::OsStrExt;
 use std::sync::mpsc;
 use std::{ffi, panic};
 
-use fuse::server::basic;
+mod fuse {
+	pub use ::fuse::*;
+	pub use ::fuse::io::*;
+	pub use ::fuse::protocol::*;
+	pub use ::fuse::server::basic::*;
+}
+
 use interop_testutil::{diff_str, fuse_interop_test, path_cstr};
 
 struct TestFS {
@@ -28,15 +34,13 @@ struct TestFS {
 
 impl interop_testutil::TestFS for TestFS {}
 
-type S = fuse::os::unix::DevFuse;
-
-impl basic::FuseHandlers<S> for TestFS {
+impl<S: fuse::OutputStream> fuse::FuseHandlers<S> for TestFS {
 	fn lookup(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse::ServerContext,
 		request: &fuse::LookupRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::LookupResponse, std::io::Error> {
+		send_reply: impl fuse::SendReply<S>,
+	) -> fuse::SendResult<fuse::LookupResponse, S::Error> {
 		if request.parent_id() != fuse::ROOT_ID {
 			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
@@ -58,10 +62,10 @@ impl basic::FuseHandlers<S> for TestFS {
 
 	fn opendir(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse::ServerContext,
 		_request: &fuse::OpendirRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::OpendirResponse, std::io::Error> {
+		send_reply: impl fuse::SendReply<S>,
+	) -> fuse::SendResult<fuse::OpendirResponse, S::Error> {
 		let mut resp = fuse::OpendirResponse::new();
 		resp.set_handle(12345);
 		send_reply.ok(&resp)
@@ -69,10 +73,10 @@ impl basic::FuseHandlers<S> for TestFS {
 
 	fn readdir(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse::ServerContext,
 		request: &fuse::ReaddirRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::ReaddirResponse, std::io::Error> {
+		send_reply: impl fuse::SendReply<S>,
+	) -> fuse::SendResult<fuse::ReaddirResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut cursor: u64 = match request.cursor() {
@@ -117,10 +121,10 @@ impl basic::FuseHandlers<S> for TestFS {
 
 	fn releasedir(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse::ServerContext,
 		_request: &fuse::ReleasedirRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::ReleasedirResponse, std::io::Error> {
+		send_reply: impl fuse::SendReply<S>,
+	) -> fuse::SendResult<fuse::ReleasedirResponse, S::Error> {
 		let resp = fuse::ReleasedirResponse::new();
 		send_reply.ok(&resp)
 	}

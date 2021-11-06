@@ -17,7 +17,13 @@
 use std::sync::mpsc;
 use std::{ffi, panic};
 
-use fuse::server::basic;
+mod fuse {
+	pub use ::fuse::*;
+	pub use ::fuse::io::*;
+	pub use ::fuse::protocol::*;
+	pub use ::fuse::server::basic::*;
+}
+
 use interop_testutil::{diff_str, errno, fuse_interop_test, path_cstr};
 
 struct TestFS {
@@ -26,15 +32,13 @@ struct TestFS {
 
 impl interop_testutil::TestFS for TestFS {}
 
-type S = fuse::os::unix::DevFuse;
-
-impl basic::FuseHandlers<S> for TestFS {
+impl<S: fuse::OutputStream> fuse::FuseHandlers<S> for TestFS {
 	fn lookup(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse::ServerContext,
 		request: &fuse::LookupRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::LookupResponse, std::io::Error> {
+		send_reply: impl fuse::SendReply<S>,
+	) -> fuse::SendResult<fuse::LookupResponse, S::Error> {
 		if request.parent_id() != fuse::ROOT_ID {
 			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
@@ -57,10 +61,10 @@ impl basic::FuseHandlers<S> for TestFS {
 
 	fn symlink(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse::ServerContext,
 		request: &fuse::SymlinkRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::SymlinkResponse, std::io::Error> {
+		send_reply: impl fuse::SendReply<S>,
+	) -> fuse::SendResult<fuse::SymlinkResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut resp = fuse::SymlinkResponse::new();

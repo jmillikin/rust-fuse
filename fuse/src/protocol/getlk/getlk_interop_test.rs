@@ -18,8 +18,14 @@ use core::num::NonZeroU64;
 use std::sync::mpsc;
 use std::{fmt, panic};
 
-use fuse::protocol::fuse_init;
-use fuse::server::basic;
+mod fuse {
+	pub use ::fuse::*;
+	pub use ::fuse::io::*;
+	pub use ::fuse::protocol::*;
+	pub use ::fuse::protocol::fuse_init::*;
+	pub use ::fuse::server::basic::*;
+}
+
 use interop_testutil::{diff_str, fuse_interop_test, path_cstr};
 
 struct TestFS {
@@ -29,23 +35,21 @@ struct TestFS {
 impl interop_testutil::TestFS for TestFS {
 	fn fuse_init(
 		&self,
-		_init_request: &fuse_init::FuseInitRequest,
-	) -> fuse_init::FuseInitResponse {
-		let mut resp = fuse_init::FuseInitResponse::new();
+		_init_request: &fuse::FuseInitRequest,
+	) -> fuse::FuseInitResponse {
+		let mut resp = fuse::FuseInitResponse::new();
 		resp.flags_mut().posix_locks = true;
 		resp
 	}
 }
 
-type S = fuse::os::unix::DevFuse;
-
-impl basic::FuseHandlers<S> for TestFS {
+impl<S: fuse::OutputStream> fuse::FuseHandlers<S> for TestFS {
 	fn lookup(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse::ServerContext,
 		request: &fuse::LookupRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::LookupResponse, std::io::Error> {
+		send_reply: impl fuse::SendReply<S>,
+	) -> fuse::SendResult<fuse::LookupResponse, S::Error> {
 		if request.parent_id() != fuse::ROOT_ID {
 			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
@@ -78,10 +82,10 @@ impl basic::FuseHandlers<S> for TestFS {
 
 	fn open(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse::ServerContext,
 		request: &fuse::OpenRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::OpenResponse, std::io::Error> {
+		send_reply: impl fuse::SendReply<S>,
+	) -> fuse::SendResult<fuse::OpenResponse, S::Error> {
 		let mut resp = fuse::OpenResponse::new();
 		resp.set_handle(1000 + request.node_id().get());
 		send_reply.ok(&resp)
@@ -89,10 +93,10 @@ impl basic::FuseHandlers<S> for TestFS {
 
 	fn getlk(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse::ServerContext,
 		request: &fuse::GetlkRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::GetlkResponse, std::io::Error> {
+		send_reply: impl fuse::SendReply<S>,
+	) -> fuse::SendResult<fuse::GetlkResponse, S::Error> {
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the lock owner, which is non-deterministic.

@@ -17,7 +17,13 @@
 use std::panic;
 use std::sync::mpsc;
 
-use fuse::server::basic;
+mod fuse {
+	pub use ::fuse::*;
+	pub use ::fuse::io::*;
+	pub use ::fuse::protocol::*;
+	pub use ::fuse::server::basic::*;
+}
+
 use interop_testutil::{diff_str, errno, fuse_interop_test, path_cstr};
 
 struct TestFS {
@@ -26,15 +32,13 @@ struct TestFS {
 
 impl interop_testutil::TestFS for TestFS {}
 
-type S = fuse::os::unix::DevFuse;
-
-impl basic::FuseHandlers<S> for TestFS {
+impl<S: fuse::OutputStream> fuse::FuseHandlers<S> for TestFS {
 	fn lookup(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse::ServerContext,
 		request: &fuse::LookupRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::LookupResponse, std::io::Error> {
+		send_reply: impl fuse::SendReply<S>,
+	) -> fuse::SendResult<fuse::LookupResponse, S::Error> {
 		if request.parent_id() != fuse::ROOT_ID {
 			return send_reply.err(fuse::ErrorCode::ENOENT);
 		}
@@ -64,10 +68,10 @@ impl basic::FuseHandlers<S> for TestFS {
 
 	fn open(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse::ServerContext,
 		request: &fuse::OpenRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::OpenResponse, std::io::Error> {
+		send_reply: impl fuse::SendReply<S>,
+	) -> fuse::SendResult<fuse::OpenResponse, S::Error> {
 		let mut resp = fuse::OpenResponse::new();
 		if request.node_id() == fuse::NodeId::new(2).unwrap() {
 			resp.set_handle(1002);
@@ -79,10 +83,10 @@ impl basic::FuseHandlers<S> for TestFS {
 
 	fn flush(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse::ServerContext,
 		request: &fuse::FlushRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::FlushResponse, std::io::Error> {
+		send_reply: impl fuse::SendReply<S>,
+	) -> fuse::SendResult<fuse::FlushResponse, S::Error> {
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the lock owner, which is non-deterministic.
