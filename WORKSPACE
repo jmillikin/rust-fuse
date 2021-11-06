@@ -121,6 +121,10 @@ rust_library(
     crate_features = ["std"],
     edition = "2015",
     visibility = ["//visibility:public"],
+    rustc_flags = select({
+        "@platforms//os:freebsd": ["--cfg=freebsd12"],
+        "//conditions:default": [],
+    }),
 )
 """,
     sha256 = "4d58d1b70b004888f764dfbf6a26a3b0342a1632d33968e4a179d8011c760614",

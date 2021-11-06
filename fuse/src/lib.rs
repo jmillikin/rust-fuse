@@ -35,6 +35,10 @@ pub mod client;
 pub mod server;
 
 pub mod os {
+	#[cfg(any(doc, target_os = "freebsd"))]
+	#[cfg_attr(doc, doc(cfg(target_os = "freebsd")))]
+	pub mod freebsd;
+
 	#[cfg(any(doc, target_os = "linux"))]
 	#[cfg_attr(doc, doc(cfg(target_os = "linux")))]
 	pub mod linux;

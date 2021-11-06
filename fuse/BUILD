@@ -56,6 +56,13 @@ rust_library(
     crate_features = [
         "std",
         "nightly_syscall_fuse_mount",
-    ],
+    ] + select({
+        "@platforms//os:freebsd": ["libc_fuse_mount"],
+        "//conditions:default": [],
+    }),
+    deps = select({
+        "@platforms//os:freebsd": ["@rust_libc//:libc"],
+        "//conditions:default": [],
+    }),
     visibility = ["//visibility:public"],
 )

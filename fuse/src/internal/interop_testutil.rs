@@ -19,7 +19,6 @@ use core::mem::{self, MaybeUninit};
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::{env, ffi, fs, io, panic, path, sync, thread};
 
-use fuse::os::unix::DevFuse;
 use fuse::io::{SendError, RecvError};
 use fuse::protocol::fuse_init;
 use fuse::server::basic;
@@ -44,6 +43,12 @@ impl basic::ServerHooks for PrintHooks {
 		println!("{:#?}", err);
 	}
 }
+
+#[cfg(target_os = "linux")]
+type DevFuse = fuse::os::unix::DevFuse;
+
+#[cfg(target_os = "freebsd")]
+type DevFuse = fuse::os::unix::LibcStream;
 
 pub trait TestFS : basic::FuseHandlers<DevFuse> {
 	fn fuse_init(
@@ -78,17 +83,30 @@ pub fn fuse_interop_test(
 	let server_ready = sync::Arc::new(sync::Barrier::new(2));
 	let server_thread = {
 		let ready = sync::Arc::clone(&server_ready);
-		let mount_path = mount_path.clone();
-		thread::spawn(move || {
-			use fuse::os::linux;
-			use fuse::server::FuseConnection;
-			use basic::FuseServerBuilder;
 
-			let dev_fuse = linux::SyscallFuseMount::new()
+		#[cfg(target_os = "linux")]
+		let mount_path = mount_path.clone();
+
+		#[cfg(target_os = "freebsd")]
+		let mount_cstr = mount_cstr.clone();
+
+		thread::spawn(move || {
+			use fuse::server::FuseConnection;
+			use fuse::server::basic::FuseServerBuilder;
+
+			#[cfg(target_os = "linux")]
+			let dev_fuse = fuse::os::linux::SyscallFuseMount::new()
 				.set_mount_source("rust_fuse_test")
 				.set_mount_subtype("rust_fuse_test")
 				.mount(&mount_path)
 				.unwrap();
+
+			#[cfg(target_os = "freebsd")]
+			let dev_fuse = fuse::os::freebsd::LibcFuseMounter::new()
+				.set_mount_subtype(b"rust_fuse_test\0")
+				.mount(&mount_cstr.as_bytes_with_nul())
+				.unwrap();
+
 			let conn = FuseConnection::new(dev_fuse, |init_request| {
 				handlers.fuse_init(init_request)
 			}).unwrap();
@@ -105,12 +123,23 @@ pub fn fuse_interop_test(
 	server_ready.wait();
 	let test_result = panic::catch_unwind(|| test_fn(&mount_path));
 
-	let umount_rc = unsafe { libc::umount(mount_cstr.as_ptr()) };
-	if umount_rc == -1 {
-		unsafe {
-			libc::umount2(mount_cstr.as_ptr(), libc::MNT_FORCE)
-		};
-	}
+	let unmount_rc = unsafe {
+		#[cfg(target_os = "linux")]
+		let unmount_rc = libc::umount(mount_cstr.as_ptr());
+
+		#[cfg(target_os = "freebsd")]
+		let unmount_rc = libc::unmount(mount_cstr.as_ptr(), 0);
+
+		if unmount_rc == -1 {
+			#[cfg(target_os = "linux")]
+			libc::umount2(mount_cstr.as_ptr(), libc::MNT_FORCE);
+
+			#[cfg(target_os = "freebsd")]
+			libc::unmount(mount_cstr.as_ptr(), libc::MNT_FORCE);
+		}
+		unmount_rc
+	};
+
 	let server_result = server_thread.join();
 
 	if let Err(err) = test_result {
@@ -120,7 +149,7 @@ pub fn fuse_interop_test(
 			Err(err) => panic::resume_unwind(err),
 			Ok(_) => {
 				//fuse_result.unwrap();
-				assert_eq!(umount_rc, 0);
+				assert_eq!(unmount_rc, 0);
 			},
 		}
 	}
@@ -283,15 +312,18 @@ pub fn cuse_interop_test(
 		assert!(!mktemp_ret.is_null());
 	}
 	mktemp_template.truncate(mktemp_template.len() - 1);
-	let device_path_cstr = ffi::CString::new(mktemp_template.clone()).unwrap();
 	let device_path = path::Path::new(ffi::OsStr::from_bytes(&mktemp_template))
 		.to_path_buf();
 
-	let mknod_rc = unsafe {
-		let dev_t = libc::makedev(CUSE_DEV_MAJOR, CUSE_DEV_MINOR);
-		libc::mknod(device_path_cstr.as_ptr(), libc::S_IFCHR | 0o777, dev_t)
-	};
-	assert_eq!(mknod_rc, 0);
+	#[cfg(target_os = "linux")]
+	{
+		let devpath_cstr = ffi::CString::new(mktemp_template.clone()).unwrap();
+		let mknod_rc = unsafe {
+			let dev_t = libc::makedev(CUSE_DEV_MAJOR, CUSE_DEV_MINOR);
+			libc::mknod(devpath_cstr.as_ptr(), libc::S_IFCHR | 0o777, dev_t)
+		};
+		assert_eq!(mknod_rc, 0);
+	}
 
 	mktemp_template = mktemp_template.split_off("/dev/".len());
 
@@ -302,7 +334,7 @@ pub fn cuse_interop_test(
 		let ready = sync::Arc::clone(&server_ready);
 		thread::spawn(move || {
 			use fuse::server::CuseConnectionBuilder;
-			use basic::CuseServerBuilder;
+			use fuse::server::basic::CuseServerBuilder;
 
 			let devname = fuse::CuseDeviceName::from_bytes(&mktemp_template)
 				.unwrap();
