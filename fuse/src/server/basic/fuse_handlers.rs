@@ -326,7 +326,20 @@ pub trait FuseHandlers<S: OutputStream> {
 		request: &protocol::StatfsRequest,
 		send_reply: impl SendReply<S>,
 	) -> Result<SentReply<protocol::StatfsResponse>, SendError<S::Error>> {
-		server::unhandled_request(ctx, send_reply)
+		#[cfg(not(target_os = "freebsd"))]
+		{
+			server::unhandled_request(ctx, send_reply)
+		}
+
+		#[cfg(target_os = "freebsd")]
+		{
+			if let Some(hooks) = ctx.hooks {
+				hooks.unhandled_request(ctx.header);
+			}
+			let resp = protocol::StatfsResponse::new();
+			send_reply.ok(&resp)
+		}
+
 	}
 
 	fn symlink(
