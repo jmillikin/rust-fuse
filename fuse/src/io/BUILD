@@ -11,9 +11,9 @@ rust_test(
     srcs = ["decode_test.rs"] + [
         "//fuse:test_srcs",
     ],
+    size = "small",
+    timeout = "short",
     crate = "//fuse",
-    crate_features = [
-        "std",
-    ],
+    crate_features = ["std"],
     rustc_flags = ['--cfg=rust_fuse_test="decode_test"'],
 )

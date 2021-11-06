@@ -6,6 +6,8 @@ exports_files(glob(["*.rs"]))
 rust_test(
 	name = "cuse_interop_test",
 	srcs = ["cuse_interop_test.rs"],
+	size = "medium",
+	timeout = "short",
 	crate_features = ["std"],
 	deps = [
 		"//fuse",

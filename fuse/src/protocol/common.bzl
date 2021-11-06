@@ -10,6 +10,8 @@ def rust_fuse_protocol_module():
             srcs = [name + "_test.rs"] + [
                 "//fuse:test_srcs",
             ],
+            size = "small",
+            timeout = "short",
             crate = "//fuse",
             crate_features = [
                 "std",
@@ -24,9 +26,9 @@ def rust_fuse_protocol_module():
             rust_test(
                 name = test_name,
                 srcs = [name + "_interop_test.rs"],
-                crate_features = [
-                    "std",
-                ],
+                size = "medium",
+                timeout = "short",
+                crate_features = ["std"],
                 deps = [
                     "//fuse",
                     "//fuse/src/internal:interop_testutil",
