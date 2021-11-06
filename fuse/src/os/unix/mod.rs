@@ -14,7 +14,17 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#![cfg(feature = "std")]
-
+#[cfg(feature = "std")]
 mod file_stream;
+
+#[cfg(feature = "std")]
 pub use self::file_stream::{DevCuse, DevFuse};
+
+#[cfg(any(doc, feature = "libc_fuse_mount"))]
+pub(in crate::os) mod iovec;
+
+#[cfg(any(doc, feature = "libc_fuse_mount"))]
+pub(in crate::os) mod libc_stream;
+
+#[cfg(any(doc, feature = "libc_fuse_mount"))]
+pub use self::libc_stream::{LibcError, LibcStream};
