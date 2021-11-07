@@ -24,6 +24,7 @@ pub(in crate::os) struct IoVec<'a> {
 }
 
 impl IoVec<'static> {
+	#[allow(dead_code)]
 	pub(in crate::os) fn null() -> Self {
 		Self {
 			iov_base: core::ptr::null(),
@@ -32,6 +33,7 @@ impl IoVec<'static> {
 		}
 	}
 
+	#[allow(dead_code)]
 	pub(in crate::os) fn global(buf: &'static [u8]) -> Self {
 		IoVec {
 			iov_base: buf.as_ptr() as *const core::ffi::c_void,

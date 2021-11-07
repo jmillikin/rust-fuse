@@ -30,6 +30,7 @@ impl LibcError {
 		self.code
 	}
 
+	#[allow(dead_code)]
 	pub(in crate::os) fn last_os_error() -> Self {
 		Self::from_raw_os_error(errno())
 	}

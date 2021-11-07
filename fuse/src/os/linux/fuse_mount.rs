@@ -17,10 +17,17 @@
 use std::ffi::{CString, OsStr, OsString};
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::MetadataExt;
-use std::os::unix::io::{AsRawFd, RawFd};
+use std::os::unix::io::RawFd;
 use std::{fs, io, path};
 
+#[cfg(feature = "nightly_syscall_fuse_mount")]
+use std::os::unix::io::AsRawFd;
+
+#[cfg(feature = "nightly_syscall_fuse_mount")]
 use crate::os::unix::DevFuse;
+
+#[cfg(feature = "libc_fuse_mount")]
+use crate::os::unix::libc_stream::LibcStream;
 
 #[cfg(feature = "nightly_syscall_fuse_mount")]
 use super::linux_syscalls as syscalls;
@@ -35,7 +42,6 @@ const MS_NODEV: u32 = 0x4;
 const PAGE_SIZE: usize = 4096;
 
 struct FuseMountOptions {
-	dev_fuse: path::PathBuf,
 	mount_source: OsString,
 	mount_subtype: OsString,
 	mount_flags: u32,
@@ -47,7 +53,6 @@ struct FuseMountOptions {
 impl FuseMountOptions {
 	fn new() -> FuseMountOptions {
 		Self {
-			dev_fuse: path::PathBuf::from("/dev/fuse"),
 			mount_source: OsString::new(),
 			mount_subtype: OsString::new(),
 			mount_flags: MS_NOSUID | MS_NODEV,
@@ -151,7 +156,7 @@ impl LibcFuseMount {
 	pub fn mount(
 		self,
 		mount_target: &path::Path,
-	) -> Result<DevFuse, io::Error> {
+	) -> Result<LibcStream, io::Error> {
 		let mount_target_cstr = cstr_from_osstr(mount_target.as_os_str())?;
 		let mount_source_cstr = self.0.mount_source_cstr()?;
 		let mount_type_cstr = self.0.mount_type_cstr()?;
@@ -164,11 +169,8 @@ impl LibcFuseMount {
 			},
 		};
 
-		let file = fs::OpenOptions::new()
-			.read(true)
-			.write(true)
-			.open(&self.0.dev_fuse)?;
-		let fd = file.as_raw_fd();
+		let stream = LibcStream::dev_fuse()?;
+		let fd = stream.as_raw_fd();
 
 		let user_id =
 			self.0.user_id.unwrap_or_else(|| unsafe { libc::getuid() });
@@ -188,7 +190,7 @@ impl LibcFuseMount {
 				return Err(std::io::Error::last_os_error());
 			}
 		};
-		Ok(DevFuse::from_file(file))
+		Ok(stream)
 	}
 }
 
@@ -254,7 +256,7 @@ impl SyscallFuseMount {
 		let file = fs::OpenOptions::new()
 			.read(true)
 			.write(true)
-			.open(&self.0.dev_fuse)?;
+			.open("/dev/fuse")?;
 		let fd = file.as_raw_fd();
 
 		let user_id = self.0.user_id.unwrap_or_else(|| syscalls::getuid());
