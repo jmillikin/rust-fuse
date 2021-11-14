@@ -14,8 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::mem::{self, MaybeUninit};
-
 use crate::io::{InputStream, OutputStream, RecvError, SendError};
 use crate::os::unix::iovec::IoVec;
 
@@ -146,35 +144,29 @@ impl OutputStream for LibcStream {
 		&self,
 		bufs: &[&[u8]; N],
 	) -> Result<(), SendError<LibcError>> {
-		let mut bufs_len: usize = 0;
-		let iovecs: &[libc::iovec] = {
-			let mut uninit_bufs: [MaybeUninit<IoVec>; N] =
-				unsafe { MaybeUninit::uninit().assume_init() };
-			for ii in 0..N {
-				bufs_len += bufs[ii].len();
-				uninit_bufs[ii] = MaybeUninit::new(IoVec::borrow(bufs[ii]));
-			}
-			unsafe { mem::transmute::<_, &[libc::iovec; N]>(&uninit_bufs) }
-		};
 
-		let iovecs_ptr = iovecs.as_ptr();
-		let write_rc = unsafe { libc::writev(self.fd, iovecs_ptr, N as i32) };
-		if write_rc == -1 {
-			match errno() {
-				libc::ENOENT => {
-					return Err(SendError::NotFound);
-				},
-				err_code => {
-					let err = LibcError::from_raw_os_error(err_code);
-					return Err(SendError::Other(err));
-				},
+		IoVec::borrow_array(bufs, |iovecs, bufs_len| {
+			let iovecs_ptr = iovecs.as_ptr() as *const libc::iovec;
+			let write_rc = unsafe {
+				libc::writev(self.fd, iovecs_ptr, N as i32)
+			};
+			if write_rc == -1 {
+				match errno() {
+					libc::ENOENT => {
+						return Err(SendError::NotFound);
+					},
+					err_code => {
+						let err = LibcError::from_raw_os_error(err_code);
+						return Err(SendError::Other(err));
+					},
+				}
 			}
-		}
-		if write_rc < bufs_len as isize {
-			let err = LibcError::from_raw_os_error(libc::EIO);
-			return Err(SendError::Other(err));
-		}
-		Ok(())
+			if write_rc < bufs_len as isize {
+				let err = LibcError::from_raw_os_error(libc::EIO);
+				return Err(SendError::Other(err));
+			}
+			Ok(())
+		})
 	}
 }
 

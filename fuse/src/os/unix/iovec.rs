@@ -15,6 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use core::marker::PhantomData;
+use core::mem::{self, MaybeUninit};
 
 #[repr(C)]
 pub(in crate::os) struct IoVec<'a> {
@@ -50,5 +51,21 @@ impl<'a> IoVec<'a> {
 			iov_len: buf.len(),
 			_phantom: PhantomData,
 		}
+	}
+
+	pub(in crate::os) fn borrow_array<T, const N: usize>(
+		bufs: &[&'a [u8]; N],
+		f: impl FnOnce(&[Self; N], usize) -> T,
+	) -> T {
+		let mut bufs_len: usize = 0;
+		let mut uninit_bufs: [MaybeUninit<Self>; N] = unsafe {
+			MaybeUninit::uninit().assume_init()
+		};
+		for ii in 0..N {
+			bufs_len += bufs[ii].len();
+			uninit_bufs[ii] = MaybeUninit::new(Self::borrow(bufs[ii]));
+		}
+		let iovecs = unsafe { mem::transmute::<_, &[IoVec; N]>(&uninit_bufs) };
+		f(iovecs, bufs_len)
 	}
 }

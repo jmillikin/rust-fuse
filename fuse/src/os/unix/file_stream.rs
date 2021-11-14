@@ -72,14 +72,14 @@ fn file_send_vectored<const N: usize>(
 	use std::io::Write;
 
 	let mut bufs_len: usize = 0;
-	let io_slices: &[io::IoSlice] = {
-		let mut uninit_bufs: [MaybeUninit<io::IoSlice>; N] =
-			unsafe { MaybeUninit::uninit().assume_init() };
-		for ii in 0..N {
-			bufs_len += bufs[ii].len();
-			uninit_bufs[ii] = MaybeUninit::new(io::IoSlice::new(bufs[ii]));
-		}
-		unsafe { mem::transmute::<_, &[io::IoSlice; N]>(&uninit_bufs) }
+	let mut uninit_bufs: [MaybeUninit<io::IoSlice>; N] =
+		unsafe { MaybeUninit::uninit().assume_init() };
+	for ii in 0..N {
+		bufs_len += bufs[ii].len();
+		uninit_bufs[ii] = MaybeUninit::new(io::IoSlice::new(bufs[ii]));
+	}
+	let io_slices: &[io::IoSlice] = unsafe {
+		mem::transmute::<_, &[io::IoSlice; N]>(&uninit_bufs)
 	};
 
 	let write_size = match Write::write_vectored(&mut file, io_slices) {
