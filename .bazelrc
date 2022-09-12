@@ -1,9 +1,0 @@
-build:cross-linux_x86_64 --platforms=//build/platforms:linux_x86_64
-build:cross-freebsd_v12_x86_64 --platforms=//build/platforms:freebsd_v12_x86_64
-build:cross-freebsd_v13_x86_64 --platforms=//build/platforms:freebsd_v13_x86_64
-
-test:cross-linux_x86_64 --run_under=//build/testutil:qemu_exec
-test:cross-freebsd_v12_x86_64 --run_under=//build/testutil:qemu_exec
-test:cross-freebsd_v13_x86_64 --run_under=//build/testutil:qemu_exec
-
-try-import %workspace%/user.bazelrc

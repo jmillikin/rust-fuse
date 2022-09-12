@@ -1,6 +1,6 @@
 load("@io_bazel_rules_rust//rust:rust.bzl", "rust_test")
 
-def rust_fuse_protocol_module():
+def rust_fuse_protocol_module(interop_test_os = None):
     files = native.glob(["*.rs"])
     name = native.package_name()[len("fuse/src/protocol/"):]
 
@@ -25,7 +25,7 @@ def rust_fuse_protocol_module():
         if test_name not in native.existing_rules():
             rust_test(
                 name = test_name,
-                srcs = [name + "_interop_test.rs"],
+                srcs = [test_name + ".rs"],
                 size = "medium",
                 timeout = "short",
                 crate_features = ["std"],
@@ -34,4 +34,5 @@ def rust_fuse_protocol_module():
                     "//fuse/src/internal:interop_testutil",
                     "@rust_libc//:libc",
                 ],
+                tags = ["manual"],
             )

@@ -10,11 +10,6 @@ http_archive(
 http_archive(
     name = "io_bazel_rules_rust",
     patch_args = ["-p1"],
-    patches = [
-        "//build:rules_rust-triple-mappings.patch",
-        "//build:rules_rust-no-skylib.patch",
-        "//build:rules_rust-crate-name-no-slashes.patch",
-    ],
     sha256 = "8e1bae501e0df40e8feb2497ebab37c84930bf00b332f8f55315dfc08d85c30a",
     strip_prefix = "rules_rust-df18ddbece5b68f86e63414ea4b50d691923039a",
     urls = [
@@ -23,59 +18,19 @@ http_archive(
     ],
 )
 
-local_repository(
-    name = "rust_fuse_cc_toolchains",
-    path = "build/cc_toolchains",
-)
+load("@io_bazel_rules_rust//rust:repositories.bzl", "rust_repositories")
 
-load("@rust_fuse_cc_toolchains//:cc_toolchains.bzl", "cc_toolchains")
-
-cc_toolchains()
-
-load("//build:rust_toolchains.bzl", "rust_toolchains")
-
-rust_toolchains()
-
-load(
-    "//build/testutil:testutil.bzl",
-    "busybox_multiarch",
-    "freebsd_repository",
-    "qemu_repository",
-)
-
-busybox_multiarch(name = "busybox_multiarch")
-
-freebsd_repository(
-    name = "freebsd_amd64_v12.2",
-    platform = "amd64/amd64",
-    version = "12.2",
-)
-
-freebsd_repository(
-    name = "freebsd_amd64_v13.0",
-    platform = "amd64/amd64",
-    version = "13.0",
-)
-
-qemu_repository(
-    name = "qemu_v5.2.0",
-    version = "5.2.0",
-)
-
-http_archive(
-    name = "rust_base64",
-    build_file_content = """
-load("@io_bazel_rules_rust//rust:rust.bzl", "rust_library")
-rust_library(
-    name = "base64",
-    srcs = glob(["**/*.rs"]),
-    visibility = ["//visibility:public"],
-)
-""",
-    sha256 = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd",
-    strip_prefix = "base64-0.13.0",
-    type = "tar.gz",
-    url = "https://crates.io/api/v1/crates/base64/0.13.0/download",
+rust_repositories(
+    edition = "2018",
+    iso_date = "2020-12-30",
+    sha256s = {
+        "2020-12-30/rust-nightly-x86_64-apple-darwin": "2b5b885694d0d1a9bdd0473d9e2df1f2c6eac88986e3135e6573e1d71e7824dc",
+        "2020-12-30/llvm-tools-nightly-x86_64-apple-darwin": "8aca7ddf73983bf2db4846721787547fed16c2ad4dc5c260f7f05f6b93cea8e7",
+        "2020-12-30/rust-std-nightly-x86_64-apple-darwin": "17912a6a5aa56daeb0aed5fca8698bacc54950351d9f91989a524588e37e41ca",
+        "2020-12-30/rust-std-nightly-armv7-unknown-linux-musleabihf": "c7176fe7fccd6ab71535ce1abf81ab71c8cfdffbaa0f51f71d1d13b7f4526f22",
+        "2020-12-30/rust-std-nightly-x86_64-unknown-linux-musl": "3802d2c7271cdd3fc35921b0d9f999b9b34ac9d888b62085b976453a8b113700",
+    },
+    version = "nightly",
 )
 
 http_archive(
@@ -93,22 +48,6 @@ rust_library(
     strip_prefix = "diff-0.1.12",
     type = "tar.gz",
     url = "https://crates.io/api/v1/crates/diff/0.1.12/download",
-)
-
-http_archive(
-    name = "rust_json",
-    build_file_content = """
-load("@io_bazel_rules_rust//rust:rust.bzl", "rust_library")
-rust_library(
-    name = "json",
-    srcs = glob(["**/*.rs"]),
-    visibility = ["//visibility:public"],
-)
-""",
-    sha256 = "078e285eafdfb6c4b434e0d31e8cfcb5115b651496faca5749b88fafd4f23bfd",
-    strip_prefix = "json-0.12.4",
-    type = "tar.gz",
-    url = "https://crates.io/api/v1/crates/json/0.12.4/download",
 )
 
 http_archive(
