@@ -51,7 +51,7 @@ mod target {
 
 	pub(super) unsafe fn getuid() -> usize {
 		let rc: usize;
-		asm!(
+		core::arch::asm!(
 			"swi #0",
 			in("r7") SYS_getuid32,
 			lateout("r0") rc,
@@ -61,7 +61,7 @@ mod target {
 
 	pub(super) unsafe fn getgid() -> usize {
 		let rc: usize;
-		asm!(
+		core::arch::asm!(
 			"swi #0",
 			in("r7") SYS_getgid32,
 			lateout("r0") rc,
@@ -77,7 +77,7 @@ mod target {
 		data: &[u8],
 	) -> usize {
 		let mut rc: usize;
-		asm!(
+		core::arch::asm!(
 			"swi #0",
 			in("r7") SYS_mount,
 			in("r0") source.as_ptr(),
@@ -103,7 +103,7 @@ mod target {
 
 	pub(super) unsafe fn getuid() -> usize {
 		let rc: usize;
-		asm!(
+		core::arch::asm!(
 			"int 0x80",
 			in("eax") SYS_getuid32,
 			lateout("eax") rc,
@@ -113,7 +113,7 @@ mod target {
 
 	pub(super) unsafe fn getgid() -> usize {
 		let rc: usize;
-		asm!(
+		core::arch::asm!(
 			"int 0x80",
 			in("eax") SYS_getgid32,
 			lateout("eax") rc,
@@ -129,7 +129,7 @@ mod target {
 		data: &[u8],
 	) -> usize {
 		let mut rc: usize;
-		asm!(
+		core::arch::asm!(
 			"int 0x80",
 			in("eax") SYS_mount,
 			in("ebx") source.as_ptr(),
@@ -155,7 +155,7 @@ mod target {
 
 	pub(super) unsafe fn getuid() -> usize {
 		let rc: usize;
-		asm!(
+		core::arch::asm!(
 			"syscall",
 			in("rax") SYS_getuid,
 			out("rcx") _,
@@ -167,7 +167,7 @@ mod target {
 
 	pub(super) unsafe fn getgid() -> usize {
 		let rc: usize;
-		asm!(
+		core::arch::asm!(
 			"syscall",
 			in("rax") SYS_getgid,
 			out("rcx") _,
@@ -185,7 +185,7 @@ mod target {
 		data: &[u8],
 	) -> usize {
 		let mut rc: usize;
-		asm!(
+		core::arch::asm!(
 			"syscall",
 			in("rax") SYS_mount,
 			in("rdi") source.as_ptr(),

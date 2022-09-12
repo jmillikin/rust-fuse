@@ -1,4 +1,4 @@
-load("@io_bazel_rules_rust//rust:rust.bzl", "rust_test")
+load("@rules_rust//rust:defs.bzl", "rust_test")
 
 def rust_fuse_protocol_module(interop_test_os = None):
     files = native.glob(["*.rs"])

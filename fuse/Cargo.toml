@@ -17,7 +17,7 @@ std = []
 
 libc_fuse_mount = ["libc"]
 
-nightly_syscall_fuse_mount = []
+syscall_fuse_mount = []
 
 unstable_bmap = []
 unstable_ioctl = []

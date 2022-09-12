@@ -20,16 +20,16 @@ use std::os::unix::fs::MetadataExt;
 use std::os::unix::io::RawFd;
 use std::{fs, io, path};
 
-#[cfg(feature = "nightly_syscall_fuse_mount")]
+#[cfg(feature = "syscall_fuse_mount")]
 use std::os::unix::io::AsRawFd;
 
-#[cfg(feature = "nightly_syscall_fuse_mount")]
+#[cfg(feature = "syscall_fuse_mount")]
 use crate::os::unix::DevFuse;
 
 #[cfg(feature = "libc_fuse_mount")]
 use crate::os::unix::libc_stream::LibcStream;
 
-#[cfg(feature = "nightly_syscall_fuse_mount")]
+#[cfg(feature = "syscall_fuse_mount")]
 use super::linux_syscalls as syscalls;
 
 const MS_NOSUID: u32 = 0x2;
@@ -193,10 +193,10 @@ impl LibcFuseMount {
 	}
 }
 
-#[cfg(any(doc, feature = "nightly_syscall_fuse_mount"))]
+#[cfg(any(doc, feature = "syscall_fuse_mount"))]
 pub struct SyscallFuseMount(FuseMountOptions);
 
-#[cfg(any(doc, feature = "nightly_syscall_fuse_mount"))]
+#[cfg(any(doc, feature = "syscall_fuse_mount"))]
 impl SyscallFuseMount {
 	pub fn new() -> SyscallFuseMount {
 		Self(FuseMountOptions::new())

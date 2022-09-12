@@ -1,4 +1,4 @@
-load("@io_bazel_rules_rust//rust:rust.bzl", "rust_library")
+load("@rules_rust//rust:defs.bzl", "rust_library")
 
 ALL_SRCS = glob(["src/**/*.rs"])
 
@@ -53,11 +53,9 @@ rust_library(
         "//fuse/src/protocol/unlink:unlink.rs",
         "//fuse/src/protocol/write:write.rs",
     ],
-    crate_features = [
-        "std",
-        "nightly_syscall_fuse_mount",
-    ] + select({
+    crate_features = ["std"] + select({
         "@platforms//os:freebsd": ["libc_fuse_mount"],
+        "@platforms//os:linux": ["syscall_fuse_mount"],
         "//conditions:default": [],
     }),
     deps = select({

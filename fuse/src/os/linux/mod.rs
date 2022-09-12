@@ -16,19 +16,19 @@
 
 #![cfg(feature = "std")]
 
-#[cfg(feature = "nightly_syscall_fuse_mount")]
+#[cfg(feature = "syscall_fuse_mount")]
 mod linux_syscalls;
 
 #[cfg(any(
 	doc,
 	feature = "libc_fuse_mount",
-	feature = "nightly_syscall_fuse_mount",
+	feature = "syscall_fuse_mount",
 ))]
 mod fuse_mount;
 
 #[cfg(any(
 	doc,
 	feature = "libc_fuse_mount",
-	feature = "nightly_syscall_fuse_mount",
+	feature = "syscall_fuse_mount",
 ))]
 pub use self::fuse_mount::*;

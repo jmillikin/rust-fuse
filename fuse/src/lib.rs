@@ -16,9 +16,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-// For direct syscalls in `fuse/src/os/linux/syscalls.rs`.
-#![cfg_attr(feature = "nightly_syscall_fuse_mount", feature(asm))]
-
 #[cfg(feature = "libc_fuse_mount")]
 extern crate libc;
 

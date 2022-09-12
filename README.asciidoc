@@ -89,14 +89,13 @@ Please see {url-docs}[the documentation] for advanced options.
 === Feature `std`
 
 It is possible to run a minimal single-threaded FUSE server in a `no_std`
-binary. This currently requires nightly features (const generics and inline
-assembly).
+binary.
 
 [source,toml]
 ----
 [dependencies.fuse]
 default-features = false
-features = ["nightly_syscall_fuse_mount"]
+features = ["syscall_fuse_mount"]
 ----
 
 Note that some functionality is not available in `no_std` mode. Please see
