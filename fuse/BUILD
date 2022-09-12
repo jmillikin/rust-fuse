@@ -58,6 +58,7 @@ rust_library(
         "@platforms//os:linux": ["syscall_fuse_mount"],
         "//conditions:default": [],
     }),
+    visibility = ["//visibility:public"],
     deps = select({
         "@platforms//os:freebsd": [
             "@rust_freebsd_errno//freebsd-errno",
@@ -69,7 +70,6 @@ rust_library(
         ],
         "//conditions:default": [],
     }),
-    visibility = ["//visibility:public"],
 )
 
 rust_doc(
