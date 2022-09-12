@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(not(any(doc, feature = "std")), no_std)]
 
 #[cfg(feature = "libc_fuse_mount")]
 extern crate libc;

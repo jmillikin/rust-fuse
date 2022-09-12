@@ -174,16 +174,22 @@ impl<'a> ReaddirResponse<'a> {
 	/// # Examples
 	///
 	/// ```
+	/// use fuse::server::basic as server;
+	/// # struct Handlers {}
+	/// # impl<S: fuse::io::OutputStream> server::FuseHandlers<S> for Handlers {
 	/// fn readdir(
+	/// 	&self,
+	/// 	ctx: server::ServerContext,
 	/// 	request: &fuse::ReaddirRequest,
-	/// 	respond: impl for<'a> fuse::Respond<fuse::ReaddirResponse<'a>>,
-	/// ) {
+	/// 	send_reply: impl server::SendReply<S>,
+	/// ) -> Result<server::SentReply<fuse::ReaddirResponse>, fuse::io::SendError<S::Error>> {
 	/// 	let mut response = fuse::ReaddirResponse::with_max_size(request.size());
 	/// 	/* fill in response */
-	/// 	respond.ok(&response);
+	/// 	send_reply.ok(&response)
 	/// }
+	/// # }
 	/// ```
-	#[cfg(feature = "std")]
+	#[cfg(any(doc, feature = "std"))]
 	pub fn with_max_size(max_size: u32) -> ReaddirResponse<'a> {
 		let max_size = max_size as usize;
 		Self {
@@ -206,16 +212,22 @@ impl<'a> ReaddirResponse<'a> {
 	/// # Examples
 	///
 	/// ```
+	/// use fuse::server::basic as server;
 	/// # fn new_aligned_buf(_size: u32) -> Vec<u8> { Vec::new() }
+	/// # struct Handlers {}
+	/// # impl<S: fuse::io::OutputStream> server::FuseHandlers<S> for Handlers {
 	/// fn readdir(
+	/// 	&self,
+	/// 	ctx: server::ServerContext,
 	/// 	request: &fuse::ReaddirRequest,
-	/// 	respond: impl for<'a> fuse::Respond<fuse::ReaddirResponse<'a>>,
-	/// ) {
+	/// 	send_reply: impl server::SendReply<S>,
+	/// ) -> Result<server::SentReply<fuse::ReaddirResponse>, fuse::io::SendError<S::Error>> {
 	/// 	let mut buf = new_aligned_buf(request.size());
 	/// 	let mut response = fuse::ReaddirResponse::with_capacity(&mut buf);
 	/// 	/* fill in response */
-	/// 	respond.ok(&response);
+	/// 	send_reply.ok(&response)
 	/// }
+	/// # }
 	/// ```
 	pub fn with_capacity(capacity: &'a mut [u8]) -> ReaddirResponse<'a> {
 		let offset = capacity.as_ptr().align_offset(mem::align_of::<u64>());

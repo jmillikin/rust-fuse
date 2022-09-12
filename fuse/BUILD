@@ -1,4 +1,4 @@
-load("@rules_rust//rust:defs.bzl", "rust_library")
+load("@rules_rust//rust:defs.bzl", "rust_doc", "rust_doc_test", "rust_library")
 
 ALL_SRCS = glob(["src/**/*.rs"])
 
@@ -70,4 +70,14 @@ rust_library(
         "//conditions:default": [],
     }),
     visibility = ["//visibility:public"],
+)
+
+rust_doc(
+    name = "fuse_doc",
+    crate = ":fuse",
+)
+
+rust_doc_test(
+    name = "fuse_doc_test",
+    crate = ":fuse",
 )

@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use std::time;
+
 use crate::protocol::prelude::*;
 
 #[cfg(rust_fuse_test = "setattr_test")]
