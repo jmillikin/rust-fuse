@@ -16,7 +16,7 @@
 
 use core::num::NonZeroU16;
 
-use crate::error::ErrorCode;
+use crate::ErrorCode;
 use crate::io::{OutputStream, SendError};
 use crate::server::{Reply, RequestHeader};
 use crate::server::basic::server_hooks::ServerHooks;

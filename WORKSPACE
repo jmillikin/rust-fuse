@@ -7,6 +7,34 @@ http_archive(
 )
 
 http_archive(
+    name = "rust_freebsd_errno",
+    sha256 = "04afa4cca65b47d1093b0fd60868f3ad50a8b08194cf6fd2a497e2859333eef1",
+    strip_prefix = "freebsd-errno-1.0.0",
+    urls = ["https://github.com/jmillikin/rust-freebsd-errno/releases/download/v1.0.0/freebsd-errno-1.0.0.tar.xz"],
+)
+
+http_archive(
+    name = "rust_linux_errno",
+    sha256 = "009d58c93c806f178004a4cd30af211860bc44f8ce7d02eb4f544821add7ca99",
+    strip_prefix = "linux-errno-1.0.1",
+    urls = ["https://github.com/jmillikin/rust-linux-errno/releases/download/v1.0.1/linux-errno-1.0.1.tar.xz"],
+)
+
+http_archive(
+    name = "rust_linux_syscall",
+    sha256 = "6e26b9e20d8795100b9035c698f4977ad153bed1eafe9f9dcb54f14fbd2b120a",
+    strip_prefix = "linux-syscall-1.0.0",
+    urls = ["https://github.com/jmillikin/rust-linux-syscall/releases/download/v1.0.0/linux-syscall-1.0.0.tar.xz"],
+)
+
+http_archive(
+    name = "rust_posix_errno",
+    sha256 = "0c86c849ff673372fe6415d4004a233565b57b2884ea49d3b725dd1296cc2529",
+    strip_prefix = "posix-errno-1.0.1",
+    urls = ["https://github.com/jmillikin/rust-posix-errno/releases/download/v1.0.1/posix-errno-1.0.1.tar.xz"],
+)
+
+http_archive(
     name = "rust_diff",
     build_file_content = """
 load("@rules_rust//rust:defs.bzl", "rust_library")

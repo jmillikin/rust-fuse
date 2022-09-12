@@ -24,6 +24,8 @@ mod fuse {
 	pub use ::fuse::io::*;
 	pub use ::fuse::protocol::*;
 	pub use ::fuse::server::basic::*;
+
+	pub use interop_testutil::ErrorCode;
 }
 
 use interop_testutil::{diff_str, fuse_interop_test, path_cstr};

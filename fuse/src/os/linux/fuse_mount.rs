@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use std::ffi::{CString, OsStr, OsString};
+use std::ffi::{CStr, CString, OsStr, OsString};
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::MetadataExt;
 use std::os::unix::io::RawFd;
@@ -24,13 +24,13 @@ use std::{fs, io, path};
 use std::os::unix::io::AsRawFd;
 
 #[cfg(feature = "syscall_fuse_mount")]
+use linux_syscall::{syscall, Result as _};
+
+#[cfg(feature = "syscall_fuse_mount")]
 use crate::os::unix::DevFuse;
 
 #[cfg(feature = "libc_fuse_mount")]
 use crate::os::unix::libc_stream::LibcStream;
-
-#[cfg(feature = "syscall_fuse_mount")]
-use super::linux_syscalls as syscalls;
 
 const MS_NOSUID: u32 = 0x2;
 const MS_NODEV: u32 = 0x4;
@@ -257,11 +257,11 @@ impl SyscallFuseMount {
 			.open("/dev/fuse")?;
 		let fd = file.as_raw_fd();
 
-		let user_id = self.0.user_id.unwrap_or_else(|| syscalls::getuid());
-		let group_id = self.0.group_id.unwrap_or_else(|| syscalls::getgid());
+		let user_id = self.0.user_id.unwrap_or_else(|| syscall_getuid());
+		let group_id = self.0.group_id.unwrap_or_else(|| syscall_getgid());
 
 		let mount_data = self.0.mount_data(fd, root_mode, user_id, group_id)?;
-		syscalls::mount(
+		syscall_mount(
 			&mount_source_cstr,
 			&mount_target_cstr,
 			&mount_type_cstr,
@@ -270,6 +270,64 @@ impl SyscallFuseMount {
 		)?;
 
 		Ok(DevFuse::from_file(file))
+	}
+}
+
+#[cfg(feature = "syscall_fuse_mount")]
+fn syscall_getuid() -> u32 {
+	#[allow(unused_mut)]
+	let mut sys_getuid = linux_syscall::SYS_getuid;
+
+	#[cfg(any(
+		target_arch = "arm",
+		target_arch = "x86",
+	))]
+	{
+		sys_getuid = linux_syscall::SYS_getuid32;
+	}
+
+	let rc = unsafe { syscall!(sys_getuid) };
+	rc.as_usize_unchecked() as u32
+}
+
+#[cfg(feature = "syscall_fuse_mount")]
+fn syscall_getgid() -> u32 {
+	#[allow(unused_mut)]
+	let mut sys_getgid = linux_syscall::SYS_getgid;
+
+	#[cfg(any(
+		target_arch = "arm",
+		target_arch = "x86",
+	))]
+	{
+		sys_getgid = linux_syscall::SYS_getgid32;
+	}
+
+	let rc = unsafe { syscall!(sys_getgid) };
+	rc.as_usize_unchecked() as u32
+}
+
+#[cfg(feature = "syscall_fuse_mount")]
+fn syscall_mount(
+	source: &CStr,
+	target: &CStr,
+	fstype: &CStr,
+	mountflags: u32,
+	data: &[u8],
+) -> io::Result<()> {
+	let rc = unsafe {
+		syscall!(
+			linux_syscall::SYS_mount,
+			source.as_ptr(),
+			target.as_ptr(),
+			fstype.as_ptr(),
+			mountflags,
+			data.as_ptr(),
+		)
+	};
+	match rc.check() {
+		Ok(()) => Ok(()),
+		Err(err) => Err(io::Error::from_raw_os_error(i32::from(err.get()))),
 	}
 }
 

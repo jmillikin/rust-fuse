@@ -22,6 +22,8 @@ mod fuse {
 	pub use ::fuse::io::*;
 	pub use ::fuse::protocol::*;
 	pub use ::fuse::server::basic::*;
+
+	pub use interop_testutil::ErrorCode;
 }
 
 use interop_testutil::{diff_str, errno, fuse_interop_test, path_cstr};
@@ -89,7 +91,13 @@ impl<S: fuse::OutputStream> fuse::FuseHandlers<S> for TestFS {
 			return send_reply.err(fuse::ErrorCode::E2BIG);
 		}
 
-		send_reply.err(fuse::ErrorCode::ENOATTR)
+		#[cfg(target_os = "linux")]
+		let err = fuse::ErrorCode::ENODATA;
+
+		#[cfg(target_os = "freebsd")]
+		let err = fuse::ErrorCode::ENOATTR;
+
+		send_reply.err(err)
 	}
 }
 

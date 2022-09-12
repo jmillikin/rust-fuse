@@ -22,8 +22,6 @@ extern crate libc;
 #[macro_use]
 mod internal;
 
-mod error;
-
 pub mod client;
 
 pub mod server;
@@ -41,7 +39,37 @@ pub mod os {
 
 pub mod io;
 
-pub use crate::error::ErrorCode;
+pub(crate) struct ErrorCode;
+
+#[allow(dead_code)]
+#[cfg(target_os = "linux")]
+impl ErrorCode {
+	pub(crate) const E2BIG:  linux_errno::Error = linux_errno::E2BIG;
+	pub(crate) const EINTR:  linux_errno::Error = linux_errno::EINTR;
+	pub(crate) const EIO:    linux_errno::Error = linux_errno::EIO;
+	pub(crate) const ENOENT: linux_errno::Error = linux_errno::ENOENT;
+	pub(crate) const ENOSYS: linux_errno::Error = linux_errno::ENOSYS;
+	pub(crate) const ERANGE: linux_errno::Error = linux_errno::ERANGE;
+
+	pub(crate) const EINTR_I32:  i32 = linux_errno::EINTR.get()  as i32;
+	pub(crate) const ENODEV_I32: i32 = linux_errno::ENODEV.get() as i32;
+	pub(crate) const ENOENT_I32: i32 = linux_errno::ENOENT.get() as i32;
+}
+
+#[allow(dead_code)]
+#[cfg(target_os = "freebsd")]
+impl ErrorCode {
+	pub(crate) const E2BIG:  freebsd_errno::Error = freebsd_errno::E2BIG;
+	pub(crate) const EINTR:  freebsd_errno::Error = freebsd_errno::EINTR;
+	pub(crate) const EIO:    freebsd_errno::Error = freebsd_errno::EIO;
+	pub(crate) const ENOENT: freebsd_errno::Error = freebsd_errno::ENOENT;
+	pub(crate) const ENOSYS: freebsd_errno::Error = freebsd_errno::ENOSYS;
+	pub(crate) const ERANGE: freebsd_errno::Error = freebsd_errno::ERANGE;
+
+	pub(crate) const EINTR_I32:  i32 = freebsd_errno::EINTR.get();
+	pub(crate) const ENODEV_I32: i32 = freebsd_errno::ENODEV.get();
+	pub(crate) const ENOENT_I32: i32 = freebsd_errno::ENOENT.get();
+}
 
 pub mod protocol;
 pub use crate::protocol::*;

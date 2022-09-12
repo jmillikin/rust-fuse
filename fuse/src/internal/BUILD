@@ -10,5 +10,13 @@ rust_library(
         "//fuse",
         "@rust_diff//:diff",
         "@rust_libc//:libc",
-    ],
+    ] + select({
+        "@platforms//os:freebsd": [
+            "@rust_freebsd_errno//freebsd-errno",
+        ],
+        "@platforms//os:linux": [
+            "@rust_linux_errno//linux-errno",
+        ],
+        "//conditions:default": [],
+    }),
 )

@@ -23,6 +23,12 @@ use fuse::io::{SendError, RecvError};
 use fuse::protocol::fuse_init;
 use fuse::server::basic;
 
+#[cfg(target_os = "linux")]
+pub use linux_errno as ErrorCode;
+
+#[cfg(target_os = "freebsd")]
+pub use freebsd_errno as ErrorCode;
+
 struct PrintHooks {}
 
 impl basic::ServerHooks for PrintHooks {

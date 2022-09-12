@@ -16,9 +16,6 @@
 
 #![cfg(feature = "std")]
 
-#[cfg(feature = "syscall_fuse_mount")]
-mod linux_syscalls;
-
 #[cfg(any(
 	doc,
 	feature = "libc_fuse_mount",

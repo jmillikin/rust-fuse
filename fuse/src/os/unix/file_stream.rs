@@ -19,7 +19,7 @@ use core::mem::{self, MaybeUninit};
 use std::fs::{self, File};
 use std::io;
 
-use crate::error::ErrorCode;
+use crate::ErrorCode;
 use crate::io::{InputStream, OutputStream, RecvError, SendError};
 
 fn file_recv(

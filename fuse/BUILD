@@ -59,7 +59,14 @@ rust_library(
         "//conditions:default": [],
     }),
     deps = select({
-        "@platforms//os:freebsd": ["@rust_libc//:libc"],
+        "@platforms//os:freebsd": [
+            "@rust_freebsd_errno//freebsd-errno",
+            "@rust_libc//:libc",
+        ],
+        "@platforms//os:linux": [
+            "@rust_linux_errno//linux-errno",
+            "@rust_linux_syscall//linux-syscall",
+        ],
         "//conditions:default": [],
     }),
     visibility = ["//visibility:public"],

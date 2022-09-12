@@ -27,7 +27,7 @@ pub(super) use std::ffi::{CStr, CString};
 #[cfg(feature = "std")]
 pub(super) use std::time;
 
-pub(super) use crate::error::ErrorCode;
+pub(super) use crate::ErrorCode;
 pub(super) use crate::internal::fuse_kernel;
 pub(super) use crate::io;
 pub(super) use crate::io::decode;
