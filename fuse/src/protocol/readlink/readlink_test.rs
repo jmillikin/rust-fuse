@@ -38,7 +38,6 @@ fn request_impl_debug() {
 		node_id: crate::ROOT_ID,
 	};
 
-	#[rustfmt::skip]
 	assert_eq!(
 		format!("{:#?}", request),
 		concat!(
@@ -73,7 +72,6 @@ fn response_impl_debug() {
 	let name = NodeName::from_bytes(b"hello.world!").unwrap();
 	let response = ReadlinkResponse::from_name(name);
 
-	#[rustfmt::skip]
 	assert_eq!(
 		format!("{:#?}", response),
 		concat!(

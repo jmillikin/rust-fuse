@@ -16,9 +16,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#![cfg_attr(doc, feature(doc_cfg))]
-#![feature(custom_inner_attributes)]
-
 // For direct syscalls in `fuse/src/os/linux/syscalls.rs`.
 #![cfg_attr(feature = "nightly_syscall_fuse_mount", feature(asm))]
 
@@ -36,15 +33,12 @@ pub mod server;
 
 pub mod os {
 	#[cfg(any(doc, target_os = "freebsd"))]
-	#[cfg_attr(doc, doc(cfg(target_os = "freebsd")))]
 	pub mod freebsd;
 
 	#[cfg(any(doc, target_os = "linux"))]
-	#[cfg_attr(doc, doc(cfg(target_os = "linux")))]
 	pub mod linux;
 
 	#[cfg(any(doc, unix))]
-	#[cfg_attr(doc, doc(cfg(unix)))]
 	pub mod unix;
 }
 

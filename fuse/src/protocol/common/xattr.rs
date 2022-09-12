@@ -104,19 +104,16 @@ impl std::error::Error for XattrError {}
 #[repr(transparent)]
 pub struct XattrName([u8]);
 
-#[rustfmt::skip]
 pub const XATTR_LIST_MAX: usize = {
 	#[cfg(target_os = "linux")] { 65536 }
 	#[cfg(target_os = "freebsd")] { 65536 }
 };
 
-#[rustfmt::skip]
 pub const XATTR_NAME_MAX: usize = {
 	#[cfg(target_os = "linux")] { 255 }
 	#[cfg(target_os = "freebsd")] { 255 }
 };
 
-#[rustfmt::skip]
 pub const XATTR_SIZE_MAX: usize = {
 	#[cfg(target_os = "linux")] { 65536 }
 	#[cfg(target_os = "freebsd")] { 65536 }

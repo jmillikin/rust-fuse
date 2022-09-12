@@ -40,7 +40,6 @@ pub trait CuseHandlers<S: OutputStream> {
 	}
 
 	#[cfg(any(doc, feature = "unstable_ioctl"))]
-	#[cfg_attr(doc, doc(cfg(feature = "unstable_ioctl")))]
 	fn ioctl(
 		&self,
 		ctx: server::ServerContext,

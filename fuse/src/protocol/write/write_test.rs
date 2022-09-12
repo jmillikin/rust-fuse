@@ -163,7 +163,6 @@ fn response_impl_debug() {
 	let mut response = WriteResponse::new();
 	response.set_size(123);
 
-	#[rustfmt::skip]
 	assert_eq!(
 		format!("{:#?}", response),
 		concat!(

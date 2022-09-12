@@ -111,7 +111,6 @@ impl FuseMountOptions {
 }
 
 #[cfg(any(doc, feature = "libc_fuse_mount"))]
-#[cfg_attr(doc, doc(cfg(feature = "libc_fuse_mount")))]
 pub struct LibcFuseMount(FuseMountOptions);
 
 #[cfg(any(doc, feature = "libc_fuse_mount"))]
@@ -195,7 +194,6 @@ impl LibcFuseMount {
 }
 
 #[cfg(any(doc, feature = "nightly_syscall_fuse_mount"))]
-#[cfg_attr(doc, doc(cfg(feature = "nightly_syscall_fuse_mount")))]
 pub struct SyscallFuseMount(FuseMountOptions);
 
 #[cfg(any(doc, feature = "nightly_syscall_fuse_mount"))]

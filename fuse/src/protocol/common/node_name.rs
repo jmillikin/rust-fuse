@@ -22,7 +22,6 @@ use crate::io::decode;
 #[repr(transparent)]
 pub struct NodeName([u8]);
 
-#[rustfmt::skip]
 pub const NODE_NAME_MAX: usize = {
 	#[cfg(target_os = "linux")]   { 255 }
 	#[cfg(target_os = "freebsd")] { 255 }

@@ -15,7 +15,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #![allow(unused_attributes)]
-#![rustfmt::skip]
 
 #[macro_use]
 pub(crate) mod common;
@@ -32,7 +31,6 @@ pub mod access;
 pub use self::access::*;
 
 #[cfg(any(doc, feature = "unstable_bmap"))]
-#[cfg_attr(doc, doc(cfg(feature = "unstable_bmap")))]
 #[path = "bmap/bmap.rs"]
 pub mod bmap;
 #[cfg(any(doc, feature = "unstable_bmap"))]
@@ -82,7 +80,6 @@ pub mod getxattr;
 pub use self::getxattr::*;
 
 #[cfg(any(doc, feature = "unstable_ioctl"))]
-#[cfg_attr(doc, doc(cfg(feature = "unstable_ioctl")))]
 #[path = "ioctl/ioctl.rs"]
 pub mod ioctl;
 #[cfg(any(doc, feature = "unstable_ioctl"))]
@@ -153,7 +150,6 @@ pub mod rmdir;
 pub use self::rmdir::*;
 
 #[cfg(any(doc, feature = "unstable_setattr"))]
-#[cfg_attr(doc, doc(cfg(feature = "unstable_setattr")))]
 #[path = "setattr/setattr.rs"]
 pub mod setattr;
 #[cfg(any(doc, feature = "unstable_setattr"))]

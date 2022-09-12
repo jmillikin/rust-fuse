@@ -19,7 +19,6 @@ use core::num::NonZeroU64;
 
 use crate::internal::fuse_kernel;
 
-#[rustfmt::skip]
 pub(crate) const F_RDLCK: u32 = {
 	#[cfg(target_os = "linux")] {
 		#[cfg(any(
@@ -33,7 +32,6 @@ pub(crate) const F_RDLCK: u32 = {
 	#[cfg(target_os = "freebsd")] { 1 }
 };
 
-#[rustfmt::skip]
 pub(crate) const F_WRLCK: u32 = {
 	#[cfg(target_os = "linux")] {
 		#[cfg(any(
@@ -47,7 +45,6 @@ pub(crate) const F_WRLCK: u32 = {
 	#[cfg(target_os = "freebsd")] { 3 }
 };
 
-#[rustfmt::skip]
 pub(crate) const F_UNLCK: u32 = {
 	#[cfg(target_os = "linux")] {
 		#[cfg(any(
@@ -61,7 +58,6 @@ pub(crate) const F_UNLCK: u32 = {
 	#[cfg(target_os = "freebsd")] { 2 }
 };
 
-#[rustfmt::skip]
 const OFFSET_MAX: u64 = {
 	#[cfg(target_arch = "x86_64")] {
 		core::i64::MAX as u64

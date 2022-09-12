@@ -149,7 +149,6 @@ fn response() {
 fn response_impl_debug() {
 	let response = ReadResponse::from_bytes(&[255, 0, 255]);
 
-	#[rustfmt::skip]
 	assert_eq!(
 		format!("{:#?}", response),
 		concat!(

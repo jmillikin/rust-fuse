@@ -184,7 +184,6 @@ impl<'a> ReaddirResponse<'a> {
 	/// }
 	/// ```
 	#[cfg(feature = "std")]
-	#[cfg_attr(doc, doc(cfg(feature = "std")))]
 	pub fn with_max_size(max_size: u32) -> ReaddirResponse<'a> {
 		let max_size = max_size as usize;
 		Self {

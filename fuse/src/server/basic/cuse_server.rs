@@ -153,7 +153,6 @@ fn cuse_request_dispatch<S: OutputStream>(
 		},
 	};
 
-	#[rustfmt::skip]
 	macro_rules! do_dispatch {
 		($handler:tt) => {{
 			match request.decode() {

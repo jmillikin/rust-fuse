@@ -85,7 +85,6 @@ impl<'a> ListxattrResponse<'a> {
 	}
 
 	#[cfg(feature = "std")]
-	#[cfg_attr(doc, doc(cfg(feature = "std")))]
 	pub fn with_max_size(max_size: u32) -> ListxattrResponse<'a> {
 		Self {
 			buf: ListxattrBuf::Owned {

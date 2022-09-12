@@ -28,7 +28,6 @@ pub enum MountError<IoError> {
 }
 
 #[cfg(any(doc, feature = "libc_fuse_mount"))]
-#[cfg_attr(doc, doc(cfg(feature = "libc_fuse_mount")))]
 pub struct LibcFuseMounter<'a> {
 	default_permissions: bool,
 	mount_flags: i32,

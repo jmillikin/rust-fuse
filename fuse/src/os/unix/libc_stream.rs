@@ -18,7 +18,6 @@ use crate::io::{InputStream, OutputStream, RecvError, SendError};
 use crate::os::unix::iovec::IoVec;
 
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[cfg_attr(doc, doc(cfg(feature = "libc_fuse_mount")))]
 pub struct LibcError {
 	code: i32,
 }
@@ -45,7 +44,6 @@ impl From<LibcError> for std::io::Error {
 	}
 }
 
-#[cfg_attr(doc, doc(cfg(feature = "libc_fuse_mount")))]
 pub struct LibcStream {
 	fd: i32,
 	enodev_is_eof: bool,

@@ -14,8 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#![rustfmt::skip]
-
 use core::fmt;
 
 use crate::protocol::common::FileMode;
