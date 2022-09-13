@@ -103,7 +103,7 @@ impl encode::EncodeReply for LookupResponse<'_> {
 		// field and must be non-zero. FUSE v7.4 relaxed this so that a zero
 		// node ID was the same as returning ENOENT, but with a cache hint.
 		if self.entry_out.nodeid == 0 && version_minor < 4 {
-			return enc.encode_error(ErrorCode::ENOENT.into());
+			return enc.encode_error(crate::Error::NOT_FOUND);
 		}
 		self.node().encode_entry(enc, version_minor)
 	}

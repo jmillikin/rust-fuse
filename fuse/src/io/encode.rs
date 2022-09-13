@@ -15,7 +15,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use core::mem::size_of;
-use core::num::NonZeroU16;
 
 use crate::internal::fuse_kernel;
 use crate::io::{AsyncOutputStream, OutputStream, SendError};
@@ -86,11 +85,11 @@ impl<S: SendOnce> ReplyEncoder<S> {
 		Self { stream, request_id }
 	}
 
-	pub(crate) fn encode_error(self, err: NonZeroU16) -> S::Result {
+	pub(crate) fn encode_error(self, err: crate::Error) -> S::Result {
 		let len = size_of::<fuse_kernel::fuse_out_header>();
 		let out_hdr = fuse_kernel::fuse_out_header {
 			len: len as u32,
-			error: -(i32::from(u16::from(err))),
+			error: err.raw_fuse_error_code(),
 			unique: self.request_id,
 		};
 		let out_hdr_buf: &[u8] = unsafe {

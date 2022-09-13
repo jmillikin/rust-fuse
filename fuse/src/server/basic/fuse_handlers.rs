@@ -26,12 +26,12 @@ use crate::server::basic::server::{self, SendReply, SentReply};
 /// to send the response.
 ///
 /// The default implementation for all async handlers is to respond with
-/// [`ErrorCode::ENOSYS`].
+/// [`Error::UNIMPLEMENTED`].
 ///
 /// [`fuse_init`]: #method.fuse_init
 /// [`ServerContext`]: struct.ServerContext.html
 /// [`ServerResponseWriter`]: struct.ServerResponseWriter.html
-/// [`ErrorCode::ENOSYS`]: struct.ErrorCode.html#associatedconstant.ENOSYS
+/// [`Error::UNIMPLEMENTED`]: crate::Error::UNIMPLEMENTED
 #[allow(unused_variables)]
 pub trait FuseHandlers<S: OutputStream> {
 	fn access(

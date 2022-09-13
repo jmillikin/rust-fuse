@@ -14,8 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::num::NonZeroU16;
-
 use crate::io::{self, Buffer, RecvError};
 use crate::io::decode::{DecodeRequest, RequestBuf};
 use crate::io::encode::{AsyncSendOnce, ReplyEncoder, SyncSendOnce};
@@ -215,11 +213,11 @@ impl<S: io::OutputStream> CuseConnection<S> {
 	pub fn reply_err(
 		&self,
 		request_id: u64,
-		error_code: NonZeroU16,
+		error: crate::Error,
 	) -> Result<(), io::SendError<S::Error>> {
 		let send = SyncSendOnce::new(&self.stream);
 		let enc = ReplyEncoder::new(send, request_id);
-		enc.encode_error(error_code)?;
+		enc.encode_error(error)?;
 		Ok(())
 	}
 }
@@ -319,11 +317,11 @@ impl<S: io::AsyncOutputStream> AsyncCuseConnection<S> {
 	pub async fn reply_err(
 		&self,
 		request_id: u64,
-		error_code: NonZeroU16,
+		error: crate::Error,
 	) -> Result<(), io::SendError<S::Error>> {
 		let send = AsyncSendOnce::new(&self.stream);
 		let enc = ReplyEncoder::new(send, request_id);
-		enc.encode_error(error_code).await?;
+		enc.encode_error(error).await?;
 		Ok(())
 	}
 }

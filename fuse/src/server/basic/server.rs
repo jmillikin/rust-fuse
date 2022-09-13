@@ -14,9 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::num::NonZeroU16;
-
-use crate::ErrorCode;
 use crate::io::{OutputStream, SendError};
 use crate::server::{Reply, RequestHeader};
 use crate::server::basic::server_hooks::ServerHooks;
@@ -46,7 +43,7 @@ pub trait SendReply<S: OutputStream> {
 
 	fn err<R>(
 		self,
-		err: impl Into<NonZeroU16>,
+		err: impl Into<crate::Error>,
 	) -> Result<SentReply<R>, SendError<S::Error>>;
 }
 
@@ -57,5 +54,5 @@ pub(super) fn unhandled_request<S: OutputStream, R>(
 	if let Some(hooks) = ctx.hooks {
 		hooks.unhandled_request(ctx.header);
 	}
-	send_reply.err(ErrorCode::ENOSYS)
+	send_reply.err(crate::Error::UNIMPLEMENTED)
 }

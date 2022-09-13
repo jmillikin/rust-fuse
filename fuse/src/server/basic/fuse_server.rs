@@ -14,9 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::num::NonZeroU16;
-
-use crate::ErrorCode;
 use crate::io::{self, OutputStream, SendError};
 use crate::server::{FuseConnection, FuseRequest, Reply};
 use crate::server::basic::{
@@ -119,7 +116,7 @@ impl<S: OutputStream> SendReply<S> for FuseReplySender<'_, S> {
 
 	fn err<R>(
 		self,
-		err: impl Into<NonZeroU16>,
+		err: impl Into<crate::Error>,
 	) -> Result<SentReply<R>, SendError<S::Error>> {
 		match self.conn.reply_err(self.request_id, err.into()) {
 			Ok(()) => {
@@ -167,7 +164,7 @@ fn fuse_request_dispatch<S: OutputStream>(
 					if sent_reply {
 						handler_result?;
 					} else {
-						let err_result = conn.reply_err(request_id, ErrorCode::EIO.into());
+						let err_result = conn.reply_err(request_id, crate::Error::EIO);
 						handler_result?;
 						err_result?;
 					}
@@ -177,7 +174,7 @@ fn fuse_request_dispatch<S: OutputStream>(
 					if let Some(ref hooks) = hooks {
 						hooks.request_error(header, err);
 					}
-					conn.reply_err(request_id, ErrorCode::EIO.into())
+					conn.reply_err(request_id, crate::Error::EIO)
 				},
 			}
 		}};
@@ -238,7 +235,7 @@ fn fuse_request_dispatch<S: OutputStream>(
 				let request = request.into_unknown();
 				hooks.unknown_request(&request);
 			}
-			conn.reply_err(request_id, ErrorCode::ENOSYS.into())
+			conn.reply_err(request_id, crate::Error::UNIMPLEMENTED)
 		},
 	}
 }

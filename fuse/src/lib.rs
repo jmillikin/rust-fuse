@@ -22,6 +22,8 @@ extern crate libc;
 #[macro_use]
 mod internal;
 
+mod error;
+
 pub mod client;
 
 pub mod server;
@@ -39,23 +41,7 @@ pub mod os {
 
 pub mod io;
 
-pub(crate) struct ErrorCode;
-
-#[allow(dead_code)]
-#[cfg(target_os = "linux")]
-impl ErrorCode {
-	pub(crate) const EIO:    linux_errno::Error = linux_errno::EIO;
-	pub(crate) const ENOENT: linux_errno::Error = linux_errno::ENOENT;
-	pub(crate) const ENOSYS: linux_errno::Error = linux_errno::ENOSYS;
-}
-
-#[allow(dead_code)]
-#[cfg(target_os = "freebsd")]
-impl ErrorCode {
-	pub(crate) const EIO:    freebsd_errno::Error = freebsd_errno::EIO;
-	pub(crate) const ENOENT: freebsd_errno::Error = freebsd_errno::ENOENT;
-	pub(crate) const ENOSYS: freebsd_errno::Error = freebsd_errno::ENOSYS;
-}
+pub use crate::error::Error;
 
 pub mod protocol;
 pub use crate::protocol::*;

@@ -14,6 +14,12 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#[cfg(target_os = "linux")]
+use linux_errno as os_errno;
+
+#[cfg(target_os = "freebsd")]
+use freebsd_errno as os_errno;
+
 use crate::internal::testutil::MessageBuilder;
 use crate::protocol::prelude::*;
 
@@ -150,7 +156,7 @@ fn response_noexist_v7p1() {
 		MessageBuilder::new()
 			.push_sized(&fuse_kernel::fuse_out_header {
 				len: size_of::<fuse_kernel::fuse_out_header>() as u32,
-				error: -i32::from(ErrorCode::ENOENT),
+				error: -(os_errno::ENOENT.get() as i32),
 				unique: 0,
 			})
 			.build()
