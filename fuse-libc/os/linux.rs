@@ -14,20 +14,13 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use std::ffi::{CStr, CString, OsStr, OsString};
+use std::ffi::{CString, OsStr, OsString};
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::MetadataExt;
 use std::os::unix::io::RawFd;
 use std::{fs, io, path};
 
-#[cfg(feature = "syscall_fuse_mount")]
-use std::os::unix::io::AsRawFd;
-
-#[cfg(feature = "syscall_fuse_mount")]
-use linux_syscall::{syscall, Result as _};
-
-#[cfg(feature = "syscall_fuse_mount")]
-use crate::os::unix::DevFuse;
+use crate::io::stream::LibcStream;
 
 const MS_NOSUID: u32 = 0x2;
 const MS_NODEV: u32 = 0x4;
@@ -107,12 +100,10 @@ impl FuseMountOptions {
 	}
 }
 
-#[cfg(any(doc, feature = "syscall_fuse_mount"))]
-pub struct SyscallFuseMount(FuseMountOptions);
+pub struct LibcFuseMount(FuseMountOptions);
 
-#[cfg(any(doc, feature = "syscall_fuse_mount"))]
-impl SyscallFuseMount {
-	pub fn new() -> SyscallFuseMount {
+impl LibcFuseMount {
+	pub fn new() -> LibcFuseMount {
 		Self(FuseMountOptions::new())
 	}
 
@@ -152,7 +143,7 @@ impl SyscallFuseMount {
 	pub fn mount(
 		self,
 		mount_target: &path::Path,
-	) -> Result<DevFuse, io::Error> {
+	) -> Result<LibcStream, io::Error> {
 		let mount_target_cstr = cstr_from_osstr(mount_target.as_os_str())?;
 		let mount_source_cstr = self.0.mount_source_cstr()?;
 		let mount_type_cstr = self.0.mount_type_cstr()?;
@@ -165,83 +156,28 @@ impl SyscallFuseMount {
 			},
 		};
 
-		let file = fs::OpenOptions::new()
-			.read(true)
-			.write(true)
-			.open("/dev/fuse")?;
-		let fd = file.as_raw_fd();
+		let stream = LibcStream::dev_fuse()?;
+		let fd = stream.as_raw_fd();
 
-		let user_id = self.0.user_id.unwrap_or_else(|| syscall_getuid());
-		let group_id = self.0.group_id.unwrap_or_else(|| syscall_getgid());
+		let user_id =
+			self.0.user_id.unwrap_or_else(|| unsafe { libc::getuid() });
+		let group_id =
+			self.0.group_id.unwrap_or_else(|| unsafe { libc::getgid() });
 
 		let mount_data = self.0.mount_data(fd, root_mode, user_id, group_id)?;
-		syscall_mount(
-			&mount_source_cstr,
-			&mount_target_cstr,
-			&mount_type_cstr,
-			self.0.mount_flags,
-			mount_data.to_bytes_with_nul(),
-		)?;
-
-		Ok(DevFuse::from_file(file))
-	}
-}
-
-#[cfg(feature = "syscall_fuse_mount")]
-fn syscall_getuid() -> u32 {
-	#[allow(unused_mut)]
-	let mut sys_getuid = linux_syscall::SYS_getuid;
-
-	#[cfg(any(
-		target_arch = "arm",
-		target_arch = "x86",
-	))]
-	{
-		sys_getuid = linux_syscall::SYS_getuid32;
-	}
-
-	let rc = unsafe { syscall!(sys_getuid) };
-	rc.as_usize_unchecked() as u32
-}
-
-#[cfg(feature = "syscall_fuse_mount")]
-fn syscall_getgid() -> u32 {
-	#[allow(unused_mut)]
-	let mut sys_getgid = linux_syscall::SYS_getgid;
-
-	#[cfg(any(
-		target_arch = "arm",
-		target_arch = "x86",
-	))]
-	{
-		sys_getgid = linux_syscall::SYS_getgid32;
-	}
-
-	let rc = unsafe { syscall!(sys_getgid) };
-	rc.as_usize_unchecked() as u32
-}
-
-#[cfg(feature = "syscall_fuse_mount")]
-fn syscall_mount(
-	source: &CStr,
-	target: &CStr,
-	fstype: &CStr,
-	mountflags: u32,
-	data: &[u8],
-) -> io::Result<()> {
-	let rc = unsafe {
-		syscall!(
-			linux_syscall::SYS_mount,
-			source.as_ptr(),
-			target.as_ptr(),
-			fstype.as_ptr(),
-			mountflags,
-			data.as_ptr(),
-		)
-	};
-	match rc.check() {
-		Ok(()) => Ok(()),
-		Err(err) => Err(io::Error::from_raw_os_error(i32::from(err.get()))),
+		unsafe {
+			let rc = libc::mount(
+				mount_source_cstr.as_ptr(),
+				mount_target_cstr.as_ptr(),
+				mount_type_cstr.as_ptr(),
+				self.0.mount_flags as libc::c_ulong,
+				mount_data.to_bytes_with_nul().as_ptr() as *const libc::c_void,
+			);
+			if rc != 0 {
+				return Err(std::io::Error::last_os_error());
+			}
+		};
+		Ok(stream)
 	}
 }
 

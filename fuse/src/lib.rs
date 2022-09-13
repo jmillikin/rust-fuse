@@ -16,9 +16,6 @@
 
 #![cfg_attr(not(any(doc, feature = "std")), no_std)]
 
-#[cfg(feature = "libc_fuse_mount")]
-extern crate libc;
-
 #[macro_use]
 mod internal;
 
@@ -29,9 +26,6 @@ pub mod client;
 pub mod server;
 
 pub mod os {
-	#[cfg(any(doc, target_os = "freebsd"))]
-	pub mod freebsd;
-
 	#[cfg(any(doc, target_os = "linux"))]
 	pub mod linux;
 

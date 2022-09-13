@@ -54,7 +54,6 @@ rust_library(
         "//fuse/src/protocol/write:write.rs",
     ],
     crate_features = ["std"] + select({
-        "@platforms//os:freebsd": ["libc_fuse_mount"],
         "@platforms//os:linux": ["syscall_fuse_mount"],
         "//conditions:default": [],
     }),
@@ -63,7 +62,6 @@ rust_library(
     deps = select({
         "@platforms//os:freebsd": [
             "@rust_freebsd_errno//freebsd-errno",
-            "@rust_libc//:libc",
         ],
         "@platforms//os:linux": [
             "@rust_linux_errno//linux-errno",

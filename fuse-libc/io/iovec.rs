@@ -18,7 +18,7 @@ use core::marker::PhantomData;
 use core::mem::{self, MaybeUninit};
 
 #[repr(C)]
-pub(in crate::os) struct IoVec<'a> {
+pub(crate) struct IoVec<'a> {
 	iov_base: *const core::ffi::c_void,
 	iov_len: usize,
 	_phantom: PhantomData<&'a [u8]>,
@@ -26,7 +26,7 @@ pub(in crate::os) struct IoVec<'a> {
 
 impl IoVec<'static> {
 	#[allow(dead_code)]
-	pub(in crate::os) fn null() -> Self {
+	pub(crate) fn null() -> Self {
 		Self {
 			iov_base: core::ptr::null(),
 			iov_len: 0,
@@ -35,7 +35,7 @@ impl IoVec<'static> {
 	}
 
 	#[allow(dead_code)]
-	pub(in crate::os) fn global(buf: &'static [u8]) -> Self {
+	pub(crate) fn global(buf: &'static [u8]) -> Self {
 		IoVec {
 			iov_base: buf.as_ptr() as *const core::ffi::c_void,
 			iov_len: buf.len(),
@@ -45,7 +45,7 @@ impl IoVec<'static> {
 }
 
 impl<'a> IoVec<'a> {
-	pub(in crate::os) fn borrow(buf: &'a [u8]) -> Self {
+	pub(crate) fn borrow(buf: &'a [u8]) -> Self {
 		IoVec {
 			iov_base: buf.as_ptr() as *const core::ffi::c_void,
 			iov_len: buf.len(),
@@ -53,7 +53,7 @@ impl<'a> IoVec<'a> {
 		}
 	}
 
-	pub(in crate::os) fn borrow_array<T, const N: usize>(
+	pub(crate) fn borrow_array<T, const N: usize>(
 		bufs: &[&'a [u8]; N],
 		f: impl FnOnce(&[Self; N], usize) -> T,
 	) -> T {

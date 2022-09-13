@@ -14,11 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#[cfg(any(doc, feature = "libc_fuse_mount"))]
-use crate::os::unix::iovec::IoVec;
-
-#[cfg(any(doc, feature = "libc_fuse_mount"))]
-use crate::os::unix::libc_stream::{LibcError, LibcStream};
+use crate::io::iovec::IoVec;
+use crate::io::stream::{LibcError, LibcStream};
 
 #[derive(Debug)]
 pub enum MountError<IoError> {
@@ -27,14 +24,12 @@ pub enum MountError<IoError> {
 	Other(IoError),
 }
 
-#[cfg(any(doc, feature = "libc_fuse_mount"))]
 pub struct LibcFuseMounter<'a> {
 	default_permissions: bool,
 	mount_flags: i32,
 	subtype: Option<&'a [u8]>,
 }
 
-#[cfg(any(doc, feature = "libc_fuse_mount"))]
 impl<'a> LibcFuseMounter<'a> {
 	pub fn new() -> Self {
 		Self {
@@ -134,7 +129,6 @@ impl<'a> LibcFuseMounter<'a> {
 	}
 }
 
-#[cfg(feature = "libc_fuse_mount")]
 fn valid_cstr(buf: &[u8]) -> bool {
 	let len = buf.len();
 	if len == 0 {

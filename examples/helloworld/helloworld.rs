@@ -182,7 +182,7 @@ fn getgid() -> u32 {
 }
 
 fn main() {
-	use fuse::os::linux;
+	use fuse_libc::os::linux;
 	let mount_target = std::env::args_os().nth(1).unwrap();
 
 	let handlers = HelloWorldFS {};

@@ -8,14 +8,15 @@ edition = "2018"
 [lib]
 name = "fuse"
 
-[dependencies]
-libc = { version = "0.2.*", optional = true }
+[target.'cfg(target_os = "freebsd")'.dependencies]
+freebsd-errno = { version = "1.0" }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+linux-errno = { version = "1.0" }
 
 [features]
 default = ["std"]
 std = []
-
-libc_fuse_mount = ["libc"]
 
 syscall_fuse_mount = []
 

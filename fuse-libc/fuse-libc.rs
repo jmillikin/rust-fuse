@@ -1,4 +1,4 @@
-// Copyright 2020 John Millikin and the rust-fuse contributors.
+// Copyright 2021 John Millikin and the rust-fuse contributors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,16 +14,19 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#![cfg(feature = "std")]
+#![cfg_attr(not(any(doc, feature = "std")), no_std)]
 
-#[cfg(any(
-	doc,
-	feature = "syscall_fuse_mount",
-))]
-mod fuse_mount;
+pub mod io {
+	pub(crate) mod iovec;
+	pub(crate) mod stream;
 
-#[cfg(any(
-	doc,
-	feature = "syscall_fuse_mount",
-))]
-pub use self::fuse_mount::*;
+	pub use self::stream::{LibcError, LibcStream};
+}
+
+pub mod os {
+	#[cfg(any(doc, target_os = "freebsd"))]
+	pub mod freebsd;
+
+	#[cfg(any(doc, target_os = "linux"))]
+	pub mod linux;
+}

@@ -14,8 +14,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::io::{InputStream, OutputStream, RecvError, SendError};
-use crate::os::unix::iovec::IoVec;
+use fuse::io::{InputStream, OutputStream, RecvError, SendError};
+
+use crate::io::iovec::IoVec;
 
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct LibcError {
@@ -28,11 +29,11 @@ impl LibcError {
 	}
 
 	#[allow(dead_code)]
-	pub(in crate::os) fn last_os_error() -> Self {
+	pub(crate) fn last_os_error() -> Self {
 		Self::from_raw_os_error(errno())
 	}
 
-	pub(in crate::os) fn from_raw_os_error(code: i32) -> Self {
+	pub(crate) fn from_raw_os_error(code: i32) -> Self {
 		return Self { code };
 	}
 }
@@ -58,7 +59,7 @@ impl Drop for LibcStream {
 }
 
 impl LibcStream {
-	pub(in crate::os) fn dev_fuse() -> Result<Self, LibcError> {
+	pub(crate) fn dev_fuse() -> Result<Self, LibcError> {
 		let path = b"/dev/fuse\0";
 		let path_ptr = path.as_ptr() as *const libc::c_char;
 		let open_rc = unsafe { libc::open(path_ptr, libc::O_RDWR) };
@@ -72,12 +73,12 @@ impl LibcStream {
 	}
 
 	#[allow(dead_code)]
-	pub(in crate::os) fn as_raw_fd(&self) -> i32 {
+	pub(crate) fn as_raw_fd(&self) -> i32 {
 		self.fd
 	}
 
 	#[allow(dead_code)]
-	pub(in crate::os) fn fmt_raw_fd(&self, buf: &mut [u8; 32]) {
+	pub(crate) fn fmt_raw_fd(&self, buf: &mut [u8; 32]) {
 		let buf_ptr = buf.as_mut_ptr() as *mut libc::c_char;
 		let format_ptr = b"%d\0".as_ptr() as *const libc::c_char;
 		unsafe {

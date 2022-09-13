@@ -14,6 +14,7 @@ rust_library(
     ] + select({
         "@platforms//os:freebsd": [
             "@rust_freebsd_errno//freebsd-errno",
+            "//fuse-libc",
         ],
         "@platforms//os:linux": [
             "@rust_linux_errno//linux-errno",
