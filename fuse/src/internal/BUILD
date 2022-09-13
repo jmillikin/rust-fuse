@@ -5,6 +5,7 @@ exports_files(glob(["*rs"]))
 rust_library(
     name = "interop_testutil",
     srcs = ["interop_testutil.rs"],
+    edition = "2018",
     visibility = ["//fuse:__subpackages__"],
     deps = [
         "//fuse",

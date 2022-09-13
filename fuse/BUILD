@@ -58,6 +58,7 @@ rust_library(
         "@platforms//os:linux": ["syscall_fuse_mount"],
         "//conditions:default": [],
     }),
+    edition = "2018",
     visibility = ["//visibility:public"],
     deps = select({
         "@platforms//os:freebsd": [
