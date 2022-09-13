@@ -49,13 +49,13 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for HelloWorldFS {
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::LookupRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::LookupResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::LookupResponse, S::Error> {
 		if request.parent_id() != fuse::ROOT_ID {
-			return send_reply.err(fuse::ErrorCode::ENOENT);
+			return send_reply.err(fuse::Error::NOT_FOUND);
 		}
 		if request.name() != HELLO_TXT.name() {
-			return send_reply.err(fuse::ErrorCode::ENOENT);
+			return send_reply.err(fuse::Error::NOT_FOUND);
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -70,8 +70,8 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for HelloWorldFS {
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::GetattrRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::GetattrResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::GetattrResponse, S::Error> {
 		let mut resp = fuse::GetattrResponse::new();
 		let attr = resp.attr_mut();
 
@@ -88,17 +88,17 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for HelloWorldFS {
 			return send_reply.ok(&resp);
 		}
 
-		send_reply.err(fuse::ErrorCode::ENOENT)
+		send_reply.err(fuse::Error::NOT_FOUND)
 	}
 
 	fn open(
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::OpenRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::OpenResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::OpenResponse, S::Error> {
 		if request.node_id() != HELLO_TXT.node_id() {
-			return send_reply.err(fuse::ErrorCode::ENOENT);
+			return send_reply.err(fuse::Error::NOT_FOUND);
 		}
 
 		let mut resp = fuse::OpenResponse::new();
@@ -110,10 +110,10 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for HelloWorldFS {
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::ReadRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::ReadResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::ReadResponse, S::Error> {
 		if request.handle() != 1001 {
-			return send_reply.err(fuse::ErrorCode::EIO);
+			return send_reply.err(fuse::Error::INVALID_ARGUMENT);
 		}
 
 		let resp = fuse::ReadResponse::from_bytes(HELLO_WORLD);
@@ -124,10 +124,10 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for HelloWorldFS {
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::OpendirRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::OpendirResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::OpendirResponse, S::Error> {
 		if request.node_id() != fuse::ROOT_ID {
-			return send_reply.err(fuse::ErrorCode::ENOENT);
+			return send_reply.err(fuse::Error::NOT_FOUND);
 		}
 
 		let mut resp = fuse::OpendirResponse::new();
@@ -139,10 +139,10 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for HelloWorldFS {
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::ReaddirRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::ReaddirResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::ReaddirResponse, S::Error> {
 		if request.handle() != 1002 {
-			return send_reply.err(fuse::ErrorCode::EIO);
+			return send_reply.err(fuse::Error::INVALID_ARGUMENT);
 		}
 
 		if request.cursor().is_some() {
@@ -162,10 +162,10 @@ impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for HelloWorldFS {
 		&self,
 		_ctx: basic::ServerContext,
 		request: &fuse::ReleasedirRequest,
-		send_reply: impl for<'a> basic::SendReply<S, fuse::ReleasedirResponse<'a>>,
-	) -> Result<(), fuse::io::Error<S::Error>> {
+		send_reply: impl basic::SendReply<S>,
+	) -> basic::SendResult<fuse::ReleasedirResponse, S::Error> {
 		if request.handle() != 1002 {
-			return send_reply.err(fuse::ErrorCode::EIO);
+			return send_reply.err(fuse::Error::INVALID_ARGUMENT);
 		}
 
 		let resp = fuse::ReleasedirResponse::new();
