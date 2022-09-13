@@ -19,8 +19,17 @@ use core::mem::{self, MaybeUninit};
 use std::fs::{self, File};
 use std::io;
 
-use crate::ErrorCode;
+#[cfg(target_os = "linux")]
+use linux_errno as os_errno;
+
+#[cfg(target_os = "freebsd")]
+use freebsd_errno as os_errno;
+
 use crate::io::{InputStream, OutputStream, RecvError, SendError};
+
+const EINTR_I32: i32 = os_errno::EINTR.get() as i32;
+const ENODEV_I32: i32 = os_errno::ENODEV.get() as i32;
+const ENOENT_I32: i32 = os_errno::ENOENT.get() as i32;
 
 fn file_recv(
 	mut file: &File,
@@ -33,14 +42,14 @@ fn file_recv(
 		match Read::read(&mut file, buf) {
 			Ok(size) => return Ok(size),
 			Err(err) => match err.raw_os_error() {
-				Some(ErrorCode::ENOENT_I32) => {
+				Some(ENOENT_I32) => {
 					// The next request in the kernel buffer was interrupted before
 					// it could be deleted. Try again.
 				},
-				Some(ErrorCode::EINTR_I32) => {
+				Some(EINTR_I32) => {
 					// Interrupted by signal. Try again.
 				},
-				Some(ErrorCode::ENODEV_I32) => {
+				Some(ENODEV_I32) => {
 					if enodev_is_eof {
 						return Err(RecvError::ConnectionClosed);
 					}
@@ -94,7 +103,7 @@ fn file_send_vectored<const N: usize>(
 
 fn send_error(err: io::Error) -> SendError<io::Error> {
 	match err.raw_os_error() {
-		Some(ErrorCode::ENOENT_I32) => SendError::NotFound,
+		Some(ENOENT_I32) => SendError::NotFound,
 		_ => SendError::Other(err),
 	}
 }
