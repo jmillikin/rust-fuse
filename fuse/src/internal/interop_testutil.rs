@@ -86,32 +86,25 @@ pub fn fuse_interop_test(
 	let mount_path = path::Path::new(ffi::OsStr::from_bytes(&mkdtemp_template))
 		.to_path_buf();
 
+	#[cfg(target_os = "linux")]
+	let dev_fuse = fuse::os::linux::SyscallFuseMount::new()
+		.set_mount_source("rust_fuse_test")
+		.set_mount_subtype("rust_fuse_test")
+		.mount(&mount_path)
+		.unwrap();
+
+	#[cfg(target_os = "freebsd")]
+	let dev_fuse = fuse_libc::os::freebsd::LibcFuseMounter::new()
+		.set_mount_subtype(b"rust_fuse_test\0")
+		.mount(&mount_cstr.as_bytes_with_nul())
+		.unwrap();
+
 	let server_ready = sync::Arc::new(sync::Barrier::new(2));
 	let server_thread = {
 		let ready = sync::Arc::clone(&server_ready);
-
-		#[cfg(target_os = "linux")]
-		let mount_path = mount_path.clone();
-
-		#[cfg(target_os = "freebsd")]
-		let mount_cstr = mount_cstr.clone();
-
 		thread::spawn(move || {
 			use fuse::server::FuseConnection;
 			use fuse::server::basic::FuseServerBuilder;
-
-			#[cfg(target_os = "linux")]
-			let dev_fuse = fuse::os::linux::SyscallFuseMount::new()
-				.set_mount_source("rust_fuse_test")
-				.set_mount_subtype("rust_fuse_test")
-				.mount(&mount_path)
-				.unwrap();
-
-			#[cfg(target_os = "freebsd")]
-			let dev_fuse = fuse_libc::os::freebsd::LibcFuseMounter::new()
-				.set_mount_subtype(b"rust_fuse_test\0")
-				.mount(&mount_cstr.as_bytes_with_nul())
-				.unwrap();
 
 			let conn = FuseConnection::new(dev_fuse, |init_request| {
 				handlers.fuse_init(init_request)
