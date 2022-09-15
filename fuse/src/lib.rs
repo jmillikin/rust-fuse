@@ -25,10 +25,26 @@ pub mod client;
 
 pub mod server;
 
-#[cfg(any(doc, target_os = "linux"))]
 pub mod os {
+	#[cfg(any(doc, target_os = "freebsd"))]
+	pub mod freebsd;
+
+	#[cfg(not(any(doc, target_os = "freebsd")))]
+	#[deprecated = "doc stub"]
+	pub mod freebsd {
+		#[deprecated = "doc stub"]
+		pub struct MountOptions<'a> { _p: &'a () }
+	}
+
 	#[cfg(any(doc, target_os = "linux"))]
 	pub mod linux;
+
+	#[cfg(not(any(doc, target_os = "linux")))]
+	#[deprecated = "doc stub"]
+	pub mod linux {
+		#[deprecated = "doc stub"]
+		pub struct MountOptions<'a> { _p: &'a () }
+	}
 }
 
 pub mod io;

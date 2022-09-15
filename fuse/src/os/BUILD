@@ -2,10 +2,10 @@ load("@rules_rust//rust:defs.bzl", "rust_test")
 
 filegroup(
     name = "srcs",
-    srcs = glob(
-        ["**/*.rs"],
-        exclude = ["*_test.rs"],
-    ),
+    srcs = [
+        "freebsd.rs",
+        "linux.rs",
+    ],
     visibility = ["//:__subpackages__"],
 )
 
