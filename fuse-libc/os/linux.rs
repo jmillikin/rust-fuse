@@ -20,6 +20,8 @@ use std::os::unix::fs::MetadataExt;
 use std::os::unix::io::RawFd;
 use std::{fs, io, path};
 
+use fuse::os::linux::{MountData, MountOptions};
+
 use crate::io::stream::LibcStream;
 
 const MS_NOSUID: u32 = 0x2;
@@ -61,14 +63,7 @@ impl FuseMountOptions {
 	}
 
 	fn mount_type_cstr(&self) -> Result<CString, io::Error> {
-		let subtype = &self.mount_subtype;
-		if subtype == "" {
-			return Ok(CString::new("fuse").unwrap());
-		}
-
-		let mut buf = OsString::from("fuse.");
-		buf.push(subtype);
-		cstr_from_osstr(&buf)
+		Ok(CString::new("fuse").unwrap())
 	}
 
 	fn mount_data(
@@ -78,25 +73,26 @@ impl FuseMountOptions {
 		user_id: u32,
 		group_id: u32,
 	) -> Result<CString, io::Error> {
-		let mut out = Vec::new();
-		out.push(format!("fd={},rootmode={:o}", fd, root_mode));
-		out.push(format!("user_id={}", user_id));
-		out.push(format!("group_id={}", group_id));
-		let joined = CString::new(out.join(",")).unwrap();
+		let mut opts = MountOptions::new();
+		opts.set_fuse_device_fd(Some(fd as u32));
+		opts.set_root_mode(Some(root_mode));
+		opts.set_user_id(Some(user_id));
+		opts.set_group_id(Some(group_id));
 
-		let data_length = joined.as_bytes_with_nul().len();
-		if data_length >= PAGE_SIZE {
-			return Err(io::Error::new(
-				io::ErrorKind::InvalidInput,
-				format!(
-					"mount data length ({}) exceeds PAGE_SIZE - 1 ({})",
-					data_length,
-					PAGE_SIZE - 1
-				),
-			));
+		let fs_subtype: CString;
+		if !self.mount_subtype.is_empty() {
+			fs_subtype = cstr_from_osstr(&self.mount_subtype)?;
+			opts.set_fs_subtype(Some(&fs_subtype));
 		}
 
-		Ok(joined)
+		let mut buf = [0u8; PAGE_SIZE];
+		match MountData::new(&mut buf, &opts) {
+			Some(mount_data) => Ok(CString::from(mount_data.as_cstr())),
+			None => Err(io::Error::new(
+				io::ErrorKind::InvalidInput,
+				"mount data length > PAGE_SIZE",
+			)),
+		}
 	}
 }
 

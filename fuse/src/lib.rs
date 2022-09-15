@@ -26,8 +26,20 @@ pub mod client;
 pub mod server;
 
 pub mod os {
+	#[cfg(any(doc, all(feature = "std", target_os = "linux")))]
+	#[path = "linux/mod.rs"]
+	mod old_linux;
+
 	#[cfg(any(doc, target_os = "linux"))]
-	pub mod linux;
+	#[path = "linux.rs"]
+	mod new_linux;
+
+	#[cfg(any(doc, target_os = "linux"))]
+	pub mod linux {
+		pub use super::new_linux::*;
+		#[cfg(feature = "std")]
+		pub use super::old_linux::*;
+	}
 
 	#[cfg(any(doc, unix))]
 	pub mod unix;

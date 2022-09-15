@@ -15,6 +15,7 @@ rust_library(
         "//fuse/src/internal:fuse_kernel.rs",
         "//fuse/src/internal:mod.rs",
         "//fuse/src/io:srcs",
+        "//fuse/src/os:srcs",
         "//fuse/src/protocol/access:access.rs",
         "//fuse/src/protocol/bmap:bmap.rs",
         "//fuse/src/protocol/create:create.rs",
