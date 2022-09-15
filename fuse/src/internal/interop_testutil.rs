@@ -51,7 +51,7 @@ impl basic::ServerHooks for PrintHooks {
 }
 
 #[cfg(target_os = "linux")]
-type DevFuse = fuse::os::unix::DevFuse;
+type DevFuse = fuse_linux::FuseStream;
 
 #[cfg(target_os = "freebsd")]
 type DevFuse = fuse_libc::io::LibcStream;
@@ -86,18 +86,25 @@ pub fn fuse_interop_test(
 	let mount_path = path::Path::new(ffi::OsStr::from_bytes(&mkdtemp_template))
 		.to_path_buf();
 
+	let dev_fuse;
+
 	#[cfg(target_os = "linux")]
-	let dev_fuse = fuse::os::linux::SyscallFuseMount::new()
-		.set_mount_source("rust_fuse_test")
-		.set_mount_subtype("rust_fuse_test")
-		.mount(&mount_path)
-		.unwrap();
+	{
+		let mut mount_options = fuse::os::linux::MountOptions::new();
+		let rust_fuse_test = ffi::CString::new("rust_fuse_test").unwrap();
+		mount_options.set_source(Some(&rust_fuse_test));
+		mount_options.set_fs_subtype(Some(&rust_fuse_test));
+
+		dev_fuse = fuse_linux::mount(&mount_cstr, mount_options).unwrap();
+	}
 
 	#[cfg(target_os = "freebsd")]
-	let dev_fuse = fuse_libc::os::freebsd::LibcFuseMounter::new()
-		.set_mount_subtype(b"rust_fuse_test\0")
-		.mount(&mount_cstr.as_bytes_with_nul())
-		.unwrap();
+	{
+		dev_fuse = fuse_libc::os::freebsd::LibcFuseMounter::new()
+			.set_mount_subtype(b"rust_fuse_test\0")
+			.mount(&mount_cstr.as_bytes_with_nul())
+			.unwrap();
+	}
 
 	let server_ready = sync::Arc::new(sync::Barrier::new(2));
 	let server_thread = {

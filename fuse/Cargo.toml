@@ -18,8 +18,6 @@ linux-errno = { version = "1.0" }
 default = ["std"]
 std = []
 
-syscall_fuse_mount = []
-
 unstable_bmap = []
 unstable_ioctl = []
 unstable_setattr = []

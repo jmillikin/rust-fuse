@@ -54,10 +54,7 @@ rust_library(
         "//fuse/src/protocol/unlink:unlink.rs",
         "//fuse/src/protocol/write:write.rs",
     ],
-    crate_features = ["std"] + select({
-        "@platforms//os:linux": ["syscall_fuse_mount"],
-        "//conditions:default": [],
-    }),
+    crate_features = ["std"],
     edition = "2018",
     visibility = ["//visibility:public"],
     deps = select({
@@ -66,7 +63,6 @@ rust_library(
         ],
         "@platforms//os:linux": [
             "@rust_linux_errno//linux-errno",
-            "@rust_linux_syscall//linux-syscall",
         ],
         "//conditions:default": [],
     }),

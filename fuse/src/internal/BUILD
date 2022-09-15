@@ -18,6 +18,7 @@ rust_library(
         ],
         "@platforms//os:linux": [
             "@rust_linux_errno//linux-errno",
+            "//fuse-linux",
         ],
         "//conditions:default": [],
     }),
