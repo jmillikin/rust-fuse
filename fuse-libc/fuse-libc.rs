@@ -14,14 +14,20 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#![cfg_attr(not(any(doc, feature = "std")), no_std)]
+//#![cfg_attr(not(any(doc, feature = "std")), no_std)]
 
-pub mod io {
+// use core::ffi::CStr;
+use std::ffi::CStr;
+
+mod io {
 	pub(crate) mod iovec;
 	pub(crate) mod stream;
-
-	pub use self::stream::{LibcError, LibcStream};
 }
+
+pub use crate::io::stream::{FuseStream, LibcError};
+
+#[cfg(any(doc, not(target_os = "freebsd")))]
+pub use crate::io::stream::CuseStream;
 
 pub mod os {
 	#[cfg(any(doc, target_os = "freebsd"))]
@@ -30,3 +36,12 @@ pub mod os {
 	#[cfg(any(doc, target_os = "linux"))]
 	pub mod linux;
 }
+
+#[cfg(not(target_os = "freebsd"))]
+const DEV_CUSE: &'static CStr = unsafe {
+	CStr::from_bytes_with_nul_unchecked(b"/dev/cuse\0")
+};
+
+const DEV_FUSE: &'static CStr = unsafe {
+	CStr::from_bytes_with_nul_unchecked(b"/dev/fuse\0")
+};

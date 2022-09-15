@@ -14,18 +14,17 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use std::ffi::{CString, OsStr, OsString};
-use std::os::unix::ffi::OsStrExt;
-use std::os::unix::fs::MetadataExt;
-use std::os::unix::io::RawFd;
-use std::{fs, io, path};
+// use core::ffi::CStr;
+use std::ffi::CStr;
 
-use fuse::os::linux::{MountData, MountOptions};
+use fuse::os::linux::MountData;
 
-use crate::io::stream::LibcStream;
+use crate::io::stream::{FuseStream, LibcError};
 
 const MS_NOSUID: u32 = 0x2;
 const MS_NODEV: u32 = 0x4;
+
+const DEFAULT_FLAGS: u32 = MS_NOSUID | MS_NODEV;
 
 // This is technically incorrect, because Linux can be compiled with
 // different page sizes (and often is on e.g. ARM). But we're using this value
@@ -33,153 +32,96 @@ const MS_NODEV: u32 = 0x4;
 // be fine.
 const PAGE_SIZE: usize = 4096;
 
-struct FuseMountOptions {
-	mount_source: OsString,
-	mount_subtype: OsString,
-	mount_flags: u32,
-	user_id: Option<u32>,
-	group_id: Option<u32>,
-	root_mode: Option<u32>,
+#[derive(Copy, Clone)]
+pub struct MountOptions<'a> {
+	opts: fuse::os::linux::MountOptions<'a>,
+	dev_fuse: Option<&'a CStr>,
+	flags: u32,
 }
 
-impl FuseMountOptions {
-	fn new() -> FuseMountOptions {
+impl<'a> MountOptions<'a> {
+	pub fn dev_fuse(&self) -> &'a CStr {
+		self.dev_fuse.unwrap_or(crate::DEV_FUSE)
+	}
+
+	pub fn set_dev_fuse(&mut self, dev_fuse: Option<&'a CStr>) {
+		self.dev_fuse = dev_fuse;
+	}
+
+	pub fn flags(&self) -> u32 {
+		self.flags
+	}
+
+	pub fn set_flags(&mut self, flags: u32) {
+		self.flags = flags;
+	}
+}
+
+impl<'a> From<fuse::os::linux::MountOptions<'a>> for MountOptions<'a> {
+	fn from(opts: fuse::os::linux::MountOptions<'a>) -> Self {
 		Self {
-			mount_source: OsString::new(),
-			mount_subtype: OsString::new(),
-			mount_flags: MS_NOSUID | MS_NODEV,
-			user_id: None,
-			group_id: None,
-			root_mode: None,
-		}
-	}
-
-	fn mount_source_cstr(&self) -> Result<CString, io::Error> {
-		let name = &self.mount_source;
-		if name == "" {
-			return Ok(CString::new("fuse").unwrap());
-		}
-		cstr_from_osstr(&name)
-	}
-
-	fn mount_type_cstr(&self) -> Result<CString, io::Error> {
-		Ok(CString::new("fuse").unwrap())
-	}
-
-	fn mount_data(
-		&self,
-		fd: RawFd,
-		root_mode: u32,
-		user_id: u32,
-		group_id: u32,
-	) -> Result<CString, io::Error> {
-		let mut opts = MountOptions::new();
-		opts.set_fuse_device_fd(Some(fd as u32));
-		opts.set_root_mode(Some(root_mode));
-		opts.set_user_id(Some(user_id));
-		opts.set_group_id(Some(group_id));
-
-		let fs_subtype: CString;
-		if !self.mount_subtype.is_empty() {
-			fs_subtype = cstr_from_osstr(&self.mount_subtype)?;
-			opts.set_fs_subtype(Some(&fs_subtype));
-		}
-
-		let mut buf = [0u8; PAGE_SIZE];
-		match MountData::new(&mut buf, &opts) {
-			Some(mount_data) => Ok(CString::from(mount_data.as_cstr())),
-			None => Err(io::Error::new(
-				io::ErrorKind::InvalidInput,
-				"mount data length > PAGE_SIZE",
-			)),
+			opts,
+			dev_fuse: None,
+			flags: DEFAULT_FLAGS,
 		}
 	}
 }
 
-pub struct LibcFuseMount(FuseMountOptions);
-
-impl LibcFuseMount {
-	pub fn new() -> LibcFuseMount {
-		Self(FuseMountOptions::new())
+pub fn mount<'a>(
+	target: &CStr,
+	options: impl Into<MountOptions<'a>>,
+) -> Result<FuseStream, LibcError> {
+	let options = options.into();
+	let mut opts = options.opts;
+	if opts.root_mode().is_none() {
+		opts.set_root_mode(Some(get_root_mode(target)?));
+	}
+	if opts.user_id().is_none() {
+		opts.set_user_id(Some(unsafe { libc::getuid() }));
+	}
+	if opts.group_id().is_none() {
+		opts.set_group_id(Some(unsafe { libc::getgid() }));
 	}
 
-	pub fn set_mount_source(mut self, mount_source: impl AsRef<OsStr>) -> Self {
-		self.0.mount_source = mount_source.as_ref().to_os_string();
-		self
+	let stream = FuseStream::open(options.dev_fuse())?;
+	let fd = stream.as_raw_fd();
+
+	opts.set_fuse_device_fd(Some(fd as u32));
+
+	let mut mount_data_buf = [0u8; PAGE_SIZE];
+	let mount_data = match MountData::new(&mut mount_data_buf, &opts) {
+		Some(mount_data) => mount_data,
+		_ => return Err(LibcError::from_raw_os_error(libc::EINVAL)),
+	};
+
+	let rc = unsafe {
+		libc::mount(
+			opts.source().as_ptr(),
+			target.as_ptr(),
+			opts.fs_type().as_ptr(),
+			options.flags as libc::c_ulong,
+			mount_data.as_bytes_with_nul().as_ptr() as *const libc::c_void,
+		)
+	};
+	if rc != 0 {
+		return Err(LibcError::last_os_error());
 	}
-
-	pub fn set_mount_subtype(
-		mut self,
-		mount_subtype: impl AsRef<OsStr>,
-	) -> Self {
-		self.0.mount_subtype = mount_subtype.as_ref().to_os_string();
-		self
-	}
-
-	pub fn set_mount_flags(mut self, mount_flags: u32) -> Self {
-		self.0.mount_flags = mount_flags;
-		self
-	}
-
-	pub fn set_user_id(mut self, uid: u32) -> Self {
-		self.0.user_id = Some(uid);
-		self
-	}
-
-	pub fn set_group_id(mut self, gid: u32) -> Self {
-		self.0.group_id = Some(gid);
-		self
-	}
-
-	pub fn set_root_mode(mut self, mode: u32) -> Self {
-		self.0.root_mode = Some(mode);
-		self
-	}
-
-	pub fn mount(
-		self,
-		mount_target: &path::Path,
-	) -> Result<LibcStream, io::Error> {
-		let mount_target_cstr = cstr_from_osstr(mount_target.as_os_str())?;
-		let mount_source_cstr = self.0.mount_source_cstr()?;
-		let mount_type_cstr = self.0.mount_type_cstr()?;
-
-		let root_mode = match self.0.root_mode {
-			Some(mode) => mode,
-			None => {
-				let meta = fs::metadata(mount_target)?;
-				meta.mode()
-			},
-		};
-
-		let stream = LibcStream::dev_fuse()?;
-		let fd = stream.as_raw_fd();
-
-		let user_id =
-			self.0.user_id.unwrap_or_else(|| unsafe { libc::getuid() });
-		let group_id =
-			self.0.group_id.unwrap_or_else(|| unsafe { libc::getgid() });
-
-		let mount_data = self.0.mount_data(fd, root_mode, user_id, group_id)?;
-		unsafe {
-			let rc = libc::mount(
-				mount_source_cstr.as_ptr(),
-				mount_target_cstr.as_ptr(),
-				mount_type_cstr.as_ptr(),
-				self.0.mount_flags as libc::c_ulong,
-				mount_data.to_bytes_with_nul().as_ptr() as *const libc::c_void,
-			);
-			if rc != 0 {
-				return Err(std::io::Error::last_os_error());
-			}
-		};
-		Ok(stream)
-	}
+	Ok(stream)
 }
 
-fn cstr_from_osstr(x: &OsStr) -> Result<CString, io::Error> {
-	match CString::new(x.as_bytes()) {
-		Ok(val) => Ok(val),
-		Err(err) => Err(io::Error::new(io::ErrorKind::InvalidInput, err)),
+fn get_root_mode(target: &CStr) -> Result<u32, LibcError> {
+	let mut statx_buf: libc::statx = unsafe { core::mem::zeroed() };
+	let rc = unsafe {
+		libc::statx(
+			libc::AT_FDCWD,
+			target.as_ptr(),
+			0,
+			libc::STATX_MODE,
+			&mut statx_buf as *mut libc::statx,
+		)
+	};
+	if rc != 0 {
+		return Err(LibcError::last_os_error());
 	}
+	Ok(u32::from(statx_buf.stx_mode))
 }

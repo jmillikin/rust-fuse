@@ -54,7 +54,7 @@ impl basic::ServerHooks for PrintHooks {
 type DevFuse = fuse_linux::FuseStream;
 
 #[cfg(target_os = "freebsd")]
-type DevFuse = fuse_libc::io::LibcStream;
+type DevFuse = fuse_libc::FuseStream;
 
 pub trait TestFS : basic::FuseHandlers<DevFuse> {
 	fn fuse_init(
@@ -100,9 +100,11 @@ pub fn fuse_interop_test(
 
 	#[cfg(target_os = "freebsd")]
 	{
-		dev_fuse = fuse_libc::os::freebsd::LibcFuseMounter::new()
-			.set_mount_subtype(b"rust_fuse_test\0")
-			.mount(&mount_cstr.as_bytes_with_nul())
+		let mut mount_options = fuse::os::freebsd::MountOptions::new();
+		let rust_fuse_test = ffi::CString::new("rust_fuse_test").unwrap();
+		mount_options.set_fs_subtype(Some(&rust_fuse_test));
+
+		dev_fuse = fuse_libc::os::freebsd::mount(&mount_cstr, mount_options)
 			.unwrap();
 	}
 

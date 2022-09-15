@@ -10,9 +10,6 @@ name = "helloworld"
 path = "helloworld.rs"
 
 [dependencies]
-fuse = { version = "0.0.1", path = "../../fuse", default-features = false }
+fuse = { version = "0.0.1", path = "../../fuse" }
 fuse-libc = { version = "0.0.1", path = "../../fuse-libc" }
 libc = "0.2"
-
-[features]
-default = ["fuse/std"]

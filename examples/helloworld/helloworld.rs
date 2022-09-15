@@ -182,16 +182,42 @@ fn getgid() -> u32 {
 }
 
 fn main() {
-	use fuse_libc::os::linux;
+	use std::ffi::CString;
+	use std::os::unix::ffi::OsStrExt;
+
 	let mount_target = std::env::args_os().nth(1).unwrap();
+	let mount_target_cstr = CString::new(mount_target.as_bytes()).unwrap();
 
 	let handlers = HelloWorldFS {};
 
-	let dev_fuse = linux::LibcFuseMount::new()
-		.set_mount_source("helloworld")
-		.set_mount_subtype("helloworld")
-		.mount(mount_target.as_ref())
-		.unwrap();
+	let fs_source = CString::new("helloworld").unwrap();
+	let fs_subtype = CString::new("helloworld").unwrap();
+
+	let dev_fuse;
+
+	#[cfg(target_os = "linux")]
+	{
+		use fuse_libc::os::linux as fuse_libc;
+
+		let mut mount_options = fuse::os::linux::MountOptions::new();
+		mount_options.set_source(Some(&fs_source));
+		mount_options.set_fs_subtype(Some(&fs_subtype));
+		mount_options.set_user_id(Some(getuid()));
+		mount_options.set_group_id(Some(getgid()));
+		dev_fuse = fuse_libc::mount(&mount_target_cstr, mount_options)
+			.unwrap();
+	}
+
+	#[cfg(target_os = "freebsd")]
+	{
+		use fuse_libc::os::freebsd as fuse_libc;
+
+		let mut mount_options = fuse::os::freebsd::MountOptions::new();
+		mount_options.set_fs_subtype(Some(&fs_subtype));
+		dev_fuse = fuse_libc::mount(&mount_target_cstr, mount_options)
+			.unwrap();
+	}
+
 	let conn = fuse::server::FuseConnectionBuilder::new(dev_fuse)
 		.build()
 		.unwrap();

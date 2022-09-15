@@ -14,131 +14,109 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+// use core::ffi::CStr;
+use std::ffi::CStr;
+
 use crate::io::iovec::IoVec;
-use crate::io::stream::{LibcError, LibcStream};
+use crate::io::stream::{FuseStream, LibcError};
 
-#[derive(Debug)]
-pub enum MountError<IoError> {
-	InvalidTargetPath,
-	InvalidMountSubtype,
-	Other(IoError),
+const MNT_NOSUID: i32 = 0x08;
+
+const DEFAULT_FLAGS: i32 = MNT_NOSUID;
+
+#[derive(Copy, Clone)]
+pub struct MountOptions<'a> {
+	opts: fuse::os::freebsd::MountOptions<'a>,
+	flags: i32,
 }
 
-pub struct LibcFuseMounter<'a> {
-	default_permissions: bool,
-	mount_flags: i32,
-	subtype: Option<&'a [u8]>,
+impl<'a> MountOptions<'a> {
+	pub fn flags(&self) -> i32 {
+		self.flags
+	}
+
+	pub fn set_flags(&mut self, flags: i32) {
+		self.flags = flags;
+	}
 }
 
-impl<'a> LibcFuseMounter<'a> {
-	pub fn new() -> Self {
+impl<'a> From<fuse::os::freebsd::MountOptions<'a>> for MountOptions<'a> {
+	fn from(opts: fuse::os::freebsd::MountOptions<'a>) -> Self {
 		Self {
-			default_permissions: false,
-			mount_flags: 0x08, // MNT_NOSUID
-			subtype: None,
+			opts,
+			flags: DEFAULT_FLAGS,
 		}
-	}
-
-	pub fn set_default_permissions(
-		&mut self,
-		default_permissions: bool,
-	) -> &mut Self {
-		self.default_permissions = default_permissions;
-		self
-	}
-
-	pub fn set_mount_flags(&mut self, flags: i32) -> &mut Self {
-		self.mount_flags = flags;
-		self
-	}
-
-	pub fn set_mount_subtype(&mut self, subtype: &'a [u8]) -> &mut Self {
-		self.subtype = Some(subtype);
-		self
-	}
-
-	pub fn mount(
-		&self,
-		target_path: &[u8], // nul-terminated string
-	) -> Result<LibcStream, MountError<LibcError>> {
-		if !valid_cstr(target_path) {
-			return Err(MountError::InvalidTargetPath);
-		}
-		if let Some(subtype) = self.subtype {
-			if !valid_cstr(subtype) {
-				return Err(MountError::InvalidMountSubtype);
-			}
-		}
-
-		let file = LibcStream::dev_fuse().map_err(|e| MountError::Other(e))?;
-
-		let mut fd_buf = [0u8; 32];
-		file.fmt_raw_fd(&mut fd_buf);
-		let mut iovecs = [
-			// fstype
-			IoVec::global(b"fstype\0"),
-			IoVec::global(b"fusefs\0"),
-
-			// from
-			IoVec::global(b"from\0"),
-			IoVec::global(b"/dev/fuse\0"),
-
-			// fspath
-			IoVec::global(b"fspath\0"),
-			IoVec::borrow(target_path),
-
-			// fd
-			IoVec::global(b"fd\0"),
-			IoVec::borrow(&fd_buf),
-
-			// placeholder: default_permissions
-			IoVec::null(),
-			IoVec::null(),
-
-			// placeholder: subtype=
-			IoVec::null(),
-			IoVec::null(),
-		];
-
-		let mut iovecs_len: usize = 8;
-
-		if self.default_permissions {
-			iovecs[iovecs_len] = IoVec::global(b"default_permissions\0");
-			iovecs[iovecs_len + 1] = IoVec::global(b"\0");
-			iovecs_len += 2;
-		}
-
-		if let Some(subtype) = self.subtype {
-			iovecs[iovecs_len] = IoVec::global(b"subtype=\0");
-			iovecs[iovecs_len + 1] = IoVec::borrow(subtype);
-			iovecs_len += 2;
-		}
-
-		let nmount_rc = unsafe {
-			libc::nmount(
-				iovecs.as_mut_ptr() as *mut libc::iovec,
-				iovecs_len as libc::c_uint,
-				self.mount_flags,
-			)
-		};
-		if nmount_rc == -1 {
-			return Err(MountError::Other(LibcError::last_os_error()));
-		}
-
-		Ok(file)
 	}
 }
 
-fn valid_cstr(buf: &[u8]) -> bool {
-	let len = buf.len();
-	if len == 0 {
-		return false;
+pub fn mount<'a>(
+	target: &CStr,
+	options: impl Into<MountOptions<'a>>,
+) -> Result<FuseStream, LibcError> {
+	let options = options.into();
+	let opts = options.opts;
+	let stream = FuseStream::new()?;
+
+	let mut fd_buf = [0u8; 32];
+	fmt_raw_fd(&mut fd_buf, stream.as_raw_fd());
+	let mut iovecs = [
+		// fstype
+		IoVec::global(b"fstype\0"),
+		IoVec::global(b"fusefs\0"),
+
+		// from
+		IoVec::global(b"from\0"),
+		IoVec::global(b"/dev/fuse\0"),
+
+		// fspath
+		IoVec::global(b"fspath\0"),
+		IoVec::borrow(target.to_bytes_with_nul()),
+
+		// fd
+		IoVec::global(b"fd\0"),
+		IoVec::borrow(&fd_buf),
+
+		// placeholder: default_permissions
+		IoVec::null(),
+		IoVec::null(),
+
+		// placeholder: subtype=
+		IoVec::null(),
+		IoVec::null(),
+	];
+
+	let mut iovecs_len: usize = 8;
+
+	if opts.default_permissions() {
+		iovecs[iovecs_len] = IoVec::global(b"default_permissions\0");
+		iovecs[iovecs_len + 1] = IoVec::global(b"\0");
+		iovecs_len += 2;
 	}
-	if buf[len - 1] != 0 {
-		return false;
+
+	if let Some(subtype) = opts.fs_subtype() {
+		iovecs[iovecs_len] = IoVec::global(b"subtype=\0");
+		iovecs[iovecs_len + 1] = IoVec::borrow(subtype.to_bytes_with_nul());
+		iovecs_len += 2;
 	}
-	if buf[..len - 1].contains(&0) {
-		return false;
+
+	let nmount_rc = unsafe {
+		libc::nmount(
+			iovecs.as_mut_ptr() as *mut libc::iovec,
+			iovecs_len as libc::c_uint,
+			options.flags,
+		)
+	};
+	if nmount_rc == -1 {
+		return Err(LibcError::last_os_error());
 	}
-	true
+
+	Ok(stream)
+}
+
+fn fmt_raw_fd(buf: &mut [u8; 32], fd: i32) {
+	let buf_ptr = buf.as_mut_ptr() as *mut libc::c_char;
+	let format_ptr = b"%d\0".as_ptr() as *const libc::c_char;
+	unsafe {
+		libc::snprintf(buf_ptr, 32, format_ptr, fd);
+	}
 }
