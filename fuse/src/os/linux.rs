@@ -25,6 +25,7 @@ const CSTR_FUSE: &'static CStr = unsafe {
 	CStr::from_bytes_with_nul_unchecked(b"fuse\0")
 };
 
+#[derive(Copy, Clone)]
 pub struct MountOptions<'a> {
 	allow_other: bool,
 	block_size: Option<u32>,
@@ -159,6 +160,7 @@ impl<'a> MountOptions<'a> {
 	}
 }
 
+#[derive(Copy, Clone)]
 pub struct MountData<'a> {
 	buf: &'a [u8],
 }
