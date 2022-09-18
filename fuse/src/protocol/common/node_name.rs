@@ -78,15 +78,27 @@ impl PartialEq<[u8]> for NodeName {
 	}
 }
 
-impl Ord for NodeName {
-	fn cmp(&self, other: &NodeName) -> cmp::Ordering {
-		self.as_bytes().cmp(&other.as_bytes())
-	}
-}
-
 impl PartialEq<NodeName> for [u8] {
 	fn eq(&self, other: &NodeName) -> bool {
 		self.eq(other.as_bytes())
+	}
+}
+
+impl PartialEq<str> for NodeName {
+	fn eq(&self, other: &str) -> bool {
+		self.as_bytes().eq(other.as_bytes())
+	}
+}
+
+impl PartialEq<NodeName> for str{
+	fn eq(&self, other: &NodeName) -> bool {
+		self.as_bytes().eq(other.as_bytes())
+	}
+}
+
+impl Ord for NodeName {
+	fn cmp(&self, other: &NodeName) -> cmp::Ordering {
+		self.as_bytes().cmp(&other.as_bytes())
 	}
 }
 
