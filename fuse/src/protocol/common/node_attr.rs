@@ -24,6 +24,10 @@ use crate::protocol::common::{FileMode, NodeId};
 pub struct NodeAttr(fuse_kernel::fuse_attr);
 
 impl NodeAttr {
+	pub fn new() -> Self {
+		NodeAttr(unsafe { core::mem::zeroed() })
+	}
+
 	pub fn node_id(&self) -> Option<NodeId> {
 		NodeId::new(self.0.ino)
 	}
