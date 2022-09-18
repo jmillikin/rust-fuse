@@ -14,6 +14,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+// use core::ffi::CStr;
+#[cfg(feature = "std")]
+use std::ffi::CStr;
+
 use crate::protocol::prelude::*;
 
 #[cfg(rust_fuse_test = "readlink_test")]
@@ -64,19 +68,24 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for ReadlinkRequest<'a> {
 ///
 /// [`FuseHandlers::readlink`]: ../../trait.FuseHandlers.html#method.readlink
 pub struct ReadlinkResponse<'a> {
-	name: &'a NodeName,
+	target: &'a [u8],
 }
 
 impl<'a> ReadlinkResponse<'a> {
-	pub fn from_name(name: &'a NodeName) -> ReadlinkResponse<'a> {
-		Self { name }
+	#[cfg(feature = "std")]
+	pub fn new(target: &'a CStr) -> ReadlinkResponse<'a> {
+		Self { target: target.to_bytes() }
+	}
+
+	pub fn from_name(target: &'a NodeName) -> ReadlinkResponse<'a> {
+		Self { target: target.as_bytes() }
 	}
 }
 
 impl fmt::Debug for ReadlinkResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("ReadlinkResponse")
-			.field("name", &self.name)
+			.field("target", &DebugBytesAsString(self.target))
 			.finish()
 	}
 }
@@ -89,7 +98,7 @@ impl encode::EncodeReply for ReadlinkResponse<'_> {
 		_version_minor: u32,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, request_id);
-		enc.encode_bytes(self.name.as_bytes())
+		enc.encode_bytes(self.target)
 	}
 }
 

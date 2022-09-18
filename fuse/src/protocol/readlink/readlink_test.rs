@@ -76,7 +76,7 @@ fn response_impl_debug() {
 		format!("{:#?}", response),
 		concat!(
 			"ReadlinkResponse {\n",
-			r#"    name: "hello.world!","#, "\n",
+			r#"    target: "hello.world!","#, "\n",
 			"}",
 		),
 	);
