@@ -29,3 +29,39 @@ pub use self::fuse_connection::{FuseConnection, FuseConnectionBuilder};
 pub use self::fuse_request::{FuseOperation, FuseRequest};
 pub use self::reply::{Reply, ReplyInfo};
 pub use self::request::{Request, RequestHeader};
+
+use crate::io::{RequestError, RecvError, SendError};
+
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ServerError<IoError> {
+	RequestError(RequestError),
+	ConnectionClosed,
+	RequestNotFound,
+	RecvError(IoError),
+	SendError(IoError),
+}
+
+impl<E> From<RequestError> for ServerError<E> {
+	fn from(err: RequestError) -> Self {
+		ServerError::RequestError(err)
+	}
+}
+
+impl<E> From<RecvError<E>> for ServerError<E> {
+	fn from(err: RecvError<E>) -> Self {
+		match err {
+			RecvError::ConnectionClosed => Self::ConnectionClosed,
+			RecvError::Other(io_err) => Self::RecvError(io_err),
+		}
+	}
+}
+
+impl<E> From<SendError<E>> for ServerError<E> {
+	fn from(err: SendError<E>) -> Self {
+		match err {
+			SendError::NotFound => Self::RequestNotFound,
+			SendError::Other(io_err) => Self::RecvError(io_err),
+		}
+	}
+}

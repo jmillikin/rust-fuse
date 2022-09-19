@@ -16,7 +16,19 @@
 
 use core::future::Future;
 
-use crate::io::error::{RecvError, SendError};
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum RecvError<IoError> {
+	ConnectionClosed,
+	Other(IoError),
+}
+
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum SendError<IoError> {
+	NotFound,
+	Other(IoError),
+}
 
 pub trait InputStream {
 	type Error;

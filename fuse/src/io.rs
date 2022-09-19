@@ -17,7 +17,6 @@
 mod buffer;
 pub(crate) mod decode;
 pub(crate) mod encode;
-mod error;
 mod stream;
 mod version;
 
@@ -26,13 +25,15 @@ pub use self::buffer::{ArrayBuffer, Buffer, MIN_READ_BUFFER};
 #[cfg(feature = "std")]
 pub use self::buffer::PinnedBuffer;
 
-pub use self::error::{Error, RecvError, ReplyError, RequestError, SendError};
+pub use self::decode::{ReplyError, RequestError};
 
 pub use self::stream::{
 	AsyncInputStream,
 	AsyncOutputStream,
 	InputStream,
 	OutputStream,
+	RecvError,
+	SendError,
 };
 
 pub use self::version::ProtocolVersion;

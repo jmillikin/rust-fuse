@@ -19,11 +19,25 @@ use core::mem::size_of;
 use core::slice::from_raw_parts;
 
 use crate::internal::fuse_kernel;
-use crate::io::{Buffer, RequestError};
+use crate::io::Buffer;
 
 #[cfg(rust_fuse_test = "decode_test")]
 #[path = "decode_test.rs"]
 mod decode_test;
+
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ReplyError {
+}
+
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum RequestError {
+	InvalidLockType,
+	MissingNodeId,
+	OpcodeMismatch,
+	UnexpectedEof,
+}
 
 pub(crate) trait DecodeRequest<'a, Semantics>: Sized {
 	fn decode(

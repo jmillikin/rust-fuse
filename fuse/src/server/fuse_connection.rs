@@ -22,7 +22,7 @@ use crate::protocol::fuse_init::{
 	FuseInitRequest,
 	FuseInitResponse,
 };
-use crate::server::{FuseRequest, Reply, ReplyInfo};
+use crate::server::{FuseRequest, Reply, ReplyInfo, ServerError};
 use crate::server::connection::negotiate_version;
 
 pub struct FuseConnectionBuilder<Stream> {
@@ -46,7 +46,7 @@ impl<S, E> FuseConnectionBuilder<S>
 where
 	S: io::InputStream<Error = E> + io::OutputStream<Error = E>,
 {
-	pub fn build(self) -> Result<FuseConnection<S>, io::Error<E>> {
+	pub fn build(self) -> Result<FuseConnection<S>, ServerError<E>> {
 		let flags = self.flags;
 		FuseConnection::new(self.stream, |_request| {
 			let mut reply = FuseInitResponse::new();
@@ -62,7 +62,7 @@ where
 {
 	pub async fn build_async(
 		self,
-	) -> Result<AsyncFuseConnection<S>, io::Error<E>> {
+	) -> Result<AsyncFuseConnection<S>, ServerError<E>> {
 		let flags = self.flags;
 		AsyncFuseConnection::new(self.stream, |_request| {
 			let mut reply = FuseInitResponse::new();
@@ -84,7 +84,7 @@ where
 	pub fn new(
 		stream: S,
 		init_fn: impl FnMut(&FuseInitRequest) -> FuseInitResponse,
-	) -> Result<Self, io::Error<E>> {
+	) -> Result<Self, ServerError<E>> {
 		let init_reply = Self::handshake(&stream, init_fn)?;
 		Ok(Self {
 			stream,
@@ -95,7 +95,7 @@ where
 	fn handshake(
 		stream: &S,
 		mut init_fn: impl FnMut(&FuseInitRequest) -> FuseInitResponse,
-	) -> Result<FuseInitResponse, io::Error<E>> {
+	) -> Result<FuseInitResponse, ServerError<E>> {
 		let mut buf = io::ArrayBuffer::new();
 
 		loop {
@@ -131,11 +131,11 @@ impl<S: io::InputStream> FuseConnection<S> {
 	pub fn recv<'a>(
 		&self,
 		buf: &'a mut impl io::Buffer,
-	) -> Result<Option<FuseRequest<'a>>, io::Error<S::Error>> {
+	) -> Result<Option<FuseRequest<'a>>, ServerError<S::Error>> {
 		let recv_len = match self.stream.recv(buf.borrow_mut()) {
 			Ok(x) => x,
 			Err(RecvError::ConnectionClosed) => return Ok(None),
-			Err(err) => return Err(io::Error::RecvFail(err)),
+			Err(RecvError::Other(err)) => return Err(ServerError::RecvError(err)),
 		};
 		let v_minor = self.version.minor();
 		Ok(Some(FuseRequest::new(buf, recv_len, v_minor)?))
@@ -182,7 +182,7 @@ where
 	pub async fn new(
 		stream: S,
 		init_fn: impl FnMut(&FuseInitRequest) -> FuseInitResponse,
-	) -> Result<Self, io::Error<E>> {
+	) -> Result<Self, ServerError<E>> {
 		let init_reply = Self::handshake(&stream, init_fn).await?;
 		Ok(Self {
 			stream,
@@ -193,7 +193,7 @@ where
 	async fn handshake(
 		stream: &S,
 		mut init_fn: impl FnMut(&FuseInitRequest) -> FuseInitResponse,
-	) -> Result<FuseInitResponse, io::Error<E>> {
+	) -> Result<FuseInitResponse, ServerError<E>> {
 		let mut buf = io::ArrayBuffer::new();
 
 		loop {
@@ -229,11 +229,11 @@ impl<S: io::AsyncInputStream> AsyncFuseConnection<S> {
 	pub async fn recv<'a>(
 		&self,
 		buf: &'a mut impl io::Buffer,
-	) -> Result<Option<FuseRequest<'a>>, io::Error<S::Error>> {
+	) -> Result<Option<FuseRequest<'a>>, ServerError<S::Error>> {
 		let recv_len = match self.stream.recv(buf.borrow_mut()).await {
 			Ok(x) => x,
 			Err(RecvError::ConnectionClosed) => return Ok(None),
-			Err(err) => return Err(io::Error::RecvFail(err)),
+			Err(RecvError::Other(err)) => return Err(ServerError::RecvError(err)),
 		};
 		let v_minor = self.version.minor();
 		Ok(Some(FuseRequest::new(buf, recv_len, v_minor)?))
@@ -272,7 +272,7 @@ fn handshake<E>(
 	recv_buf: &impl Buffer,
 	recv_len: usize,
 	init_fn: &mut impl FnMut(&FuseInitRequest) -> FuseInitResponse,
-) -> Result<(FuseInitResponse, u64, bool), io::Error<E>> {
+) -> Result<(FuseInitResponse, u64, bool), ServerError<E>> {
 	let v_latest = io::ProtocolVersion::LATEST;
 	let v_minor = v_latest.minor();
 

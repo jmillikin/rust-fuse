@@ -15,7 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::io::{self, OutputStream, SendError};
-use crate::server::{FuseConnection, FuseRequest, Reply};
+use crate::server::{FuseConnection, FuseRequest, Reply, ServerError};
 use crate::server::basic::{
 	NoopServerHooks,
 	SendReply,
@@ -37,7 +37,7 @@ where
 	Handlers: FuseHandlers<S>,
 	Hooks: ServerHooks,
 {
-	pub fn serve(&self, buf: &mut impl io::Buffer) -> Result<(), io::Error<E>> {
+	pub fn serve(&self, buf: &mut impl io::Buffer) -> Result<(), ServerError<E>> {
 		while let Some(request) = self.conn.recv(buf)? {
 			let result = fuse_request_dispatch(
 				&self.conn,
@@ -48,7 +48,7 @@ where
 			match result {
 				Ok(()) => {},
 				Err(SendError::NotFound) => {},
-				Err(err) => return Err(io::Error::SendFail(err)),
+				Err(SendError::Other(err)) => return Err(ServerError::SendError(err)),
 			};
 		}
 		Ok(())

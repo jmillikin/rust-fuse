@@ -23,7 +23,7 @@ use crate::protocol::cuse_init::{
 	CuseInitRequest,
 	CuseInitResponse,
 };
-use crate::server::{CuseRequest, Reply, ReplyInfo};
+use crate::server::{CuseRequest, Reply, ReplyInfo, ServerError};
 use crate::server::connection::negotiate_version;
 
 pub struct CuseConnectionBuilder<'a, Stream> {
@@ -77,7 +77,7 @@ impl<S, E> CuseConnectionBuilder<'_, S>
 where
 	S: io::InputStream<Error = E> + io::OutputStream<Error = E>,
 {
-	pub fn build(self) -> Result<CuseConnection<S>, io::Error<E>> {
+	pub fn build(self) -> Result<CuseConnection<S>, ServerError<E>> {
 		let dev_major = self.dev_major;
 		let dev_minor = self.dev_minor;
 		let max_read = self.max_read;
@@ -101,7 +101,7 @@ where
 {
 	pub async fn build_async(
 		self,
-	) -> Result<AsyncCuseConnection<S>, io::Error<E>> {
+	) -> Result<AsyncCuseConnection<S>, ServerError<E>> {
 		let dev_major = self.dev_major;
 		let dev_minor = self.dev_minor;
 		let max_read = self.max_read;
@@ -132,7 +132,7 @@ where
 		stream: S,
 		device_name: &CuseDeviceName,
 		init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse,
-	) -> Result<Self, io::Error<E>> {
+	) -> Result<Self, ServerError<E>> {
 		let init_reply = Self::handshake(&stream, device_name, init_fn)?;
 		Ok(Self {
 			stream,
@@ -144,7 +144,7 @@ where
 		stream: &S,
 		device_name: &CuseDeviceName,
 		mut init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse,
-	) -> Result<CuseInitResponse, io::Error<E>> {
+	) -> Result<CuseInitResponse, ServerError<E>> {
 		let mut buf = io::ArrayBuffer::new();
 		loop {
 			let recv = stream.recv(buf.borrow_mut())?;
@@ -183,11 +183,11 @@ impl<S: io::InputStream> CuseConnection<S> {
 	pub fn recv<'a>(
 		&self,
 		buf: &'a mut impl io::Buffer,
-	) -> Result<Option<CuseRequest<'a>>, io::Error<S::Error>> {
+	) -> Result<Option<CuseRequest<'a>>, ServerError<S::Error>> {
 		let recv_len = match self.stream.recv(buf.borrow_mut()) {
 			Ok(x) => x,
 			Err(RecvError::ConnectionClosed) => return Ok(None),
-			Err(err) => return Err(io::Error::RecvFail(err)),
+			Err(RecvError::Other(err)) => return Err(ServerError::RecvError(err)),
 		};
 		let v_minor = self.version.minor();
 		Ok(Some(CuseRequest::new(buf, recv_len, v_minor)?))
@@ -235,7 +235,7 @@ where
 		stream: S,
 		device_name: &CuseDeviceName,
 		init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse,
-	) -> Result<Self, io::Error<E>> {
+	) -> Result<Self, ServerError<E>> {
 		let init_reply = Self::handshake(&stream, device_name, init_fn).await?;
 		Ok(Self {
 			stream,
@@ -247,7 +247,7 @@ where
 		stream: &S,
 		device_name: &CuseDeviceName,
 		mut init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse,
-	) -> Result<CuseInitResponse, io::Error<E>> {
+	) -> Result<CuseInitResponse, ServerError<E>> {
 		let mut buf = io::ArrayBuffer::new();
 
 		loop {
@@ -287,11 +287,11 @@ impl<S: io::AsyncInputStream> AsyncCuseConnection<S> {
 	pub async fn recv<'a>(
 		&self,
 		buf: &'a mut impl io::Buffer,
-	) -> Result<Option<CuseRequest<'a>>, io::Error<S::Error>> {
+	) -> Result<Option<CuseRequest<'a>>, ServerError<S::Error>> {
 		let recv_len = match self.stream.recv(buf.borrow_mut()).await {
 			Ok(x) => x,
 			Err(RecvError::ConnectionClosed) => return Ok(None),
-			Err(err) => return Err(io::Error::RecvFail(err)),
+			Err(RecvError::Other(err)) => return Err(ServerError::RecvError(err)),
 		};
 		let v_minor = self.version.minor();
 		Ok(Some(CuseRequest::new(buf, recv_len, v_minor)?))
@@ -330,7 +330,7 @@ fn handshake<E>(
 	recv_buf: &impl Buffer,
 	recv_len: usize,
 	init_fn: &mut impl FnMut(&CuseInitRequest) -> CuseInitResponse,
-) -> Result<(CuseInitResponse, u64, bool), io::Error<E>> {
+) -> Result<(CuseInitResponse, u64, bool), ServerError<E>> {
 	let v_latest = io::ProtocolVersion::LATEST;
 	let v_minor = v_latest.minor();
 
