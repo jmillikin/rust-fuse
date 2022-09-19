@@ -79,7 +79,7 @@ impl<'a> LinkResponse<'a> {
 	pub fn new() -> LinkResponse<'a> {
 		Self {
 			phantom: PhantomData,
-			raw: Default::default(),
+			raw: fuse_kernel::fuse_entry_out::zeroed(),
 		}
 	}
 

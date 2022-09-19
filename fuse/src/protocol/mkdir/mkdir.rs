@@ -93,7 +93,7 @@ impl<'a> MkdirResponse<'a> {
 	pub fn new() -> MkdirResponse<'a> {
 		Self {
 			phantom: PhantomData,
-			raw: Default::default(),
+			raw: fuse_kernel::fuse_entry_out::zeroed(),
 		}
 	}
 

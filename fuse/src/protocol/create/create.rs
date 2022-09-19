@@ -125,7 +125,7 @@ impl<'a> CreateResponse<'a> {
 	pub fn new() -> CreateResponse<'a> {
 		Self {
 			phantom: PhantomData,
-			entry_out: Default::default(),
+			entry_out: fuse_kernel::fuse_entry_out::zeroed(),
 			handle: 0,
 			flags: CreateResponseFlags::new(),
 		}

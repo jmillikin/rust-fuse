@@ -87,7 +87,7 @@ fn response_v7p1() {
 				attr_valid: 0,
 				attr_valid_nsec: 0,
 				dummy: 0,
-				attr: Default::default(),
+				attr: fuse_kernel::fuse_attr::zeroed(),
 			})
 			.unpush(
 				size_of::<fuse_kernel::fuse_attr_out>()
@@ -131,7 +131,7 @@ fn response_v7p9() {
 				dummy: 0,
 				attr: fuse_kernel::fuse_attr {
 					size: 999,
-					..Default::default()
+					..fuse_kernel::fuse_attr::zeroed()
 				},
 			})
 			.build()

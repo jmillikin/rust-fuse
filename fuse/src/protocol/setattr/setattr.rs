@@ -146,7 +146,7 @@ impl<'a> SetattrResponse<'a> {
 				dummy: 0,
 				attr: fuse_kernel::fuse_attr {
 					ino: request.header.nodeid,
-					..Default::default()
+					..fuse_kernel::fuse_attr::zeroed()
 				},
 			},
 		}

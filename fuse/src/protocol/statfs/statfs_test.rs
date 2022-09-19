@@ -79,7 +79,7 @@ fn response_v7p1() {
 					files: 60,
 					ffree: 70,
 					namelen: 80,
-					..Default::default()
+					..fuse_kernel::fuse_kstatfs::zeroed()
 				},
 			})
 			.unpush(
@@ -125,7 +125,7 @@ fn response_v7p4() {
 					files: 60,
 					ffree: 70,
 					namelen: 80,
-					..Default::default()
+					..fuse_kernel::fuse_kstatfs::zeroed()
 				},
 			})
 			.build()

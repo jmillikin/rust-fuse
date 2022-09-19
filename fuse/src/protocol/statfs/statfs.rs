@@ -66,7 +66,7 @@ impl<'a> StatfsResponse<'a> {
 	pub fn new() -> StatfsResponse<'a> {
 		Self {
 			phantom: PhantomData,
-			raw: Default::default(),
+			raw: fuse_kernel::fuse_statfs_out::zeroed(),
 		}
 	}
 

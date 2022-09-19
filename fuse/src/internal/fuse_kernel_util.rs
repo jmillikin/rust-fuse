@@ -140,31 +140,3 @@ macro_rules! _IOR {
 		2147804416u32
 	};
 }
-
-impl Default for crate::internal::fuse_kernel::fuse_attr {
-	fn default() -> Self { Self::zeroed() }
-}
-
-impl Default for crate::internal::fuse_kernel::fuse_attr_out {
-	fn default() -> Self { Self::zeroed() }
-}
-
-impl Default for crate::internal::fuse_kernel::fuse_entry_out {
-	fn default() -> Self { Self::zeroed() }
-}
-
-impl Default for crate::internal::fuse_kernel::fuse_getxattr_in {
-	fn default() -> Self { Self::zeroed() }
-}
-
-impl Default for crate::internal::fuse_kernel::fuse_getxattr_out {
-	fn default() -> Self { Self::zeroed() }
-}
-
-impl Default for crate::internal::fuse_kernel::fuse_kstatfs {
-	fn default() -> Self { Self::zeroed() }
-}
-
-impl Default for crate::internal::fuse_kernel::fuse_statfs_out {
-	fn default() -> Self { Self::zeroed() }
-}

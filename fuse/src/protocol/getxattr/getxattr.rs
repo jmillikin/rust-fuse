@@ -88,7 +88,7 @@ impl<'a> GetxattrResponse<'a> {
 	pub fn new(request_size: Option<num::NonZeroU32>) -> GetxattrResponse<'a> {
 		Self {
 			request_size,
-			raw: Default::default(),
+			raw: fuse_kernel::fuse_getxattr_out::zeroed(),
 			value: &[],
 		}
 	}

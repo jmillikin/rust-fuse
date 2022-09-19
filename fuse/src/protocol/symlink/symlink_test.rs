@@ -93,7 +93,7 @@ fn response_v7p1() {
 				attr_valid_nsec: 0,
 				attr: fuse_kernel::fuse_attr {
 					ino: 11,
-					..Default::default()
+					..fuse_kernel::fuse_attr::zeroed()
 				}
 			})
 			.unpush(
@@ -135,7 +135,7 @@ fn response_v7p9() {
 				attr_valid_nsec: 0,
 				attr: fuse_kernel::fuse_attr {
 					ino: 11,
-					..Default::default()
+					..fuse_kernel::fuse_attr::zeroed()
 				}
 			})
 			.build()

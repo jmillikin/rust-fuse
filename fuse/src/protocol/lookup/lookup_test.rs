@@ -94,7 +94,7 @@ fn response_v7p1() {
 				attr: fuse_kernel::fuse_attr {
 					ino: 11,
 					mode: 0o100644,
-					..Default::default()
+					..fuse_kernel::fuse_attr::zeroed()
 				}
 			})
 			.unpush(
@@ -137,7 +137,7 @@ fn response_v7p9() {
 				attr: fuse_kernel::fuse_attr {
 					ino: 11,
 					mode: 0o100644,
-					..Default::default()
+					..fuse_kernel::fuse_attr::zeroed()
 				}
 			})
 			.build()
@@ -186,7 +186,7 @@ fn response_noexist_v7p4() {
 				attr_valid: 0,
 				entry_valid_nsec: 0,
 				attr_valid_nsec: 0,
-				attr: Default::default(),
+				attr: fuse_kernel::fuse_attr::zeroed(),
 			})
 			.unpush(
 				size_of::<fuse_kernel::fuse_entry_out>()

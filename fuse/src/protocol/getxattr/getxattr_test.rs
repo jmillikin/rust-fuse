@@ -28,7 +28,7 @@ fn request_sized() {
 		})
 		.push_sized(&fuse_kernel::fuse_getxattr_in {
 			size: 10,
-			..Default::default()
+			..fuse_kernel::fuse_getxattr_in::zeroed()
 		})
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
@@ -49,7 +49,7 @@ fn request_unsized() {
 		})
 		.push_sized(&fuse_kernel::fuse_getxattr_in {
 			size: 0,
-			..Default::default()
+			..fuse_kernel::fuse_getxattr_in::zeroed()
 		})
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();

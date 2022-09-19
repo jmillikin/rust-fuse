@@ -88,7 +88,7 @@ impl<'a> SymlinkResponse<'a> {
 	pub fn new() -> SymlinkResponse<'a> {
 		Self {
 			phantom: PhantomData,
-			raw: Default::default(),
+			raw: fuse_kernel::fuse_entry_out::zeroed(),
 		}
 	}
 

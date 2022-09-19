@@ -97,7 +97,7 @@ impl<'a> GetattrResponse<'a> {
 	pub fn new() -> GetattrResponse<'a> {
 		Self {
 			phantom: PhantomData,
-			raw: Default::default(),
+			raw: fuse_kernel::fuse_attr_out::zeroed(),
 		}
 	}
 

@@ -126,7 +126,7 @@ impl<'a> MknodResponse<'a> {
 	pub fn new() -> MknodResponse<'a> {
 		Self {
 			phantom: PhantomData,
-			raw: Default::default(),
+			raw: fuse_kernel::fuse_entry_out::zeroed(),
 		}
 	}
 

@@ -70,7 +70,7 @@ impl<'a> LookupResponse<'a> {
 	pub fn new() -> LookupResponse<'a> {
 		Self {
 			phantom: PhantomData,
-			entry_out: Default::default(),
+			entry_out: fuse_kernel::fuse_entry_out::zeroed(),
 		}
 	}
 
