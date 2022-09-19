@@ -39,7 +39,7 @@ fn request_v7p1() {
 fn request_v7p6() {
 	let buf = MessageBuilder::new()
 		.set_opcode(fuse_kernel::FUSE_INIT)
-		.push_sized(&fuse_kernel::fuse_init_in {
+		.push_sized(&super::fuse_init_in_v7p6 {
 			major: 7,
 			minor: 6,
 			max_readahead: 9,
@@ -56,6 +56,29 @@ fn request_v7p6() {
 }
 
 #[test]
+fn request_v7p36() {
+	let buf = MessageBuilder::new()
+		.set_opcode(fuse_kernel::FUSE_INIT)
+		.push_sized(&fuse_kernel::fuse_init_in {
+			major: 7,
+			minor: 6,
+			max_readahead: 9,
+			flags: 0xFFFFFFFF,
+			flags2: 0xFFFFFFFF,
+			unused: [0; 11],
+		})
+		.build_aligned();
+
+	let req: FuseInitRequest = decode_request!(buf);
+
+	assert_eq!(req.version().major(), 7);
+	assert_eq!(req.version().minor(), 6);
+	assert_eq!(req.max_readahead(), 9);
+	assert_eq!(*req.flags(), FuseInitFlags::from_bits(0xFFFFFFFF));
+	// TODO: flags2
+}
+
+#[test]
 fn request_major_mismatch() {
 	let buf = MessageBuilder::new()
 		.set_opcode(fuse_kernel::FUSE_INIT)
@@ -64,6 +87,8 @@ fn request_major_mismatch() {
 			minor: 0xFF,
 			max_readahead: 0xFF,
 			flags: 0xFFFFFFFF,
+			flags2: 0xFFFFFFFF,
+			unused: [0xFFFFFFFF; 11],
 		})
 		.build_aligned();
 
@@ -157,7 +182,10 @@ fn response_v7p23() {
 				congestion_threshold: 0,
 				max_write: 0,
 				time_gran: 0,
-				unused: [0; 9],
+				max_pages: 0,
+				map_alignment: 0,
+				flags2: 0,
+				unused: [0; 7],
 			})
 			.build()
 	);

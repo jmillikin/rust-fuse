@@ -55,7 +55,7 @@ fn request_v7p12() {
 			flags: 0xFF,
 			mode: 0xEE,
 			umask: 0xDD,
-			padding: 0,
+			open_flags: 0, // TODO
 		})
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
@@ -234,7 +234,7 @@ fn response_impl_debug() {
 			"            gid: 0,\n",
 			"            rdev: 0,\n",
 			"            blksize: 0,\n",
-			"            padding: 0,\n",
+			"            flags: 0,\n",
 			"        },\n",
 			"    },\n",
 			"    handle: 123,\n",

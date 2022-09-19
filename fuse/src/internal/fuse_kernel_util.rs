@@ -49,7 +49,7 @@ macro_rules! enum_fuse_opcode {
 	),
 ))]
 macro_rules! _IOR {
-	(229, 0, uint32_t) => {
+	(FUSE_DEV_IOC_MAGIC, 0, uint32_t) => {
 		2147804416u32
 	};
 }

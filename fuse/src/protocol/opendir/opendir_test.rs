@@ -28,7 +28,7 @@ fn request() {
 		})
 		.push_sized(&fuse_kernel::fuse_open_in {
 			flags: 0xFF,
-			unused: 0,
+			open_flags: 0, // TODO
 		})
 		.build_aligned();
 

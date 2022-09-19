@@ -70,6 +70,14 @@ struct fuse_init_in_v7p1 {
 	minor: u32,
 }
 
+#[repr(C)]
+struct fuse_init_in_v7p6 {
+	pub major:         u32,
+	pub minor:         u32,
+	pub max_readahead: u32,
+	pub flags:         u32,
+}
+
 impl<'a> decode::DecodeRequest<'a, decode::FUSE> for FuseInitRequest<'_> {
 	fn decode(
 		buf: decode::RequestBuf<'a>,
@@ -97,6 +105,17 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for FuseInitRequest<'_> {
 				version: ProtocolVersion::new(raw_v7p1.major, raw_v7p1.minor),
 				max_readahead: 0,
 				flags: FuseInitFlags::from_bits(0),
+			});
+		}
+
+		if raw_v7p1.minor < 36 {
+			let raw: &'a fuse_init_in_v7p6 = dec.next_sized()?;
+			return Ok(FuseInitRequest {
+				phantom: PhantomData,
+				version: ProtocolVersion::new(raw.major, raw.minor),
+				max_readahead: raw.max_readahead,
+				flags: FuseInitFlags::from_bits(raw.flags),
+				// TODO: flags2
 			});
 		}
 
@@ -134,7 +153,10 @@ impl FuseInitResponse {
 				congestion_threshold: 0,
 				max_write: 0,
 				time_gran: 0,
-				unused: [0; 9],
+				max_pages: 0,
+				map_alignment: 0,
+				flags2: 0,
+				unused: [0; 7],
 			},
 			flags: FuseInitFlags::new(),
 		}

@@ -70,6 +70,12 @@ impl fmt::Debug for SetxattrRequest<'_> {
 	}
 }
 
+#[repr(C)]
+pub(crate) struct fuse_setxattr_in_v7p1 {
+	pub size:  u32,
+	pub flags: u32,
+}
+
 impl<'a> decode::DecodeRequest<'a, decode::FUSE> for SetxattrRequest<'a> {
 	fn decode(
 		buf: decode::RequestBuf<'a>,
@@ -78,7 +84,7 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for SetxattrRequest<'a> {
 		buf.expect_opcode(fuse_kernel::FUSE_SETXATTR)?;
 
 		let mut dec = decode::RequestDecoder::new(buf);
-		let raw: &'a fuse_kernel::fuse_setxattr_in = dec.next_sized()?;
+		let raw: &'a fuse_setxattr_in_v7p1 = dec.next_sized()?;
 		let name = XattrName::new(dec.next_nul_terminated_bytes()?);
 		let value = dec.next_bytes(raw.size)?;
 		Ok(Self {

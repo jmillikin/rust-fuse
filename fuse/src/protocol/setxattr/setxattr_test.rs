@@ -26,10 +26,9 @@ fn request() {
 			h.opcode = fuse_kernel::FUSE_SETXATTR;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_setxattr_in {
+		.push_sized(&super::fuse_setxattr_in_v7p1 {
 			size: 10,
 			flags: 0b11,
-			..Default::default()
 		})
 		.push_bytes(b"hello.world!\x00")
 		.push_bytes(b"some\x00value")
