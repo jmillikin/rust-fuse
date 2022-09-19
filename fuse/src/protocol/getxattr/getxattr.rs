@@ -30,7 +30,21 @@ pub struct GetxattrRequest<'a> {
 	name: &'a XattrName,
 }
 
-impl GetxattrRequest<'_> {
+impl<'a> GetxattrRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_GETXATTR)?;
+
+		let raw: &'a fuse_kernel::fuse_getxattr_in = dec.next_sized()?;
+		Ok(Self {
+			node_id: try_node_id(dec.header().nodeid)?,
+			size: num::NonZeroU32::new(raw.size),
+			name: XattrName::new(dec.next_nul_terminated_bytes()?),
+		})
+	}
+
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -51,23 +65,6 @@ impl fmt::Debug for GetxattrRequest<'_> {
 			.field("size", &format_args!("{:?}", &self.size))
 			.field("name", &self.name)
 			.finish()
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for GetxattrRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_GETXATTR)?;
-
-		let mut dec = decode::RequestDecoder::new(buf);
-		let raw: &'a fuse_kernel::fuse_getxattr_in = dec.next_sized()?;
-		Ok(Self {
-			node_id: try_node_id(buf.header().nodeid)?,
-			size: num::NonZeroU32::new(raw.size),
-			name: XattrName::new(dec.next_nul_terminated_bytes()?),
-		})
 	}
 }
 

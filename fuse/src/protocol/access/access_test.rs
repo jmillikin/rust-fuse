@@ -31,7 +31,7 @@ fn request() {
 			padding: 0,
 		})
 		.build_aligned();
-	let req: AccessRequest = decode_request!(buf);
+	let req = decode_request!(AccessRequest, buf);
 
 	assert_eq!(req.mask(), 0xFF);
 }

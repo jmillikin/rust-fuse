@@ -30,7 +30,46 @@ pub struct MknodRequest<'a> {
 	raw: fuse_kernel::fuse_mknod_in,
 }
 
-impl MknodRequest<'_> {
+#[repr(C)]
+pub(crate) struct fuse_mknod_in_v7p1 {
+	pub mode: u32,
+	pub rdev: u32,
+}
+
+impl<'a> MknodRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let version_minor = request.version_minor;
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_MKNOD)?;
+
+		let parent_id = try_node_id(dec.header().nodeid)?;
+
+		if version_minor < 12 {
+			let raw: &fuse_mknod_in_v7p1 = dec.next_sized()?;
+			let name = NodeName::new(dec.next_nul_terminated_bytes()?);
+			return Ok(Self {
+				parent_id,
+				name,
+				raw: fuse_kernel::fuse_mknod_in {
+					mode: raw.mode,
+					rdev: raw.rdev,
+					umask: 0,
+					padding: 0,
+				},
+			});
+		}
+
+		let raw: &fuse_kernel::fuse_mknod_in = dec.next_sized()?;
+		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
+		Ok(Self {
+			parent_id,
+			name,
+			raw: *raw,
+		})
+	}
+
 	pub fn parent_id(&self) -> NodeId {
 		self.parent_id
 	}
@@ -66,47 +105,6 @@ impl fmt::Debug for MknodRequest<'_> {
 			.field("umask", &format_args!("{:#o}", &self.raw.umask))
 			.field("device_number", &format_args!("{:?}", self.device_number()))
 			.finish()
-	}
-}
-
-#[repr(C)]
-pub(crate) struct fuse_mknod_in_v7p1 {
-	pub mode: u32,
-	pub rdev: u32,
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for MknodRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_MKNOD)?;
-
-		let parent_id = try_node_id(buf.header().nodeid)?;
-
-		let mut dec = decode::RequestDecoder::new(buf);
-		if version_minor < 12 {
-			let raw: &fuse_mknod_in_v7p1 = dec.next_sized()?;
-			let name = NodeName::new(dec.next_nul_terminated_bytes()?);
-			return Ok(Self {
-				parent_id,
-				name,
-				raw: fuse_kernel::fuse_mknod_in {
-					mode: raw.mode,
-					rdev: raw.rdev,
-					umask: 0,
-					padding: 0,
-				},
-			});
-		}
-
-		let raw: &fuse_kernel::fuse_mknod_in = dec.next_sized()?;
-		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
-		Ok(Self {
-			parent_id,
-			name,
-			raw: *raw,
-		})
 	}
 }
 

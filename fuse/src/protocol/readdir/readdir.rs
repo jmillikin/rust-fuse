@@ -36,7 +36,39 @@ pub struct ReaddirRequest<'a> {
 	opendir_flags: u32,
 }
 
-impl ReaddirRequest<'_> {
+impl<'a> ReaddirRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let version_minor = request.version_minor;
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_READDIR)?;
+		let node_id = try_node_id(dec.header().nodeid)?;
+
+		// FUSE v7.9 added new fields to `fuse_read_in`.
+		if version_minor < 9 {
+			let raw: &'a fuse_read_in_v7p1 = dec.next_sized()?;
+			return Ok(Self {
+				phantom: PhantomData,
+				node_id,
+				size: raw.size,
+				cursor: num::NonZeroU64::new(raw.offset),
+				handle: raw.fh,
+				opendir_flags: 0,
+			});
+		}
+
+		let raw: &'a fuse_kernel::fuse_read_in = dec.next_sized()?;
+		Ok(Self {
+			phantom: PhantomData,
+			node_id,
+			size: raw.size,
+			cursor: num::NonZeroU64::new(raw.offset),
+			handle: raw.fh,
+			opendir_flags: raw.flags,
+		})
+	}
+
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -75,41 +107,6 @@ impl fmt::Debug for ReaddirRequest<'_> {
 			.field("handle", &self.handle)
 			.field("opendir_flags", &DebugHexU32(self.opendir_flags))
 			.finish()
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for ReaddirRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_READDIR)?;
-
-		let node_id = try_node_id(buf.header().nodeid)?;
-		let mut dec = decode::RequestDecoder::new(buf);
-
-		// FUSE v7.9 added new fields to `fuse_read_in`.
-		if version_minor < 9 {
-			let raw: &'a fuse_read_in_v7p1 = dec.next_sized()?;
-			return Ok(Self {
-				phantom: PhantomData,
-				node_id,
-				size: raw.size,
-				cursor: num::NonZeroU64::new(raw.offset),
-				handle: raw.fh,
-				opendir_flags: 0,
-			});
-		}
-
-		let raw: &'a fuse_kernel::fuse_read_in = dec.next_sized()?;
-		Ok(Self {
-			phantom: PhantomData,
-			node_id,
-			size: raw.size,
-			cursor: num::NonZeroU64::new(raw.offset),
-			handle: raw.fh,
-			opendir_flags: raw.flags,
-		})
 	}
 }
 

@@ -31,7 +31,29 @@ pub struct SetxattrRequest<'a> {
 	value: &'a [u8],
 }
 
-impl SetxattrRequest<'_> {
+#[repr(C)]
+pub(crate) struct fuse_setxattr_in_v7p1 {
+	pub size:  u32,
+	pub flags: u32,
+}
+
+impl<'a> SetxattrRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_SETXATTR)?;
+		let raw: &'a fuse_setxattr_in_v7p1 = dec.next_sized()?;
+		let name = XattrName::new(dec.next_nul_terminated_bytes()?);
+		let value = dec.next_bytes(raw.size)?;
+		Ok(Self {
+			node_id: try_node_id(dec.header().nodeid)?,
+			flags: SetxattrRequestFlags::from_bits(raw.flags),
+			name,
+			value,
+		})
+	}
+
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -67,32 +89,6 @@ impl fmt::Debug for SetxattrRequest<'_> {
 			.field("flags", &self.flags)
 			.field("value", &DebugBytesAsString(&self.value))
 			.finish()
-	}
-}
-
-#[repr(C)]
-pub(crate) struct fuse_setxattr_in_v7p1 {
-	pub size:  u32,
-	pub flags: u32,
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for SetxattrRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_SETXATTR)?;
-
-		let mut dec = decode::RequestDecoder::new(buf);
-		let raw: &'a fuse_setxattr_in_v7p1 = dec.next_sized()?;
-		let name = XattrName::new(dec.next_nul_terminated_bytes()?);
-		let value = dec.next_bytes(raw.size)?;
-		Ok(Self {
-			node_id: try_node_id(buf.header().nodeid)?,
-			flags: SetxattrRequestFlags::from_bits(raw.flags),
-			name,
-			value,
-		})
 	}
 }
 

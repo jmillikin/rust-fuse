@@ -30,7 +30,22 @@ pub struct MkdirRequest<'a> {
 	raw: fuse_kernel::fuse_mkdir_in,
 }
 
-impl MkdirRequest<'_> {
+impl<'a> MkdirRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_MKDIR)?;
+
+		let raw: &fuse_kernel::fuse_mkdir_in = dec.next_sized()?;
+		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
+		Ok(Self {
+			parent_id: try_node_id(dec.header().nodeid)?,
+			name,
+			raw: *raw,
+		})
+	}
+
 	pub fn parent_id(&self) -> NodeId {
 		self.parent_id
 	}
@@ -56,24 +71,6 @@ impl fmt::Debug for MkdirRequest<'_> {
 			.field("mode", &self.mode())
 			.field("umask", &format_args!("{:#o}", &self.raw.umask))
 			.finish()
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for MkdirRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_MKDIR)?;
-
-		let mut dec = decode::RequestDecoder::new(buf);
-		let raw: &fuse_kernel::fuse_mkdir_in = dec.next_sized()?;
-		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
-		Ok(Self {
-			parent_id: try_node_id(buf.header().nodeid)?,
-			name,
-			raw: *raw,
-		})
 	}
 }
 

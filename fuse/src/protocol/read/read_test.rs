@@ -36,7 +36,7 @@ fn request_v7p1() {
 		})
 		.build_aligned();
 
-	let req: ReadRequest = decode_request!(buf, {
+	let req = decode_request!(ReadRequest, buf, {
 		protocol_version: (7, 1),
 	});
 
@@ -65,7 +65,7 @@ fn request_v7p9() {
 		})
 		.build_aligned();
 
-	let req: ReadRequest = decode_request!(buf, {
+	let req = decode_request!(ReadRequest, buf, {
 		protocol_version: (7, 9),
 	});
 
@@ -94,7 +94,7 @@ fn request_lock_owner() {
 		})
 		.build_aligned();
 
-	let req: ReadRequest = decode_request!(buf);
+	let req = decode_request!(ReadRequest, buf);
 
 	assert_eq!(req.lock_owner(), Some(123));
 }

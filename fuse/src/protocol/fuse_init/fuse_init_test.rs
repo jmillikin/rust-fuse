@@ -27,7 +27,7 @@ fn request_v7p1() {
 		.push_sized(&super::fuse_init_in_v7p1 { major: 7, minor: 1 })
 		.build_aligned();
 
-	let req: FuseInitRequest = decode_request!(buf);
+	let req = decode_request!(FuseInitRequest, buf);
 
 	assert_eq!(req.version().major(), 7);
 	assert_eq!(req.version().minor(), 1);
@@ -47,7 +47,7 @@ fn request_v7p6() {
 		})
 		.build_aligned();
 
-	let req: FuseInitRequest = decode_request!(buf);
+	let req = decode_request!(FuseInitRequest, buf);
 
 	assert_eq!(req.version().major(), 7);
 	assert_eq!(req.version().minor(), 6);
@@ -69,7 +69,7 @@ fn request_v7p36() {
 		})
 		.build_aligned();
 
-	let req: FuseInitRequest = decode_request!(buf);
+	let req = decode_request!(FuseInitRequest, buf);
 
 	assert_eq!(req.version().major(), 7);
 	assert_eq!(req.version().minor(), 6);
@@ -92,7 +92,7 @@ fn request_major_mismatch() {
 		})
 		.build_aligned();
 
-	let req: FuseInitRequest = decode_request!(buf);
+	let req = decode_request!(FuseInitRequest, buf);
 
 	assert_eq!(req.version().major(), 0xFF);
 	assert_eq!(req.version().minor(), 0xFF);

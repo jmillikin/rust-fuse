@@ -30,7 +30,21 @@ pub struct SymlinkRequest<'a> {
 	content: &'a [u8],
 }
 
-impl SymlinkRequest<'_> {
+impl<'a> SymlinkRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_SYMLINK)?;
+		let content = dec.next_nul_terminated_bytes()?.to_bytes_without_nul();
+		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
+		Ok(Self {
+			parent_id: try_node_id(dec.header().nodeid)?,
+			name,
+			content,
+		})
+	}
+
 	pub fn parent_id(&self) -> NodeId {
 		self.parent_id
 	}
@@ -51,24 +65,6 @@ impl fmt::Debug for SymlinkRequest<'_> {
 			.field("name", &self.name)
 			.field("content", &DebugBytesAsString(self.content))
 			.finish()
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for SymlinkRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_SYMLINK)?;
-
-		let mut dec = decode::RequestDecoder::new(buf);
-		let content = dec.next_nul_terminated_bytes()?.to_bytes_without_nul();
-		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
-		Ok(Self {
-			parent_id: try_node_id(buf.header().nodeid)?,
-			name,
-			content,
-		})
 	}
 }
 

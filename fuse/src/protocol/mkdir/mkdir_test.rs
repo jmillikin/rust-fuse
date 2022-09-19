@@ -33,7 +33,7 @@ fn request() {
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 
-	let req: MkdirRequest = decode_request!(buf);
+	let req = decode_request!(MkdirRequest, buf);
 
 	let expect: &[u8] = b"hello.world!";
 	assert_eq!(req.parent_id(), NodeId::new(100).unwrap());
@@ -55,7 +55,7 @@ fn request_impl_debug() {
 		})
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
-	let request: MkdirRequest = decode_request!(buf);
+	let request = decode_request!(MkdirRequest, buf);
 
 	assert_eq!(
 		format!("{:#?}", request),

@@ -34,7 +34,7 @@ fn request() {
 		})
 		.build_aligned();
 
-	let req: LseekRequest = decode_request!(buf);
+	let req = decode_request!(LseekRequest, buf);
 
 	assert_eq!(req.handle(), 12);
 	assert_eq!(req.offset(), 34);

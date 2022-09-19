@@ -30,7 +30,37 @@ pub struct GetattrRequest<'a> {
 	handle: Option<u64>,
 }
 
-impl GetattrRequest<'_> {
+impl<'a> GetattrRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let version_minor = request.version_minor;
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_GETATTR)?;
+
+		let node_id = try_node_id(dec.header().nodeid)?;
+
+		// FUSE versions before v7.9 had no request type for `getattr()`.
+		if version_minor < 9 {
+			return Ok(Self {
+				phantom: PhantomData,
+				node_id,
+				handle: None,
+			});
+		}
+
+		let raw: &'a fuse_kernel::fuse_getattr_in = dec.next_sized()?;
+		let mut handle = None;
+		if (raw.getattr_flags & fuse_kernel::FUSE_GETATTR_FH) > 0 {
+			handle = Some(raw.fh);
+		}
+		Ok(Self {
+			phantom: PhantomData,
+			node_id,
+			handle,
+		})
+	}
+
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -46,38 +76,6 @@ impl fmt::Debug for GetattrRequest<'_> {
 			.field("node_id", &self.node_id)
 			.field("handle", &format_args!("{:?}", &self.handle))
 			.finish()
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for GetattrRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_GETATTR)?;
-
-		let node_id = try_node_id(buf.header().nodeid)?;
-
-		// FUSE versions before v7.9 had no request type for `getattr()`.
-		if version_minor < 9 {
-			return Ok(Self {
-				phantom: PhantomData,
-				node_id,
-				handle: None,
-			});
-		}
-
-		let mut dec = decode::RequestDecoder::new(buf);
-		let raw: &'a fuse_kernel::fuse_getattr_in = dec.next_sized()?;
-		let mut handle = None;
-		if (raw.getattr_flags & fuse_kernel::FUSE_GETATTR_FH) > 0 {
-			handle = Some(raw.fh);
-		}
-		Ok(Self {
-			phantom: PhantomData,
-			node_id,
-			handle,
-		})
 	}
 }
 

@@ -43,7 +43,7 @@ fn request() {
 		})
 		.build_aligned();
 
-	let req: SetattrRequest = decode_request!(buf);
+	let req = decode_request!(SetattrRequest, buf);
 
 	assert_eq!(req.handle(), Some(1));
 	assert_eq!(req.size(), Some(2));

@@ -39,21 +39,6 @@ pub enum RequestError {
 	UnexpectedEof,
 }
 
-pub(crate) trait DecodeRequest<'a, Semantics>: Sized {
-	fn decode(
-		buf: RequestBuf<'a>,
-		version_minor: u32,
-	) -> Result<Self, RequestError>;
-}
-
-pub(crate) trait Semantics {}
-
-pub(crate) struct CUSE;
-pub(crate) struct FUSE;
-
-impl Semantics for CUSE {}
-impl Semantics for FUSE {}
-
 #[derive(Copy, Clone)]
 pub(crate) union RequestBuf<'a> {
 	buf: Slice<'a>,
@@ -142,6 +127,13 @@ impl<'a> RequestDecoder<'a> {
 			buf,
 			consumed: size_of::<fuse_kernel::fuse_in_header>() as u32,
 		}
+	}
+
+	pub(crate) fn expect_opcode(
+		&self,
+		opcode: fuse_kernel::fuse_opcode,
+	) -> Result<(), RequestError> {
+		self.buf.expect_opcode(opcode)
 	}
 
 	pub(crate) fn header(&self) -> &'a fuse_kernel::fuse_in_header {

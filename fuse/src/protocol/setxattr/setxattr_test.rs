@@ -34,7 +34,7 @@ fn request() {
 		.push_bytes(b"some\x00value")
 		.build_aligned();
 
-	let req: SetxattrRequest = decode_request!(buf);
+	let req = decode_request!(SetxattrRequest, buf);
 
 	let expect_name = XattrName::from_bytes(b"hello.world!").unwrap();
 	assert_eq!(req.name(), expect_name);

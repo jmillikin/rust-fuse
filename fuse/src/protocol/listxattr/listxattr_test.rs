@@ -32,7 +32,7 @@ fn request_sized() {
 		})
 		.build_aligned();
 
-	let req: ListxattrRequest = decode_request!(buf);
+	let req = decode_request!(ListxattrRequest, buf);
 
 	assert_eq!(req.size(), Some(num::NonZeroU32::new(10).unwrap()));
 }
@@ -50,7 +50,7 @@ fn request_unsized() {
 		})
 		.build_aligned();
 
-	let req: ListxattrRequest = decode_request!(buf);
+	let req = decode_request!(ListxattrRequest, buf);
 
 	assert_eq!(req.size(), None);
 }

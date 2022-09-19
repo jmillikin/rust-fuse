@@ -33,7 +33,44 @@ pub struct ReleasedirRequest<'a> {
 	opendir_flags: u32,
 }
 
-impl ReleasedirRequest<'_> {
+impl<'a> ReleasedirRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let version_minor = request.version_minor;
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_RELEASEDIR)?;
+
+		let node_id = try_node_id(dec.header().nodeid)?;
+
+		// FUSE v7.8 added new fields to `fuse_release_in`.
+		if version_minor < 8 {
+			let raw: &'a fuse_release_in_v7p1 = dec.next_sized()?;
+			return Ok(Self {
+				phantom: PhantomData,
+				node_id,
+				handle: raw.fh,
+				lock_owner: None,
+				opendir_flags: raw.flags,
+			});
+		}
+
+		let raw: &'a fuse_kernel::fuse_release_in = dec.next_sized()?;
+
+		let mut lock_owner = None;
+		if raw.release_flags & fuse_kernel::FUSE_RELEASE_FLOCK_UNLOCK != 0 {
+			lock_owner = Some(raw.lock_owner);
+		}
+
+		Ok(Self {
+			phantom: PhantomData,
+			node_id,
+			handle: raw.fh,
+			lock_owner,
+			opendir_flags: raw.flags,
+		})
+	}
+
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -67,45 +104,6 @@ impl fmt::Debug for ReleasedirRequest<'_> {
 			.field("lock_owner", &self.lock_owner)
 			.field("opendir_flags", &DebugHexU32(self.opendir_flags))
 			.finish()
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for ReleasedirRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_RELEASEDIR)?;
-
-		let node_id = try_node_id(buf.header().nodeid)?;
-		let mut dec = decode::RequestDecoder::new(buf);
-
-		// FUSE v7.8 added new fields to `fuse_release_in`.
-		if version_minor < 8 {
-			let raw: &'a fuse_release_in_v7p1 = dec.next_sized()?;
-			return Ok(Self {
-				phantom: PhantomData,
-				node_id,
-				handle: raw.fh,
-				lock_owner: None,
-				opendir_flags: raw.flags,
-			});
-		}
-
-		let raw: &'a fuse_kernel::fuse_release_in = dec.next_sized()?;
-
-		let mut lock_owner = None;
-		if raw.release_flags & fuse_kernel::FUSE_RELEASE_FLOCK_UNLOCK != 0 {
-			lock_owner = Some(raw.lock_owner);
-		}
-
-		Ok(Self {
-			phantom: PhantomData,
-			node_id,
-			handle: raw.fh,
-			lock_owner,
-			opendir_flags: raw.flags,
-		})
 	}
 }
 

@@ -33,7 +33,7 @@ fn request_sized() {
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 
-	let req: GetxattrRequest = decode_request!(buf);
+	let req = decode_request!(GetxattrRequest, buf);
 
 	let expect = XattrName::from_bytes(b"hello.world!").unwrap();
 	assert_eq!(req.size(), Some(num::NonZeroU32::new(10).unwrap()));
@@ -54,7 +54,7 @@ fn request_unsized() {
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 
-	let req: GetxattrRequest = decode_request!(buf);
+	let req = decode_request!(GetxattrRequest, buf);
 
 	let expect = XattrName::from_bytes(b"hello.world!").unwrap();
 	assert_eq!(req.size(), None);

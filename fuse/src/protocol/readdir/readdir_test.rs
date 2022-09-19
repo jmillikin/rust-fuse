@@ -37,7 +37,7 @@ fn readdir_request_v7p1() {
 		})
 		.build_aligned();
 
-	let req: ReaddirRequest = decode_request!(buf, {
+	let req = decode_request!(ReaddirRequest, buf, {
 		protocol_version: (7, 1),
 	});
 
@@ -64,7 +64,7 @@ fn readdir_request_v7p9() {
 		})
 		.build_aligned();
 
-	let req: ReaddirRequest = decode_request!(buf, {
+	let req = decode_request!(ReaddirRequest, buf, {
 		protocol_version: (7, 9),
 	});
 

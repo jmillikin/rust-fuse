@@ -33,7 +33,7 @@ fn request_v7p1() {
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 
-	let req: CreateRequest = decode_request!(buf, {
+	let req = decode_request!(CreateRequest, buf, {
 		protocol_version: (7, 1),
 	});
 
@@ -60,7 +60,7 @@ fn request_v7p12() {
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 
-	let req: CreateRequest = decode_request!(buf, {
+	let req = decode_request!(CreateRequest, buf, {
 		protocol_version: (7, 12),
 	});
 

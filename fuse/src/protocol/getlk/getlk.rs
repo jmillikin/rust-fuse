@@ -31,7 +31,23 @@ pub struct GetlkRequest<'a> {
 	lock: Lock,
 }
 
-impl GetlkRequest<'_> {
+impl<'a> GetlkRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_GETLK)?;
+
+		let raw: &fuse_kernel::fuse_lk_in = dec.next_sized()?;
+		let node_id = try_node_id(dec.header().nodeid)?;
+
+		let lock = match Lock::parse(raw.lk) {
+			Some(l) => l,
+			_ => return Err(io::RequestError::InvalidLockType),
+		};
+		Ok(Self { raw, node_id, lock })
+	}
+
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -57,25 +73,6 @@ impl fmt::Debug for GetlkRequest<'_> {
 			.field("owner", &self.raw.owner)
 			.field("lock", &self.lock)
 			.finish()
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for GetlkRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_GETLK)?;
-
-		let mut dec = decode::RequestDecoder::new(buf);
-		let raw: &fuse_kernel::fuse_lk_in = dec.next_sized()?;
-		let node_id = try_node_id(buf.header().nodeid)?;
-
-		let lock = match Lock::parse(raw.lk) {
-			Some(l) => l,
-			_ => return Err(io::RequestError::InvalidLockType),
-		};
-		Ok(Self { raw, node_id, lock })
 	}
 }
 

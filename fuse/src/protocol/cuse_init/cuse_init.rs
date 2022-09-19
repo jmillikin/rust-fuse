@@ -96,7 +96,21 @@ pub struct CuseInitRequest<'a> {
 	flags: CuseInitFlags,
 }
 
-impl CuseInitRequest<'_> {
+impl<'a> CuseInitRequest<'a> {
+	pub fn from_cuse_request(
+		request: &CuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::CUSE_INIT)?;
+
+		let raw: &'a fuse_kernel::cuse_init_in = dec.next_sized()?;
+		Ok(CuseInitRequest {
+			phantom: PhantomData,
+			version: ProtocolVersion::new(raw.major, raw.minor),
+			flags: CuseInitFlags::from_bits(raw.flags),
+		})
+	}
+
 	pub fn version(&self) -> ProtocolVersion {
 		self.version
 	}
@@ -116,23 +130,6 @@ impl fmt::Debug for CuseInitRequest<'_> {
 			.field("version", &self.version)
 			.field("flags", &self.flags)
 			.finish()
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::CUSE> for CuseInitRequest<'_> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::CUSE_INIT)?;
-
-		let mut dec = decode::RequestDecoder::new(buf);
-		let raw: &'a fuse_kernel::cuse_init_in = dec.next_sized()?;
-		Ok(CuseInitRequest {
-			phantom: PhantomData,
-			version: ProtocolVersion::new(raw.major, raw.minor),
-			flags: CuseInitFlags::from_bits(raw.flags),
-		})
 	}
 }
 

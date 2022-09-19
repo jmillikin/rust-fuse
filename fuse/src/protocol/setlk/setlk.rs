@@ -31,7 +31,32 @@ pub struct SetlkRequest<'a> {
 	command: SetlkCommand,
 }
 
-impl SetlkRequest<'_> {
+impl<'a> SetlkRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let mut dec = request.decoder();
+		let header = dec.header();
+
+		let is_setlkw: bool;
+		if header.opcode == fuse_kernel::FUSE_SETLKW {
+			is_setlkw = true;
+		} else {
+			dec.expect_opcode(fuse_kernel::FUSE_SETLK)?;
+			is_setlkw = false;
+		}
+
+		let raw: &fuse_kernel::fuse_lk_in = dec.next_sized()?;
+		let node_id = try_node_id(header.nodeid)?;
+		let command = parse_setlk_cmd(is_setlkw, &raw.lk)?;
+
+		Ok(Self {
+			raw,
+			node_id,
+			command,
+		})
+	}
+
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -83,34 +108,6 @@ impl fmt::Debug for SetlkRequest<'_> {
 			.field("command", &self.command)
 			.field("flags", &self.flags())
 			.finish()
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for SetlkRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		let header = buf.header();
-
-		let is_setlkw: bool;
-		if header.opcode == fuse_kernel::FUSE_SETLKW {
-			is_setlkw = true;
-		} else {
-			buf.expect_opcode(fuse_kernel::FUSE_SETLK)?;
-			is_setlkw = false;
-		}
-
-		let mut dec = decode::RequestDecoder::new(buf);
-		let raw: &fuse_kernel::fuse_lk_in = dec.next_sized()?;
-		let node_id = try_node_id(header.nodeid)?;
-		let command = parse_setlk_cmd(is_setlkw, &raw.lk)?;
-
-		Ok(Self {
-			raw,
-			node_id,
-			command,
-		})
 	}
 }
 

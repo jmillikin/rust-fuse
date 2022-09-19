@@ -35,7 +35,7 @@ fn request() {
 		})
 		.build_aligned();
 
-	let req: FallocateRequest = decode_request!(buf);
+	let req = decode_request!(FallocateRequest, buf);
 
 	assert_eq!(req.handle(), 12);
 	assert_eq!(req.offset(), 34);

@@ -32,38 +32,6 @@ pub struct FuseInitRequest<'a> {
 	flags: FuseInitFlags,
 }
 
-impl FuseInitRequest<'_> {
-	pub fn version(&self) -> ProtocolVersion {
-		self.version
-	}
-
-	pub fn max_readahead(&self) -> u32 {
-		self.max_readahead
-	}
-
-	pub fn set_max_readahead(&mut self, max_readahead: u32) {
-		self.max_readahead = max_readahead;
-	}
-
-	pub fn flags(&self) -> &FuseInitFlags {
-		&self.flags
-	}
-
-	pub fn flags_mut(&mut self) -> &mut FuseInitFlags {
-		&mut self.flags
-	}
-}
-
-impl fmt::Debug for FuseInitRequest<'_> {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("FuseInitRequest")
-			.field("version", &self.version)
-			.field("max_readahead", &self.max_readahead)
-			.field("flags", &self.flags)
-			.finish()
-	}
-}
-
 #[repr(C)]
 struct fuse_init_in_v7p1 {
 	major: u32,
@@ -78,13 +46,12 @@ struct fuse_init_in_v7p6 {
 	pub flags:         u32,
 }
 
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for FuseInitRequest<'_> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_INIT)?;
-		let mut dec = decode::RequestDecoder::new(buf);
+impl<'a> FuseInitRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_INIT)?;
 
 		// There are two cases where we can't read past the version fields:
 		//
@@ -126,6 +93,36 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for FuseInitRequest<'_> {
 			max_readahead: raw.max_readahead,
 			flags: FuseInitFlags::from_bits(raw.flags),
 		})
+	}
+
+	pub fn version(&self) -> ProtocolVersion {
+		self.version
+	}
+
+	pub fn max_readahead(&self) -> u32 {
+		self.max_readahead
+	}
+
+	pub fn set_max_readahead(&mut self, max_readahead: u32) {
+		self.max_readahead = max_readahead;
+	}
+
+	pub fn flags(&self) -> &FuseInitFlags {
+		&self.flags
+	}
+
+	pub fn flags_mut(&mut self) -> &mut FuseInitFlags {
+		&mut self.flags
+	}
+}
+
+impl fmt::Debug for FuseInitRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("FuseInitRequest")
+			.field("version", &self.version)
+			.field("max_readahead", &self.max_readahead)
+			.field("flags", &self.flags)
+			.finish()
 	}
 }
 

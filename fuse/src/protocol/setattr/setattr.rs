@@ -28,7 +28,17 @@ pub struct SetattrRequest<'a> {
 	raw: &'a fuse_kernel::fuse_setattr_in,
 }
 
-impl SetattrRequest<'_> {
+impl<'a> SetattrRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_SETATTR)?;
+		let header = dec.header();
+		let raw = dec.next_sized()?;
+		Ok(Self { header, raw })
+	}
+
 	pub fn node_id(&self) -> u64 {
 		self.header.nodeid
 	}
@@ -106,19 +116,6 @@ impl SetattrRequest<'_> {
 
 	pub fn group_id(&self) -> Option<u32> {
 		self.get(fuse_kernel::FATTR_GID, self.raw.gid)
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for SetattrRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_SETATTR)?;
-		let header = buf.header();
-		let mut dec = decode::RequestDecoder::new(buf);
-		let raw = dec.next_sized()?;
-		Ok(Self { header, raw })
 	}
 }
 

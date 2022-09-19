@@ -33,7 +33,18 @@ pub struct ReadlinkRequest<'a> {
 	node_id: NodeId,
 }
 
-impl ReadlinkRequest<'_> {
+impl<'a> ReadlinkRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_READLINK)?;
+		Ok(Self {
+			phantom: PhantomData,
+			node_id: try_node_id(dec.header().nodeid)?,
+		})
+	}
+
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -44,19 +55,6 @@ impl fmt::Debug for ReadlinkRequest<'_> {
 		fmt.debug_struct("ReadlinkRequest")
 			.field("node_id", &self.node_id)
 			.finish()
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for ReadlinkRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_READLINK)?;
-		Ok(Self {
-			phantom: PhantomData,
-			node_id: try_node_id(buf.header().nodeid)?,
-		})
 	}
 }
 

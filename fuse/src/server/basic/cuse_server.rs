@@ -151,8 +151,8 @@ fn cuse_request_dispatch<S: OutputStream>(
 	};
 
 	macro_rules! do_dispatch {
-		($handler:tt) => {{
-			match request.decode() {
+		($req_type:ty, $handler:tt) => {{
+			match <$req_type>::from_cuse_request(&request) {
 				Ok(request) => {
 					let mut sent_reply = false;
 					let reply_sender = CuseReplySender {
@@ -181,15 +181,16 @@ fn cuse_request_dispatch<S: OutputStream>(
 	}
 
 	use crate::server::CuseOperation as CuseOp;
+	use crate::protocol::*;
 	match request.operation() {
-		Some(CuseOp::Flush) => do_dispatch!(flush),
-		Some(CuseOp::Fsync) => do_dispatch!(fsync),
+		Some(CuseOp::Flush) => do_dispatch!(FlushRequest, flush),
+		Some(CuseOp::Fsync) => do_dispatch!(FsyncRequest, fsync),
 		#[cfg(feature = "unstable_ioctl")]
-		Some(CuseOp::Ioctl) => do_dispatch!(ioctl),
-		Some(CuseOp::Open) => do_dispatch!(open),
-		Some(CuseOp::Read) => do_dispatch!(read),
-		Some(CuseOp::Release) => do_dispatch!(release),
-		Some(CuseOp::Write) => do_dispatch!(write),
+		Some(CuseOp::Ioctl) => do_dispatch!(IoctlRequest, ioctl),
+		Some(CuseOp::Open) => do_dispatch!(OpenRequest, open),
+		Some(CuseOp::Read) => do_dispatch!(ReadRequest, read),
+		Some(CuseOp::Release) => do_dispatch!(ReleaseRequest, release),
+		Some(CuseOp::Write) => do_dispatch!(WriteRequest, write),
 		_ => {
 			if let Some(ref hooks) = hooks {
 				let request = request.into_unknown();

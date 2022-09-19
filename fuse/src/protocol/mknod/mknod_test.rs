@@ -33,7 +33,7 @@ fn request_v7p1() {
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 
-	let req: MknodRequest = decode_request!(buf, {
+	let req = decode_request!(MknodRequest, buf, {
 		protocol_version: (7, 1),
 	});
 
@@ -61,7 +61,7 @@ fn request_v7p12() {
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 
-	let req: MknodRequest = decode_request!(buf, {
+	let req = decode_request!(MknodRequest, buf, {
 		protocol_version: (7, 12),
 	});
 
@@ -89,7 +89,7 @@ fn request_device_number() {
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 
-	let req: MknodRequest = decode_request!(buf, {
+	let req = decode_request!(MknodRequest, buf, {
 		protocol_version: (7, 12),
 	});
 
@@ -112,7 +112,7 @@ fn request_impl_debug() {
 		})
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
-	let request: MknodRequest = decode_request!(buf);
+	let request = decode_request!(MknodRequest, buf);
 
 	assert_eq!(
 		format!("{:#?}", request),

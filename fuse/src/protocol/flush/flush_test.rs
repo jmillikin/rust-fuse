@@ -34,7 +34,7 @@ fn request() {
 		})
 		.build_aligned();
 
-	let req: FlushRequest = decode_request!(buf);
+	let req = decode_request!(FlushRequest, buf);
 
 	assert_eq!(req.handle(), 123);
 	assert_eq!(req.lock_owner(), 456);

@@ -18,13 +18,13 @@ use core::mem::transmute;
 
 use crate::internal::fuse_kernel;
 use crate::io::{Buffer, RequestError};
-use crate::io::decode::RequestBuf;
+use crate::io::decode::{RequestDecoder, RequestBuf};
 use crate::protocol::UnknownRequest;
-use crate::server::request::{Request, RequestHeader};
+use crate::server::request::RequestHeader;
 
 pub struct FuseRequest<'a> {
-	buf: RequestBuf<'a>,
-	version_minor: u32,
+	pub(crate) buf: RequestBuf<'a>,
+	pub(crate) version_minor: u32,
 }
 
 impl<'a> FuseRequest<'a> {
@@ -38,6 +38,10 @@ impl<'a> FuseRequest<'a> {
 			buf: request_buf,
 			version_minor,
 		})
+	}
+
+	pub(crate) fn decoder(&self) -> RequestDecoder<'a> {
+		RequestDecoder::new(self.buf)
 	}
 
 	pub fn header(&self) -> &'a RequestHeader {
@@ -60,13 +64,6 @@ impl<'a> FuseRequest<'a> {
 			fuse_kernel::FUSE_RENAME2      => Some(FuseOperation::Rename),
 			x => Some(unsafe { transmute(x.0) }),
 		}
-	}
-
-	pub fn decode<R>(&self) -> Result<R, RequestError>
-	where
-		R: Request<'a, Self>,
-	{
-		Request::decode(self)
 	}
 }
 
@@ -115,71 +112,4 @@ pub enum FuseOperation {
 	Fallocate   = fuse_kernel::FUSE_FALLOCATE.0,
 	Readdirplus = fuse_kernel::FUSE_READDIRPLUS.0,
 	Lseek       = fuse_kernel::FUSE_LSEEK.0,
-}
-
-mod impls {
-	use crate::io::RequestError;
-	use crate::io::decode::{self, DecodeRequest};
-	use crate::protocol::*;
-	use crate::server::request::Request;
-
-	use super::FuseRequest;
-
-	fn decode_impl<'a, T: DecodeRequest<'a, decode::FUSE>>(
-		raw: &FuseRequest<'a>,
-	) -> Result<T, RequestError> {
-		DecodeRequest::<decode::FUSE>::decode(raw.buf, raw.version_minor)
-	}
-
-	macro_rules! fuse_request {
-		($t:ty) => {
-			impl<'a> Request<'a, FuseRequest<'a>> for $t {
-				fn decode(raw: &FuseRequest<'a>) -> Result<Self, RequestError> {
-					decode_impl(raw)
-				}
-			}
-		};
-	}
-
-	fuse_request! { AccessRequest<'a>      }
-	fuse_request! { CreateRequest<'a>      }
-	fuse_request! { FallocateRequest<'a>   }
-	fuse_request! { FlushRequest<'a>       }
-	fuse_request! { ForgetRequest<'a>      }
-	fuse_request! { FsyncRequest<'a>       }
-	fuse_request! { FsyncdirRequest<'a>    }
-	fuse_request! { GetattrRequest<'a>     }
-	fuse_request! { GetxattrRequest<'a>    }
-	fuse_request! { GetlkRequest<'a>       }
-	fuse_request! { LinkRequest<'a>        }
-	fuse_request! { ListxattrRequest<'a>   }
-	fuse_request! { LookupRequest<'a>      }
-	fuse_request! { LseekRequest<'a>       }
-	fuse_request! { MkdirRequest<'a>       }
-	fuse_request! { MknodRequest<'a>       }
-	fuse_request! { OpenRequest<'a>        }
-	fuse_request! { OpendirRequest<'a>     }
-	fuse_request! { ReadRequest<'a>        }
-	fuse_request! { ReaddirRequest<'a>     }
-	fuse_request! { ReadlinkRequest<'a>    }
-	fuse_request! { ReleaseRequest<'a>     }
-	fuse_request! { ReleasedirRequest<'a>  }
-	fuse_request! { RemovexattrRequest<'a> }
-	fuse_request! { RenameRequest<'a>      }
-	fuse_request! { RmdirRequest<'a>       }
-	fuse_request! { SetlkRequest<'a>       }
-	fuse_request! { SetxattrRequest<'a>    }
-	fuse_request! { StatfsRequest<'a>      }
-	fuse_request! { SymlinkRequest<'a>     }
-	fuse_request! { UnlinkRequest<'a>      }
-	fuse_request! { WriteRequest<'a>       }
-
-	#[cfg(any(doc, feature = "unstable_bmap"))]
-	fuse_request! { BmapRequest<'a> }
-
-	#[cfg(any(doc, feature = "unstable_ioctl"))]
-	fuse_request! { IoctlRequest<'a> }
-
-	#[cfg(any(doc, feature = "unstable_setattr"))]
-	fuse_request! { SetattrRequest<'a> }
 }

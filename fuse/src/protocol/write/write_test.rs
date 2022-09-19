@@ -42,7 +42,7 @@ fn request_v7p1() {
 		.push_bytes(b"hello.world!")
 		.build_aligned();
 
-	let req: WriteRequest = decode_request!(buf, {
+	let req = decode_request!(WriteRequest, buf, {
 		protocol_version: (7, 1),
 	});
 
@@ -73,7 +73,7 @@ fn request_v7p9() {
 		.push_bytes(b"hello.world!")
 		.build_aligned();
 
-	let req: WriteRequest = decode_request!(buf, {
+	let req = decode_request!(WriteRequest, buf, {
 		protocol_version: (7, 9),
 	});
 
@@ -106,7 +106,7 @@ fn request_lock_owner() {
 		})
 		.build_aligned();
 
-	let req: WriteRequest = decode_request!(buf);
+	let req = decode_request!(WriteRequest, buf);
 
 	assert_eq!(req.lock_owner(), Some(123));
 }
@@ -129,7 +129,7 @@ fn request_page_cache() {
 		})
 		.build_aligned();
 
-	let req: WriteRequest = decode_request!(buf);
+	let req = decode_request!(WriteRequest, buf);
 
 	assert_eq!(req.flags().write_cache, true);
 }

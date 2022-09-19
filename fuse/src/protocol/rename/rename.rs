@@ -36,7 +36,35 @@ pub struct RenameRequest<'a> {
 	flags: RenameRequestFlags,
 }
 
-impl RenameRequest<'_> {
+impl<'a> RenameRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let mut dec = request.decoder();
+		let header = dec.header();
+
+		let mut flags = 0;
+		let new_dir: u64;
+		if header.opcode == fuse_kernel::FUSE_RENAME2 {
+			let parsed: &fuse_kernel::fuse_rename2_in = dec.next_sized()?;
+			flags = parsed.flags;
+			new_dir = parsed.newdir;
+		} else {
+			dec.expect_opcode(fuse_kernel::FUSE_RENAME)?;
+			let parsed: &fuse_kernel::fuse_rename_in = dec.next_sized()?;
+			new_dir = parsed.newdir;
+		}
+		let old_name = NodeName::new(dec.next_nul_terminated_bytes()?);
+		let new_name = NodeName::new(dec.next_nul_terminated_bytes()?);
+		Ok(Self {
+			old_directory_id: try_node_id(header.nodeid)?,
+			old_name,
+			new_directory_id: try_node_id(new_dir)?,
+			new_name,
+			flags: RenameRequestFlags::from_bits(flags),
+		})
+	}
+
 	pub fn old_directory_id(&self) -> NodeId {
 		self.old_directory_id
 	}
@@ -78,37 +106,6 @@ impl fmt::Debug for RenameRequest<'_> {
 			.field("new_name", &self.new_name)
 			.field("flags", &self.flags)
 			.finish()
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for RenameRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		let header = buf.header();
-		let mut dec = decode::RequestDecoder::new(buf);
-
-		let mut flags = 0;
-		let new_dir: u64;
-		if header.opcode == fuse_kernel::FUSE_RENAME2 {
-			let parsed: &fuse_kernel::fuse_rename2_in = dec.next_sized()?;
-			flags = parsed.flags;
-			new_dir = parsed.newdir;
-		} else {
-			buf.expect_opcode(fuse_kernel::FUSE_RENAME)?;
-			let parsed: &fuse_kernel::fuse_rename_in = dec.next_sized()?;
-			new_dir = parsed.newdir;
-		}
-		let old_name = NodeName::new(dec.next_nul_terminated_bytes()?);
-		let new_name = NodeName::new(dec.next_nul_terminated_bytes()?);
-		Ok(Self {
-			old_directory_id: try_node_id(header.nodeid)?,
-			old_name,
-			new_directory_id: try_node_id(new_dir)?,
-			new_name,
-			flags: RenameRequestFlags::from_bits(flags),
-		})
 	}
 }
 

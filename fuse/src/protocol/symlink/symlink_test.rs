@@ -29,7 +29,7 @@ fn request() {
 		.push_bytes(b"link content\x00")
 		.push_bytes(b"link name\x00")
 		.build_aligned();
-	let request: SymlinkRequest = decode_request!(buf);
+	let request = decode_request!(SymlinkRequest, buf);
 
 	let expect_content: &[u8] = b"link content";
 	let expect_name: &[u8] = b"link name";
@@ -48,7 +48,7 @@ fn request_impl_debug() {
 		.push_bytes(b"link content\x00")
 		.push_bytes(b"link name\x00")
 		.build_aligned();
-	let request: SymlinkRequest = decode_request!(buf);
+	let request = decode_request!(SymlinkRequest, buf);
 
 	assert_eq!(
 		format!("{:#?}", request),

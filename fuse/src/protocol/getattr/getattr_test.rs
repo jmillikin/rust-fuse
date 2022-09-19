@@ -28,7 +28,7 @@ fn request_v7p1() {
 		})
 		.build_aligned();
 
-	let req: GetattrRequest = decode_request!(buf, {
+	let req = decode_request!(GetattrRequest, buf, {
 		protocol_version: (7, 1),
 	});
 
@@ -49,7 +49,7 @@ fn request_v7p9() {
 		})
 		.build_aligned();
 
-	let req: GetattrRequest = decode_request!(buf, {
+	let req = decode_request!(GetattrRequest, buf, {
 		protocol_version: (7, 9),
 	});
 
@@ -70,7 +70,7 @@ fn request_v7p9_with_handle() {
 		})
 		.build_aligned();
 
-	let req: GetattrRequest = decode_request!(buf, {
+	let req = decode_request!(GetattrRequest, buf, {
 		protocol_version: (7, 9),
 	});
 

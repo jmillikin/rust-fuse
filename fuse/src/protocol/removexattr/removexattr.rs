@@ -26,7 +26,19 @@ pub struct RemovexattrRequest<'a> {
 	name: &'a XattrName,
 }
 
-impl RemovexattrRequest<'_> {
+impl<'a> RemovexattrRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_REMOVEXATTR)?;
+		let name = XattrName::new(dec.next_nul_terminated_bytes()?);
+		Ok(Self {
+			node_id: try_node_id(dec.header().nodeid)?,
+			name,
+		})
+	}
+
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -42,22 +54,6 @@ impl fmt::Debug for RemovexattrRequest<'_> {
 			.field("node_id", &self.node_id)
 			.field("name", &self.name)
 			.finish()
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for RemovexattrRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_REMOVEXATTR)?;
-
-		let mut dec = decode::RequestDecoder::new(buf);
-		let name = XattrName::new(dec.next_nul_terminated_bytes()?);
-		Ok(Self {
-			node_id: try_node_id(buf.header().nodeid)?,
-			name,
-		})
 	}
 }
 

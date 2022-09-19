@@ -28,7 +28,7 @@ fn request() {
 		})
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
-	let request: RmdirRequest = decode_request!(buf);
+	let request = decode_request!(RmdirRequest, buf);
 
 	let expect: &[u8] = b"hello.world!";
 	assert_eq!(request.parent_id(), NodeId::new(100).unwrap());
@@ -44,7 +44,7 @@ fn request_impl_debug() {
 		})
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
-	let request: RmdirRequest = decode_request!(buf);
+	let request = decode_request!(RmdirRequest, buf);
 
 	assert_eq!(
 		format!("{:#?}", request),

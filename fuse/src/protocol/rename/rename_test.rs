@@ -31,7 +31,7 @@ fn request_rename() {
 		.push_bytes(b"new\x00")
 		.build_aligned();
 
-	let request: RenameRequest = decode_request!(buf);
+	let request = decode_request!(RenameRequest, buf);
 
 	let expect_old: &[u8] = b"old";
 	let expect_new: &[u8] = b"new";
@@ -60,7 +60,7 @@ fn request_rename2() {
 		.push_bytes(b"new\x00")
 		.build_aligned();
 
-	let request: RenameRequest = decode_request!(buf);
+	let request = decode_request!(RenameRequest, buf);
 
 	let expect_old: &[u8] = b"old";
 	let expect_new: &[u8] = b"new";
@@ -88,7 +88,7 @@ fn request_impl_debug() {
 		.push_bytes(b"old\x00")
 		.push_bytes(b"new\x00")
 		.build_aligned();
-	let request: RenameRequest = decode_request!(buf);
+	let request = decode_request!(RenameRequest, buf);
 
 	assert_eq!(
 		format!("{:#?}", request),

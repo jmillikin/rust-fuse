@@ -30,7 +30,7 @@ fn request() {
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 
-	let req: LinkRequest = decode_request!(buf);
+	let req = decode_request!(LinkRequest, buf);
 
 	let expect: &[u8] = b"hello.world!";
 	assert_eq!(req.node_id(), NodeId::new(123).unwrap());
@@ -48,7 +48,7 @@ fn request_impl_debug() {
 		.push_sized(&fuse_kernel::fuse_link_in { oldnodeid: 123 })
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
-	let request: LinkRequest = decode_request!(buf);
+	let request = decode_request!(LinkRequest, buf);
 
 	assert_eq!(
 		format!("{:#?}", request),

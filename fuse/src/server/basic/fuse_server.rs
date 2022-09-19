@@ -151,8 +151,8 @@ fn fuse_request_dispatch<S: OutputStream>(
 	};
 
 	macro_rules! do_dispatch {
-		($handler:tt) => {{
-			match request.decode() {
+		($req_type:ty, $handler:tt) => {{
+			match <$req_type>::from_fuse_request(&request) {
 				Ok(request) => {
 					let mut sent_reply = false;
 					let reply_sender = FuseReplySender {
@@ -181,15 +181,16 @@ fn fuse_request_dispatch<S: OutputStream>(
 	}
 
 	use crate::server::FuseOperation as FuseOp;
+	use crate::protocol::*;
 	match request.operation() {
-		Some(FuseOp::Access) => do_dispatch!(access),
+		Some(FuseOp::Access) => do_dispatch!(AccessRequest, access),
 		#[cfg(feature = "unstable_bmap")]
-		Some(FuseOp::Bmap) => do_dispatch!(bmap),
-		Some(FuseOp::Create) => do_dispatch!(create),
-		Some(FuseOp::Fallocate) => do_dispatch!(fallocate),
-		Some(FuseOp::Flush) => do_dispatch!(flush),
+		Some(FuseOp::Bmap) => do_dispatch!(BmapRequest, bmap),
+		Some(FuseOp::Create) => do_dispatch!(CreateRequest, create),
+		Some(FuseOp::Fallocate) => do_dispatch!(FallocateRequest, fallocate),
+		Some(FuseOp::Flush) => do_dispatch!(FlushRequest, flush),
 		Some(FuseOp::Forget) => {
-			match request.decode() {
+			match ForgetRequest::from_fuse_request(&request) {
 				Ok(request) => handlers.forget(ctx, &request),
 				Err(err) => {
 					if let Some(ref hooks) = hooks {
@@ -199,37 +200,37 @@ fn fuse_request_dispatch<S: OutputStream>(
 			};
 			Ok(())
 		},
-		Some(FuseOp::Fsync) => do_dispatch!(fsync),
-		Some(FuseOp::Fsyncdir) => do_dispatch!(fsyncdir),
-		Some(FuseOp::Getattr) => do_dispatch!(getattr),
-		Some(FuseOp::Getlk) => do_dispatch!(getlk),
-		Some(FuseOp::Getxattr) => do_dispatch!(getxattr),
+		Some(FuseOp::Fsync) => do_dispatch!(FsyncRequest, fsync),
+		Some(FuseOp::Fsyncdir) => do_dispatch!(FsyncdirRequest, fsyncdir),
+		Some(FuseOp::Getattr) => do_dispatch!(GetattrRequest, getattr),
+		Some(FuseOp::Getlk) => do_dispatch!(GetlkRequest, getlk),
+		Some(FuseOp::Getxattr) => do_dispatch!(GetxattrRequest, getxattr),
 		#[cfg(feature = "unstable_ioctl")]
-		Some(FuseOp::Ioctl) => do_dispatch!(ioctl),
-		Some(FuseOp::Link) => do_dispatch!(link),
-		Some(FuseOp::Listxattr) => do_dispatch!(listxattr),
-		Some(FuseOp::Lookup) => do_dispatch!(lookup),
-		Some(FuseOp::Lseek) => do_dispatch!(lseek),
-		Some(FuseOp::Mkdir) => do_dispatch!(mkdir),
-		Some(FuseOp::Mknod) => do_dispatch!(mknod),
-		Some(FuseOp::Open) => do_dispatch!(open),
-		Some(FuseOp::Opendir) => do_dispatch!(opendir),
-		Some(FuseOp::Read) => do_dispatch!(read),
-		Some(FuseOp::Readdir) => do_dispatch!(readdir),
-		Some(FuseOp::Readlink) => do_dispatch!(readlink),
-		Some(FuseOp::Release) => do_dispatch!(release),
-		Some(FuseOp::Releasedir) => do_dispatch!(releasedir),
-		Some(FuseOp::Removexattr) => do_dispatch!(removexattr),
-		Some(FuseOp::Rename) => do_dispatch!(rename),
-		Some(FuseOp::Rmdir) => do_dispatch!(rmdir),
+		Some(FuseOp::Ioctl) => do_dispatch!(IoctlRequest, ioctl),
+		Some(FuseOp::Link) => do_dispatch!(LinkRequest, link),
+		Some(FuseOp::Listxattr) => do_dispatch!(ListxattrRequest, listxattr),
+		Some(FuseOp::Lookup) => do_dispatch!(LookupRequest, lookup),
+		Some(FuseOp::Lseek) => do_dispatch!(LseekRequest, lseek),
+		Some(FuseOp::Mkdir) => do_dispatch!(MkdirRequest, mkdir),
+		Some(FuseOp::Mknod) => do_dispatch!(MknodRequest, mknod),
+		Some(FuseOp::Open) => do_dispatch!(OpenRequest, open),
+		Some(FuseOp::Opendir) => do_dispatch!(OpendirRequest, opendir),
+		Some(FuseOp::Read) => do_dispatch!(ReadRequest, read),
+		Some(FuseOp::Readdir) => do_dispatch!(ReaddirRequest, readdir),
+		Some(FuseOp::Readlink) => do_dispatch!(ReadlinkRequest, readlink),
+		Some(FuseOp::Release) => do_dispatch!(ReleaseRequest, release),
+		Some(FuseOp::Releasedir) => do_dispatch!(ReleasedirRequest, releasedir),
+		Some(FuseOp::Removexattr) => do_dispatch!(RemovexattrRequest, removexattr),
+		Some(FuseOp::Rename) => do_dispatch!(RenameRequest, rename),
+		Some(FuseOp::Rmdir) => do_dispatch!(RmdirRequest, rmdir),
 		#[cfg(feature = "unstable_setattr")]
-		Some(FuseOp::Setattr) => do_dispatch!(setattr),
-		Some(FuseOp::Setlk) => do_dispatch!(setlk),
-		Some(FuseOp::Setxattr) => do_dispatch!(setxattr),
-		Some(FuseOp::Statfs) => do_dispatch!(statfs),
-		Some(FuseOp::Symlink) => do_dispatch!(symlink),
-		Some(FuseOp::Unlink) => do_dispatch!(unlink),
-		Some(FuseOp::Write) => do_dispatch!(write),
+		Some(FuseOp::Setattr) => do_dispatch!(SetattrRequest, setattr),
+		Some(FuseOp::Setlk) => do_dispatch!(SetlkRequest, setlk),
+		Some(FuseOp::Setxattr) => do_dispatch!(SetxattrRequest, setxattr),
+		Some(FuseOp::Statfs) => do_dispatch!(StatfsRequest, statfs),
+		Some(FuseOp::Symlink) => do_dispatch!(SymlinkRequest, symlink),
+		Some(FuseOp::Unlink) => do_dispatch!(UnlinkRequest, unlink),
+		Some(FuseOp::Write) => do_dispatch!(WriteRequest, write),
 		_ => {
 			if let Some(hooks) = hooks {
 				let request = request.into_unknown();

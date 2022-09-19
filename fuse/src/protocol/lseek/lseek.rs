@@ -26,7 +26,19 @@ pub struct LseekRequest<'a> {
 	node_id: NodeId,
 }
 
-impl LseekRequest<'_> {
+impl<'a> LseekRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_LSEEK)?;
+		let raw = dec.next_sized()?;
+		Ok(Self {
+			raw,
+			node_id: try_node_id(dec.header().nodeid)?,
+		})
+	}
+
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -70,21 +82,6 @@ impl fmt::Debug for LseekWhence {
 			4 => fmt.write_str("SEEK_HOLE"),
 			_ => self.0.fmt(fmt),
 		}
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for LseekRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_LSEEK)?;
-		let mut dec = decode::RequestDecoder::new(buf);
-		let raw = dec.next_sized()?;
-		Ok(Self {
-			raw,
-			node_id: try_node_id(buf.header().nodeid)?,
-		})
 	}
 }
 

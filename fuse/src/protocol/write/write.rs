@@ -35,7 +35,27 @@ pub struct WriteRequest<'a> {
 	open_flags: u32,
 }
 
-impl WriteRequest<'_> {
+#[repr(C)]
+struct fuse_write_in_v7p1 {
+	fh: u64,
+	offset: u64,
+	size: u32,
+	write_flags: u32,
+}
+
+impl<'a> WriteRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		decode_request(request.buf, request.version_minor, false)
+	}
+
+	pub fn from_cuse_request(
+		request: &CuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		decode_request(request.buf, request.version_minor, true)
+	}
+
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -93,32 +113,6 @@ impl fmt::Debug for WriteRequest<'_> {
 			.field("lock_owner", &format_args!("{:?}", &self.lock_owner))
 			.field("open_flags", &DebugHexU32(self.open_flags))
 			.finish()
-	}
-}
-
-#[repr(C)]
-struct fuse_write_in_v7p1 {
-	fh: u64,
-	offset: u64,
-	size: u32,
-	write_flags: u32,
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::CUSE> for WriteRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		decode_request(buf, version_minor, true)
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for WriteRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		decode_request(buf, version_minor, false)
 	}
 }
 

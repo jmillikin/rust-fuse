@@ -30,28 +30,24 @@ pub struct RmdirRequest<'a> {
 	name: &'a NodeName,
 }
 
-impl RmdirRequest<'_> {
+impl<'a> RmdirRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_RMDIR)?;
+		Ok(Self {
+			parent_id: try_node_id(dec.header().nodeid)?,
+			name: NodeName::new(dec.next_nul_terminated_bytes()?),
+		})
+	}
+
 	pub fn parent_id(&self) -> NodeId {
 		self.parent_id
 	}
 
 	pub fn name(&self) -> &NodeName {
 		self.name
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for RmdirRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_RMDIR)?;
-
-		let mut dec = decode::RequestDecoder::new(buf);
-		Ok(Self {
-			parent_id: try_node_id(buf.header().nodeid)?,
-			name: NodeName::new(dec.next_nul_terminated_bytes()?),
-		})
 	}
 }
 

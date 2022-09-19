@@ -30,7 +30,20 @@ pub struct AccessRequest<'a> {
 	mask: u32,
 }
 
-impl AccessRequest<'_> {
+impl<'a> AccessRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_ACCESS)?;
+		let raw: &'a fuse_kernel::fuse_access_in = dec.next_sized()?;
+		Ok(Self {
+			phantom: PhantomData,
+			node_id: try_node_id(dec.header().nodeid)?,
+			mask: raw.mask,
+		})
+	}
+
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -46,23 +59,6 @@ impl fmt::Debug for AccessRequest<'_> {
 			.field("node_id", &self.node_id)
 			.field("mask", &self.mask)
 			.finish()
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for AccessRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_ACCESS)?;
-
-		let mut dec = decode::RequestDecoder::new(buf);
-		let raw: &'a fuse_kernel::fuse_access_in = dec.next_sized()?;
-		Ok(Self {
-			phantom: PhantomData,
-			node_id: try_node_id(buf.header().nodeid)?,
-			mask: raw.mask,
-		})
 	}
 }
 

@@ -34,7 +34,27 @@ pub struct ReadRequest<'a> {
 	open_flags: u32,
 }
 
-impl ReadRequest<'_> {
+#[repr(C)]
+pub(crate) struct fuse_read_in_v7p1 {
+	pub(crate) fh: u64,
+	pub(crate) offset: u64,
+	pub(crate) size: u32,
+	pub(crate) padding: u32,
+}
+
+impl<'a> ReadRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		decode_request(request.buf, request.version_minor, false)
+	}
+
+	pub fn from_cuse_request(
+		request: &CuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		decode_request(request.buf, request.version_minor, true)
+	}
+
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -78,32 +98,6 @@ impl fmt::Debug for ReadRequest<'_> {
 			.field("lock_owner", &format_args!("{:?}", &self.lock_owner))
 			.field("open_flags", &DebugHexU32(self.open_flags))
 			.finish()
-	}
-}
-
-#[repr(C)]
-pub(crate) struct fuse_read_in_v7p1 {
-	pub(crate) fh: u64,
-	pub(crate) offset: u64,
-	pub(crate) size: u32,
-	pub(crate) padding: u32,
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::CUSE> for ReadRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		decode_request(buf, version_minor, true)
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for ReadRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		decode_request(buf, version_minor, false)
 	}
 }
 

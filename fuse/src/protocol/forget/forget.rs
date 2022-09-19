@@ -46,33 +46,11 @@ pub struct ForgetRequest<'a> {
 }
 
 impl<'a> ForgetRequest<'a> {
-	pub fn items(&self) -> impl Iterator<Item = ForgetRequestItem> + 'a {
-		self.items_impl()
-	}
-
-	fn items_impl(&self) -> ForgetRequestIter<'a> {
-		match self.forget {
-			Some(item) => ForgetRequestIter::One(Some(item)),
-			None => ForgetRequestIter::Batch(self.batch_forgets),
-		}
-	}
-}
-
-impl fmt::Debug for ForgetRequest<'_> {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("ForgetRequest")
-			.field("items", &self.items_impl())
-			.finish()
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for ForgetRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		let header = buf.header();
-		let mut dec = decode::RequestDecoder::new(buf);
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let mut dec = request.decoder();
+		let header = dec.header();
 		if header.opcode == fuse_kernel::FUSE_BATCH_FORGET {
 			let raw: &'a fuse_kernel::fuse_batch_forget_in =
 				dec.next_sized()?;
@@ -91,7 +69,7 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for ForgetRequest<'a> {
 			});
 		}
 
-		buf.expect_opcode(fuse_kernel::FUSE_FORGET)?;
+		dec.expect_opcode(fuse_kernel::FUSE_FORGET)?;
 		let raw: &fuse_kernel::fuse_forget_in = dec.next_sized()?;
 		Ok(Self {
 			forget: Some(fuse_kernel::fuse_forget_one {
@@ -100,6 +78,25 @@ impl<'a> decode::DecodeRequest<'a, decode::FUSE> for ForgetRequest<'a> {
 			}),
 			batch_forgets: &[],
 		})
+	}
+
+	pub fn items(&self) -> impl Iterator<Item = ForgetRequestItem> + 'a {
+		self.items_impl()
+	}
+
+	fn items_impl(&self) -> ForgetRequestIter<'a> {
+		match self.forget {
+			Some(item) => ForgetRequestIter::One(Some(item)),
+			None => ForgetRequestIter::Batch(self.batch_forgets),
+		}
+	}
+}
+
+impl fmt::Debug for ForgetRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("ForgetRequest")
+			.field("items", &self.items_impl())
+			.finish()
 	}
 }
 

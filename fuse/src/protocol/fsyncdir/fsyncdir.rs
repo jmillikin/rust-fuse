@@ -30,7 +30,22 @@ pub struct FsyncdirRequest<'a> {
 	flags: FsyncdirRequestFlags,
 }
 
-impl FsyncdirRequest<'_> {
+impl<'a> FsyncdirRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_FSYNCDIR)?;
+
+		let raw: &fuse_kernel::fuse_fsync_in = dec.next_sized()?;
+		Ok(Self {
+			phantom: PhantomData,
+			node_id: try_node_id(dec.header().nodeid)?,
+			handle: raw.fh,
+			flags: FsyncdirRequestFlags::from_bits(raw.fsync_flags),
+		})
+	}
+
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -60,24 +75,6 @@ impl fmt::Debug for FsyncdirRequest<'_> {
 			.field("handle", &self.handle)
 			.field("flags", &self.flags)
 			.finish()
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for FsyncdirRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_FSYNCDIR)?;
-
-		let mut dec = decode::RequestDecoder::new(buf);
-		let raw: &fuse_kernel::fuse_fsync_in = dec.next_sized()?;
-		Ok(Self {
-			phantom: PhantomData,
-			node_id: try_node_id(buf.header().nodeid)?,
-			handle: raw.fh,
-			flags: FsyncdirRequestFlags::from_bits(raw.fsync_flags),
-		})
 	}
 }
 

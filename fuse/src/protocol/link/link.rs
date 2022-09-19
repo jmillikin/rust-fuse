@@ -31,7 +31,22 @@ pub struct LinkRequest<'a> {
 	new_name: &'a NodeName,
 }
 
-impl LinkRequest<'_> {
+impl<'a> LinkRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_LINK)?;
+
+		let raw: &fuse_kernel::fuse_link_in = dec.next_sized()?;
+		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
+		Ok(Self {
+			node_id: try_node_id(raw.oldnodeid)?,
+			new_parent_id: try_node_id(dec.header().nodeid)?,
+			new_name: name,
+		})
+	}
+
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -42,24 +57,6 @@ impl LinkRequest<'_> {
 
 	pub fn new_name(&self) -> &NodeName {
 		self.new_name
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for LinkRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_LINK)?;
-
-		let mut dec = decode::RequestDecoder::new(buf);
-		let raw: &fuse_kernel::fuse_link_in = dec.next_sized()?;
-		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
-		Ok(Self {
-			node_id: try_node_id(raw.oldnodeid)?,
-			new_parent_id: try_node_id(buf.header().nodeid)?,
-			new_name: name,
-		})
 	}
 }
 

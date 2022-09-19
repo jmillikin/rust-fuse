@@ -29,7 +29,7 @@ fn request() {
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 
-	let req: RemovexattrRequest = decode_request!(buf);
+	let req = decode_request!(RemovexattrRequest, buf);
 
 	let expect = XattrName::from_bytes(b"hello.world!").unwrap();
 	assert_eq!(req.name(), expect);

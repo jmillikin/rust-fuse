@@ -34,7 +34,21 @@ pub struct FallocateRequest<'a> {
 	mode: FallocateMode,
 }
 
-impl FallocateRequest<'_> {
+impl<'a> FallocateRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_FALLOCATE)?;
+
+		let raw = dec.next_sized()?;
+		Ok(Self {
+			raw,
+			node_id: try_node_id(dec.header().nodeid)?,
+			mode: FallocateMode::from_bits(raw.mode),
+		})
+	}
+
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -79,23 +93,6 @@ impl fmt::Debug for FallocateRequest<'_> {
 			.field("length", &self.raw.length)
 			.field("mode", &self.mode)
 			.finish()
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for FallocateRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_FALLOCATE)?;
-
-		let mut dec = decode::RequestDecoder::new(buf);
-		let raw = dec.next_sized()?;
-		Ok(Self {
-			raw,
-			node_id: try_node_id(buf.header().nodeid)?,
-			mode: FallocateMode::from_bits(raw.mode),
-		})
 	}
 }
 

@@ -16,13 +16,13 @@
 
 use crate::internal::fuse_kernel;
 use crate::io::{Buffer, RequestError};
-use crate::io::decode::RequestBuf;
+use crate::io::decode::{RequestDecoder, RequestBuf};
 use crate::protocol::UnknownRequest;
-use crate::server::request::{Request, RequestHeader};
+use crate::server::request::RequestHeader;
 
 pub struct CuseRequest<'a> {
-	buf: RequestBuf<'a>,
-	version_minor: u32,
+	pub(crate) buf: RequestBuf<'a>,
+	pub(crate) version_minor: u32,
 }
 
 impl<'a> CuseRequest<'a> {
@@ -36,6 +36,10 @@ impl<'a> CuseRequest<'a> {
 			buf: request_buf,
 			version_minor,
 		})
+	}
+
+	pub(crate) fn decoder(&self) -> RequestDecoder<'a> {
+		RequestDecoder::new(self.buf)
 	}
 
 	pub fn header(&self) -> &'a RequestHeader {
@@ -61,13 +65,6 @@ impl<'a> CuseRequest<'a> {
 			_ => None,
 		}
 	}
-
-	pub fn decode<R>(&self) -> Result<R, RequestError>
-	where
-		R: Request<'a, Self>,
-	{
-		Request::decode(self)
-	}
 }
 
 #[non_exhaustive]
@@ -82,39 +79,4 @@ pub enum CuseOperation {
 	Destroy = fuse_kernel::FUSE_DESTROY.0,
 	Ioctl   = fuse_kernel::FUSE_IOCTL.0,
 	Poll    = fuse_kernel::FUSE_POLL.0,
-}
-
-mod impls {
-	use crate::io::RequestError;
-	use crate::io::decode::{self, DecodeRequest};
-	use crate::protocol::*;
-	use crate::server::request::Request;
-
-	use super::CuseRequest;
-
-	fn decode_impl<'a, T: DecodeRequest<'a, decode::CUSE>>(
-		raw: &CuseRequest<'a>,
-	) -> Result<T, RequestError> {
-		DecodeRequest::<decode::CUSE>::decode(raw.buf, raw.version_minor)
-	}
-
-	macro_rules! cuse_request {
-		($t:ty) => {
-			impl<'a> Request<'a, CuseRequest<'a>> for $t {
-				fn decode(raw: &CuseRequest<'a>) -> Result<Self, RequestError> {
-					decode_impl(raw)
-				}
-			}
-		};
-	}
-
-	cuse_request! { OpenRequest<'a>    }
-	cuse_request! { ReadRequest<'a>    }
-	cuse_request! { WriteRequest<'a>   }
-	cuse_request! { ReleaseRequest<'a> }
-	cuse_request! { FsyncRequest<'a>   }
-	cuse_request! { FlushRequest<'a>   }
-
-	#[cfg(any(doc, feature = "unstable_ioctl"))]
-	cuse_request! { IoctlRequest<'a> }
 }

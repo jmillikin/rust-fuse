@@ -28,7 +28,7 @@ fn request() {
 		})
 		.build_aligned();
 
-	let _req: StatfsRequest = decode_request!(buf);
+	let _req = decode_request!(StatfsRequest, buf);
 }
 
 #[test]

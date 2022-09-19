@@ -24,7 +24,28 @@ pub struct IoctlRequest<'a> {
 	buf: &'a [u8],
 }
 
-impl IoctlRequest<'_> {
+impl<'a> IoctlRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_IOCTL)?;
+
+		let header = dec.header();
+		let raw: &'a fuse_kernel::fuse_ioctl_in = dec.next_sized()?;
+
+		/* TODO
+		if (raw.flags & fuse_kernel::FUSE_IOCTL_DIR) > 0 {
+			if !r.init_flags().get(InitFlag::IOCTL_DIR) {
+				return Err(ENOTTY);
+			}
+		}
+		*/
+
+		let buf = dec.next_bytes(raw.in_size)?;
+		Ok(Self { header, raw, buf })
+	}
+
 	pub fn node_id(&self) -> u64 {
 		self.header.nodeid
 	}
@@ -38,30 +59,6 @@ impl IoctlRequest<'_> {
 
 	pub fn buf(&self) -> &[u8] {
 		self.buf
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for IoctlRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_IOCTL)?;
-
-		let header = buf.header();
-		let mut dec = decode::RequestDecoder::new(buf);
-		let raw: &'a fuse_kernel::fuse_ioctl_in = dec.next_sized()?;
-
-		/* TODO
-		if (raw.flags & fuse_kernel::FUSE_IOCTL_DIR) > 0 {
-			if !r.init_flags().get(InitFlag::IOCTL_DIR) {
-				return Err(ENOTTY);
-			}
-		}
-		*/
-
-		let buf = dec.next_bytes(raw.in_size)?;
-		Ok(Self { header, raw, buf })
 	}
 }
 

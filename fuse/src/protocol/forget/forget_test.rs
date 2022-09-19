@@ -29,7 +29,7 @@ fn request_single() {
 		.push_sized(&fuse_kernel::fuse_forget_in { nlookup: 456 })
 		.build_aligned();
 
-	let req: ForgetRequest = decode_request!(buf);
+	let req = decode_request!(ForgetRequest, buf);
 
 	let items: Vec<ForgetRequestItem> = req.items().collect();
 	assert_eq!(items.len(), 1);
@@ -52,7 +52,7 @@ fn request_batch() {
 		})
 		.build_aligned();
 
-	let req: ForgetRequest = decode_request!(buf);
+	let req = decode_request!(ForgetRequest, buf);
 
 	let items: Vec<ForgetRequestItem> = req.items().collect();
 	assert_eq!(items.len(), 2);
@@ -72,7 +72,7 @@ fn request_impl_debug() {
 		.push_sized(&fuse_kernel::fuse_forget_in { nlookup: 456 })
 		.build_aligned();
 
-	let request: ForgetRequest = decode_request!(buf);
+	let request = decode_request!(ForgetRequest, buf);
 
 	assert_eq!(
 		format!("{:#?}", request),

@@ -32,7 +32,46 @@ pub struct CreateRequest<'a> {
 	umask: u32,
 }
 
-impl CreateRequest<'_> {
+#[repr(C)]
+struct fuse_create_in_v7p1 {
+	pub flags: u32,
+	pub unused: u32,
+}
+
+impl<'a> CreateRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let version_minor = request.version_minor;
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_CREATE)?;
+
+		let header = dec.header();
+		let node_id = try_node_id(header.nodeid)?;
+
+		if version_minor < 12 {
+			let raw: &'a fuse_create_in_v7p1 = dec.next_sized()?;
+			let name = NodeName::new(dec.next_nul_terminated_bytes()?);
+			return Ok(Self {
+				node_id,
+				name,
+				flags: raw.flags,
+				mode: 0,
+				umask: 0,
+			});
+		}
+
+		let raw: &'a fuse_kernel::fuse_create_in = dec.next_sized()?;
+		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
+		Ok(Self {
+			node_id,
+			name,
+			flags: raw.flags,
+			mode: raw.mode,
+			umask: raw.umask,
+		})
+	}
+
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -63,47 +102,6 @@ impl fmt::Debug for CreateRequest<'_> {
 			.field("mode", &FileMode(self.mode))
 			.field("umask", &self.umask)
 			.finish()
-	}
-}
-
-#[repr(C)]
-struct fuse_create_in_v7p1 {
-	pub flags: u32,
-	pub unused: u32,
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for CreateRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_CREATE)?;
-
-		let header = buf.header();
-		let node_id = try_node_id(header.nodeid)?;
-
-		let mut dec = decode::RequestDecoder::new(buf);
-		if version_minor < 12 {
-			let raw: &'a fuse_create_in_v7p1 = dec.next_sized()?;
-			let name = NodeName::new(dec.next_nul_terminated_bytes()?);
-			return Ok(Self {
-				node_id,
-				name,
-				flags: raw.flags,
-				mode: 0,
-				umask: 0,
-			});
-		}
-
-		let raw: &'a fuse_kernel::fuse_create_in = dec.next_sized()?;
-		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
-		Ok(Self {
-			node_id,
-			name,
-			flags: raw.flags,
-			mode: raw.mode,
-			umask: raw.umask,
-		})
 	}
 }
 

@@ -32,7 +32,7 @@ fn request() {
 		})
 		.build_aligned();
 
-	let req: OpendirRequest = decode_request!(buf);
+	let req = decode_request!(OpendirRequest, buf);
 
 	assert_eq!(req.flags(), 0xFF);
 }

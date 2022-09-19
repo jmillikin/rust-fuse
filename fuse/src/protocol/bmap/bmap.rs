@@ -23,7 +23,18 @@ pub struct BmapRequest<'a> {
 	raw: &'a fuse_kernel::fuse_bmap_in,
 }
 
-impl BmapRequest<'_> {
+impl<'a> BmapRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_BMAP)?;
+
+		let header = dec.header();
+		let raw = dec.next_sized()?;
+		Ok(Self { header, raw })
+	}
+
 	pub fn node_id(&self) -> u64 {
 		self.header.nodeid
 	}
@@ -34,20 +45,6 @@ impl BmapRequest<'_> {
 
 	pub fn blocksize(&self) -> u32 {
 		self.raw.blocksize
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for BmapRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_BMAP)?;
-
-		let header = buf.header();
-		let mut dec = decode::RequestDecoder::new(buf);
-		let raw = dec.next_sized()?;
-		Ok(Self { header, raw })
 	}
 }
 

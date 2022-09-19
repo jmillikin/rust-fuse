@@ -35,7 +35,7 @@ fn request_v7p1() {
 		})
 		.build_aligned();
 
-	let req: ReleaseRequest = decode_request!(buf, {
+	let req = decode_request!(ReleaseRequest, buf, {
 		protocol_version: (7, 1),
 	});
 
@@ -59,7 +59,7 @@ fn request_v7p8() {
 		})
 		.build_aligned();
 
-	let req: ReleaseRequest = decode_request!(buf, {
+	let req = decode_request!(ReleaseRequest, buf, {
 		protocol_version: (7, 8),
 	});
 
@@ -84,7 +84,7 @@ fn request_lock_owner() {
 		})
 		.build_aligned();
 
-	let req: ReleaseRequest = decode_request!(buf, {
+	let req = decode_request!(ReleaseRequest, buf, {
 		protocol_version: (7, 8),
 	});
 

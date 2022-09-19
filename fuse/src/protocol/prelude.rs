@@ -29,7 +29,7 @@ pub(super) use std::time;
 
 pub(super) use crate::internal::fuse_kernel;
 pub(super) use crate::io;
-pub(super) use crate::io::decode;
+pub(super) use crate::io::decode::{self, RequestError};
 pub(super) use crate::io::encode;
 pub(super) use crate::protocol::common::{
 	DebugBytesAsString,
@@ -44,6 +44,8 @@ pub(super) use crate::protocol::common::{
 	XattrError,
 	XattrName,
 };
+
+pub(super) use crate::server::{CuseRequest, FuseRequest};
 
 pub(crate) fn try_node_id(raw: u64) -> Result<NodeId, io::RequestError> {
 	match NodeId::new(raw) {

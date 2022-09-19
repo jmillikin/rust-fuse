@@ -28,9 +28,9 @@ pub use self::cuse_request::{CuseOperation, CuseRequest};
 pub use self::fuse_connection::{FuseConnection, FuseConnectionBuilder};
 pub use self::fuse_request::{FuseOperation, FuseRequest};
 pub use self::reply::{Reply, ReplyInfo};
-pub use self::request::{Request, RequestHeader};
+pub use self::request::RequestHeader;
 
-use crate::io::{RequestError, RecvError, SendError};
+use crate::io::{RecvError, RequestError, SendError};
 
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

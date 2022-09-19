@@ -147,19 +147,22 @@ impl io::OutputStream for FakeStream {
 }
 
 macro_rules! decode_request {
-	($buf: ident) => {
-		decode_request!($buf, {})
+	($t:ty, $buf: ident) => {
+		decode_request!($t, $buf, {})
 	};
-	($buf: ident, $opts:tt $(,)?) => {{
+	($t:ty, $buf: ident, $opts:tt $(,)?) => {{
 		use crate::internal::testutil::DecodeRequestOpts;
-		use crate::io::decode::{DecodeRequest, RequestBuf};
+		use crate::io::decode::RequestBuf;
 		use crate::io::Buffer;
+		use crate::server::FuseRequest;
 
 		let opts = decode_request_opts!($opts);
 		let request_len = $buf.borrow().len();
-		let request = RequestBuf::new(&$buf, request_len).unwrap();
-		let version_minor = opts.protocol_version().minor();
-		DecodeRequest::<decode::FUSE>::decode(request, version_minor).unwrap()
+		let fuse_request = FuseRequest {
+			buf: RequestBuf::new(&$buf, request_len).unwrap(),
+			version_minor: opts.protocol_version().minor(),
+		};
+		<$t>::from_fuse_request(&fuse_request).unwrap()
 	}};
 }
 

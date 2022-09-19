@@ -26,7 +26,19 @@ pub struct StatfsRequest<'a> {
 	node_id: NodeId,
 }
 
-impl StatfsRequest<'_> {
+impl<'a> StatfsRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_STATFS)?;
+
+		Ok(Self {
+			phantom: PhantomData,
+			node_id: try_node_id(dec.header().nodeid)?,
+		})
+	}
+
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -37,19 +49,6 @@ impl fmt::Debug for StatfsRequest<'_> {
 		fmt.debug_struct("StatfsRequest")
 			.field("node_id", &self.node_id)
 			.finish()
-	}
-}
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for StatfsRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_STATFS)?;
-
-		Ok(Self {
-			phantom: PhantomData,
-			node_id: try_node_id(buf.header().nodeid)?,
-		})
 	}
 }
 

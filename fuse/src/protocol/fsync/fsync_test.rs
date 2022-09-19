@@ -33,7 +33,7 @@ fn request() {
 		})
 		.build_aligned();
 
-	let req: FsyncRequest = decode_request!(buf);
+	let req = decode_request!(FsyncRequest, buf);
 
 	assert_eq!(req.handle(), 3);
 	assert_eq!(req.flags().datasync, true);

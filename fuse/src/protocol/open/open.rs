@@ -30,7 +30,19 @@ pub struct OpenRequest<'a> {
 	flags: u32,
 }
 
-impl OpenRequest<'_> {
+impl<'a> OpenRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		decode_request(request.buf, false)
+	}
+
+	pub fn from_cuse_request(
+		request: &CuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		decode_request(request.buf, true)
+	}
+
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -49,24 +61,6 @@ impl fmt::Debug for OpenRequest<'_> {
 			.field("node_id", &self.node_id)
 			.field("flags", &DebugHexU32(self.flags))
 			.finish()
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::CUSE> for OpenRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		decode_request(buf, true)
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for OpenRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		decode_request(buf, false)
 	}
 }
 

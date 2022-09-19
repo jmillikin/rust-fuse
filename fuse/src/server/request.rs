@@ -18,15 +18,8 @@ use core::fmt;
 use core::mem::transmute;
 
 use crate::internal::fuse_kernel::fuse_in_header;
-use crate::io;
 use crate::io::decode::RequestBuf;
 use crate::NodeId;
-
-pub trait Request<'a, T> {
-	fn decode(raw: &T) -> Result<Self, io::RequestError>
-	where
-		Self: Sized;
-}
 
 #[derive(Copy, Clone)]
 pub struct RequestHeader(fuse_in_header);

@@ -15,7 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::io::{self, Buffer, RecvError};
-use crate::io::decode::{DecodeRequest, RequestBuf};
+use crate::io::decode::RequestBuf;
 use crate::io::encode::{AsyncSendOnce, ReplyEncoder, SyncSendOnce};
 use crate::protocol::cuse_init::{
 	CuseDeviceName,
@@ -335,7 +335,10 @@ fn handshake<E>(
 	let v_minor = v_latest.minor();
 
 	let request_buf = RequestBuf::new(recv_buf, recv_len)?;
-	let init_request = CuseInitRequest::decode(request_buf, v_minor)?;
+	let init_request = CuseInitRequest::from_cuse_request(&CuseRequest {
+		buf: request_buf,
+		version_minor: v_minor,
+	})?;
 
 	let mut done = false;
 	let init_reply = match negotiate_version(init_request.version()) {

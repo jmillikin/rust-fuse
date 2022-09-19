@@ -28,7 +28,7 @@ fn request_empty() {
 		})
 		.build_aligned();
 
-	let _req: ReadlinkRequest = decode_request!(buf);
+	let _req = decode_request!(ReadlinkRequest, buf);
 }
 
 #[test]

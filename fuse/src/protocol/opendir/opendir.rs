@@ -30,7 +30,20 @@ pub struct OpendirRequest<'a> {
 	flags: u32,
 }
 
-impl OpendirRequest<'_> {
+impl<'a> OpendirRequest<'a> {
+	pub fn from_fuse_request(
+		request: &FuseRequest<'a>,
+	) -> Result<Self, RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_OPENDIR)?;
+		let raw: &'a fuse_kernel::fuse_open_in = dec.next_sized()?;
+		Ok(Self {
+			phantom: PhantomData,
+			node_id: try_node_id(dec.header().nodeid)?,
+			flags: raw.flags,
+		})
+	}
+
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -49,23 +62,6 @@ impl fmt::Debug for OpendirRequest<'_> {
 			.field("node_id", &self.node_id)
 			.field("flags", &DebugHexU32(self.flags))
 			.finish()
-	}
-}
-
-impl<'a> decode::DecodeRequest<'a, decode::FUSE> for OpendirRequest<'a> {
-	fn decode(
-		buf: decode::RequestBuf<'a>,
-		_version_minor: u32,
-	) -> Result<Self, io::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_OPENDIR)?;
-
-		let mut dec = decode::RequestDecoder::new(buf);
-		let raw: &'a fuse_kernel::fuse_open_in = dec.next_sized()?;
-		Ok(Self {
-			phantom: PhantomData,
-			node_id: try_node_id(buf.header().nodeid)?,
-			flags: raw.flags,
-		})
 	}
 }
 

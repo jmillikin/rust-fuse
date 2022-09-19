@@ -33,7 +33,7 @@ fn request() {
 		})
 		.build_aligned();
 
-	let req: FsyncdirRequest = decode_request!(buf, {
+	let req = decode_request!(FsyncdirRequest, buf, {
 		protocol_version: (7, 1),
 	});
 
