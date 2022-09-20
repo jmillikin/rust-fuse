@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::io::ProtocolVersion;
+use crate::Version;
 use crate::protocol::prelude::*;
 
 #[cfg(rust_fuse_test = "cuse_init_test")]
@@ -92,7 +92,7 @@ impl PartialOrd for CuseDeviceName {
 /// [`CuseHandlers::cuse_init`]: ../../trait.CuseHandlers.html#method.cuse_init
 pub struct CuseInitRequest<'a> {
 	phantom: PhantomData<&'a ()>,
-	version: ProtocolVersion,
+	version: Version,
 	flags: CuseInitFlags,
 }
 
@@ -106,12 +106,12 @@ impl<'a> CuseInitRequest<'a> {
 		let raw: &'a fuse_kernel::cuse_init_in = dec.next_sized()?;
 		Ok(CuseInitRequest {
 			phantom: PhantomData,
-			version: ProtocolVersion::new(raw.major, raw.minor),
+			version: Version::new(raw.major, raw.minor),
 			flags: CuseInitFlags::from_bits(raw.flags),
 		})
 	}
 
-	pub fn version(&self) -> ProtocolVersion {
+	pub fn version(&self) -> Version {
 		self.version
 	}
 
@@ -163,11 +163,11 @@ impl CuseInitResponse {
 		}
 	}
 
-	pub(crate) fn version(&self) -> ProtocolVersion {
-		ProtocolVersion::new(self.raw.major, self.raw.minor)
+	pub(crate) fn version(&self) -> Version {
+		Version::new(self.raw.major, self.raw.minor)
 	}
 
-	pub(crate) fn set_version(&mut self, v: ProtocolVersion) {
+	pub(crate) fn set_version(&mut self, v: Version) {
 		self.raw.major = v.major();
 		self.raw.minor = v.minor();
 	}

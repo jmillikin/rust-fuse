@@ -14,8 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::Version;
 use crate::internal::testutil::MessageBuilder;
-use crate::io::ProtocolVersion;
 use crate::protocol::prelude::*;
 
 use super::{FuseInitFlags, FuseInitRequest, FuseInitResponse};
@@ -111,7 +111,7 @@ fn encode_response(response: FuseInitResponse) -> Vec<u8> {
 #[test]
 fn response_v7p1() {
 	let mut resp = FuseInitResponse::new();
-	resp.set_version(ProtocolVersion::new(7, 1));
+	resp.set_version(Version::new(7, 1));
 	let encoded = encode_response(resp);
 
 	assert_eq!(
@@ -131,7 +131,7 @@ fn response_v7p1() {
 #[test]
 fn response_v7p5() {
 	let mut resp = FuseInitResponse::new();
-	resp.set_version(ProtocolVersion::new(7, 5));
+	resp.set_version(Version::new(7, 5));
 	let encoded = encode_response(resp);
 
 	assert_eq!(
@@ -159,7 +159,7 @@ fn response_v7p5() {
 #[test]
 fn response_v7p23() {
 	let mut resp = FuseInitResponse::new();
-	resp.set_version(ProtocolVersion::new(7, 23));
+	resp.set_version(Version::new(7, 23));
 	resp.set_max_readahead(4096);
 	*resp.flags_mut() = FuseInitFlags::from_bits(0xFFFFFFFF);
 	let encoded = encode_response(resp);
@@ -229,7 +229,7 @@ fn init_flags() {
 
 #[test]
 fn request_impl_debug() {
-	let version = ProtocolVersion::new(7, 1);
+	let version = Version::new(7, 1);
 	let request = &FuseInitRequest {
 		phantom: PhantomData,
 		version: version,
@@ -241,7 +241,7 @@ fn request_impl_debug() {
 		format!("{:#?}", request),
 		concat!(
 			"FuseInitRequest {\n",
-			"    version: ProtocolVersion {\n",
+			"    version: Version {\n",
 			"        major: 7,\n",
 			"        minor: 1,\n",
 			"    },\n",

@@ -17,16 +17,15 @@
 use core::cmp::min;
 
 use crate::internal::fuse_kernel;
-use crate::io;
 
 pub(super) fn negotiate_version(
-	kernel: io::ProtocolVersion,
-) -> Option<io::ProtocolVersion> {
+	kernel: crate::Version,
+) -> Option<crate::Version> {
 	if kernel.major() != fuse_kernel::FUSE_KERNEL_VERSION {
 		// TODO: hard error on kernel major version < FUSE_KERNEL_VERSION
 		return None;
 	}
-	Some(io::ProtocolVersion::new(
+	Some(crate::Version::new(
 		fuse_kernel::FUSE_KERNEL_VERSION,
 		min(kernel.minor(), fuse_kernel::FUSE_KERNEL_MINOR_VERSION),
 	))

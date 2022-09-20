@@ -14,9 +14,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::Version;
 use crate::internal::testutil::MessageBuilder;
 use crate::io::decode::RequestBuf;
-use crate::io::ProtocolVersion;
 use crate::protocol::prelude::*;
 
 use super::{CuseInitFlags, CuseInitRequest, CuseInitResponse};
@@ -36,7 +36,7 @@ fn request() {
 	let request_buf = RequestBuf::new(buf.borrow()).unwrap();
 	let cuse_request = CuseRequest {
 		buf: request_buf,
-		version_minor: ProtocolVersion::LATEST.minor(),
+		version_minor: Version::LATEST.minor(),
 	};
 	let req = CuseInitRequest::from_cuse_request(&cuse_request).unwrap();
 
@@ -47,7 +47,7 @@ fn request() {
 
 #[test]
 fn request_impl_debug() {
-	let version = ProtocolVersion::new(7, 1);
+	let version = Version::new(7, 1);
 	let request = &CuseInitRequest {
 		phantom: PhantomData,
 		version: version,
@@ -58,7 +58,7 @@ fn request_impl_debug() {
 		format!("{:#?}", request),
 		concat!(
 			"CuseInitRequest {\n",
-			"    version: ProtocolVersion {\n",
+			"    version: Version {\n",
 			"        major: 7,\n",
 			"        minor: 1,\n",
 			"    },\n",
@@ -86,7 +86,7 @@ fn encode_response(
 #[test]
 fn response() {
 	let mut resp = CuseInitResponse::new();
-	resp.set_version(ProtocolVersion::new(7, 23));
+	resp.set_version(Version::new(7, 23));
 	resp.set_max_write(4096);
 	*resp.flags_mut() = CuseInitFlags::from_bits(0xFFFFFFFF);
 	let encoded = encode_response(resp, Some(b"test-device"));

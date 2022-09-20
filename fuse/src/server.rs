@@ -30,7 +30,7 @@ pub use self::fuse_request::{FuseOperation, FuseRequest};
 pub use self::reply::{Reply, ReplyInfo};
 pub use self::request::RequestHeader;
 
-use crate::io::ProtocolVersion;
+use crate::Version;
 use crate::io::{RequestError, ServerRecvError, ServerSendError};
 use crate::io::decode::RequestBuf;
 use crate::protocol::cuse_init::{CuseInitFlags, CuseInitResponse};
@@ -73,7 +73,7 @@ impl<E> From<ServerSendError<E>> for ServerError<E> {
 pub struct CuseRequestBuilder {
 	init_flags: CuseInitFlags,
 	max_write: u32,
-	version: crate::io::ProtocolVersion,
+	version: Version,
 }
 
 impl CuseRequestBuilder {
@@ -81,7 +81,7 @@ impl CuseRequestBuilder {
 		CuseRequestBuilder {
 			init_flags: CuseInitFlags::new(),
 			max_write: DEFAULT_MAX_WRITE,
-			version: ProtocolVersion::LATEST,
+			version: Version::LATEST,
 		}
 	}
 
@@ -95,7 +95,7 @@ impl CuseRequestBuilder {
 		}
 	}
 
-	pub fn version(&mut self, version: ProtocolVersion) -> &mut Self {
+	pub fn version(&mut self, version: Version) -> &mut Self {
 		self.version = version;
 		self
 	}
@@ -121,7 +121,7 @@ impl CuseRequestBuilder {
 pub struct FuseRequestBuilder {
 	init_flags: FuseInitFlags,
 	max_write: u32,
-	version: crate::io::ProtocolVersion,
+	version: Version,
 }
 
 impl FuseRequestBuilder {
@@ -129,7 +129,7 @@ impl FuseRequestBuilder {
 		FuseRequestBuilder {
 			init_flags: FuseInitFlags::new(),
 			max_write: DEFAULT_MAX_WRITE,
-			version: ProtocolVersion::LATEST,
+			version: Version::LATEST,
 		}
 	}
 
@@ -143,7 +143,7 @@ impl FuseRequestBuilder {
 		}
 	}
 
-	pub fn version(&mut self, version: ProtocolVersion) -> &mut Self {
+	pub fn version(&mut self, version: Version) -> &mut Self {
 		self.version = version;
 		self
 	}

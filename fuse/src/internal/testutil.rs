@@ -21,8 +21,9 @@ use std::cell::RefCell;
 use std::mem::size_of;
 use std::slice;
 
+use crate::Version;
 use crate::internal::fuse_kernel;
-use crate::io::{self, ProtocolVersion};
+use crate::io;
 
 pub(crate) struct MessageBuilder {
 	header: Option<fuse_kernel::fuse_in_header>,
@@ -179,9 +180,9 @@ pub(crate) struct DecodeRequestOpts {
 }
 
 impl DecodeRequestOpts {
-	pub(crate) fn protocol_version(&self) -> ProtocolVersion {
+	pub(crate) fn protocol_version(&self) -> Version {
 		let (major, minor) = self.protocol_version;
-		ProtocolVersion::new(major, minor)
+		Version::new(major, minor)
 	}
 }
 
@@ -228,9 +229,9 @@ pub(crate) struct EncodeRequestOpts {
 }
 
 impl EncodeRequestOpts {
-	pub(crate) fn protocol_version(&self) -> ProtocolVersion {
+	pub(crate) fn protocol_version(&self) -> Version {
 		let (major, minor) = self.protocol_version;
-		ProtocolVersion::new(major, minor)
+		Version::new(major, minor)
 	}
 }
 

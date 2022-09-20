@@ -74,3 +74,37 @@ pub use self::protocol::common::{
 };
 
 pub const MIN_READ_BUFFER: usize = internal::fuse_kernel::FUSE_MIN_READ_BUFFER;
+
+/// A version of the FUSE protocol.
+///
+/// FUSE protocol versions are a (major, minor) version tuple, but FUSE does
+/// not use these terms in their common meaning. Backwards compatibility is
+/// freely broken in "minor" releases, and the major version is only used
+/// during initial connection setup.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Version {
+	major: u32,
+	minor: u32,
+}
+
+impl Version {
+	const LATEST: Version = Version {
+		major: internal::fuse_kernel::FUSE_KERNEL_VERSION,
+		minor: internal::fuse_kernel::FUSE_KERNEL_MINOR_VERSION,
+	};
+
+	#[inline]
+	pub const fn new(major: u32, minor: u32) -> Version {
+		Version { major, minor }
+	}
+
+	#[inline]
+	pub const fn major(&self) -> u32 {
+		self.major
+	}
+
+	#[inline]
+	pub const fn minor(&self) -> u32 {
+		self.minor
+	}
+}

@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::Version;
 use crate::io::{self, ServerRecvError as RecvError};
 use crate::io::decode::RequestBuf;
 use crate::io::encode::{AsyncSendOnce, ReplyEncoder, SyncSendOnce};
@@ -65,7 +66,7 @@ impl<S: io::AsyncFuseServerSocket> FuseConnectionBuilder<S> {
 
 pub struct FuseConnection<S> {
 	socket: S,
-	version: io::ProtocolVersion,
+	version: Version,
 }
 
 impl<S: io::FuseServerSocket> FuseConnection<S> {
@@ -101,7 +102,7 @@ impl<S: io::FuseServerSocket> FuseConnection<S> {
 }
 
 impl<S> FuseConnection<S> {
-	pub fn version(&self) -> io::ProtocolVersion {
+	pub fn version(&self) -> Version {
 		self.version
 	}
 
@@ -161,7 +162,7 @@ impl<S: io::FuseServerSocket> FuseConnection<S> {
 
 pub struct AsyncFuseConnection<S> {
 	socket: S,
-	version: io::ProtocolVersion,
+	version: Version,
 }
 
 impl<S: io::AsyncFuseServerSocket> AsyncFuseConnection<S> {
@@ -197,7 +198,7 @@ impl<S: io::AsyncFuseServerSocket> AsyncFuseConnection<S> {
 }
 
 impl<S> AsyncFuseConnection<S> {
-	pub fn version(&self) -> io::ProtocolVersion {
+	pub fn version(&self) -> Version {
 		self.version
 	}
 
@@ -260,7 +261,7 @@ fn handshake<E>(
 	recv_len: usize,
 	init_fn: &mut impl FnMut(&FuseInitRequest) -> FuseInitResponse,
 ) -> Result<(FuseInitResponse, u64, bool), ServerError<E>> {
-	let v_latest = io::ProtocolVersion::LATEST;
+	let v_latest = Version::LATEST;
 	let v_minor = v_latest.minor();
 
 	let request_buf = RequestBuf::new(&recv_buf[..recv_len])?;

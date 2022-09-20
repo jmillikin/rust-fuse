@@ -19,12 +19,9 @@ use core::future::Future;
 mod buffer;
 pub(crate) mod decode;
 pub(crate) mod encode;
-mod version;
 
 pub use self::buffer::ArrayBuffer;
 pub use self::decode::{ReplyError, RequestError};
-
-pub use self::version::ProtocolVersion;
 
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
