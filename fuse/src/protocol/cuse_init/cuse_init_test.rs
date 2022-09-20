@@ -16,7 +16,7 @@
 
 use crate::internal::testutil::MessageBuilder;
 use crate::io::decode::RequestBuf;
-use crate::io::{Buffer, ProtocolVersion};
+use crate::io::ProtocolVersion;
 use crate::protocol::prelude::*;
 
 use super::{CuseInitFlags, CuseInitRequest, CuseInitResponse};
@@ -33,8 +33,7 @@ fn request() {
 		})
 		.build_aligned();
 
-	let buf_len = buf.borrow().len();
-	let request_buf = RequestBuf::new(&buf, buf_len).unwrap();
+	let request_buf = RequestBuf::new(buf.borrow()).unwrap();
 	let cuse_request = CuseRequest {
 		buf: request_buf,
 		version_minor: ProtocolVersion::LATEST.minor(),

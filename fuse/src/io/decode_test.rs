@@ -18,7 +18,7 @@ use core::mem::size_of;
 
 use crate::internal::fuse_kernel;
 use crate::internal::testutil::MessageBuilder;
-use crate::io::{Buffer, RequestError};
+use crate::io::RequestError;
 
 use super::{RequestBuf, RequestDecoder};
 
@@ -29,8 +29,7 @@ fn request_decoder_new() {
 		.push_bytes(&[1, 2, 3, 4, 5, 6, 7, 8, 9])
 		.build_aligned();
 
-	let buf_len = buf.borrow().len();
-	let request_buf = RequestBuf::new(&buf, buf_len).unwrap();
+	let request_buf = RequestBuf::new(buf.borrow()).unwrap();
 	let decoder = RequestDecoder::new(request_buf);
 
 	assert_eq!(
@@ -46,8 +45,7 @@ fn request_decoder_eof_handling() {
 		.push_bytes(&[10, 20, 30, 40, 50, 60, 70, 80, 90])
 		.build_aligned();
 
-	let buf_len = buf.borrow().len();
-	let request_buf = RequestBuf::new(&buf, buf_len).unwrap();
+	let request_buf = RequestBuf::new(buf.borrow()).unwrap();
 	let mut decoder = RequestDecoder::new(request_buf);
 
 	// OK to read right up to the frame size.
@@ -94,8 +92,7 @@ fn request_decoder_sized() {
 		.push_bytes(&[1, 2, 3, 4, 5, 6, 7, 8, 9])
 		.build_aligned();
 
-	let buf_len = buf.borrow().len();
-	let request_buf = RequestBuf::new(&buf, buf_len).unwrap();
+	let request_buf = RequestBuf::new(buf.borrow()).unwrap();
 	let mut decoder = RequestDecoder::new(request_buf);
 
 	// [0 .. 4]
@@ -120,8 +117,7 @@ fn frame_decoder_bytes() {
 		.push_bytes(&[1, 2, 3, 4, 5, 6, 7, 8, 9])
 		.build_aligned();
 
-	let buf_len = buf.borrow().len();
-	let request_buf = RequestBuf::new(&buf, buf_len).unwrap();
+	let request_buf = RequestBuf::new(buf.borrow()).unwrap();
 	let mut decoder = RequestDecoder::new(request_buf);
 
 	// [0 .. 4)

@@ -224,5 +224,5 @@ fn main() {
 	let srv = basic::FuseServerBuilder::new(conn, handlers).build();
 
 	let mut buf = fuse::io::ArrayBuffer::new();
-	srv.serve(&mut buf).unwrap();
+	srv.serve(buf.borrow_mut()).unwrap();
 }

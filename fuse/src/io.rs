@@ -21,11 +21,7 @@ pub(crate) mod decode;
 pub(crate) mod encode;
 mod version;
 
-pub use self::buffer::{ArrayBuffer, Buffer, MIN_READ_BUFFER};
-
-#[cfg(feature = "std")]
-pub use self::buffer::PinnedBuffer;
-
+pub use self::buffer::ArrayBuffer;
 pub use self::decode::{ReplyError, RequestError};
 
 pub use self::version::ProtocolVersion;

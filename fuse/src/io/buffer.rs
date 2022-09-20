@@ -14,20 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::borrow::{Borrow, BorrowMut};
-#[cfg(feature = "std")]
-use core::mem::align_of;
-#[cfg(feature = "std")]
-use core::pin::Pin;
-#[cfg(feature = "std")]
-use core::slice;
-
-use crate::internal::fuse_kernel;
-
-pub unsafe trait Buffer {
-	fn borrow(&self) -> &[u8];
-	fn borrow_mut(&mut self) -> &mut [u8];
-}
+use crate::MIN_READ_BUFFER;
 
 pub struct ArrayBuffer(ArrayBufferImpl);
 
@@ -38,76 +25,11 @@ impl ArrayBuffer {
 	pub fn new() -> Self {
 		ArrayBuffer(ArrayBufferImpl([0u8; MIN_READ_BUFFER]))
 	}
-}
 
-pub const MIN_READ_BUFFER: usize = fuse_kernel::FUSE_MIN_READ_BUFFER;
-
-unsafe impl Buffer for ArrayBuffer {
-	fn borrow(&self) -> &[u8] {
+	pub fn borrow(&self) -> &[u8] {
 		&self.0 .0
 	}
-	fn borrow_mut(&mut self) -> &mut [u8] {
+	pub fn borrow_mut(&mut self) -> &mut [u8] {
 		&mut self.0 .0
-	}
-}
-
-impl Borrow<[u8]> for ArrayBuffer {
-	fn borrow(&self) -> &[u8] {
-		Buffer::borrow(self)
-	}
-}
-
-impl BorrowMut<[u8]> for ArrayBuffer {
-	fn borrow_mut(&mut self) -> &mut [u8] {
-		Buffer::borrow_mut(self)
-	}
-}
-
-#[cfg(feature = "std")]
-pub struct PinnedBuffer {
-	_pinned: Pin<Box<[u8]>>,
-	ptr: *mut u8,
-	size: usize,
-}
-
-#[cfg(feature = "std")]
-impl PinnedBuffer {
-	pub fn new(size: usize) -> Self {
-		let size = core::cmp::max(size, MIN_READ_BUFFER);
-		let mut vec = Vec::with_capacity(size + 7);
-		vec.resize(size + 7, 0u8);
-		let mut pinned = Pin::new(vec.into_boxed_slice());
-		let ptr = pinned.as_mut_ptr();
-		let offset = ptr.align_offset(align_of::<u64>());
-		Self {
-			_pinned: pinned,
-			ptr: unsafe { ptr.add(offset) },
-			size,
-		}
-	}
-}
-
-#[cfg(feature = "std")]
-unsafe impl Buffer for PinnedBuffer {
-	fn borrow(&self) -> &[u8] {
-		unsafe { slice::from_raw_parts(self.ptr, self.size) }
-	}
-
-	fn borrow_mut(&mut self) -> &mut [u8] {
-		unsafe { slice::from_raw_parts_mut(self.ptr, self.size) }
-	}
-}
-
-#[cfg(feature = "std")]
-impl Borrow<[u8]> for PinnedBuffer {
-	fn borrow(&self) -> &[u8] {
-		Buffer::borrow(self)
-	}
-}
-
-#[cfg(feature = "std")]
-impl BorrowMut<[u8]> for PinnedBuffer {
-	fn borrow_mut(&mut self) -> &mut [u8] {
-		Buffer::borrow_mut(self)
 	}
 }

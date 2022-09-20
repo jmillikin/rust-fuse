@@ -72,3 +72,5 @@ pub use self::protocol::common::{
 	XATTR_NAME_MAX,
 	XATTR_SIZE_MAX,
 };
+
+pub const MIN_READ_BUFFER: usize = internal::fuse_kernel::FUSE_MIN_READ_BUFFER;

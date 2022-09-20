@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::io::{self, Buffer, ServerRecvError as RecvError};
+use crate::io::{self, ServerRecvError as RecvError};
 use crate::io::decode::RequestBuf;
 use crate::io::encode::{AsyncSendOnce, ReplyEncoder, SyncSendOnce};
 use crate::protocol::fuse_init::{
@@ -22,7 +22,7 @@ use crate::protocol::fuse_init::{
 	FuseInitRequest,
 	FuseInitResponse,
 };
-use crate::server::{FuseRequest, Reply, ReplyInfo, ServerError};
+use crate::server::{FuseRequest, FuseRequestBuilder, Reply, ReplyInfo, ServerError};
 use crate::server::connection::negotiate_version;
 
 pub struct FuseConnectionBuilder<S> {
@@ -85,9 +85,10 @@ impl<S: io::FuseServerSocket> FuseConnection<S> {
 		mut init_fn: impl FnMut(&FuseInitRequest) -> FuseInitResponse,
 	) -> Result<FuseInitResponse, ServerError<S::Error>> {
 		let mut buf = io::ArrayBuffer::new();
+		let buf = buf.borrow_mut();
 
 		loop {
-			let recv = socket.recv(buf.borrow_mut())?;
+			let recv = socket.recv(buf)?;
 			let (reply, request_id, ok) = handshake(&buf, recv, &mut init_fn)?;
 
 			reply.encode(SyncSendOnce::new(socket), request_id)?;
@@ -118,15 +119,17 @@ impl<S> FuseConnection<S> {
 impl<S: io::FuseServerSocket> FuseConnection<S> {
 	pub fn recv<'a>(
 		&self,
-		buf: &'a mut impl io::Buffer,
+		buf: &'a mut [u8],
 	) -> Result<Option<FuseRequest<'a>>, ServerError<S::Error>> {
-		let recv_len = match self.socket.recv(buf.borrow_mut()) {
+		let recv_len = match self.socket.recv(buf) {
 			Ok(x) => x,
 			Err(RecvError::ConnectionClosed(_)) => return Ok(None),
 			Err(RecvError::Other(err)) => return Err(ServerError::RecvError(err)),
 		};
-		let v_minor = self.version.minor();
-		Ok(Some(FuseRequest::new(buf, recv_len, v_minor)?))
+		let request = FuseRequestBuilder::new()
+			.version(self.version)
+			.build(&buf[..recv_len])?;
+		Ok(Some(request))
 	}
 
 	pub fn reply_ok(
@@ -178,9 +181,10 @@ impl<S: io::AsyncFuseServerSocket> AsyncFuseConnection<S> {
 		mut init_fn: impl FnMut(&FuseInitRequest) -> FuseInitResponse,
 	) -> Result<FuseInitResponse, ServerError<S::Error>> {
 		let mut buf = io::ArrayBuffer::new();
+		let buf = buf.borrow_mut();
 
 		loop {
-			let recv = socket.recv(buf.borrow_mut()).await?;
+			let recv = socket.recv(buf).await?;
 			let (reply, req_id, done) = handshake(&buf, recv, &mut init_fn)?;
 
 			reply.encode(AsyncSendOnce::new(socket), req_id).await?;
@@ -211,15 +215,17 @@ impl<S> AsyncFuseConnection<S> {
 impl<S: io::AsyncFuseServerSocket> AsyncFuseConnection<S> {
 	pub async fn recv<'a>(
 		&self,
-		buf: &'a mut impl io::Buffer,
+		buf: &'a mut [u8],
 	) -> Result<Option<FuseRequest<'a>>, ServerError<S::Error>> {
-		let recv_len = match self.socket.recv(buf.borrow_mut()).await {
+		let recv_len = match self.socket.recv(buf).await {
 			Ok(x) => x,
 			Err(RecvError::ConnectionClosed(_)) => return Ok(None),
 			Err(RecvError::Other(err)) => return Err(ServerError::RecvError(err)),
 		};
-		let v_minor = self.version.minor();
-		Ok(Some(FuseRequest::new(buf, recv_len, v_minor)?))
+		let request = FuseRequestBuilder::new()
+			.version(self.version)
+			.build(&buf[..recv_len])?;
+		Ok(Some(request))
 	}
 
 	pub async fn reply_ok(
@@ -250,14 +256,14 @@ impl<S: io::AsyncFuseServerSocket> AsyncFuseConnection<S> {
 }
 
 fn handshake<E>(
-	recv_buf: &impl Buffer,
+	recv_buf: &[u8],
 	recv_len: usize,
 	init_fn: &mut impl FnMut(&FuseInitRequest) -> FuseInitResponse,
 ) -> Result<(FuseInitResponse, u64, bool), ServerError<E>> {
 	let v_latest = io::ProtocolVersion::LATEST;
 	let v_minor = v_latest.minor();
 
-	let request_buf = RequestBuf::new(recv_buf, recv_len)?;
+	let request_buf = RequestBuf::new(&recv_buf[..recv_len])?;
 	let init_request = FuseInitRequest::from_fuse_request(&FuseRequest {
 		buf: request_buf,
 		version_minor: v_minor,

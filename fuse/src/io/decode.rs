@@ -15,11 +15,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use core::marker::PhantomData;
-use core::mem::size_of;
+use core::mem::{align_of, size_of};
 use core::slice::from_raw_parts;
 
 use crate::internal::fuse_kernel;
-use crate::io::Buffer;
 
 #[cfg(rust_fuse_test = "decode_test")]
 #[path = "decode_test.rs"]
@@ -54,15 +53,11 @@ struct Slice<'a> {
 }
 
 impl<'a> RequestBuf<'a> {
-	pub(crate) fn new(
-		buf: &'a impl Buffer,
-		recv_len: usize,
-	) -> Result<Self, RequestError> {
-		// TODO: validate recv_len
-		if recv_len < size_of::<fuse_kernel::fuse_in_header>() {
-			return Err(RequestError::UnexpectedEof);
-		}
-		let buf = &buf.borrow()[..recv_len];
+	pub(crate) fn new(buf: &'a [u8]) -> Result<Self, RequestError> {
+		let buf_ptr = buf.as_ptr();
+		let buf_align_offset = buf_ptr.align_offset(align_of::<u64>());
+		assert_eq!(buf_align_offset, 0);
+
 		if buf.len() < size_of::<fuse_kernel::fuse_in_header>() {
 			return Err(RequestError::UnexpectedEof);
 		}

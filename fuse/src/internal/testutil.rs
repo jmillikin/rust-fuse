@@ -22,7 +22,7 @@ use std::mem::size_of;
 use std::slice;
 
 use crate::internal::fuse_kernel;
-use crate::io::{self, Buffer, ProtocolVersion};
+use crate::io::{self, ProtocolVersion};
 
 pub(crate) struct MessageBuilder {
 	header: Option<fuse_kernel::fuse_in_header>,
@@ -162,16 +162,14 @@ macro_rules! decode_request {
 	};
 	($t:ty, $buf: ident, $opts:tt $(,)?) => {{
 		use crate::internal::testutil::DecodeRequestOpts;
-		use crate::io::decode::RequestBuf;
-		use crate::io::Buffer;
-		use crate::server::FuseRequest;
+		use crate::server::FuseRequestBuilder;
 
 		let opts = decode_request_opts!($opts);
 		let request_len = $buf.borrow().len();
-		let fuse_request = FuseRequest {
-			buf: RequestBuf::new(&$buf, request_len).unwrap(),
-			version_minor: opts.protocol_version().minor(),
-		};
+		let fuse_request = FuseRequestBuilder::new()
+			.version(opts.protocol_version())
+			.build(&$buf.borrow()[..request_len])
+			.unwrap();
 		<$t>::from_fuse_request(&fuse_request).unwrap()
 	}};
 }

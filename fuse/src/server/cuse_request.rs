@@ -15,7 +15,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::internal::fuse_kernel;
-use crate::io::{Buffer, RequestError};
 use crate::io::decode::{RequestDecoder, RequestBuf};
 use crate::protocol::UnknownRequest;
 use crate::server::request::RequestHeader;
@@ -26,18 +25,6 @@ pub struct CuseRequest<'a> {
 }
 
 impl<'a> CuseRequest<'a> {
-	pub(crate) fn new(
-		buf: &'a impl Buffer,
-		recv_len: usize,
-		version_minor: u32,
-	) -> Result<Self, RequestError> {
-		let request_buf = RequestBuf::new(buf, recv_len)?;
-		Ok(Self {
-			buf: request_buf,
-			version_minor,
-		})
-	}
-
 	pub(crate) fn decoder(&self) -> RequestDecoder<'a> {
 		RequestDecoder::new(self.buf)
 	}

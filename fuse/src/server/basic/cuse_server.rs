@@ -37,7 +37,7 @@ where
 	Handlers: CuseHandlers<S>,
 	Hooks: ServerHooks,
 {
-	pub fn serve(&self, buf: &mut impl io::Buffer) -> Result<(), ServerError<S::Error>> {
+	pub fn serve(&self, buf: &mut [u8]) -> Result<(), ServerError<S::Error>> {
 		while let Some(request) = self.conn.recv(buf)? {
 			let result = cuse_request_dispatch(
 				&self.conn,
