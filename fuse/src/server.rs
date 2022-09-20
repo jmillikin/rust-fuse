@@ -14,27 +14,26 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::fmt;
+use core::mem::transmute;
+
 pub mod basic;
 mod connection;
 mod cuse_connection;
-mod cuse_request;
 mod fuse_connection;
-mod fuse_request;
 mod reply;
-mod request;
 
 pub use self::cuse_connection::{CuseConnection, CuseConnectionBuilder};
-pub use self::cuse_request::{CuseOperation, CuseRequest};
 pub use self::fuse_connection::{FuseConnection, FuseConnectionBuilder};
-pub use self::fuse_request::{FuseOperation, FuseRequest};
 pub use self::reply::{Reply, ReplyInfo};
-pub use self::request::RequestHeader;
 
 use crate::Version;
+use crate::internal::fuse_kernel::fuse_in_header;
 use crate::io::{RequestError, ServerRecvError, ServerSendError};
-use crate::io::decode::RequestBuf;
+use crate::io::decode::{RequestDecoder, RequestBuf};
 use crate::protocol::cuse_init::{CuseInitFlags, CuseInitResponse};
 use crate::protocol::fuse_init::{FuseInitFlags, FuseInitResponse};
+use crate::protocol::UnknownRequest;
 
 const DEFAULT_MAX_WRITE: u32 = 4096;
 
@@ -67,6 +66,59 @@ impl<E> From<ServerSendError<E>> for ServerError<E> {
 			ServerSendError::NotFound(io_err) => io_err,
 			ServerSendError::Other(io_err) => io_err,
 		})
+	}
+}
+
+#[derive(Copy, Clone)]
+pub struct RequestHeader {
+	raw: fuse_in_header,
+}
+
+impl RequestHeader {
+	pub(crate) fn new_ref<'a>(raw: &'a fuse_in_header) -> &'a RequestHeader {
+		unsafe { transmute(raw) }
+	}
+
+	pub const fn opcode(&self) -> crate::Opcode {
+		crate::Opcode(self.raw.opcode.0)
+	}
+
+	pub const fn request_id(&self) -> u64 {
+		self.raw.unique
+	}
+
+	pub fn node_id(&self) -> Option<crate::NodeId> {
+		crate::NodeId::new(self.raw.nodeid)
+	}
+
+	pub const fn user_id(&self) -> u32 {
+		self.raw.uid
+	}
+
+	pub const fn group_id(&self) -> u32 {
+		self.raw.gid
+	}
+
+	pub const fn process_id(&self) -> u32 {
+		self.raw.pid
+	}
+
+	pub const fn len(&self) -> u32 {
+		self.raw.len
+	}
+}
+
+impl fmt::Debug for RequestHeader {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("RequestHeader")
+			.field("opcode", &self.raw.opcode)
+			.field("request_id", &self.raw.unique)
+			.field("node_id", &format_args!("{:?}", self.node_id()))
+			.field("user_id", &self.raw.uid)
+			.field("group_id", &self.raw.gid)
+			.field("process_id", &self.raw.pid)
+			.field("len", &self.raw.len)
+			.finish()
 	}
 }
 
@@ -118,6 +170,25 @@ impl CuseRequestBuilder {
 	}
 }
 
+pub struct CuseRequest<'a> {
+	pub(crate) buf: RequestBuf<'a>,
+	pub(crate) version_minor: u32,
+}
+
+impl<'a> CuseRequest<'a> {
+	pub(crate) fn decoder(&self) -> RequestDecoder<'a> {
+		RequestDecoder::new(self.buf)
+	}
+
+	pub fn header(&self) -> &'a RequestHeader {
+		RequestHeader::new_ref(self.buf.header())
+	}
+
+	pub fn into_unknown(self) -> UnknownRequest<'a> {
+		UnknownRequest::new(self.buf)
+	}
+}
+
 pub struct FuseRequestBuilder {
 	init_flags: FuseInitFlags,
 	max_write: u32,
@@ -163,5 +234,24 @@ impl FuseRequestBuilder {
 			buf: RequestBuf::new(buf)?,
 			version_minor: self.version.minor(),
 		})
+	}
+}
+
+pub struct FuseRequest<'a> {
+	pub(crate) buf: RequestBuf<'a>,
+	pub(crate) version_minor: u32,
+}
+
+impl<'a> FuseRequest<'a> {
+	pub(crate) fn decoder(&self) -> RequestDecoder<'a> {
+		RequestDecoder::new(self.buf)
+	}
+
+	pub fn header(&self) -> &'a RequestHeader {
+		RequestHeader::new_ref(self.buf.header())
+	}
+
+	pub fn into_unknown(self) -> UnknownRequest<'a> {
+		UnknownRequest::new(self.buf)
 	}
 }

@@ -180,17 +180,17 @@ fn cuse_request_dispatch<S: io::CuseServerSocket>(
 		}};
 	}
 
-	use crate::server::CuseOperation as CuseOp;
+	use crate::Opcode as Op;
 	use crate::protocol::*;
-	match request.operation() {
-		Some(CuseOp::Flush) => do_dispatch!(FlushRequest, flush),
-		Some(CuseOp::Fsync) => do_dispatch!(FsyncRequest, fsync),
+	match request.header().opcode() {
+		Op::FUSE_FLUSH => do_dispatch!(FlushRequest, flush),
+		Op::FUSE_FSYNC => do_dispatch!(FsyncRequest, fsync),
 		#[cfg(feature = "unstable_ioctl")]
-		Some(CuseOp::Ioctl) => do_dispatch!(IoctlRequest, ioctl),
-		Some(CuseOp::Open) => do_dispatch!(OpenRequest, open),
-		Some(CuseOp::Read) => do_dispatch!(ReadRequest, read),
-		Some(CuseOp::Release) => do_dispatch!(ReleaseRequest, release),
-		Some(CuseOp::Write) => do_dispatch!(WriteRequest, write),
+		Op::FUSE_IOCTL => do_dispatch!(IoctlRequest, ioctl),
+		Op::FUSE_OPEN => do_dispatch!(OpenRequest, open),
+		Op::FUSE_READ => do_dispatch!(ReadRequest, read),
+		Op::FUSE_RELEASE => do_dispatch!(ReleaseRequest, release),
+		Op::FUSE_WRITE => do_dispatch!(WriteRequest, write),
 		_ => {
 			if let Some(ref hooks) = hooks {
 				let request = request.into_unknown();
