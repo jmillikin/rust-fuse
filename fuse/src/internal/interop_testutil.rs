@@ -19,7 +19,7 @@ use core::mem::{self, MaybeUninit};
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::{env, ffi, fs, io, panic, path, sync, thread};
 
-use fuse::io::{SendError, RecvError};
+use fuse::io::{ServerSendError as SendError, ServerRecvError as RecvError};
 use fuse::protocol::fuse_init;
 use fuse::server::basic;
 
@@ -51,10 +51,10 @@ impl basic::ServerHooks for PrintHooks {
 }
 
 #[cfg(target_os = "linux")]
-type DevFuse = fuse_linux::FuseStream;
+type DevFuse = fuse_linux::FuseServerSocket;
 
 #[cfg(target_os = "freebsd")]
-type DevFuse = fuse_libc::FuseStream;
+type DevFuse = fuse_libc::FuseServerSocket;
 
 pub trait TestFS : basic::FuseHandlers<DevFuse> {
 	fn fuse_init(
@@ -189,7 +189,9 @@ impl DevCuse {
 	}
 }
 
-impl fuse::io::OutputStream for DevCuse {
+impl fuse::io::CuseServerSocket for DevCuse {}
+
+impl fuse::io::ServerSocket for DevCuse {
 	type Error = io::Error;
 
 	fn send(&self, buf: &[u8]) -> Result<(), SendError<io::Error>> {
@@ -237,10 +239,6 @@ impl fuse::io::OutputStream for DevCuse {
 		}
 		Ok(())
 	}
-}
-
-impl fuse::io::InputStream for DevCuse {
-	type Error = io::Error;
 
 	fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<io::Error>> {
 		use std::io::Read;
@@ -272,7 +270,8 @@ impl fuse::io::InputStream for DevCuse {
 
 			if (poll_fds[1].revents & libc::POLLERR) > 0 ||
 			   (poll_fds[1].revents & libc::POLLHUP) > 0 {
-				return Err(RecvError::ConnectionClosed);
+				let err = io::ErrorKind::ConnectionReset;
+				return Err(RecvError::ConnectionClosed(err.into()));
 			}
 
 			if (poll_fds[0].revents & libc::POLLIN) == 0 {

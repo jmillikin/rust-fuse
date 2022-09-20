@@ -17,7 +17,7 @@
 use core::mem::size_of;
 
 use crate::internal::fuse_kernel;
-use crate::io::{AsyncOutputStream, OutputStream, SendError};
+use crate::io;
 
 pub(crate) trait EncodeReply {
 	fn encode<S: SendOnce>(
@@ -39,20 +39,20 @@ pub(crate) trait SendOnce {
 pub(crate) struct SyncSendOnce<'a, S>(&'a S);
 pub(crate) struct AsyncSendOnce<'a, S>(&'a S);
 
-impl<'a, S: OutputStream> SyncSendOnce<'a, S> {
-	pub(crate) fn new(stream: &'a S) -> Self {
-		Self(stream)
+impl<'a, S: io::ServerSocket> SyncSendOnce<'a, S> {
+	pub(crate) fn new(socket: &'a S) -> Self {
+		Self(socket)
 	}
 }
 
-impl<'a, S: AsyncOutputStream> AsyncSendOnce<'a, S> {
-	pub(crate) fn new(stream: &'a S) -> Self {
-		Self(stream)
+impl<'a, S: io::AsyncServerSocket> AsyncSendOnce<'a, S> {
+	pub(crate) fn new(socket: &'a S) -> Self {
+		Self(socket)
 	}
 }
 
-impl<T: OutputStream> SendOnce for SyncSendOnce<'_, T> {
-	type Result = Result<(), SendError<T::Error>>;
+impl<S: io::ServerSocket> SendOnce for SyncSendOnce<'_, S> {
+	type Result = Result<(), io::SendError<S::Error>>;
 
 	fn send(self, buf: &[u8]) -> Self::Result {
 		self.0.send(buf)
@@ -63,8 +63,8 @@ impl<T: OutputStream> SendOnce for SyncSendOnce<'_, T> {
 	}
 }
 
-impl<T: AsyncOutputStream> SendOnce for AsyncSendOnce<'_, T> {
-	type Result = T::Future;
+impl<S: io::AsyncServerSocket> SendOnce for AsyncSendOnce<'_, S> {
+	type Result = S::SendFuture;
 
 	fn send(self, buf: &[u8]) -> Self::Result {
 		self.0.send(buf)
@@ -76,13 +76,13 @@ impl<T: AsyncOutputStream> SendOnce for AsyncSendOnce<'_, T> {
 }
 
 pub(crate) struct ReplyEncoder<S> {
-	stream: S,
+	sender: S,
 	request_id: u64,
 }
 
 impl<S: SendOnce> ReplyEncoder<S> {
-	pub(crate) fn new(stream: S, request_id: u64) -> Self {
-		Self { stream, request_id }
+	pub(crate) fn new(sender: S, request_id: u64) -> Self {
+		Self { sender, request_id }
 	}
 
 	pub(crate) fn encode_error(self, err: crate::Error) -> S::Result {
@@ -99,7 +99,7 @@ impl<S: SendOnce> ReplyEncoder<S> {
 			)
 		};
 
-		self.stream.send(out_hdr_buf)
+		self.sender.send(out_hdr_buf)
 	}
 
 	pub(crate) fn encode_sized<T: Sized>(self, t: &T) -> S::Result {
@@ -160,7 +160,7 @@ impl<S: SendOnce> ReplyEncoder<S> {
 			)
 		};
 
-		self.stream.send(out_hdr_buf)
+		self.sender.send(out_hdr_buf)
 	}
 
 	pub(crate) fn encode_bytes(self, bytes: &[u8]) -> S::Result {
@@ -189,7 +189,7 @@ impl<S: SendOnce> ReplyEncoder<S> {
 			)
 		};
 
-		self.stream.send_vectored(&[out_hdr_buf, bytes])
+		self.sender.send_vectored(&[out_hdr_buf, bytes])
 	}
 
 	pub(crate) fn encode_bytes_2(
@@ -226,7 +226,7 @@ impl<S: SendOnce> ReplyEncoder<S> {
 			)
 		};
 
-		self.stream.send_vectored(&[out_hdr_buf, bytes_1, bytes_2])
+		self.sender.send_vectored(&[out_hdr_buf, bytes_1, bytes_2])
 	}
 
 	pub(crate) fn encode_bytes_4(
@@ -273,7 +273,7 @@ impl<S: SendOnce> ReplyEncoder<S> {
 			)
 		};
 
-		self.stream.send_vectored(&[
+		self.sender.send_vectored(&[
 			out_hdr_buf,
 			bytes_1,
 			bytes_2,

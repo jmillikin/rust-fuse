@@ -18,17 +18,20 @@ use core::mem::{self, MaybeUninit};
 // use core::ffi::CStr;
 use std::ffi::CStr;
 
-use fuse::io::{InputStream, OutputStream, RecvError, SendError};
+use fuse::io::{
+	ServerRecvError as RecvError,
+	ServerSendError as SendError,
+};
 use linux_errno::{self as errno, Error};
 
 use crate::sys;
 
-struct Stream {
+struct Socket {
 	fd: i32,
 	enodev_is_eof: bool,
 }
 
-impl Drop for Stream {
+impl Drop for Socket {
 	fn drop(&mut self) {
 		unsafe {
 			let _ = sys::close(self.fd);
@@ -36,7 +39,7 @@ impl Drop for Stream {
 	}
 }
 
-impl Stream {
+impl Socket {
 	fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<Error>> {
 		loop {
 			match unsafe { sys::read(self.fd, buf) } {
@@ -59,7 +62,7 @@ impl Stream {
 			// FUSE (but not CUSE) uses ENODEV to signal the clean shutdown of
 			// the connection by the client.
 			errno::ENODEV if self.enodev_is_eof => {
-				Err(RecvError::ConnectionClosed)
+				Err(RecvError::ConnectionClosed(err))
 			},
 
 			_ => Err(RecvError::Other(err)),
@@ -84,7 +87,7 @@ impl Stream {
 	fn check_send_err(&self, err: Error) -> Result<(), SendError<Error>> {
 		match err {
 			errno::EINTR => Ok(()),
-			errno::ENOENT => Err(SendError::NotFound),
+			errno::ENOENT => Err(SendError::NotFound(err)),
 			_ => Err(SendError::Other(err)),
 		}
 	}
@@ -109,95 +112,91 @@ impl Stream {
 	}
 }
 
-pub struct CuseStream {
-	stream: Stream,
+pub struct CuseServerSocket {
+	socket: Socket,
 }
 
-impl CuseStream {
-	pub fn new() -> Result<CuseStream, Error> {
+impl CuseServerSocket {
+	pub fn new() -> Result<CuseServerSocket, Error> {
 		Self::open(crate::DEV_CUSE)
 	}
 
-	pub fn open(dev_cuse: &CStr) -> Result<CuseStream, Error> {
+	pub fn open(dev_cuse: &CStr) -> Result<CuseServerSocket, Error> {
 		let fd = unsafe {
 			sys::open(sys::AT_FDCWD, dev_cuse, sys::O_RDWR | sys::O_CLOEXEC, 0)?
 		};
-		let stream = Stream {
+		let socket = Socket {
 			fd,
 			enodev_is_eof: false,
 		};
-		Ok(CuseStream { stream })
+		Ok(CuseServerSocket { socket })
 	}
 }
 
-impl InputStream for CuseStream {
+impl fuse::io::CuseServerSocket for CuseServerSocket {}
+
+impl fuse::io::ServerSocket for CuseServerSocket {
 	type Error = Error;
 
 	fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<Error>> {
-		self.stream.recv(buf)
+		self.socket.recv(buf)
 	}
-}
-
-impl OutputStream for CuseStream {
-	type Error = Error;
 
 	fn send(&self, buf: &[u8]) -> Result<(), SendError<Error>> {
-		self.stream.send(buf)
+		self.socket.send(buf)
 	}
 
 	fn send_vectored<const N: usize>(
 		&self,
 		bufs: &[&[u8]; N],
 	) -> Result<(), SendError<Error>> {
-		self.stream.send_vectored(bufs)
+		self.socket.send_vectored(bufs)
 	}
 }
 
-pub struct FuseStream {
-	stream: Stream,
+pub struct FuseServerSocket {
+	socket: Socket,
 }
 
-impl FuseStream {
-	pub fn new() -> Result<FuseStream, Error> {
+impl FuseServerSocket {
+	pub fn new() -> Result<FuseServerSocket, Error> {
 		Self::open(crate::DEV_FUSE)
 	}
 
-	pub fn open(dev_fuse: &CStr) -> Result<FuseStream, Error> {
+	pub fn open(dev_fuse: &CStr) -> Result<FuseServerSocket, Error> {
 		let fd = unsafe {
 			sys::open(sys::AT_FDCWD, dev_fuse, sys::O_RDWR | sys::O_CLOEXEC, 0)?
 		};
-		let stream = Stream {
+		let socket = Socket {
 			fd,
 			enodev_is_eof: true,
 		};
-		Ok(FuseStream { stream })
+		Ok(FuseServerSocket { socket })
 	}
 
-	pub(crate) fn as_raw_fd(&self) -> i32 {
-		self.stream.fd
+	pub fn fuse_device_fd(&self) -> u32 {
+		self.socket.fd as u32
 	}
 }
 
-impl InputStream for FuseStream {
+impl fuse::io::FuseServerSocket for FuseServerSocket {}
+
+impl fuse::io::ServerSocket for FuseServerSocket {
 	type Error = Error;
 
 	fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<Error>> {
-		self.stream.recv(buf)
+		self.socket.recv(buf)
 	}
-}
-
-impl OutputStream for FuseStream {
-	type Error = Error;
 
 	fn send(&self, buf: &[u8]) -> Result<(), SendError<Error>> {
-		self.stream.send(buf)
+		self.socket.send(buf)
 	}
 
 	fn send_vectored<const N: usize>(
 		&self,
 		bufs: &[&[u8]; N],
 	) -> Result<(), SendError<Error>> {
-		self.stream.send_vectored(bufs)
+		self.socket.send_vectored(bufs)
 	}
 }
 

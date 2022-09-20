@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::io::{OutputStream, SendError};
+use crate::io::{ServerSendError as SendError, ServerSocket};
 use crate::protocol;
 use crate::server::basic::server::{self, SendReply, SentReply};
 
@@ -33,7 +33,7 @@ use crate::server::basic::server::{self, SendReply, SentReply};
 /// [`ServerResponseWriter`]: struct.ServerResponseWriter.html
 /// [`Error::UNIMPLEMENTED`]: crate::Error::UNIMPLEMENTED
 #[allow(unused_variables)]
-pub trait FuseHandlers<S: OutputStream> {
+pub trait FuseHandlers<S: ServerSocket> {
 	fn access(
 		&self,
 		ctx: server::ServerContext,

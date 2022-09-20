@@ -17,8 +17,10 @@
 // use core::ffi::CStr;
 use std::ffi::CStr;
 
-use fuse::io::{InputStream, OutputStream, RecvError, SendError};
-
+use fuse::io::{
+	ServerRecvError as RecvError,
+	ServerSendError as SendError,
+};
 use crate::io::iovec::IoVec;
 
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -47,12 +49,12 @@ impl From<LibcError> for std::io::Error {
 	}
 }
 
-struct Stream {
+struct Socket {
 	fd: i32,
 	enodev_is_eof: bool,
 }
 
-impl Drop for Stream {
+impl Drop for Socket {
 	fn drop(&mut self) {
 		unsafe {
 			let _ = libc::close(self.fd);
@@ -60,7 +62,7 @@ impl Drop for Stream {
 	}
 }
 
-impl Stream {
+impl Socket {
 	fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<LibcError>> {
 		let buf_ptr = buf.as_mut_ptr() as *mut libc::c_void;
 		let buf_len = buf.len();
@@ -86,7 +88,8 @@ impl Stream {
 			// FUSE (but not CUSE) uses ENODEV to signal the clean shutdown of
 			// the connection by the client.
 			libc::ENODEV if self.enodev_is_eof => {
-				Err(RecvError::ConnectionClosed)
+				let err = LibcError::from_raw_os_error(libc::ENODEV);
+				Err(RecvError::ConnectionClosed(err))
 			},
 
 			err => Err(RecvError::Other(LibcError::from_raw_os_error(err))),
@@ -115,11 +118,15 @@ impl Stream {
 
 	#[cold]
 	fn check_send_err(&self) -> Result<(), SendError<LibcError>> {
-		match errno() {
-			libc::EINTR => Ok(()),
-			libc::ENOENT => Err(SendError::NotFound),
-			err => Err(SendError::Other(LibcError::from_raw_os_error(err))),
+		let errno = errno();
+		if errno == libc::EINTR {
+			return Ok(());
 		}
+		let err = LibcError::from_raw_os_error(errno);
+		Err(match errno {
+			libc::ENOENT => SendError::NotFound(err),
+			_ => SendError::Other(err),
+		})
 	}
 
 	fn send_vectored<const N: usize>(
@@ -148,17 +155,17 @@ impl Stream {
 }
 
 #[cfg(any(doc, not(target_os = "freebsd")))]
-pub struct CuseStream {
-	stream: Stream,
+pub struct CuseServerSocket {
+	socket: Socket,
 }
 
 #[cfg(any(doc, not(target_os = "freebsd")))]
-impl CuseStream {
-	pub fn new() -> Result<CuseStream, LibcError> {
+impl CuseServerSocket {
+	pub fn new() -> Result<CuseServerSocket, LibcError> {
 		Self::open(crate::DEV_CUSE)
 	}
 
-	pub fn open(dev_cuse: &CStr) -> Result<CuseStream, LibcError> {
+	pub fn open(dev_cuse: &CStr) -> Result<CuseServerSocket, LibcError> {
 		let path_ptr = dev_cuse.as_ptr() as *const libc::c_char;
 		let open_rc = unsafe {
 			libc::open(path_ptr, libc::O_RDWR | libc::O_CLOEXEC)
@@ -166,49 +173,47 @@ impl CuseStream {
 		if open_rc == -1 {
 			return Err(LibcError::last_os_error());
 		}
-		let stream = Stream {
+		let socket = Socket {
 			fd: open_rc,
 			enodev_is_eof: false,
 		};
-		Ok(CuseStream { stream })
+		Ok(CuseServerSocket { socket })
 	}
 }
 
 #[cfg(any(doc, not(target_os = "freebsd")))]
-impl InputStream for CuseStream {
+impl fuse::io::CuseServerSocket for CuseServerSocket {}
+
+#[cfg(any(doc, not(target_os = "freebsd")))]
+impl fuse::io::ServerSocket for CuseServerSocket {
 	type Error = LibcError;
 
 	fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<LibcError>> {
-		self.stream.recv(buf)
+		self.socket.recv(buf)
 	}
-}
-
-#[cfg(any(doc, not(target_os = "freebsd")))]
-impl OutputStream for CuseStream {
-	type Error = LibcError;
 
 	fn send(&self, buf: &[u8]) -> Result<(), SendError<LibcError>> {
-		self.stream.send(buf)
+		self.socket.send(buf)
 	}
 
 	fn send_vectored<const N: usize>(
 		&self,
 		bufs: &[&[u8]; N],
 	) -> Result<(), SendError<LibcError>> {
-		self.stream.send_vectored(bufs)
+		self.socket.send_vectored(bufs)
 	}
 }
 
-pub struct FuseStream {
-	stream: Stream,
+pub struct FuseServerSocket {
+	socket: Socket,
 }
 
-impl FuseStream {
-	pub fn new() -> Result<FuseStream, LibcError> {
+impl FuseServerSocket {
+	pub fn new() -> Result<FuseServerSocket, LibcError> {
 		Self::open(crate::DEV_FUSE)
 	}
 
-	pub fn open(dev_fuse: &CStr) -> Result<FuseStream, LibcError> {
+	pub fn open(dev_fuse: &CStr) -> Result<FuseServerSocket, LibcError> {
 		let path_ptr = dev_fuse.as_ptr() as *const libc::c_char;
 		let open_rc = unsafe {
 			libc::open(path_ptr, libc::O_RDWR | libc::O_CLOEXEC)
@@ -216,38 +221,36 @@ impl FuseStream {
 		if open_rc == -1 {
 			return Err(LibcError::last_os_error());
 		}
-		let stream = Stream {
+		let socket = Socket {
 			fd: open_rc,
 			enodev_is_eof: true,
 		};
-		Ok(FuseStream { stream })
+		Ok(FuseServerSocket { socket })
 	}
 
-	pub(crate) fn as_raw_fd(&self) -> i32 {
-		self.stream.fd
+	pub fn fuse_device_fd(&self) -> u32 {
+		self.socket.fd as u32
 	}
 }
 
-impl InputStream for FuseStream {
+impl fuse::io::FuseServerSocket for FuseServerSocket {}
+
+impl fuse::io::ServerSocket for FuseServerSocket {
 	type Error = LibcError;
 
 	fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<LibcError>> {
-		self.stream.recv(buf)
+		self.socket.recv(buf)
 	}
-}
-
-impl OutputStream for FuseStream {
-	type Error = LibcError;
 
 	fn send(&self, buf: &[u8]) -> Result<(), SendError<LibcError>> {
-		self.stream.send(buf)
+		self.socket.send(buf)
 	}
 
 	fn send_vectored<const N: usize>(
 		&self,
 		bufs: &[&[u8]; N],
 	) -> Result<(), SendError<LibcError>> {
-		self.stream.send_vectored(bufs)
+		self.socket.send_vectored(bufs)
 	}
 }
 

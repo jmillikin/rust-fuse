@@ -45,7 +45,7 @@ impl interop_testutil::TestFS for TestFS {
 	}
 }
 
-impl<S: fuse::OutputStream> fuse::FuseHandlers<S> for TestFS {
+impl<S: fuse::ServerSocket> fuse::FuseHandlers<S> for TestFS {
 	fn lookup(
 		&self,
 		_ctx: fuse::ServerContext,

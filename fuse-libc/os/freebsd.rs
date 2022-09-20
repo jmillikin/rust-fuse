@@ -18,7 +18,7 @@
 use std::ffi::CStr;
 
 use crate::io::iovec::IoVec;
-use crate::io::stream::{FuseStream, LibcError};
+use crate::io::socket::{FuseServerSocket, LibcError};
 
 const MNT_NOSUID: i32 = 0x08;
 
@@ -52,13 +52,13 @@ impl<'a> From<fuse::os::freebsd::MountOptions<'a>> for MountOptions<'a> {
 pub fn mount<'a>(
 	target: &CStr,
 	options: impl Into<MountOptions<'a>>,
-) -> Result<FuseStream, LibcError> {
+) -> Result<FuseServerSocket, LibcError> {
 	let options = options.into();
 	let opts = options.opts;
-	let stream = FuseStream::new()?;
+	let socket = FuseServerSocket::new()?;
 
 	let mut fd_buf = [0u8; 32];
-	fmt_raw_fd(&mut fd_buf, stream.as_raw_fd());
+	fmt_raw_fd(&mut fd_buf, socket.fuse_device_fd());
 	let mut iovecs = [
 		// fstype
 		IoVec::global(b"fstype\0"),
@@ -110,12 +110,12 @@ pub fn mount<'a>(
 		return Err(LibcError::last_os_error());
 	}
 
-	Ok(stream)
+	Ok(socket)
 }
 
-fn fmt_raw_fd(buf: &mut [u8; 32], fd: i32) {
+fn fmt_raw_fd(buf: &mut [u8; 32], fd: u32) {
 	let buf_ptr = buf.as_mut_ptr() as *mut libc::c_char;
-	let format_ptr = b"%d\0".as_ptr() as *const libc::c_char;
+	let format_ptr = b"%u\0".as_ptr() as *const libc::c_char;
 	unsafe {
 		libc::snprintf(buf_ptr, 32, format_ptr, fd);
 	}

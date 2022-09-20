@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::io::{self, OutputStream, SendError};
+use crate::io::{self, ServerSendError as SendError};
 use crate::server::{FuseConnection, FuseRequest, Reply, ServerError};
 use crate::server::basic::{
 	NoopServerHooks,
@@ -25,19 +25,19 @@ use crate::server::basic::{
 };
 use crate::server::basic::fuse_handlers::FuseHandlers;
 
-pub struct FuseServer<Stream, Handlers, Hooks> {
-	conn: FuseConnection<Stream>,
+pub struct FuseServer<S, Handlers, Hooks> {
+	conn: FuseConnection<S>,
 	handlers: Handlers,
 	hooks: Option<Hooks>,
 }
 
-impl<S, E, Handlers, Hooks> FuseServer<S, Handlers, Hooks>
+impl<S, Handlers, Hooks> FuseServer<S, Handlers, Hooks>
 where
-	S: io::InputStream<Error = E> + io::OutputStream<Error = E>,
+	S: io::FuseServerSocket,
 	Handlers: FuseHandlers<S>,
 	Hooks: ServerHooks,
 {
-	pub fn serve(&self, buf: &mut impl io::Buffer) -> Result<(), ServerError<E>> {
+	pub fn serve(&self, buf: &mut impl io::Buffer) -> Result<(), ServerError<S::Error>> {
 		while let Some(request) = self.conn.recv(buf)? {
 			let result = fuse_request_dispatch(
 				&self.conn,
@@ -47,7 +47,7 @@ where
 			);
 			match result {
 				Ok(()) => {},
-				Err(SendError::NotFound) => {},
+				Err(SendError::NotFound(_)) => {},
 				Err(SendError::Other(err)) => return Err(ServerError::SendError(err)),
 			};
 		}
@@ -55,8 +55,8 @@ where
 	}
 }
 
-pub struct FuseServerBuilder<Stream, Handlers, Hooks> {
-	conn: FuseConnection<Stream>,
+pub struct FuseServerBuilder<S, Handlers, Hooks> {
+	conn: FuseConnection<S>,
 	handlers: Handlers,
 	hooks: Option<Hooks>,
 }
@@ -98,7 +98,7 @@ struct FuseReplySender<'a, S> {
 	sent_reply: &'a mut bool,
 }
 
-impl<S: OutputStream> SendReply<S> for FuseReplySender<'_, S> {
+impl<S: io::FuseServerSocket> SendReply<S> for FuseReplySender<'_, S> {
 	fn ok<R: Reply>(
 		self,
 		reply: &R,
@@ -130,7 +130,7 @@ impl<S: OutputStream> SendReply<S> for FuseReplySender<'_, S> {
 	}
 }
 
-fn fuse_request_dispatch<S: OutputStream>(
+fn fuse_request_dispatch<S: io::FuseServerSocket>(
 	conn: &FuseConnection<S>,
 	handlers: &impl FuseHandlers<S>,
 	hooks: Option<&impl ServerHooks>,

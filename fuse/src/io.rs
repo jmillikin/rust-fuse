@@ -14,10 +14,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::future::Future;
+
 mod buffer;
 pub(crate) mod decode;
 pub(crate) mod encode;
-mod stream;
 mod version;
 
 pub use self::buffer::{ArrayBuffer, Buffer, MIN_READ_BUFFER};
@@ -27,13 +28,56 @@ pub use self::buffer::PinnedBuffer;
 
 pub use self::decode::{ReplyError, RequestError};
 
-pub use self::stream::{
-	AsyncInputStream,
-	AsyncOutputStream,
-	InputStream,
-	OutputStream,
-	RecvError,
-	SendError,
-};
-
 pub use self::version::ProtocolVersion;
+
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ServerRecvError<IoError> {
+	ConnectionClosed(IoError),
+	Other(IoError),
+}
+
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ServerSendError<IoError> {
+	NotFound(IoError),
+	Other(IoError),
+}
+
+pub type SendError<E> = ServerSendError<E>;
+
+pub trait ServerSocket {
+	type Error;
+
+	fn recv(&self, buf: &mut [u8]) -> Result<usize, ServerRecvError<Self::Error>>;
+
+	fn send(&self, buf: &[u8]) -> Result<(), ServerSendError<Self::Error>>;
+
+	fn send_vectored<const N: usize>(
+		&self,
+		bufs: &[&[u8]; N],
+	) -> Result<(), ServerSendError<Self::Error>>;
+}
+
+pub trait CuseServerSocket: ServerSocket {}
+
+pub trait FuseServerSocket: ServerSocket {}
+
+pub trait AsyncServerSocket {
+	type Error;
+	type RecvFuture: Future<Output = Result<usize, ServerRecvError<Self::Error>>>;
+	type SendFuture: Future<Output = Result<(), ServerSendError<Self::Error>>>;
+
+	fn recv(&self, buf: &mut [u8]) -> Self::RecvFuture;
+
+	fn send(&self, buf: &[u8]) -> Self::SendFuture;
+
+	fn send_vectored<const N: usize>(
+		&self,
+		bufs: &[&[u8]; N],
+	) -> Self::SendFuture;
+}
+
+pub trait AsyncCuseServerSocket: AsyncServerSocket {}
+
+pub trait AsyncFuseServerSocket: AsyncServerSocket {}

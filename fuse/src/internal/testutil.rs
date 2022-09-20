@@ -22,7 +22,7 @@ use std::mem::size_of;
 use std::slice;
 
 use crate::internal::fuse_kernel;
-use crate::io::{self, Buffer, ProtocolVersion, SendError};
+use crate::io::{self, Buffer, ProtocolVersion};
 
 pub(crate) struct MessageBuilder {
 	header: Option<fuse_kernel::fuse_in_header>,
@@ -104,11 +104,11 @@ impl MessageBuilder {
 	}
 }
 
-pub(crate) struct FakeStream {
+pub(crate) struct FakeSocket {
 	pub(crate) write: RefCell<Option<Vec<u8>>>,
 }
 
-impl FakeStream {
+impl FakeSocket {
 	pub(crate) fn new() -> Self {
 		Self {
 			write: RefCell::new(None),
@@ -118,17 +118,27 @@ impl FakeStream {
 	pub(crate) fn expect_write(&self) -> Vec<u8> {
 		match &*self.write.borrow() {
 			Some(w) => w.clone(),
-			None => panic!("expected exactly one write to FakeStream"),
+			None => panic!("expected exactly one write to FakeSocket"),
 		}
 	}
 }
 
-impl io::OutputStream for FakeStream {
+impl io::ServerSocket for FakeSocket {
 	type Error = std::io::Error;
 
-	fn send(&self, buf: &[u8]) -> Result<(), SendError<Self::Error>> {
+	fn recv(
+		&self,
+		_buf: &mut [u8],
+	) -> Result<usize, io::ServerRecvError<Self::Error>> {
+		unimplemented!()
+	}
+
+	fn send(
+		&self,
+		buf: &[u8],
+	) -> Result<(), io::ServerSendError<Self::Error>> {
 		if self.write.borrow().is_some() {
-			panic!("expected exactly one write to FakeStream");
+			panic!("expected exactly one write to FakeSocket");
 		}
 		self.write.replace(Some(buf.into()));
 		Ok(())
@@ -137,7 +147,7 @@ impl io::OutputStream for FakeStream {
 	fn send_vectored<const N: usize>(
 		&self,
 		bufs: &[&[u8]; N],
-	) -> Result<(), SendError<Self::Error>> {
+	) -> Result<(), io::ServerSendError<Self::Error>> {
 		let mut vec = Vec::new();
 		for buf in bufs {
 			vec.extend(buf.to_vec());
@@ -205,13 +215,13 @@ macro_rules! encode_response {
 
 		let request_id = 0;
 		let opts = encode_request_opts!($opts);
-		let stream = crate::internal::testutil::FakeStream::new();
+		let socket = crate::internal::testutil::FakeSocket::new();
 		$response.encode(
-			encode::SyncSendOnce::new(&stream),
+			encode::SyncSendOnce::new(&socket),
 			request_id,
 			opts.protocol_version().minor(),
 		).unwrap();
-		stream.expect_write()
+		socket.expect_write()
 	}};
 }
 

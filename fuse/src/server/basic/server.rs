@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::io::{OutputStream, SendError};
+use crate::io::{ServerSendError as SendError, ServerSocket};
 use crate::server::{Reply, RequestHeader};
 use crate::server::basic::server_hooks::ServerHooks;
 
@@ -35,7 +35,7 @@ pub struct SentReply<T> {
 	pub(super) _phantom: core::marker::PhantomData<fn(&T)>,
 }
 
-pub trait SendReply<S: OutputStream> {
+pub trait SendReply<S: ServerSocket> {
 	fn ok<R: Reply>(
 		self,
 		reply: &R,
@@ -47,7 +47,7 @@ pub trait SendReply<S: OutputStream> {
 	) -> Result<SentReply<R>, SendError<S::Error>>;
 }
 
-pub(super) fn unhandled_request<S: OutputStream, R>(
+pub(super) fn unhandled_request<S: ServerSocket, R>(
 	ctx: ServerContext,
 	send_reply: impl SendReply<S>,
 ) -> Result<SentReply<R>, SendError<S::Error>> {

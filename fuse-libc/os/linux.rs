@@ -19,7 +19,7 @@ use std::ffi::CStr;
 
 use fuse::os::linux::MountData;
 
-use crate::io::stream::{FuseStream, LibcError};
+use crate::io::socket::{FuseServerSocket, LibcError};
 
 const MS_NOSUID: u32 = 0x2;
 const MS_NODEV: u32 = 0x4;
@@ -70,7 +70,7 @@ impl<'a> From<fuse::os::linux::MountOptions<'a>> for MountOptions<'a> {
 pub fn mount<'a>(
 	target: &CStr,
 	options: impl Into<MountOptions<'a>>,
-) -> Result<FuseStream, LibcError> {
+) -> Result<FuseServerSocket, LibcError> {
 	let options = options.into();
 	let mut opts = options.opts;
 	if opts.root_mode().is_none() {
@@ -83,10 +83,8 @@ pub fn mount<'a>(
 		opts.set_group_id(Some(unsafe { libc::getgid() }));
 	}
 
-	let stream = FuseStream::open(options.dev_fuse())?;
-	let fd = stream.as_raw_fd();
-
-	opts.set_fuse_device_fd(Some(fd as u32));
+	let socket = FuseServerSocket::open(options.dev_fuse())?;
+	opts.set_fuse_device_fd(Some(socket.fuse_device_fd()));
 
 	let mut mount_data_buf = [0u8; PAGE_SIZE];
 	let mount_data = match MountData::new(&mut mount_data_buf, &opts) {
@@ -106,7 +104,7 @@ pub fn mount<'a>(
 	if rc != 0 {
 		return Err(LibcError::last_os_error());
 	}
-	Ok(stream)
+	Ok(socket)
 }
 
 fn get_root_mode(target: &CStr) -> Result<u32, LibcError> {

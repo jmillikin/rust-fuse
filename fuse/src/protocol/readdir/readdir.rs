@@ -173,7 +173,7 @@ impl<'a> ReaddirResponse<'a> {
 	/// ```
 	/// use fuse::server::basic as server;
 	/// # struct Handlers {}
-	/// # impl<S: fuse::io::OutputStream> server::FuseHandlers<S> for Handlers {
+	/// # impl<S: fuse::ServerSocket> server::FuseHandlers<S> for Handlers {
 	/// fn readdir(
 	/// 	&self,
 	/// 	ctx: server::ServerContext,
@@ -212,7 +212,7 @@ impl<'a> ReaddirResponse<'a> {
 	/// use fuse::server::basic as server;
 	/// # fn new_aligned_buf(_size: u32) -> Vec<u8> { Vec::new() }
 	/// # struct Handlers {}
-	/// # impl<S: fuse::io::OutputStream> server::FuseHandlers<S> for Handlers {
+	/// # impl<S: fuse::ServerSocket> server::FuseHandlers<S> for Handlers {
 	/// fn readdir(
 	/// 	&self,
 	/// 	ctx: server::ServerContext,

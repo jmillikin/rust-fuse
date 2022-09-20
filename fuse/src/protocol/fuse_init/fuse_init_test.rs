@@ -102,10 +102,10 @@ fn request_major_mismatch() {
 
 fn encode_response(response: FuseInitResponse) -> Vec<u8> {
 	let request_id = 0;
-	let stream = crate::internal::testutil::FakeStream::new();
-	let send_once = encode::SyncSendOnce::new(&stream);
+	let socket = crate::internal::testutil::FakeSocket::new();
+	let send_once = encode::SyncSendOnce::new(&socket);
 	response.encode(send_once, request_id).unwrap();
-	stream.expect_write()
+	socket.expect_write()
 }
 
 #[test]

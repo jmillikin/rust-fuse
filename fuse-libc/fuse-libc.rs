@@ -21,13 +21,16 @@ use std::ffi::CStr;
 
 mod io {
 	pub(crate) mod iovec;
-	pub(crate) mod stream;
+	pub(crate) mod socket;
 }
 
-pub use crate::io::stream::{FuseStream, LibcError};
+pub use crate::io::socket::{
+	FuseServerSocket,
+	LibcError,
+};
 
 #[cfg(any(doc, not(target_os = "freebsd")))]
-pub use crate::io::stream::CuseStream;
+pub use crate::io::socket::CuseServerSocket;
 
 pub mod os {
 	#[cfg(any(doc, target_os = "freebsd"))]

@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::io::{self, Buffer, RecvError};
+use crate::io::{self, Buffer, ServerRecvError as RecvError};
 use crate::io::decode::RequestBuf;
 use crate::io::encode::{AsyncSendOnce, ReplyEncoder, SyncSendOnce};
 use crate::protocol::cuse_init::{
@@ -26,8 +26,8 @@ use crate::protocol::cuse_init::{
 use crate::server::{CuseRequest, Reply, ReplyInfo, ServerError};
 use crate::server::connection::negotiate_version;
 
-pub struct CuseConnectionBuilder<'a, Stream> {
-	stream: Stream,
+pub struct CuseConnectionBuilder<'a, S> {
+	socket: S,
 	device_name: &'a CuseDeviceName,
 	dev_major: u32,
 	dev_minor: u32,
@@ -36,10 +36,10 @@ pub struct CuseConnectionBuilder<'a, Stream> {
 	flags: CuseInitFlags,
 }
 
-impl<'a, Stream> CuseConnectionBuilder<'a, Stream> {
-	pub fn new(stream: Stream, device_name: &'a CuseDeviceName) -> Self {
+impl<'a, S> CuseConnectionBuilder<'a, S> {
+	pub fn new(socket: S, device_name: &'a CuseDeviceName) -> Self {
 		Self {
-			stream,
+			socket,
 			device_name,
 			dev_major: 0,
 			dev_minor: 0,
@@ -73,17 +73,14 @@ impl<S> CuseConnectionBuilder<'_, S> {
 	}
 }
 
-impl<S, E> CuseConnectionBuilder<'_, S>
-where
-	S: io::InputStream<Error = E> + io::OutputStream<Error = E>,
-{
-	pub fn build(self) -> Result<CuseConnection<S>, ServerError<E>> {
+impl<S: io::CuseServerSocket> CuseConnectionBuilder<'_, S> {
+	pub fn build(self) -> Result<CuseConnection<S>, ServerError<S::Error>> {
 		let dev_major = self.dev_major;
 		let dev_minor = self.dev_minor;
 		let max_read = self.max_read;
 		let max_write = self.max_write;
 		let flags = self.flags;
-		CuseConnection::new(self.stream, self.device_name, |_request| {
+		CuseConnection::new(self.socket, self.device_name, |_request| {
 			let mut reply = CuseInitResponse::new();
 			reply.set_dev_major(dev_major);
 			reply.set_dev_minor(dev_minor);
@@ -95,19 +92,16 @@ where
 	}
 }
 
-impl<S, E> CuseConnectionBuilder<'_, S>
-where
-	S: io::AsyncInputStream<Error = E> + io::AsyncOutputStream<Error = E>,
-{
+impl<S: io::AsyncCuseServerSocket> CuseConnectionBuilder<'_, S> {
 	pub async fn build_async(
 		self,
-	) -> Result<AsyncCuseConnection<S>, ServerError<E>> {
+	) -> Result<AsyncCuseConnection<S>, ServerError<S::Error>> {
 		let dev_major = self.dev_major;
 		let dev_minor = self.dev_minor;
 		let max_read = self.max_read;
 		let max_write = self.max_write;
 		let flags = self.flags;
-		AsyncCuseConnection::new(self.stream, self.device_name, |_request| {
+		AsyncCuseConnection::new(self.socket, self.device_name, |_request| {
 			let mut reply = CuseInitResponse::new();
 			reply.set_dev_major(dev_major);
 			reply.set_dev_minor(dev_minor);
@@ -119,39 +113,36 @@ where
 	}
 }
 
-pub struct CuseConnection<Stream> {
-	stream: Stream,
+pub struct CuseConnection<S> {
+	socket: S,
 	version: io::ProtocolVersion,
 }
 
-impl<S, E> CuseConnection<S>
-where
-	S: io::InputStream<Error = E> + io::OutputStream<Error = E>,
-{
+impl<S: io::CuseServerSocket> CuseConnection<S> {
 	pub fn new(
-		stream: S,
+		socket: S,
 		device_name: &CuseDeviceName,
 		init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse,
-	) -> Result<Self, ServerError<E>> {
-		let init_reply = Self::handshake(&stream, device_name, init_fn)?;
+	) -> Result<Self, ServerError<S::Error>> {
+		let init_reply = Self::handshake(&socket, device_name, init_fn)?;
 		Ok(Self {
-			stream,
+			socket,
 			version: init_reply.version(),
 		})
 	}
 
 	fn handshake(
-		stream: &S,
+		socket: &S,
 		device_name: &CuseDeviceName,
 		mut init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse,
-	) -> Result<CuseInitResponse, ServerError<E>> {
+	) -> Result<CuseInitResponse, ServerError<S::Error>> {
 		let mut buf = io::ArrayBuffer::new();
 		loop {
-			let recv = stream.recv(buf.borrow_mut())?;
+			let recv = socket.recv(buf.borrow_mut())?;
 			let (reply, request_id, ok) = handshake(&buf, recv, &mut init_fn)?;
 
 			reply.encode(
-				SyncSendOnce::new(stream),
+				SyncSendOnce::new(socket),
 				request_id,
 				if ok { Some(device_name.as_bytes()) } else { None },
 			)?;
@@ -170,38 +161,35 @@ impl<S> CuseConnection<S> {
 
 	pub fn try_clone<Error>(
 		&self,
-		clone_stream: impl FnOnce(&S) -> Result<S, Error>,
+		clone_socket: impl FnOnce(&S) -> Result<S, Error>,
 	) -> Result<Self, Error> {
 		Ok(Self {
-			stream: clone_stream(&self.stream)?,
+			socket: clone_socket(&self.socket)?,
 			version: self.version,
 		})
 	}
 }
 
-impl<S: io::InputStream> CuseConnection<S> {
+impl<S: io::CuseServerSocket> CuseConnection<S> {
 	pub fn recv<'a>(
 		&self,
 		buf: &'a mut impl io::Buffer,
 	) -> Result<Option<CuseRequest<'a>>, ServerError<S::Error>> {
-		let recv_len = match self.stream.recv(buf.borrow_mut()) {
+		let recv_len = match self.socket.recv(buf.borrow_mut()) {
 			Ok(x) => x,
-			Err(RecvError::ConnectionClosed) => return Ok(None),
-			Err(RecvError::Other(err)) => return Err(ServerError::RecvError(err)),
+			Err(err) => return Err(ServerError::from(err)),
 		};
 		let v_minor = self.version.minor();
 		Ok(Some(CuseRequest::new(buf, recv_len, v_minor)?))
 	}
-}
 
-impl<S: io::OutputStream> CuseConnection<S> {
 	pub fn reply_ok(
 		&self,
 		request_id: u64,
 		reply: &impl Reply,
 	) -> Result<(), io::SendError<S::Error>> {
 		reply.send(
-			&self.stream,
+			&self.socket,
 			ReplyInfo {
 				request_id,
 				version_minor: self.version.minor(),
@@ -215,47 +203,44 @@ impl<S: io::OutputStream> CuseConnection<S> {
 		request_id: u64,
 		error: crate::Error,
 	) -> Result<(), io::SendError<S::Error>> {
-		let send = SyncSendOnce::new(&self.stream);
+		let send = SyncSendOnce::new(&self.socket);
 		let enc = ReplyEncoder::new(send, request_id);
 		enc.encode_error(error)?;
 		Ok(())
 	}
 }
 
-pub struct AsyncCuseConnection<Stream> {
-	stream: Stream,
+pub struct AsyncCuseConnection<S> {
+	socket: S,
 	version: io::ProtocolVersion,
 }
 
-impl<S, E> AsyncCuseConnection<S>
-where
-	S: io::AsyncInputStream<Error = E> + io::AsyncOutputStream<Error = E>,
-{
+impl<S: io::AsyncCuseServerSocket> AsyncCuseConnection<S> {
 	pub async fn new(
-		stream: S,
+		socket: S,
 		device_name: &CuseDeviceName,
 		init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse,
-	) -> Result<Self, ServerError<E>> {
-		let init_reply = Self::handshake(&stream, device_name, init_fn).await?;
+	) -> Result<Self, ServerError<S::Error>> {
+		let init_reply = Self::handshake(&socket, device_name, init_fn).await?;
 		Ok(Self {
-			stream,
+			socket,
 			version: init_reply.version(),
 		})
 	}
 
 	async fn handshake(
-		stream: &S,
+		socket: &S,
 		device_name: &CuseDeviceName,
 		mut init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse,
-	) -> Result<CuseInitResponse, ServerError<E>> {
+	) -> Result<CuseInitResponse, ServerError<S::Error>> {
 		let mut buf = io::ArrayBuffer::new();
 
 		loop {
-			let recv = stream.recv(buf.borrow_mut()).await?;
+			let recv = socket.recv(buf.borrow_mut()).await?;
 			let (reply, req_id, done) = handshake(&buf, recv, &mut init_fn)?;
 
 			reply.encode(
-				AsyncSendOnce::new(stream),
+				AsyncSendOnce::new(socket),
 				req_id,
 				if done { Some(device_name.as_bytes()) } else { None },
 			).await?;
@@ -274,38 +259,36 @@ impl<S> AsyncCuseConnection<S> {
 
 	pub fn try_clone<Error>(
 		&self,
-		clone_stream: impl FnOnce(&S) -> Result<S, Error>,
+		clone_socket: impl FnOnce(&S) -> Result<S, Error>,
 	) -> Result<Self, Error> {
 		Ok(Self {
-			stream: clone_stream(&self.stream)?,
+			socket: clone_socket(&self.socket)?,
 			version: self.version,
 		})
 	}
 }
 
-impl<S: io::AsyncInputStream> AsyncCuseConnection<S> {
+impl<S: io::AsyncCuseServerSocket> AsyncCuseConnection<S> {
 	pub async fn recv<'a>(
 		&self,
 		buf: &'a mut impl io::Buffer,
 	) -> Result<Option<CuseRequest<'a>>, ServerError<S::Error>> {
-		let recv_len = match self.stream.recv(buf.borrow_mut()).await {
+		let recv_len = match self.socket.recv(buf.borrow_mut()).await {
 			Ok(x) => x,
-			Err(RecvError::ConnectionClosed) => return Ok(None),
+			Err(RecvError::ConnectionClosed(_)) => return Ok(None),
 			Err(RecvError::Other(err)) => return Err(ServerError::RecvError(err)),
 		};
 		let v_minor = self.version.minor();
 		Ok(Some(CuseRequest::new(buf, recv_len, v_minor)?))
 	}
-}
 
-impl<S: io::AsyncOutputStream> AsyncCuseConnection<S> {
 	pub async fn reply_ok(
 		&self,
 		request_id: u64,
 		reply: &impl Reply,
 	) -> Result<(), io::SendError<S::Error>> {
 		reply.send_async(
-			&self.stream,
+			&self.socket,
 			ReplyInfo {
 				request_id,
 				version_minor: self.version.minor(),
@@ -319,7 +302,7 @@ impl<S: io::AsyncOutputStream> AsyncCuseConnection<S> {
 		request_id: u64,
 		error: crate::Error,
 	) -> Result<(), io::SendError<S::Error>> {
-		let send = AsyncSendOnce::new(&self.stream);
+		let send = AsyncSendOnce::new(&self.socket);
 		let enc = ReplyEncoder::new(send, request_id);
 		enc.encode_error(error).await?;
 		Ok(())

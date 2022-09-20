@@ -49,6 +49,8 @@ pub mod os {
 
 pub mod io;
 
+pub use io::ServerSocket;
+
 pub use crate::error::Error;
 
 pub mod protocol;

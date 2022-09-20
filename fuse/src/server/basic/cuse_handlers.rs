@@ -14,13 +14,13 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::io::{OutputStream, SendError};
+use crate::io::{ServerSendError as SendError, ServerSocket};
 use crate::protocol;
 use crate::server::basic::server::{self, SendReply, SentReply};
 
 /// User-provided handlers for CUSE operations.
 #[allow(unused_variables)]
-pub trait CuseHandlers<S: OutputStream> {
+pub trait CuseHandlers<S: ServerSocket> {
 	fn flush(
 		&self,
 		ctx: server::ServerContext,

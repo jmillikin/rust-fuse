@@ -30,14 +30,12 @@ pub use self::fuse_request::{FuseOperation, FuseRequest};
 pub use self::reply::{Reply, ReplyInfo};
 pub use self::request::RequestHeader;
 
-use crate::io::{RecvError, RequestError, SendError};
+use crate::io::{RequestError, ServerRecvError, ServerSendError};
 
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ServerError<IoError> {
 	RequestError(RequestError),
-	ConnectionClosed,
-	RequestNotFound,
 	RecvError(IoError),
 	SendError(IoError),
 }
@@ -48,20 +46,20 @@ impl<E> From<RequestError> for ServerError<E> {
 	}
 }
 
-impl<E> From<RecvError<E>> for ServerError<E> {
-	fn from(err: RecvError<E>) -> Self {
-		match err {
-			RecvError::ConnectionClosed => Self::ConnectionClosed,
-			RecvError::Other(io_err) => Self::RecvError(io_err),
-		}
+impl<E> From<ServerRecvError<E>> for ServerError<E> {
+	fn from(err: ServerRecvError<E>) -> Self {
+		Self::RecvError(match err {
+			ServerRecvError::ConnectionClosed(io_err) => io_err,
+			ServerRecvError::Other(io_err) => io_err,
+		})
 	}
 }
 
-impl<E> From<SendError<E>> for ServerError<E> {
-	fn from(err: SendError<E>) -> Self {
-		match err {
-			SendError::NotFound => Self::RequestNotFound,
-			SendError::Other(io_err) => Self::RecvError(io_err),
-		}
+impl<E> From<ServerSendError<E>> for ServerError<E> {
+	fn from(err: ServerSendError<E>) -> Self {
+		Self::RecvError(match err {
+			ServerSendError::NotFound(io_err) => io_err,
+			ServerSendError::Other(io_err) => io_err,
+		})
 	}
 }

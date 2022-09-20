@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::io::{self, OutputStream, SendError};
+use crate::io::{self, ServerSendError as SendError};
 use crate::server::{CuseConnection, CuseRequest, Reply, ServerError};
 use crate::server::basic::{
 	NoopServerHooks,
@@ -25,19 +25,19 @@ use crate::server::basic::{
 };
 use crate::server::basic::cuse_handlers::CuseHandlers;
 
-pub struct CuseServer<Stream, Handlers, Hooks> {
-	conn: CuseConnection<Stream>,
+pub struct CuseServer<S, Handlers, Hooks> {
+	conn: CuseConnection<S>,
 	handlers: Handlers,
 	hooks: Option<Hooks>,
 }
 
-impl<S, E, Handlers, Hooks> CuseServer<S, Handlers, Hooks>
+impl<S, Handlers, Hooks> CuseServer<S, Handlers, Hooks>
 where
-	S: io::InputStream<Error = E> + io::OutputStream<Error = E>,
+	S: io::CuseServerSocket,
 	Handlers: CuseHandlers<S>,
 	Hooks: ServerHooks,
 {
-	pub fn serve(&self, buf: &mut impl io::Buffer) -> Result<(), ServerError<E>> {
+	pub fn serve(&self, buf: &mut impl io::Buffer) -> Result<(), ServerError<S::Error>> {
 		while let Some(request) = self.conn.recv(buf)? {
 			let result = cuse_request_dispatch(
 				&self.conn,
@@ -47,7 +47,7 @@ where
 			);
 			match result {
 				Ok(()) => {},
-				Err(SendError::NotFound) => {},
+				Err(SendError::NotFound(_)) => {},
 				Err(SendError::Other(err)) => return Err(ServerError::SendError(err)),
 			};
 		}
@@ -55,8 +55,8 @@ where
 	}
 }
 
-pub struct CuseServerBuilder<Stream, Handlers, Hooks> {
-	conn: CuseConnection<Stream>,
+pub struct CuseServerBuilder<S, Handlers, Hooks> {
+	conn: CuseConnection<S>,
 	handlers: Handlers,
 	hooks: Option<Hooks>,
 }
@@ -98,7 +98,7 @@ struct CuseReplySender<'a, S> {
 	sent_reply: &'a mut bool,
 }
 
-impl<S: OutputStream> SendReply<S> for CuseReplySender<'_, S> {
+impl<S: io::CuseServerSocket> SendReply<S> for CuseReplySender<'_, S> {
 	fn ok<R: Reply>(
 		self,
 		reply: &R,
@@ -130,7 +130,7 @@ impl<S: OutputStream> SendReply<S> for CuseReplySender<'_, S> {
 	}
 }
 
-fn cuse_request_dispatch<S: OutputStream>(
+fn cuse_request_dispatch<S: io::CuseServerSocket>(
 	conn: &CuseConnection<S>,
 	handlers: &impl CuseHandlers<S>,
 	hooks: Option<&impl ServerHooks>,

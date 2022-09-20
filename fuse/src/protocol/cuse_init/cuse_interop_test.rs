@@ -30,7 +30,7 @@ struct TestCharDev {
 	requests: mpsc::Sender<String>,
 }
 
-impl<S: fuse::OutputStream> fuse::CuseHandlers<S> for TestCharDev {
+impl<S: fuse::ServerSocket> fuse::CuseHandlers<S> for TestCharDev {
 	fn open(
 		&self,
 		_ctx: fuse::ServerContext,

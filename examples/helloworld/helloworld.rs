@@ -44,7 +44,7 @@ const HELLO_TXT: HelloTxt = HelloTxt {};
 
 struct HelloWorldFS {}
 
-impl<S: fuse::io::OutputStream> basic::FuseHandlers<S> for HelloWorldFS {
+impl<S: fuse::ServerSocket> basic::FuseHandlers<S> for HelloWorldFS {
 	fn lookup(
 		&self,
 		_ctx: basic::ServerContext,

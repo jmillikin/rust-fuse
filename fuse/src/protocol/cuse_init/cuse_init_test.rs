@@ -76,12 +76,12 @@ fn encode_response(
 	maybe_device_name: Option<&[u8]>,
 ) -> Vec<u8> {
 	let request_id = 0;
-	let stream = crate::internal::testutil::FakeStream::new();
-	let send_once = encode::SyncSendOnce::new(&stream);
+	let socket = crate::internal::testutil::FakeSocket::new();
+	let send_once = encode::SyncSendOnce::new(&socket);
 	response
 		.encode(send_once, request_id, maybe_device_name)
 		.unwrap();
-	stream.expect_write()
+	socket.expect_write()
 }
 
 #[test]
