@@ -108,3 +108,78 @@ impl Version {
 		self.minor
 	}
 }
+
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct Opcode(pub u32);
+
+macro_rules! export_opcodes {
+	( $( $(#[$meta:meta])* $name:ident , )+ ) => {
+		mod fuse_opcode {
+			$(
+				pub const $name: u32 = crate::internal::fuse_kernel::$name.0;
+			)+
+		}
+		impl Opcode {
+			$(
+				$(#[$meta])*
+				pub const $name: Opcode = Opcode(fuse_opcode::$name);
+			)+
+		}
+	};
+}
+
+export_opcodes! {
+	FUSE_LOOKUP,
+	FUSE_FORGET,
+	FUSE_GETATTR,
+	FUSE_SETATTR,
+	FUSE_READLINK,
+	FUSE_SYMLINK,
+	FUSE_MKNOD,
+	FUSE_MKDIR,
+	FUSE_UNLINK,
+	FUSE_RMDIR,
+	FUSE_RENAME,
+	FUSE_LINK,
+	FUSE_OPEN,
+	FUSE_READ,
+	FUSE_WRITE,
+	FUSE_STATFS,
+	FUSE_RELEASE,
+	FUSE_FSYNC,
+	FUSE_SETXATTR,
+	FUSE_GETXATTR,
+	FUSE_LISTXATTR,
+	FUSE_REMOVEXATTR,
+	FUSE_FLUSH,
+	FUSE_INIT,
+	FUSE_OPENDIR,
+	FUSE_READDIR,
+	FUSE_RELEASEDIR,
+	FUSE_FSYNCDIR,
+	FUSE_GETLK,
+	FUSE_SETLK,
+	FUSE_SETLKW,
+	FUSE_ACCESS,
+	FUSE_CREATE,
+	FUSE_INTERRUPT,
+	FUSE_BMAP,
+	FUSE_DESTROY,
+	FUSE_IOCTL,
+	FUSE_POLL,
+	FUSE_NOTIFY_REPLY,
+	FUSE_BATCH_FORGET,
+	FUSE_FALLOCATE,
+	FUSE_READDIRPLUS,
+	FUSE_RENAME2,
+	FUSE_LSEEK,
+	FUSE_COPY_FILE_RANGE,
+	FUSE_SETUPMAPPING,
+	FUSE_REMOVEMAPPING,
+	FUSE_SYNCFS,
+
+	CUSE_INIT,
+
+	CUSE_INIT_BSWAP_RESERVED,
+	FUSE_INIT_BSWAP_RESERVED,
+}

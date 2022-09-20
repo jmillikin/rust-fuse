@@ -33,8 +33,8 @@ impl RequestHeader {
 		unsafe { transmute(buf.header()) }
 	}
 
-	pub fn opcode(&self) -> u32 {
-		self.0.opcode.0
+	pub fn opcode(&self) -> crate::Opcode {
+		crate::Opcode(self.0.opcode.0)
 	}
 
 	pub fn request_id(&self) -> u64 {
