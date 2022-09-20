@@ -41,8 +41,5 @@ pub use self::node_id::*;
 mod node_name;
 pub use self::node_name::*;
 
-mod unknown_request;
-pub use self::unknown_request::*;
-
 mod xattr;
 pub use self::xattr::*;

@@ -15,7 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::io::{self, ServerSendError as SendError};
-use crate::server::{CuseConnection, CuseRequest, Reply, ServerError};
+use crate::server::{self, CuseConnection, CuseRequest, Reply, ServerError};
 use crate::server::basic::{
 	NoopServerHooks,
 	SendReply,
@@ -193,8 +193,8 @@ fn cuse_request_dispatch<S: io::CuseServerSocket>(
 		Op::FUSE_WRITE => do_dispatch!(WriteRequest, write),
 		_ => {
 			if let Some(ref hooks) = hooks {
-				let request = request.into_unknown();
-				hooks.unknown_request(&request);
+				let req = server::UnknownRequest::from_cuse_request(&request);
+				hooks.unknown_request(&req);
 			}
 			conn.reply_err(request_id, crate::Error::UNIMPLEMENTED)
 		},

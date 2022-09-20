@@ -15,8 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::io::RequestError;
-use crate::protocol::common::UnknownRequest;
-use crate::server::RequestHeader;
+use crate::server::{RequestHeader, UnknownRequest};
 
 #[allow(unused_variables)]
 pub trait ServerHooks {

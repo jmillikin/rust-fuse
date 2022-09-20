@@ -14,8 +14,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::cell::RefCell;
 use core::fmt;
-use core::mem::transmute;
+use core::mem::{size_of, transmute};
 
 pub mod basic;
 mod connection;
@@ -33,7 +34,6 @@ use crate::io::{RequestError, ServerRecvError, ServerSendError};
 use crate::io::decode::{RequestDecoder, RequestBuf};
 use crate::protocol::cuse_init::{CuseInitFlags, CuseInitResponse};
 use crate::protocol::fuse_init::{FuseInitFlags, FuseInitResponse};
-use crate::protocol::UnknownRequest;
 
 const DEFAULT_MAX_WRITE: u32 = 4096;
 
@@ -183,10 +183,6 @@ impl<'a> CuseRequest<'a> {
 	pub fn header(&self) -> &'a RequestHeader {
 		RequestHeader::new_ref(self.buf.header())
 	}
-
-	pub fn into_unknown(self) -> UnknownRequest<'a> {
-		UnknownRequest::new(self.buf)
-	}
 }
 
 pub struct FuseRequestBuilder {
@@ -250,8 +246,60 @@ impl<'a> FuseRequest<'a> {
 	pub fn header(&self) -> &'a RequestHeader {
 		RequestHeader::new_ref(self.buf.header())
 	}
+}
 
-	pub fn into_unknown(self) -> UnknownRequest<'a> {
-		UnknownRequest::new(self.buf)
+pub struct UnknownRequest<'a> {
+	header: &'a fuse_in_header,
+	body: RefCell<UnknownBody<'a>>,
+}
+
+enum UnknownBody<'a> {
+	Raw(RequestBuf<'a>),
+	Parsed(Result<&'a [u8], RequestError>),
+}
+
+impl<'a> UnknownRequest<'a> {
+	pub fn from_fuse_request(request: &FuseRequest<'a>) -> Self {
+		Self {
+			header: request.buf.header(),
+			body: RefCell::new(UnknownBody::Raw(request.buf)),
+		}
+	}
+
+	pub fn from_cuse_request(request: &CuseRequest<'a>) -> Self {
+		Self {
+			header: request.buf.header(),
+			body: RefCell::new(UnknownBody::Raw(request.buf)),
+		}
+	}
+
+	pub fn header(&self) -> &RequestHeader {
+		RequestHeader::new_ref(&self.header)
+	}
+
+	pub fn body(&self) -> Result<&'a [u8], RequestError> {
+		let mut result: Result<&'a [u8], RequestError> = Ok(&[]);
+		self.body.replace_with(|body| match body {
+			UnknownBody::Raw(buf) => {
+				let body_offset = size_of::<fuse_in_header>() as u32;
+				let mut dec = RequestDecoder::new(*buf);
+				result = dec.next_bytes(self.header.len - body_offset);
+				UnknownBody::Parsed(result)
+			},
+			UnknownBody::Parsed(r) => {
+				result = *r;
+				UnknownBody::Parsed(*r)
+			},
+		});
+		result
+	}
+}
+
+impl fmt::Debug for UnknownRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("UnknownRequest")
+			.field("header", &self.header())
+			.field("body", &format_args!("{:?}", self.body()))
+			.finish()
 	}
 }

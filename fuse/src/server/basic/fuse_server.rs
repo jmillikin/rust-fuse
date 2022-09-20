@@ -15,7 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::io::{self, ServerSendError as SendError};
-use crate::server::{FuseConnection, FuseRequest, Reply, ServerError};
+use crate::server::{self, FuseConnection, FuseRequest, Reply, ServerError};
 use crate::server::basic::{
 	NoopServerHooks,
 	SendReply,
@@ -235,8 +235,8 @@ fn fuse_request_dispatch<S: io::FuseServerSocket>(
 		Op::FUSE_WRITE => do_dispatch!(WriteRequest, write),
 		_ => {
 			if let Some(hooks) = hooks {
-				let request = request.into_unknown();
-				hooks.unknown_request(&request);
+				let req = server::UnknownRequest::from_fuse_request(&request);
+				hooks.unknown_request(&req);
 			}
 			conn.reply_err(request_id, crate::Error::UNIMPLEMENTED)
 		},

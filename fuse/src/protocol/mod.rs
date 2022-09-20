@@ -19,10 +19,7 @@
 #[macro_use]
 pub(crate) mod common;
 
-pub use self::common::{
-	UnknownRequest,
-	XattrError,
-};
+pub use self::common::XattrError;
 
 mod prelude;
 
