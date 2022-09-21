@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::io;
 use crate::io::{ServerSendError, ServerSocket};
 
 pub trait Reply {
@@ -24,6 +25,23 @@ pub trait Reply {
 	) -> Result<(), ServerSendError<S::Error>>;
 }
 
+pub type SendResult<R, E> = Result<SentReply<R>, io::ServerSendError<E>>;
+
+pub struct SentReply<T> {
+	pub(crate) _phantom: core::marker::PhantomData<fn(&T)>,
+}
+
+pub trait SendReply<S: io::ServerSocket> {
+	fn ok<R: Reply>(
+		self,
+		reply: &R,
+	) -> Result<SentReply<R>, io::ServerSendError<S::Error>>;
+
+	fn err<R>(
+		self,
+		err: impl Into<crate::Error>,
+	) -> Result<SentReply<R>, io::ServerSendError<S::Error>>;
+}
 
 mod impls {
 	use crate::io::{ServerSendError, ServerSocket};

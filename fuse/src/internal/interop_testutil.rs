@@ -21,7 +21,9 @@ use std::{env, ffi, fs, io, panic, path, sync, thread};
 
 use fuse::io::{ServerSendError as SendError, ServerRecvError as RecvError};
 use fuse::protocol::fuse_init;
-use fuse::server::basic;
+use fuse::server;
+use fuse::server::cuse_rpc;
+use fuse::server::fuse_rpc;
 
 #[cfg(target_os = "linux")]
 pub use linux_errno as ErrorCode;
@@ -31,7 +33,7 @@ pub use freebsd_errno as ErrorCode;
 
 struct PrintHooks {}
 
-impl basic::ServerHooks for PrintHooks {
+impl server::ServerHooks for PrintHooks {
 	fn unknown_request(&self, request: &fuse::server::UnknownRequest) {
 		println!("\n[unknown_request]\n{:#?}", request);
 	}
@@ -56,7 +58,7 @@ type DevFuse = fuse_linux::FuseServerSocket;
 #[cfg(target_os = "freebsd")]
 type DevFuse = fuse_libc::FuseServerSocket;
 
-pub trait TestFS : basic::FuseHandlers<DevFuse> {
+pub trait TestFS : fuse_rpc::FuseHandlers<DevFuse> {
 	fn fuse_init(
 		&self,
 		init_request: &fuse_init::FuseInitRequest,
@@ -113,7 +115,7 @@ pub fn fuse_interop_test(
 		let ready = sync::Arc::clone(&server_ready);
 		thread::spawn(move || {
 			use fuse::server::FuseConnection;
-			use fuse::server::basic::FuseServerBuilder;
+			use fuse_rpc::FuseServerBuilder;
 
 			let conn = FuseConnection::new(dev_fuse, |init_request| {
 				handlers.fuse_init(init_request)
@@ -304,7 +306,7 @@ const CUSE_DEV_MAJOR: libc::c_uint = 240; // "LOCAL/EXPERIMENTAL USE"
 const CUSE_DEV_MINOR: libc::c_uint = 1;
 
 pub fn cuse_interop_test(
-	handlers: impl basic::CuseHandlers<DevCuse> + Send + 'static,
+	handlers: impl cuse_rpc::CuseHandlers<DevCuse> + Send + 'static,
 	test_fn: impl FnOnce(&path::Path) + panic::UnwindSafe,
 ) {
 	let mut mktemp_template = {
@@ -341,7 +343,7 @@ pub fn cuse_interop_test(
 		let ready = sync::Arc::clone(&server_ready);
 		thread::spawn(move || {
 			use fuse::server::CuseConnectionBuilder;
-			use fuse::server::basic::CuseServerBuilder;
+			use cuse_rpc::CuseServerBuilder;
 
 			let devname = fuse::CuseDeviceName::from_bytes(&mktemp_template)
 				.unwrap();

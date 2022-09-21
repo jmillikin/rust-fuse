@@ -19,14 +19,15 @@ use core::cmp::min;
 use core::fmt;
 use core::mem::{size_of, transmute};
 
-pub mod basic;
 mod cuse_connection;
 mod fuse_connection;
 mod reply;
 
+pub mod cuse_rpc;
+pub mod fuse_rpc;
+
 pub use self::cuse_connection::{CuseConnection, CuseConnectionBuilder};
 pub use self::fuse_connection::{FuseConnection, FuseConnectionBuilder};
-pub use self::reply::Reply;
 
 use crate::Version;
 use crate::internal::fuse_kernel::fuse_in_header;
@@ -612,4 +613,15 @@ impl<S: io::AsyncFuseServerSocket> AsyncFuseRequests<'_, S> {
 		};
 		Ok(Some(self.builder.build(&buf[..recv_len])?))
 	}
+}
+
+#[allow(unused_variables)]
+pub trait ServerHooks {
+	fn request(&self, header: &RequestHeader) {}
+
+	fn unknown_request(&self, request: &UnknownRequest) {}
+
+	fn unhandled_request(&self, header: &RequestHeader) {}
+
+	fn request_error(&self, header: &RequestHeader, err: RequestError) {}
 }

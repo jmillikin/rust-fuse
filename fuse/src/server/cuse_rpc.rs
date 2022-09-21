@@ -14,17 +14,30 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::io::{self, ServerSendError as SendError};
+use crate::io;
+use crate::protocol;
 use crate::protocol::cuse_init::CuseInitResponse;
-use crate::server::{self, CuseConnection, CuseRequest, ErrorResponse, Reply, ServerError};
-use crate::server::basic::{
-	NoopServerHooks,
+use crate::server;
+use crate::server::{CuseConnection, ErrorResponse, ServerError};
+
+pub use crate::server::reply::{
+	Reply,
 	SendReply,
+	SendResult,
 	SentReply,
-	ServerContext,
-	ServerHooks,
 };
-use crate::server::basic::cuse_handlers::CuseHandlers;
+
+pub struct ServerContext<'a> {
+	header: &'a server::RequestHeader,
+	hooks: Option<&'a dyn server::ServerHooks>,
+}
+
+impl<'a> ServerContext<'a> {
+	pub fn header(&self) -> &'a server::RequestHeader {
+		self.header
+	}
+}
+
 
 pub struct CuseServer<S, Handlers, Hooks> {
 	socket: S,
@@ -43,7 +56,7 @@ impl<S, Handlers, Hooks> CuseServer<S, Handlers, Hooks>
 where
 	S: io::CuseServerSocket,
 	Handlers: CuseHandlers<S>,
-	Hooks: ServerHooks,
+	Hooks: server::ServerHooks,
 {
 	pub fn serve(&self, buf: &mut [u8]) -> Result<(), ServerError<S::Error>> {
 		let requests = self.requests();
@@ -56,7 +69,7 @@ where
 			);
 			match result {
 				Ok(()) => {},
-				Err(SendError::NotFound(_)) => {},
+				Err(io::ServerSendError::NotFound(_)) => {},
 				Err(err) => return Err(err.into()),
 			};
 		}
@@ -70,7 +83,13 @@ pub struct CuseServerBuilder<S, Handlers, Hooks> {
 	hooks: Option<Hooks>,
 }
 
-impl<S, Handlers> CuseServerBuilder<S, Handlers, NoopServerHooks> {
+mod internal {
+	pub enum NoopServerHooks {}
+
+	impl crate::server::ServerHooks for NoopServerHooks {}
+}
+
+impl<S, Handlers> CuseServerBuilder<S, Handlers, internal::NoopServerHooks> {
 	pub fn new(conn: CuseConnection<S>, handlers: Handlers) -> Self {
 		Self {
 			conn,
@@ -104,7 +123,7 @@ impl<S, Handlers, Hooks> CuseServerBuilder<S, Handlers, Hooks> {
 
 struct CuseReplySender<'a, S> {
 	socket: &'a S,
-	response_ctx: crate::server::ResponseContext,
+	response_ctx: server::ResponseContext,
 	sent_reply: &'a mut bool,
 }
 
@@ -112,7 +131,7 @@ impl<S: io::CuseServerSocket> SendReply<S> for CuseReplySender<'_, S> {
 	fn ok<R: Reply>(
 		self,
 		reply: &R,
-	) -> Result<SentReply<R>, SendError<S::Error>> {
+	) -> Result<SentReply<R>, io::ServerSendError<S::Error>> {
 		reply.send(self.socket, self.response_ctx)?;
 		*self.sent_reply = true;
 		Ok(SentReply {
@@ -123,7 +142,7 @@ impl<S: io::CuseServerSocket> SendReply<S> for CuseReplySender<'_, S> {
 	fn err<R>(
 		self,
 		err: impl Into<crate::Error>,
-	) -> Result<SentReply<R>, SendError<S::Error>> {
+	) -> Result<SentReply<R>, io::ServerSendError<S::Error>> {
 		let response = ErrorResponse::new(err.into());
 		response.send(self.socket, &self.response_ctx)?;
 		*self.sent_reply = true;
@@ -136,9 +155,9 @@ impl<S: io::CuseServerSocket> SendReply<S> for CuseReplySender<'_, S> {
 fn cuse_request_dispatch<S: io::CuseServerSocket>(
 	socket: &S,
 	handlers: &impl CuseHandlers<S>,
-	hooks: Option<&impl ServerHooks>,
-	request: CuseRequest,
-) -> Result<(), SendError<S::Error>> {
+	hooks: Option<&impl server::ServerHooks>,
+	request: server::CuseRequest,
+) -> Result<(), io::ServerSendError<S::Error>> {
 	let header = request.header();
 	if let Some(hooks) = hooks {
 		hooks.request(header);
@@ -205,5 +224,83 @@ fn cuse_request_dispatch<S: io::CuseServerSocket>(
 			let response = ErrorResponse::new(crate::Error::UNIMPLEMENTED);
 			response.send(socket, &response_ctx)
 		},
+	}
+}
+
+fn unhandled_request<S: io::ServerSocket, R>(
+	ctx: ServerContext,
+	send_reply: impl SendReply<S>,
+) -> Result<SentReply<R>, io::ServerSendError<S::Error>> {
+	if let Some(hooks) = ctx.hooks {
+		hooks.unhandled_request(ctx.header);
+	}
+	send_reply.err(crate::Error::UNIMPLEMENTED)
+}
+
+/// User-provided handlers for CUSE operations.
+#[allow(unused_variables)]
+pub trait CuseHandlers<S: io::ServerSocket> {
+	fn flush(
+		&self,
+		ctx: ServerContext,
+		request: &protocol::FlushRequest,
+		send_reply: impl SendReply<S>,
+	) -> Result<SentReply<protocol::FlushResponse>, io::ServerSendError<S::Error>> {
+		unhandled_request(ctx, send_reply)
+	}
+
+	fn fsync(
+		&self,
+		ctx: ServerContext,
+		request: &protocol::FsyncRequest,
+		send_reply: impl SendReply<S>,
+	) -> Result<SentReply<protocol::FsyncResponse>, io::ServerSendError<S::Error>> {
+		unhandled_request(ctx, send_reply)
+	}
+
+	#[cfg(any(doc, feature = "unstable_ioctl"))]
+	fn ioctl(
+		&self,
+		ctx: ServerContext,
+		request: &protocol::IoctlRequest,
+		send_reply: impl SendReply<S>,
+	) -> Result<SentReply<protocol::IoctlResponse>, io::ServerSendError<S::Error>> {
+		unhandled_request(ctx, send_reply)
+	}
+
+	fn open(
+		&self,
+		ctx: ServerContext,
+		request: &protocol::OpenRequest,
+		send_reply: impl SendReply<S>,
+	) -> Result<SentReply<protocol::OpenResponse>, io::ServerSendError<S::Error>> {
+		unhandled_request(ctx, send_reply)
+	}
+
+	fn read(
+		&self,
+		ctx: ServerContext,
+		request: &protocol::ReadRequest,
+		send_reply: impl SendReply<S>,
+	) -> Result<SentReply<protocol::ReadResponse>, io::ServerSendError<S::Error>> {
+		unhandled_request(ctx, send_reply)
+	}
+
+	fn release(
+		&self,
+		ctx: ServerContext,
+		request: &protocol::ReleaseRequest,
+		send_reply: impl SendReply<S>,
+	) -> Result<SentReply<protocol::ReleaseResponse>, io::ServerSendError<S::Error>> {
+		unhandled_request(ctx, send_reply)
+	}
+
+	fn write(
+		&self,
+		ctx: ServerContext,
+		request: &protocol::WriteRequest,
+		send_reply: impl SendReply<S>,
+	) -> Result<SentReply<protocol::WriteResponse>, io::ServerSendError<S::Error>> {
+		unhandled_request(ctx, send_reply)
 	}
 }

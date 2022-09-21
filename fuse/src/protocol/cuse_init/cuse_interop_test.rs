@@ -21,7 +21,7 @@ mod fuse {
 	pub use ::fuse::*;
 	pub use ::fuse::io::*;
 	pub use ::fuse::protocol::*;
-	pub use ::fuse::server::basic::*;
+	pub use ::fuse::server::fuse_rpc::*;
 }
 
 use interop_testutil::{cuse_interop_test, diff_str, path_cstr};

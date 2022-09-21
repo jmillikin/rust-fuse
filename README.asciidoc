@@ -57,9 +57,10 @@ Implement the `FuseHandlers` trait for your filesystem:
 [source,rust]
 ----
 extern crate fuse;
+use fuse::server::fuse_rpc;
 
 struct HelloFS {}
-impl fuse::FuseHandlers for HelloFS {
+impl fuse_rpc::FuseHandlers for HelloFS {
     // your filesystem handlers here
 }
 ----

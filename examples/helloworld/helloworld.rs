@@ -16,7 +16,7 @@
 
 use std::num::NonZeroU64;
 
-use fuse::server::basic;
+use fuse::server::fuse_rpc;
 
 const HELLO_WORLD: &[u8] = b"Hello, world!\n";
 
@@ -44,13 +44,13 @@ const HELLO_TXT: HelloTxt = HelloTxt {};
 
 struct HelloWorldFS {}
 
-impl<S: fuse::ServerSocket> basic::FuseHandlers<S> for HelloWorldFS {
+impl<S: fuse::ServerSocket> fuse_rpc::FuseHandlers<S> for HelloWorldFS {
 	fn lookup(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse_rpc::ServerContext,
 		request: &fuse::LookupRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::LookupResponse, S::Error> {
+		send_reply: impl fuse_rpc::SendReply<S>,
+	) -> fuse_rpc::SendResult<fuse::LookupResponse, S::Error> {
 		if request.parent_id() != fuse::ROOT_ID {
 			return send_reply.err(fuse::Error::NOT_FOUND);
 		}
@@ -68,10 +68,10 @@ impl<S: fuse::ServerSocket> basic::FuseHandlers<S> for HelloWorldFS {
 
 	fn getattr(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse_rpc::ServerContext,
 		request: &fuse::GetattrRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::GetattrResponse, S::Error> {
+		send_reply: impl fuse_rpc::SendReply<S>,
+	) -> fuse_rpc::SendResult<fuse::GetattrResponse, S::Error> {
 		let mut resp = fuse::GetattrResponse::new();
 		let attr = resp.attr_mut();
 
@@ -93,10 +93,10 @@ impl<S: fuse::ServerSocket> basic::FuseHandlers<S> for HelloWorldFS {
 
 	fn open(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse_rpc::ServerContext,
 		request: &fuse::OpenRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::OpenResponse, S::Error> {
+		send_reply: impl fuse_rpc::SendReply<S>,
+	) -> fuse_rpc::SendResult<fuse::OpenResponse, S::Error> {
 		if request.node_id() != HELLO_TXT.node_id() {
 			return send_reply.err(fuse::Error::NOT_FOUND);
 		}
@@ -108,10 +108,10 @@ impl<S: fuse::ServerSocket> basic::FuseHandlers<S> for HelloWorldFS {
 
 	fn read(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse_rpc::ServerContext,
 		request: &fuse::ReadRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::ReadResponse, S::Error> {
+		send_reply: impl fuse_rpc::SendReply<S>,
+	) -> fuse_rpc::SendResult<fuse::ReadResponse, S::Error> {
 		if request.handle() != 1001 {
 			return send_reply.err(fuse::Error::INVALID_ARGUMENT);
 		}
@@ -122,10 +122,10 @@ impl<S: fuse::ServerSocket> basic::FuseHandlers<S> for HelloWorldFS {
 
 	fn opendir(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse_rpc::ServerContext,
 		request: &fuse::OpendirRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::OpendirResponse, S::Error> {
+		send_reply: impl fuse_rpc::SendReply<S>,
+	) -> fuse_rpc::SendResult<fuse::OpendirResponse, S::Error> {
 		if request.node_id() != fuse::ROOT_ID {
 			return send_reply.err(fuse::Error::NOT_FOUND);
 		}
@@ -137,10 +137,10 @@ impl<S: fuse::ServerSocket> basic::FuseHandlers<S> for HelloWorldFS {
 
 	fn readdir(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse_rpc::ServerContext,
 		request: &fuse::ReaddirRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::ReaddirResponse, S::Error> {
+		send_reply: impl fuse_rpc::SendReply<S>,
+	) -> fuse_rpc::SendResult<fuse::ReaddirResponse, S::Error> {
 		if request.handle() != 1002 {
 			return send_reply.err(fuse::Error::INVALID_ARGUMENT);
 		}
@@ -160,10 +160,10 @@ impl<S: fuse::ServerSocket> basic::FuseHandlers<S> for HelloWorldFS {
 
 	fn releasedir(
 		&self,
-		_ctx: basic::ServerContext,
+		_ctx: fuse_rpc::ServerContext,
 		request: &fuse::ReleasedirRequest,
-		send_reply: impl basic::SendReply<S>,
-	) -> basic::SendResult<fuse::ReleasedirResponse, S::Error> {
+		send_reply: impl fuse_rpc::SendReply<S>,
+	) -> fuse_rpc::SendResult<fuse::ReleasedirResponse, S::Error> {
 		if request.handle() != 1002 {
 			return send_reply.err(fuse::Error::INVALID_ARGUMENT);
 		}
@@ -221,7 +221,7 @@ fn main() {
 	let conn = fuse::server::FuseConnectionBuilder::new(dev_fuse)
 		.build()
 		.unwrap();
-	let srv = basic::FuseServerBuilder::new(conn, handlers).build();
+	let srv = fuse_rpc::FuseServerBuilder::new(conn, handlers).build();
 
 	let mut buf = fuse::io::ArrayBuffer::new();
 	srv.serve(buf.borrow_mut()).unwrap();

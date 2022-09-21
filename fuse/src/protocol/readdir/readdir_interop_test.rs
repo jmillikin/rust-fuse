@@ -23,7 +23,7 @@ mod fuse {
 	pub use ::fuse::*;
 	pub use ::fuse::io::*;
 	pub use ::fuse::protocol::*;
-	pub use ::fuse::server::basic::*;
+	pub use ::fuse::server::fuse_rpc::*;
 
 	pub use interop_testutil::ErrorCode;
 }
