@@ -15,11 +15,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use core::cell::RefCell;
+use core::cmp::min;
 use core::fmt;
 use core::mem::{size_of, transmute};
 
 pub mod basic;
-mod connection;
 mod cuse_connection;
 mod fuse_connection;
 mod reply;
@@ -34,8 +34,16 @@ use crate::io;
 use crate::io::{RequestError, ServerRecvError, ServerSendError};
 use crate::io::decode::{RequestDecoder, RequestBuf};
 use crate::io::encode;
-use crate::protocol::cuse_init::{CuseInitFlags, CuseInitResponse};
-use crate::protocol::fuse_init::{FuseInitFlags, FuseInitResponse};
+use crate::protocol::cuse_init::{
+	CuseInitFlags,
+	CuseInitRequest,
+	CuseInitResponse,
+};
+use crate::protocol::fuse_init::{
+	FuseInitFlags,
+	FuseInitRequest,
+	FuseInitResponse,
+};
 
 const DEFAULT_MAX_WRITE: u32 = 4096;
 
@@ -355,4 +363,137 @@ impl ErrorResponse {
 		let enc = encode::ReplyEncoder::new(send, response_ctx.request_id);
 		enc.encode_error(self.error).await
 	}
+}
+
+pub fn cuse_init<'a, S: io::CuseServerSocket>(
+	socket: &mut S,
+	mut init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse<'a>,
+) -> Result<CuseInitResponse<'a>, ServerError<S::Error>> {
+	let mut buf = io::ArrayBuffer::new();
+	let buf = buf.borrow_mut();
+
+	let req_builder = CuseRequestBuilder::new();
+	loop {
+		let recv_len = socket.recv(buf)?;
+		let fuse_req = req_builder.build(&buf[..recv_len])?;
+		let response_ctx = fuse_req.response_context();
+		let init_req = CuseInitRequest::from_cuse_request(&fuse_req)?;
+		let (response, ok) = cuse_handshake(&init_req, &mut init_fn)?;
+		response.send(socket, &response_ctx)?;
+		if ok {
+			return Ok(response);
+		}
+	}
+}
+
+pub async fn cuse_init_async<'a, S: io::AsyncCuseServerSocket>(
+	socket: &mut S,
+	mut init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse<'a>,
+) -> Result<CuseInitResponse<'a>, ServerError<S::Error>> {
+	let mut buf = io::ArrayBuffer::new();
+	let buf = buf.borrow_mut();
+
+	let req_builder = CuseRequestBuilder::new();
+	loop {
+		let recv_len = socket.recv(buf).await?;
+		let fuse_req = req_builder.build(&buf[..recv_len])?;
+		let response_ctx = fuse_req.response_context();
+		let init_req = CuseInitRequest::from_cuse_request(&fuse_req)?;
+		let (response, ok) = cuse_handshake(&init_req, &mut init_fn)?;
+		response.send_async(socket, &response_ctx).await?;
+		if ok {
+			return Ok(response);
+		}
+	}
+}
+
+fn cuse_handshake<'a, E>(
+	request: &CuseInitRequest,
+	init_fn: &mut impl FnMut(&CuseInitRequest) -> CuseInitResponse<'a>,
+) -> Result<(CuseInitResponse<'a>, bool), ServerError<E>> {
+	match negotiate_version(request.version()) {
+		Some(version) => {
+			let mut response = init_fn(&request);
+			response.set_version(version);
+			Ok((response, true))
+		},
+		None => {
+			let mut response = CuseInitResponse::new_nameless();
+			response.set_version(Version::LATEST);
+			Ok((response, false))
+		},
+	}
+}
+
+pub fn fuse_init<S: io::FuseServerSocket>(
+	socket: &mut S,
+	mut init_fn: impl FnMut(&FuseInitRequest) -> FuseInitResponse,
+) -> Result<FuseInitResponse, ServerError<S::Error>> {
+	let mut buf = io::ArrayBuffer::new();
+	let buf = buf.borrow_mut();
+
+	let req_builder = FuseRequestBuilder::new();
+	loop {
+		let recv_len = socket.recv(buf)?;
+		let fuse_req = req_builder.build(&buf[..recv_len])?;
+		let response_ctx = fuse_req.response_context();
+		let init_req = FuseInitRequest::from_fuse_request(&fuse_req)?;
+		let (response, ok) = fuse_handshake(&init_req, &mut init_fn)?;
+		response.send(socket, &response_ctx)?;
+		if ok {
+			return Ok(response);
+		}
+	}
+}
+
+pub async fn fuse_init_async<S: io::AsyncFuseServerSocket>(
+	socket: &mut S,
+	mut init_fn: impl FnMut(&FuseInitRequest) -> FuseInitResponse,
+) -> Result<FuseInitResponse, ServerError<S::Error>> {
+	let mut buf = io::ArrayBuffer::new();
+	let buf = buf.borrow_mut();
+
+	let req_builder = FuseRequestBuilder::new();
+	loop {
+		let recv_len = socket.recv(buf).await?;
+		let fuse_req = req_builder.build(&buf[..recv_len])?;
+		let response_ctx = fuse_req.response_context();
+		let init_req = FuseInitRequest::from_fuse_request(&fuse_req)?;
+		let (response, ok) = fuse_handshake(&init_req, &mut init_fn)?;
+		response.send_async(socket, &response_ctx).await?;
+		if ok {
+			return Ok(response);
+		}
+	}
+}
+
+fn fuse_handshake<E>(
+	request: &FuseInitRequest,
+	init_fn: &mut impl FnMut(&FuseInitRequest) -> FuseInitResponse,
+) -> Result<(FuseInitResponse, bool), ServerError<E>> {
+	match negotiate_version(request.version()) {
+		Some(version) => {
+			let mut response = init_fn(&request);
+			response.set_version(version);
+			Ok((response, true))
+		},
+		None => {
+			let mut response = FuseInitResponse::new();
+			response.set_version(Version::LATEST);
+			Ok((response, false))
+		},
+	}
+}
+
+fn negotiate_version(
+	kernel: crate::Version,
+) -> Option<crate::Version> {
+	if kernel.major() != Version::LATEST.major() {
+		// TODO: hard error on kernel major version < FUSE_KERNEL_VERSION
+		return None;
+	}
+	Some(crate::Version::new(
+		Version::LATEST.major(),
+		min(kernel.minor(), Version::LATEST.minor()),
+	))
 }

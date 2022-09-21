@@ -100,19 +100,11 @@ fn request_major_mismatch() {
 	assert_eq!(*req.flags(), FuseInitFlags::from_bits(0));
 }
 
-fn encode_response(response: FuseInitResponse) -> Vec<u8> {
-	let request_id = 0;
-	let socket = crate::internal::testutil::FakeSocket::new();
-	let send_once = encode::SyncSendOnce::new(&socket);
-	response.encode(send_once, request_id).unwrap();
-	socket.expect_write()
-}
-
 #[test]
 fn response_v7p1() {
 	let mut resp = FuseInitResponse::new();
 	resp.set_version(Version::new(7, 1));
-	let encoded = encode_response(resp);
+	let encoded = encode_response!(resp);
 
 	assert_eq!(
 		encoded,
@@ -132,7 +124,7 @@ fn response_v7p1() {
 fn response_v7p5() {
 	let mut resp = FuseInitResponse::new();
 	resp.set_version(Version::new(7, 5));
-	let encoded = encode_response(resp);
+	let encoded = encode_response!(resp);
 
 	assert_eq!(
 		encoded,
@@ -162,7 +154,7 @@ fn response_v7p23() {
 	resp.set_version(Version::new(7, 23));
 	resp.set_max_readahead(4096);
 	*resp.flags_mut() = FuseInitFlags::from_bits(0xFFFFFFFF);
-	let encoded = encode_response(resp);
+	let encoded = encode_response!(resp);
 
 	assert_eq!(
 		encoded,

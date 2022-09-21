@@ -215,6 +215,8 @@ impl FuseInitResponse {
 	pub fn set_time_granularity(&mut self, granularity: u32) {
 		self.raw.time_gran = granularity;
 	}
+
+	response_send_funcs!();
 }
 
 impl fmt::Debug for FuseInitResponse {
@@ -248,12 +250,12 @@ struct fuse_init_out_v7p5 {
 }
 
 impl FuseInitResponse {
-	pub(crate) fn encode<S: encode::SendOnce>(
+	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		request_id: u64,
+		ctx: &crate::server::ResponseContext,
 	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, request_id);
+		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		if self.raw.minor >= 23 {
 			let mut out = self.raw;
 			out.flags = self.flags.to_bits();

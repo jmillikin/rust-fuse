@@ -19,7 +19,7 @@ use crate::internal::testutil::MessageBuilder;
 use crate::io::decode::RequestBuf;
 use crate::protocol::prelude::*;
 
-use super::{CuseInitFlags, CuseInitRequest, CuseInitResponse};
+use super::{CuseDeviceName, CuseInitFlags, CuseInitRequest, CuseInitResponse};
 
 #[test]
 fn request() {
@@ -70,26 +70,14 @@ fn request_impl_debug() {
 	);
 }
 
-fn encode_response(
-	response: CuseInitResponse,
-	maybe_device_name: Option<&[u8]>,
-) -> Vec<u8> {
-	let request_id = 0;
-	let socket = crate::internal::testutil::FakeSocket::new();
-	let send_once = encode::SyncSendOnce::new(&socket);
-	response
-		.encode(send_once, request_id, maybe_device_name)
-		.unwrap();
-	socket.expect_write()
-}
-
 #[test]
 fn response() {
-	let mut resp = CuseInitResponse::new();
+	let device_name = CuseDeviceName::from_bytes(b"test-device").unwrap();
+	let mut resp = CuseInitResponse::new(device_name);
 	resp.set_version(Version::new(7, 23));
 	resp.set_max_write(4096);
 	*resp.flags_mut() = CuseInitFlags::from_bits(0xFFFFFFFF);
-	let encoded = encode_response(resp, Some(b"test-device"));
+	let encoded = encode_response!(resp);
 
 	assert_eq!(
 		encoded,
@@ -119,7 +107,8 @@ fn response() {
 
 #[test]
 fn response_impl_debug() {
-	let mut response = CuseInitResponse::new();
+	let device_name = CuseDeviceName::from_bytes(b"test-device").unwrap();
+	let mut response = CuseInitResponse::new(device_name);
 	response.set_max_read(4096);
 	response.set_max_write(8192);
 	response.set_dev_major(10);
@@ -130,6 +119,7 @@ fn response_impl_debug() {
 		format!("{:#?}", response),
 		concat!(
 			"CuseInitResponse {\n",
+			"    device_name: \"test-device\",\n",
 			"    flags: CuseInitFlags {\n",
 			"        unrestricted_ioctl: true,\n",
 			"    },\n",

@@ -16,8 +16,6 @@
 
 use crate::Version;
 use crate::io::{self, ServerRecvError as RecvError};
-use crate::io::decode::RequestBuf;
-use crate::io::encode::{AsyncSendOnce, SyncSendOnce};
 use crate::protocol::cuse_init::{
 	CuseDeviceName,
 	CuseInitFlags,
@@ -25,7 +23,6 @@ use crate::protocol::cuse_init::{
 	CuseInitResponse,
 };
 use crate::server::{CuseRequest, CuseRequestBuilder, ServerError};
-use crate::server::connection::negotiate_version;
 
 pub struct CuseConnectionBuilder<'a, S> {
 	socket: S,
@@ -76,13 +73,14 @@ impl<S> CuseConnectionBuilder<'_, S> {
 
 impl<S: io::CuseServerSocket> CuseConnectionBuilder<'_, S> {
 	pub fn build(self) -> Result<CuseConnection<S>, ServerError<S::Error>> {
+		let device_name = self.device_name;
 		let dev_major = self.dev_major;
 		let dev_minor = self.dev_minor;
 		let max_read = self.max_read;
 		let max_write = self.max_write;
 		let flags = self.flags;
-		CuseConnection::new(self.socket, self.device_name, |_request| {
-			let mut reply = CuseInitResponse::new();
+		CuseConnection::new(self.socket, |_request| {
+			let mut reply = CuseInitResponse::new(device_name);
 			reply.set_dev_major(dev_major);
 			reply.set_dev_minor(dev_minor);
 			reply.set_max_read(max_read);
@@ -97,13 +95,14 @@ impl<S: io::AsyncCuseServerSocket> CuseConnectionBuilder<'_, S> {
 	pub async fn build_async(
 		self,
 	) -> Result<AsyncCuseConnection<S>, ServerError<S::Error>> {
+		let device_name = self.device_name;
 		let dev_major = self.dev_major;
 		let dev_minor = self.dev_minor;
 		let max_read = self.max_read;
 		let max_write = self.max_write;
 		let flags = self.flags;
-		AsyncCuseConnection::new(self.socket, self.device_name, |_request| {
-			let mut reply = CuseInitResponse::new();
+		AsyncCuseConnection::new(self.socket, |_request| {
+			let mut reply = CuseInitResponse::new(device_name);
 			reply.set_dev_major(dev_major);
 			reply.set_dev_minor(dev_minor);
 			reply.set_max_read(max_read);
@@ -120,12 +119,11 @@ pub struct CuseConnection<S> {
 }
 
 impl<S: io::CuseServerSocket> CuseConnection<S> {
-	pub fn new(
-		socket: S,
-		device_name: &CuseDeviceName,
-		init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse,
+	pub fn new<'a>(
+		mut socket: S,
+		init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse<'a>,
 	) -> Result<Self, ServerError<S::Error>> {
-		let init_reply = Self::handshake(&socket, device_name, init_fn)?;
+		let init_reply = super::cuse_init(&mut socket, init_fn)?;
 		Ok(Self {
 			socket,
 			version: init_reply.version(),
@@ -134,30 +132,6 @@ impl<S: io::CuseServerSocket> CuseConnection<S> {
 
 	pub(crate) fn socket(&self) -> &S {
 		&self.socket
-	}
-
-	fn handshake(
-		socket: &S,
-		device_name: &CuseDeviceName,
-		mut init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse,
-	) -> Result<CuseInitResponse, ServerError<S::Error>> {
-		let mut buf = io::ArrayBuffer::new();
-		let buf = buf.borrow_mut();
-
-		loop {
-			let recv = socket.recv(buf)?;
-			let (reply, request_id, ok) = handshake(&buf, recv, &mut init_fn)?;
-
-			reply.encode(
-				SyncSendOnce::new(socket),
-				request_id,
-				if ok { Some(device_name.as_bytes()) } else { None },
-			)?;
-
-			if ok {
-				return Ok(reply);
-			}
-		}
 	}
 }
 
@@ -199,40 +173,15 @@ pub struct AsyncCuseConnection<S> {
 }
 
 impl<S: io::AsyncCuseServerSocket> AsyncCuseConnection<S> {
-	pub async fn new(
-		socket: S,
-		device_name: &CuseDeviceName,
-		init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse,
+	pub async fn new<'a>(
+		mut socket: S,
+		init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse<'a>,
 	) -> Result<Self, ServerError<S::Error>> {
-		let init_reply = Self::handshake(&socket, device_name, init_fn).await?;
+		let init_reply = super::cuse_init_async(&mut socket, init_fn).await?;
 		Ok(Self {
 			socket,
 			version: init_reply.version(),
 		})
-	}
-
-	async fn handshake(
-		socket: &S,
-		device_name: &CuseDeviceName,
-		mut init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse,
-	) -> Result<CuseInitResponse, ServerError<S::Error>> {
-		let mut buf = io::ArrayBuffer::new();
-		let buf = buf.borrow_mut();
-
-		loop {
-			let recv = socket.recv(buf).await?;
-			let (reply, req_id, done) = handshake(&buf, recv, &mut init_fn)?;
-
-			reply.encode(
-				AsyncSendOnce::new(socket),
-				req_id,
-				if done { Some(device_name.as_bytes()) } else { None },
-			).await?;
-
-			if done {
-				return Ok(reply);
-			}
-		}
 	}
 }
 
@@ -267,37 +216,4 @@ impl<S: io::AsyncCuseServerSocket> AsyncCuseConnection<S> {
 			.build(&buf[..recv_len])?;
 		Ok(Some(request))
 	}
-}
-
-fn handshake<E>(
-	recv_buf: &[u8],
-	recv_len: usize,
-	init_fn: &mut impl FnMut(&CuseInitRequest) -> CuseInitResponse,
-) -> Result<(CuseInitResponse, u64, bool), ServerError<E>> {
-	let v_latest = Version::LATEST;
-	let v_minor = v_latest.minor();
-
-	let request_buf = RequestBuf::new(&recv_buf[..recv_len])?;
-	let init_request = CuseInitRequest::from_cuse_request(&CuseRequest {
-		buf: request_buf,
-		version_minor: v_minor,
-	})?;
-
-	let mut done = false;
-	let init_reply = match negotiate_version(init_request.version()) {
-		Some(version) => {
-			let mut init_reply = init_fn(&init_request);
-			init_reply.set_version(version);
-			done = true;
-			init_reply
-		},
-		None => {
-			let mut init_reply = CuseInitResponse::new();
-			init_reply.set_version(v_latest);
-			init_reply
-		},
-	};
-
-	let request_id = request_buf.header().unique;
-	Ok((init_reply, request_id, done))
 }

@@ -140,26 +140,26 @@ impl fmt::Debug for CuseInitRequest<'_> {
 /// Response type for [`CuseHandlers::cuse_init`].
 ///
 /// [`CuseHandlers::cuse_init`]: ../../trait.CuseHandlers.html#method.cuse_init
-pub struct CuseInitResponse {
+pub struct CuseInitResponse<'a> {
 	raw: fuse_kernel::cuse_init_out,
 	flags: CuseInitFlags,
+	device_name: Option<&'a CuseDeviceName>,
 }
 
-impl CuseInitResponse {
-	pub fn new() -> CuseInitResponse {
-		Self {
-			raw: fuse_kernel::cuse_init_out {
-				major: 0,
-				minor: 0,
-				unused: 0,
-				flags: 0,
-				max_read: 0,
-				max_write: 0,
-				dev_major: 0,
-				dev_minor: 0,
-				spare: [0; 10],
-			},
+impl<'a> CuseInitResponse<'a> {
+	pub fn new(device_name: &'a CuseDeviceName) -> CuseInitResponse<'a> {
+		CuseInitResponse {
+			raw: fuse_kernel::cuse_init_out::zeroed(),
 			flags: CuseInitFlags::new(),
+			device_name: Some(device_name),
+		}
+	}
+
+	pub(crate) fn new_nameless() -> CuseInitResponse<'static> {
+		CuseInitResponse {
+			raw: fuse_kernel::cuse_init_out::zeroed(),
+			flags: CuseInitFlags::new(),
+			device_name: None,
 		}
 	}
 
@@ -211,11 +211,17 @@ impl CuseInitResponse {
 	pub fn set_dev_minor(&mut self, dev_minor: u32) {
 		self.raw.dev_minor = dev_minor;
 	}
+
+	response_send_funcs!();
 }
 
-impl fmt::Debug for CuseInitResponse {
+impl fmt::Debug for CuseInitResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("CuseInitResponse")
+		let mut dbg = fmt.debug_struct("CuseInitResponse");
+		if let Some(device_name) = self.device_name {
+			dbg.field("device_name", &device_name);
+		}
+		dbg
 			.field("flags", self.flags())
 			.field("max_read", &self.max_read())
 			.field("max_write", &self.max_write())
@@ -225,12 +231,11 @@ impl fmt::Debug for CuseInitResponse {
 	}
 }
 
-impl CuseInitResponse {
-	pub(crate) fn encode<S: encode::SendOnce>(
+impl CuseInitResponse<'_> {
+	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		request_id: u64,
-		maybe_device_name: Option<&[u8]>,
+		ctx: &crate::server::ResponseContext,
 	) -> S::Result {
 		let mut out = self.raw;
 		out.flags = self.flags.to_bits();
@@ -240,8 +245,8 @@ impl CuseInitResponse {
 				size_of::<fuse_kernel::cuse_init_out>(),
 			)
 		};
-		let enc = encode::ReplyEncoder::new(send, request_id);
-		match maybe_device_name {
+		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
+		match self.device_name.map(|n| n.as_bytes()) {
 			None => enc.encode_bytes(out_buf),
 			Some(device_name) => {
 				enc.encode_bytes_4(out_buf, b"DEVNAME=", device_name, b"\x00")
