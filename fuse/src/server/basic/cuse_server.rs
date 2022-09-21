@@ -15,7 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::io::{self, ServerSendError as SendError};
-use crate::server::{self, CuseConnection, CuseRequest, Reply, ServerError};
+use crate::server::{self, CuseConnection, CuseRequest, ErrorResponse, Reply, ServerError};
 use crate::server::basic::{
 	NoopServerHooks,
 	SendReply,
@@ -115,16 +115,12 @@ impl<S: io::CuseServerSocket> SendReply<S> for CuseReplySender<'_, S> {
 		self,
 		err: impl Into<crate::Error>,
 	) -> Result<SentReply<R>, SendError<S::Error>> {
-		let request_id = self.response_ctx.request_id;
-		match self.conn.reply_err(request_id, err.into()) {
-			Ok(()) => {
-				*self.sent_reply = true;
-				Ok(SentReply {
-					_phantom: core::marker::PhantomData,
-				})
-			},
-			Err(err) => Err(err),
-		}
+		let response = ErrorResponse::new(err.into());
+		response.send(self.conn.socket(), &self.response_ctx)?;
+		*self.sent_reply = true;
+		Ok(SentReply {
+			_phantom: core::marker::PhantomData,
+		})
 	}
 }
 
@@ -135,7 +131,6 @@ fn cuse_request_dispatch<S: io::CuseServerSocket>(
 	request: CuseRequest,
 ) -> Result<(), SendError<S::Error>> {
 	let header = request.header();
-	let request_id = header.request_id();
 	if let Some(hooks) = hooks {
 		hooks.request(header);
 	}
@@ -148,9 +143,10 @@ fn cuse_request_dispatch<S: io::CuseServerSocket>(
 		},
 	};
 
+	let response_ctx = request.response_context();
+
 	macro_rules! do_dispatch {
 		($req_type:ty, $handler:tt) => {{
-			let response_ctx = request.response_context();
 			match <$req_type>::from_cuse_request(&request) {
 				Ok(request) => {
 					let mut sent_reply = false;
@@ -163,7 +159,8 @@ fn cuse_request_dispatch<S: io::CuseServerSocket>(
 					if sent_reply {
 						handler_result?;
 					} else {
-						let err_result = conn.reply_err(request_id, crate::Error::EIO);
+						let response = ErrorResponse::new(crate::Error::EIO);
+						let err_result = response.send(conn.socket(), &response_ctx);
 						handler_result?;
 						err_result?;
 					}
@@ -173,7 +170,8 @@ fn cuse_request_dispatch<S: io::CuseServerSocket>(
 					if let Some(ref hooks) = hooks {
 						hooks.request_error(header, err);
 					}
-					conn.reply_err(request_id, crate::Error::EIO)
+					let response = ErrorResponse::new(crate::Error::EIO);
+					response.send(conn.socket(), &response_ctx)
 				},
 			}
 		}};
@@ -195,7 +193,8 @@ fn cuse_request_dispatch<S: io::CuseServerSocket>(
 				let req = server::UnknownRequest::from_cuse_request(&request);
 				hooks.unknown_request(&req);
 			}
-			conn.reply_err(request_id, crate::Error::UNIMPLEMENTED)
+			let response = ErrorResponse::new(crate::Error::UNIMPLEMENTED);
+			response.send(conn.socket(), &response_ctx)
 		},
 	}
 }

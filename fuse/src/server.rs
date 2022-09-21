@@ -30,8 +30,10 @@ pub use self::reply::Reply;
 
 use crate::Version;
 use crate::internal::fuse_kernel::fuse_in_header;
+use crate::io;
 use crate::io::{RequestError, ServerRecvError, ServerSendError};
 use crate::io::decode::{RequestDecoder, RequestBuf};
+use crate::io::encode;
 use crate::protocol::cuse_init::{CuseInitFlags, CuseInitResponse};
 use crate::protocol::fuse_init::{FuseInitFlags, FuseInitResponse};
 
@@ -321,5 +323,36 @@ impl fmt::Debug for UnknownRequest<'_> {
 			.field("header", &self.header())
 			.field("body", &format_args!("{:?}", self.body()))
 			.finish()
+	}
+}
+
+#[derive(Clone, Copy)]
+pub struct ErrorResponse {
+	error: crate::Error,
+}
+
+impl ErrorResponse {
+	pub fn new(error: crate::Error) -> ErrorResponse {
+		ErrorResponse { error }
+	}
+
+	pub fn send<S: io::ServerSocket>(
+		&self,
+		socket: &S,
+		response_ctx: &ResponseContext,
+	) -> Result<(), ServerSendError<S::Error>> {
+		let send = encode::SyncSendOnce::new(socket);
+		let enc = encode::ReplyEncoder::new(send, response_ctx.request_id);
+		enc.encode_error(self.error)
+	}
+
+	pub async fn send_async<S: io::AsyncServerSocket>(
+		&self,
+		socket: &S,
+		response_ctx: &crate::server::ResponseContext,
+	) -> Result<(), ServerSendError<S::Error>> {
+		let send = encode::AsyncSendOnce::new(socket);
+		let enc = encode::ReplyEncoder::new(send, response_ctx.request_id);
+		enc.encode_error(self.error).await
 	}
 }

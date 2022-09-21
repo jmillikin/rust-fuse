@@ -17,7 +17,7 @@
 use crate::Version;
 use crate::io::{self, ServerRecvError as RecvError};
 use crate::io::decode::RequestBuf;
-use crate::io::encode::{AsyncSendOnce, ReplyEncoder, SyncSendOnce};
+use crate::io::encode::{AsyncSendOnce, SyncSendOnce};
 use crate::protocol::fuse_init::{
 	FuseInitFlags,
 	FuseInitRequest,
@@ -136,17 +136,6 @@ impl<S: io::FuseServerSocket> FuseConnection<S> {
 			.build(&buf[..recv_len])?;
 		Ok(Some(request))
 	}
-
-	pub fn reply_err(
-		&self,
-		request_id: u64,
-		error: crate::Error,
-	) -> Result<(), io::SendError<S::Error>> {
-		let send = SyncSendOnce::new(&self.socket);
-		let enc = ReplyEncoder::new(send, request_id);
-		enc.encode_error(error)?;
-		Ok(())
-	}
 }
 
 pub struct AsyncFuseConnection<S> {
@@ -216,17 +205,6 @@ impl<S: io::AsyncFuseServerSocket> AsyncFuseConnection<S> {
 			.version(self.version)
 			.build(&buf[..recv_len])?;
 		Ok(Some(request))
-	}
-
-	pub async fn reply_err(
-		&self,
-		request_id: u64,
-		error: crate::Error,
-	) -> Result<(), io::SendError<S::Error>> {
-		let send = AsyncSendOnce::new(&self.socket);
-		let enc = ReplyEncoder::new(send, request_id);
-		enc.encode_error(error).await?;
-		Ok(())
 	}
 }
 
