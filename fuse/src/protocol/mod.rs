@@ -21,6 +21,7 @@ pub(crate) mod common;
 
 pub use self::common::XattrError;
 
+#[macro_use]
 mod prelude;
 
 #[path = "access/access.rs"]

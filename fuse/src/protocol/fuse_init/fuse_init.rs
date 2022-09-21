@@ -247,17 +247,6 @@ struct fuse_init_out_v7p5 {
 	max_write: u32,
 }
 
-impl encode::EncodeReply for FuseInitResponse {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		request_id: u64,
-		_version_minor: u32,
-	) -> S::Result {
-		self.encode(send, request_id)
-	}
-}
-
 impl FuseInitResponse {
 	pub(crate) fn encode<S: encode::SendOnce>(
 		&self,

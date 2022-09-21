@@ -94,7 +94,7 @@ impl<S, Handlers, Hooks> CuseServerBuilder<S, Handlers, Hooks> {
 
 struct CuseReplySender<'a, S> {
 	conn: &'a CuseConnection<S>,
-	request_id: u64,
+	response_ctx: crate::server::ResponseContext,
 	sent_reply: &'a mut bool,
 }
 
@@ -103,22 +103,20 @@ impl<S: io::CuseServerSocket> SendReply<S> for CuseReplySender<'_, S> {
 		self,
 		reply: &R,
 	) -> Result<SentReply<R>, SendError<S::Error>> {
-		match self.conn.reply_ok(self.request_id, reply) {
-			Ok(()) => {
-				*self.sent_reply = true;
-				Ok(SentReply {
-					_phantom: core::marker::PhantomData,
-				})
-			},
-			Err(err) => Err(err),
-		}
+		let socket = self.conn.socket();
+		reply.send(socket, self.response_ctx)?;
+		*self.sent_reply = true;
+		Ok(SentReply {
+			_phantom: core::marker::PhantomData,
+		})
 	}
 
 	fn err<R>(
 		self,
 		err: impl Into<crate::Error>,
 	) -> Result<SentReply<R>, SendError<S::Error>> {
-		match self.conn.reply_err(self.request_id, err.into()) {
+		let request_id = self.response_ctx.request_id;
+		match self.conn.reply_err(request_id, err.into()) {
 			Ok(()) => {
 				*self.sent_reply = true;
 				Ok(SentReply {
@@ -152,12 +150,13 @@ fn cuse_request_dispatch<S: io::CuseServerSocket>(
 
 	macro_rules! do_dispatch {
 		($req_type:ty, $handler:tt) => {{
+			let response_ctx = request.response_context();
 			match <$req_type>::from_cuse_request(&request) {
 				Ok(request) => {
 					let mut sent_reply = false;
 					let reply_sender = CuseReplySender {
 						conn,
-						request_id,
+						response_ctx,
 						sent_reply: &mut sent_reply,
 					};
 					let handler_result = handlers.$handler(ctx, &request, reply_sender);

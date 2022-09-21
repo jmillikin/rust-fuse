@@ -23,7 +23,7 @@ use crate::protocol::fuse_init::{
 	FuseInitRequest,
 	FuseInitResponse,
 };
-use crate::server::{FuseRequest, FuseRequestBuilder, Reply, ReplyInfo, ServerError};
+use crate::server::{FuseRequest, FuseRequestBuilder, ServerError};
 use crate::server::connection::negotiate_version;
 
 pub struct FuseConnectionBuilder<S> {
@@ -81,6 +81,10 @@ impl<S: io::FuseServerSocket> FuseConnection<S> {
 		})
 	}
 
+	pub(crate) fn socket(&self) -> &S {
+		&self.socket
+	}
+
 	fn handshake(
 		socket: &S,
 		mut init_fn: impl FnMut(&FuseInitRequest) -> FuseInitResponse,
@@ -131,21 +135,6 @@ impl<S: io::FuseServerSocket> FuseConnection<S> {
 			.version(self.version)
 			.build(&buf[..recv_len])?;
 		Ok(Some(request))
-	}
-
-	pub fn reply_ok(
-		&self,
-		request_id: u64,
-		reply: &impl Reply,
-	) -> Result<(), io::SendError<S::Error>> {
-		reply.send(
-			&self.socket,
-			ReplyInfo {
-				request_id,
-				version_minor: self.version.minor(),
-			},
-		)?;
-		Ok(())
 	}
 
 	pub fn reply_err(
@@ -227,21 +216,6 @@ impl<S: io::AsyncFuseServerSocket> AsyncFuseConnection<S> {
 			.version(self.version)
 			.build(&buf[..recv_len])?;
 		Ok(Some(request))
-	}
-
-	pub async fn reply_ok(
-		&self,
-		request_id: u64,
-		reply: &impl Reply,
-	) -> Result<(), io::SendError<S::Error>> {
-		reply.send_async(
-			&self.socket,
-			ReplyInfo {
-				request_id,
-				version_minor: self.version.minor(),
-			},
-		).await?;
-		Ok(())
 	}
 
 	pub async fn reply_err(

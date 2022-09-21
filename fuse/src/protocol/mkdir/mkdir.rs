@@ -101,6 +101,8 @@ impl<'a> MkdirResponse<'a> {
 	pub fn node_mut(&mut self) -> &mut Node {
 		Node::new_ref_mut(&mut self.raw)
 	}
+
+	response_send_funcs!();
 }
 
 impl fmt::Debug for MkdirResponse<'_> {
@@ -111,15 +113,14 @@ impl fmt::Debug for MkdirResponse<'_> {
 	}
 }
 
-impl encode::EncodeReply for MkdirResponse<'_> {
+impl MkdirResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		request_id: u64,
-		version_minor: u32,
+		ctx: &crate::server::ResponseContext,
 	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, request_id);
-		self.node().encode_entry(enc, version_minor)
+		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
+		self.node().encode_entry(enc, ctx.version_minor)
 	}
 }
 

@@ -94,7 +94,7 @@ impl<S, Handlers, Hooks> FuseServerBuilder<S, Handlers, Hooks> {
 
 struct FuseReplySender<'a, S> {
 	conn: &'a FuseConnection<S>,
-	request_id: u64,
+	response_ctx: crate::server::ResponseContext,
 	sent_reply: &'a mut bool,
 }
 
@@ -103,22 +103,20 @@ impl<S: io::FuseServerSocket> SendReply<S> for FuseReplySender<'_, S> {
 		self,
 		reply: &R,
 	) -> Result<SentReply<R>, SendError<S::Error>> {
-		match self.conn.reply_ok(self.request_id, reply) {
-			Ok(()) => {
-				*self.sent_reply = true;
-				Ok(SentReply {
-					_phantom: core::marker::PhantomData,
-				})
-			},
-			Err(err) => Err(err),
-		}
+		let socket = self.conn.socket();
+		reply.send(socket, self.response_ctx)?;
+		*self.sent_reply = true;
+		Ok(SentReply {
+			_phantom: core::marker::PhantomData,
+		})
 	}
 
 	fn err<R>(
 		self,
 		err: impl Into<crate::Error>,
 	) -> Result<SentReply<R>, SendError<S::Error>> {
-		match self.conn.reply_err(self.request_id, err.into()) {
+		let request_id = self.response_ctx.request_id;
+		match self.conn.reply_err(request_id, err.into()) {
 			Ok(()) => {
 				*self.sent_reply = true;
 				Ok(SentReply {
@@ -152,12 +150,13 @@ fn fuse_request_dispatch<S: io::FuseServerSocket>(
 
 	macro_rules! do_dispatch {
 		($req_type:ty, $handler:tt) => {{
+			let response_ctx = request.response_context();
 			match <$req_type>::from_fuse_request(&request) {
 				Ok(request) => {
 					let mut sent_reply = false;
 					let reply_sender = FuseReplySender {
 						conn,
-						request_id,
+						response_ctx,
 						sent_reply: &mut sent_reply,
 					};
 					let handler_result = handlers.$handler(ctx, &request, reply_sender);

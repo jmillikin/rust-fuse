@@ -19,15 +19,6 @@ use core::mem::size_of;
 use crate::internal::fuse_kernel;
 use crate::io;
 
-pub(crate) trait EncodeReply {
-	fn encode<S: SendOnce>(
-		&self,
-		send: S,
-		request_id: u64,
-		version_minor: u32,
-	) -> S::Result;
-}
-
 pub(crate) trait SendOnce {
 	type Result;
 

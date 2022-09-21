@@ -290,6 +290,8 @@ impl<'a> ReaddirResponse<'a> {
 			Ok(ReaddirEntry::new_ref_mut(&mut *dirent_ptr))
 		}
 	}
+
+	response_send_funcs!();
 }
 
 enum ReaddirBuf<'a, Dirent> {
@@ -522,14 +524,13 @@ impl fmt::Debug for ReaddirResponse<'_> {
 	}
 }
 
-impl encode::EncodeReply for ReaddirResponse<'_> {
+impl ReaddirResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		request_id: u64,
-		_version_minor: u32,
+		ctx: &crate::server::ResponseContext,
 	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, request_id);
+		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		match &self.buf {
 			ReaddirBuf::None => enc.encode_header_only(),
 			#[cfg(feature = "std")]

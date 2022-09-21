@@ -210,16 +210,15 @@ macro_rules! encode_response {
 	};
 	($response:expr, $opts:tt $(,)?) => {{
 		use crate::internal::testutil::EncodeRequestOpts;
-		use crate::io::encode::EncodeReply;
 
 		let request_id = 0;
 		let opts = encode_request_opts!($opts);
 		let socket = crate::internal::testutil::FakeSocket::new();
-		$response.encode(
-			encode::SyncSendOnce::new(&socket),
+		let response_ctx = crate::server::ResponseContext{
 			request_id,
-			opts.protocol_version().minor(),
-		).unwrap();
+			version_minor: opts.protocol_version().minor(),
+		};
+		$response.send(&socket, &response_ctx).unwrap();
 		socket.expect_write()
 	}};
 }

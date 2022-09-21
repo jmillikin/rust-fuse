@@ -122,7 +122,10 @@ impl<'a> OpenResponse<'a> {
 	pub fn flags_mut(&mut self) -> &mut OpenResponseFlags {
 		&mut self.flags
 	}
+
+	response_send_funcs!();
 }
+
 
 impl fmt::Debug for OpenResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -133,14 +136,13 @@ impl fmt::Debug for OpenResponse<'_> {
 	}
 }
 
-impl encode::EncodeReply for OpenResponse<'_> {
+impl OpenResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		request_id: u64,
-		_version_minor: u32,
+		ctx: &crate::server::ResponseContext,
 	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, request_id);
+		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		enc.encode_sized(&fuse_kernel::fuse_open_out {
 			fh: self.handle,
 			open_flags: self.flags.to_bits(),

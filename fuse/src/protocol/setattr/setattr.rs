@@ -165,6 +165,8 @@ impl<'a> SetattrResponse<'a> {
 		self.raw.attr_valid = cache_duration.as_secs();
 		self.raw.attr_valid_nsec = cache_duration.subsec_nanos();
 	}
+
+	response_send_funcs!();
 }
 
 impl fmt::Debug for SetattrResponse<'_> {
@@ -176,17 +178,16 @@ impl fmt::Debug for SetattrResponse<'_> {
 	}
 }
 
-impl encode::EncodeReply for SetattrResponse<'_> {
+impl SetattrResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		request_id: u64,
-		version_minor: u32,
+		ctx: &crate::server::ResponseContext,
 	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, request_id);
+		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 
 		// The `fuse_attr::blksize` field was added in FUSE v7.9.
-		if version_minor < 9 {
+		if ctx.version_minor < 9 {
 			let buf: &[u8] = unsafe {
 				slice::from_raw_parts(
 					(&self.raw as *const fuse_kernel::fuse_attr_out)

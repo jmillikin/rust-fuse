@@ -225,8 +225,6 @@ impl fmt::Debug for CuseInitResponse {
 	}
 }
 
-// Not an implementation of encode::EncodeReply because the device name
-// must be provided as a parameter.
 impl CuseInitResponse {
 	pub(crate) fn encode<S: encode::SendOnce>(
 		&self,

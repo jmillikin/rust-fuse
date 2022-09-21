@@ -53,3 +53,27 @@ pub(crate) fn try_node_id(raw: u64) -> Result<NodeId, io::RequestError> {
 		None => Err(io::RequestError::MissingNodeId),
 	}
 }
+
+macro_rules! response_send_funcs {
+	() => {
+		pub fn send<S: crate::io::ServerSocket>(
+			&self,
+			socket: &S,
+			response_ctx: &crate::server::ResponseContext,
+		) -> Result<(), crate::io::ServerSendError<S::Error>> {
+			use crate::io::encode::SyncSendOnce;
+			let send = SyncSendOnce::new(socket);
+			self.encode(send, response_ctx)
+		}
+
+		pub async fn send_async<S: crate::io::AsyncServerSocket>(
+			&self,
+			socket: &S,
+			response_ctx: &crate::server::ResponseContext,
+		) -> Result<(), crate::io::ServerSendError<S::Error>> {
+			use crate::io::encode::AsyncSendOnce;
+			let send = AsyncSendOnce::new(socket);
+			self.encode(send, response_ctx).await
+		}
+	};
+}

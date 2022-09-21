@@ -14,33 +14,22 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::io::{AsyncServerSocket, ServerSendError, ServerSocket};
+use crate::io::{ServerSendError, ServerSocket};
 
 pub trait Reply {
 	fn send<S: ServerSocket>(
 		&self,
 		socket: &S,
-		reply_info: ReplyInfo,
+		response_ctx: crate::server::ResponseContext,
 	) -> Result<(), ServerSendError<S::Error>>;
-
-	fn send_async<S: AsyncServerSocket>(
-		&self,
-		socket: &S,
-		reply_info: ReplyInfo,
-	) -> S::SendFuture;
 }
 
-pub struct ReplyInfo {
-	pub(super) request_id: u64,
-	pub(super) version_minor: u32,
-}
 
 mod impls {
-	use crate::io::encode::{self, EncodeReply};
-	use crate::io::{AsyncServerSocket, ServerSendError, ServerSocket};
+	use crate::io::{ServerSendError, ServerSocket};
 	use crate::protocol::*;
 
-	use super::{Reply, ReplyInfo};
+	use super::Reply;
 
 	macro_rules! impl_reply {
 		($t:ident) => {
@@ -48,25 +37,9 @@ mod impls {
 				fn send<S: ServerSocket>(
 					&self,
 					socket: &S,
-					reply_info: ReplyInfo,
+					response_ctx: crate::server::ResponseContext,
 				) -> Result<(), ServerSendError<S::Error>> {
-					self.encode(
-						encode::SyncSendOnce::new(socket),
-						reply_info.request_id,
-						reply_info.version_minor,
-					)
-				}
-
-				fn send_async<S: AsyncServerSocket>(
-					&self,
-					socket: &S,
-					reply_info: ReplyInfo,
-				) -> S::SendFuture {
-					self.encode(
-						encode::AsyncSendOnce::new(socket),
-						reply_info.request_id,
-						reply_info.version_minor,
-					)
+					self.send(socket, &response_ctx)
 				}
 			}
 		};

@@ -100,6 +100,8 @@ impl<'a> StatfsResponse<'a> {
 	pub fn set_max_filename_length(&mut self, max_filename_length: u32) {
 		self.raw.st.namelen = max_filename_length;
 	}
+
+	response_send_funcs!();
 }
 
 impl fmt::Debug for StatfsResponse<'_> {
@@ -117,15 +119,14 @@ impl fmt::Debug for StatfsResponse<'_> {
 	}
 }
 
-impl encode::EncodeReply for StatfsResponse<'_> {
+impl StatfsResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		request_id: u64,
-		version_minor: u32,
+		ctx: &crate::server::ResponseContext,
 	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, request_id);
-		if version_minor < 4 {
+		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
+		if ctx.version_minor < 4 {
 			let buf: &[u8] = unsafe {
 				slice::from_raw_parts(
 					(&self.raw as *const fuse_kernel::fuse_statfs_out)

@@ -78,6 +78,8 @@ impl<'a> LookupResponse<'a> {
 	pub fn node_mut(&mut self) -> &mut Node {
 		Node::new_ref_mut(&mut self.entry_out)
 	}
+
+	response_send_funcs!();
 }
 
 impl fmt::Debug for LookupResponse<'_> {
@@ -88,21 +90,20 @@ impl fmt::Debug for LookupResponse<'_> {
 	}
 }
 
-impl encode::EncodeReply for LookupResponse<'_> {
+impl LookupResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		request_id: u64,
-		version_minor: u32,
+		ctx: &crate::server::ResponseContext,
 	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, request_id);
+		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		// In early versions of FUSE, `fuse_entry_out::nodeid` was a required
 		// field and must be non-zero. FUSE v7.4 relaxed this so that a zero
 		// node ID was the same as returning ENOENT, but with a cache hint.
-		if self.entry_out.nodeid == 0 && version_minor < 4 {
+		if self.entry_out.nodeid == 0 && ctx.version_minor < 4 {
 			return enc.encode_error(crate::Error::NOT_FOUND);
 		}
-		self.node().encode_entry(enc, version_minor)
+		self.node().encode_entry(enc, ctx.version_minor)
 	}
 }
 

@@ -119,6 +119,8 @@ impl<'a> IoctlResponse<'a> {
 			},
 		}
 	}
+
+	response_send_funcs!();
 }
 
 impl fmt::Debug for IoctlResponse<'_> {
@@ -130,12 +132,11 @@ impl fmt::Debug for IoctlResponse<'_> {
 	}
 }
 
-impl encode::EncodeReply for IoctlResponse<'_> {
+impl IoctlResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		request_id: u64,
-		_version_minor: u32,
+		ctx: &crate::server::ResponseContext,
 	) -> S::Result {
 		todo!()
 		//w.append_sized(&self.raw);

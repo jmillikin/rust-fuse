@@ -103,6 +103,8 @@ impl<'a> GetlkResponse<'a> {
 	pub fn set_lock(&mut self, lock: Option<Lock>) {
 		self.lock = lock;
 	}
+
+	response_send_funcs!();
 }
 
 impl fmt::Debug for GetlkResponse<'_> {
@@ -113,12 +115,11 @@ impl fmt::Debug for GetlkResponse<'_> {
 	}
 }
 
-impl encode::EncodeReply for GetlkResponse<'_> {
+impl GetlkResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		request_id: u64,
-		_version_minor: u32,
+		ctx: &crate::server::ResponseContext,
 	) -> S::Result {
 		let lock = match self.lock {
 			None => fuse_kernel::fuse_file_lock {
@@ -144,9 +145,8 @@ impl encode::EncodeReply for GetlkResponse<'_> {
 				}
 			},
 		};
-		let enc = encode::ReplyEncoder::new(send, request_id);
+		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		enc.encode_sized(&fuse_kernel::fuse_lk_out { lk: lock })
 	}
 }
-
 // }}}

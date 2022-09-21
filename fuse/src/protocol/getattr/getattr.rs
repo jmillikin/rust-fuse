@@ -115,7 +115,10 @@ impl<'a> GetattrResponse<'a> {
 	pub fn attr_mut(&mut self) -> &mut NodeAttr {
 		NodeAttr::new_ref_mut(&mut self.raw.attr)
 	}
+
+	response_send_funcs!();
 }
+
 
 impl fmt::Debug for GetattrResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -126,17 +129,16 @@ impl fmt::Debug for GetattrResponse<'_> {
 	}
 }
 
-impl encode::EncodeReply for GetattrResponse<'_> {
+impl GetattrResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		request_id: u64,
-		version_minor: u32,
+		ctx: &crate::server::ResponseContext,
 	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, request_id);
+		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 
 		// The `fuse_attr::blksize` field was added in FUSE v7.9.
-		if version_minor < 9 {
+		if ctx.version_minor < 9 {
 			let buf: &[u8] = unsafe {
 				slice::from_raw_parts(
 					(&self.raw as *const fuse_kernel::fuse_attr_out)

@@ -26,7 +26,7 @@ mod reply;
 
 pub use self::cuse_connection::{CuseConnection, CuseConnectionBuilder};
 pub use self::fuse_connection::{FuseConnection, FuseConnectionBuilder};
-pub use self::reply::{Reply, ReplyInfo};
+pub use self::reply::Reply;
 
 use crate::Version;
 use crate::internal::fuse_kernel::fuse_in_header;
@@ -122,6 +122,12 @@ impl fmt::Debug for RequestHeader {
 	}
 }
 
+#[derive(Clone, Copy)]
+pub struct ResponseContext {
+	pub(crate) request_id: u64,
+	pub(crate) version_minor: u32,
+}
+
 pub struct CuseRequestBuilder {
 	init_flags: CuseInitFlags,
 	max_write: u32,
@@ -182,6 +188,13 @@ impl<'a> CuseRequest<'a> {
 
 	pub fn header(&self) -> &'a RequestHeader {
 		RequestHeader::new_ref(self.buf.header())
+	}
+
+	pub fn response_context(&self) -> ResponseContext {
+		ResponseContext {
+			request_id: self.header().request_id(),
+			version_minor: self.version_minor,
+		}
 	}
 }
 
@@ -245,6 +258,13 @@ impl<'a> FuseRequest<'a> {
 
 	pub fn header(&self) -> &'a RequestHeader {
 		RequestHeader::new_ref(self.buf.header())
+	}
+
+	pub fn response_context(&self) -> ResponseContext {
+		ResponseContext {
+			request_id: self.header().request_id(),
+			version_minor: self.version_minor,
+		}
 	}
 }
 

@@ -24,7 +24,7 @@ use crate::protocol::cuse_init::{
 	CuseInitRequest,
 	CuseInitResponse,
 };
-use crate::server::{CuseRequest, CuseRequestBuilder, Reply, ReplyInfo, ServerError};
+use crate::server::{CuseRequest, CuseRequestBuilder, ServerError};
 use crate::server::connection::negotiate_version;
 
 pub struct CuseConnectionBuilder<'a, S> {
@@ -132,6 +132,10 @@ impl<S: io::CuseServerSocket> CuseConnection<S> {
 		})
 	}
 
+	pub(crate) fn socket(&self) -> &S {
+		&self.socket
+	}
+
 	fn handshake(
 		socket: &S,
 		device_name: &CuseDeviceName,
@@ -186,21 +190,6 @@ impl<S: io::CuseServerSocket> CuseConnection<S> {
 			.version(self.version)
 			.build(&buf[..recv_len])?;
 		Ok(Some(request))
-	}
-
-	pub fn reply_ok(
-		&self,
-		request_id: u64,
-		reply: &impl Reply,
-	) -> Result<(), io::SendError<S::Error>> {
-		reply.send(
-			&self.socket,
-			ReplyInfo {
-				request_id,
-				version_minor: self.version.minor(),
-			},
-		)?;
-		Ok(())
 	}
 
 	pub fn reply_err(
@@ -288,21 +277,6 @@ impl<S: io::AsyncCuseServerSocket> AsyncCuseConnection<S> {
 			.version(self.version)
 			.build(&buf[..recv_len])?;
 		Ok(Some(request))
-	}
-
-	pub async fn reply_ok(
-		&self,
-		request_id: u64,
-		reply: &impl Reply,
-	) -> Result<(), io::SendError<S::Error>> {
-		reply.send_async(
-			&self.socket,
-			ReplyInfo {
-				request_id,
-				version_minor: self.version.minor(),
-			},
-		).await?;
-		Ok(())
 	}
 
 	pub async fn reply_err(
