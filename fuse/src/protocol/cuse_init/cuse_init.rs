@@ -163,6 +163,14 @@ impl<'a> CuseInitResponse<'a> {
 		}
 	}
 
+	pub(crate) fn drop_name(&self) -> CuseInitResponse<'static> {
+		CuseInitResponse {
+			raw: self.raw,
+			flags: self.flags,
+			device_name: None,
+		}
+	}
+
 	pub(crate) fn version(&self) -> Version {
 		Version::new(self.raw.major, self.raw.minor)
 	}

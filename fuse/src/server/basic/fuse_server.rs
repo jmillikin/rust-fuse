@@ -15,6 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::io::{self, ServerSendError as SendError};
+use crate::protocol::fuse_init::FuseInitResponse;
 use crate::server::{self, ErrorResponse, FuseConnection, FuseRequest, Reply, ServerError};
 use crate::server::basic::{
 	NoopServerHooks,
@@ -26,9 +27,16 @@ use crate::server::basic::{
 use crate::server::basic::fuse_handlers::FuseHandlers;
 
 pub struct FuseServer<S, Handlers, Hooks> {
-	conn: FuseConnection<S>,
+	socket: S,
+	init_response: FuseInitResponse,
 	handlers: Handlers,
 	hooks: Option<Hooks>,
+}
+
+impl<S, Handlers, Hooks> FuseServer<S, Handlers, Hooks> {
+	fn requests(&self) -> server::FuseRequests<S> {
+		server::FuseRequests::new(&self.socket, &self.init_response)
+	}
 }
 
 impl<S, Handlers, Hooks> FuseServer<S, Handlers, Hooks>
@@ -38,9 +46,10 @@ where
 	Hooks: ServerHooks,
 {
 	pub fn serve(&self, buf: &mut [u8]) -> Result<(), ServerError<S::Error>> {
-		while let Some(request) = self.conn.recv(buf)? {
+		let requests = self.requests();
+		while let Some(request) = requests.try_next(buf)? {
 			let result = fuse_request_dispatch(
-				&self.conn,
+				&self.socket,
 				&self.handlers,
 				self.hooks.as_ref(),
 				request,
@@ -48,7 +57,7 @@ where
 			match result {
 				Ok(()) => {},
 				Err(SendError::NotFound(_)) => {},
-				Err(SendError::Other(err)) => return Err(ServerError::SendError(err)),
+				Err(err) => return Err(err.into()),
 			};
 		}
 		Ok(())
@@ -85,7 +94,8 @@ impl<S, Handlers, Hooks> FuseServerBuilder<S, Handlers, Hooks> {
 
 	pub fn build(self) -> FuseServer<S, Handlers, Hooks> {
 		FuseServer {
-			conn: self.conn,
+			socket: self.conn.socket,
+			init_response: self.conn.init_response,
 			handlers: self.handlers,
 			hooks: self.hooks,
 		}
@@ -93,7 +103,7 @@ impl<S, Handlers, Hooks> FuseServerBuilder<S, Handlers, Hooks> {
 }
 
 struct FuseReplySender<'a, S> {
-	conn: &'a FuseConnection<S>,
+	socket: &'a S,
 	response_ctx: crate::server::ResponseContext,
 	sent_reply: &'a mut bool,
 }
@@ -103,8 +113,7 @@ impl<S: io::FuseServerSocket> SendReply<S> for FuseReplySender<'_, S> {
 		self,
 		reply: &R,
 	) -> Result<SentReply<R>, SendError<S::Error>> {
-		let socket = self.conn.socket();
-		reply.send(socket, self.response_ctx)?;
+		reply.send(self.socket, self.response_ctx)?;
 		*self.sent_reply = true;
 		Ok(SentReply {
 			_phantom: core::marker::PhantomData,
@@ -116,7 +125,7 @@ impl<S: io::FuseServerSocket> SendReply<S> for FuseReplySender<'_, S> {
 		err: impl Into<crate::Error>,
 	) -> Result<SentReply<R>, SendError<S::Error>> {
 		let response = ErrorResponse::new(err.into());
-		response.send(self.conn.socket(), &self.response_ctx)?;
+		response.send(self.socket, &self.response_ctx)?;
 		*self.sent_reply = true;
 		Ok(SentReply {
 			_phantom: core::marker::PhantomData,
@@ -125,7 +134,7 @@ impl<S: io::FuseServerSocket> SendReply<S> for FuseReplySender<'_, S> {
 }
 
 fn fuse_request_dispatch<S: io::FuseServerSocket>(
-	conn: &FuseConnection<S>,
+	socket: &S,
 	handlers: &impl FuseHandlers<S>,
 	hooks: Option<&impl ServerHooks>,
 	request: FuseRequest,
@@ -151,7 +160,7 @@ fn fuse_request_dispatch<S: io::FuseServerSocket>(
 				Ok(request) => {
 					let mut sent_reply = false;
 					let reply_sender = FuseReplySender {
-						conn,
+						socket,
 						response_ctx,
 						sent_reply: &mut sent_reply,
 					};
@@ -160,7 +169,7 @@ fn fuse_request_dispatch<S: io::FuseServerSocket>(
 						handler_result?;
 					} else {
 						let response = ErrorResponse::new(crate::Error::EIO);
-						let err_result = response.send(conn.socket(), &response_ctx);
+						let err_result = response.send(socket, &response_ctx);
 						handler_result?;
 						err_result?;
 					}
@@ -171,7 +180,7 @@ fn fuse_request_dispatch<S: io::FuseServerSocket>(
 						hooks.request_error(header, err);
 					}
 					let response = ErrorResponse::new(crate::Error::EIO);
-					response.send(conn.socket(), &response_ctx)
+					response.send(socket, &response_ctx)
 				},
 			}
 		}};
@@ -236,7 +245,7 @@ fn fuse_request_dispatch<S: io::FuseServerSocket>(
 				hooks.unknown_request(&req);
 			}
 			let response = ErrorResponse::new(crate::Error::UNIMPLEMENTED);
-			response.send(conn.socket(), &response_ctx)
+			response.send(socket, &response_ctx)
 		},
 	}
 }

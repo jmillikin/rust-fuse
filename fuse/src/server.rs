@@ -497,3 +497,119 @@ fn negotiate_version(
 		min(kernel.minor(), Version::LATEST.minor()),
 	))
 }
+
+pub struct CuseRequests<'a, S> {
+	socket: &'a S,
+	builder: CuseRequestBuilder,
+}
+
+impl<'a, S> CuseRequests<'a, S> {
+	pub fn new(
+		socket: &'a S,
+		init_response: &CuseInitResponse,
+	) -> Self {
+		Self {
+			socket,
+			builder: CuseRequestBuilder::from_init_response(init_response),
+		}
+	}
+}
+
+impl<S: io::CuseServerSocket> CuseRequests<'_, S> {
+	pub fn try_next<'a>(
+		&self,
+		buf: &'a mut [u8],
+	) -> Result<Option<CuseRequest<'a>>, ServerError<S::Error>> {
+		let recv_len = self.socket.recv(buf)?;
+		Ok(Some(self.builder.build(&buf[..recv_len])?))
+	}
+}
+
+pub struct AsyncCuseRequests<'a, S> {
+	socket: &'a S,
+	builder: CuseRequestBuilder,
+}
+
+impl<'a, S> AsyncCuseRequests<'a, S> {
+	pub fn new(
+		socket: &'a S,
+		init_response: &CuseInitResponse,
+	) -> Self {
+		Self {
+			socket,
+			builder: CuseRequestBuilder::from_init_response(init_response),
+		}
+	}
+}
+
+impl<S: io::AsyncCuseServerSocket> AsyncCuseRequests<'_, S> {
+	pub async fn try_next<'a>(
+		&self,
+		buf: &'a mut [u8],
+	) -> Result<Option<CuseRequest<'a>>, ServerError<S::Error>> {
+		let recv_len = self.socket.recv(buf).await?;
+		Ok(Some(self.builder.build(&buf[..recv_len])?))
+	}
+}
+
+pub struct FuseRequests<'a, S> {
+	socket: &'a S,
+	builder: FuseRequestBuilder,
+}
+
+impl<'a, S> FuseRequests<'a, S> {
+	pub fn new(
+		socket: &'a S,
+		init_response: &FuseInitResponse,
+	) -> Self {
+		Self {
+			socket,
+			builder: FuseRequestBuilder::from_init_response(init_response),
+		}
+	}
+}
+
+impl<S: io::FuseServerSocket> FuseRequests<'_, S> {
+	pub fn try_next<'a>(
+		&self,
+		buf: &'a mut [u8],
+	) -> Result<Option<FuseRequest<'a>>, ServerError<S::Error>> {
+		let recv_len = match self.socket.recv(buf) {
+			Ok(x) => x,
+			Err(ServerRecvError::ConnectionClosed(_)) => return Ok(None),
+			Err(err) => return Err(err.into()),
+		};
+		Ok(Some(self.builder.build(&buf[..recv_len])?))
+	}
+}
+
+pub struct AsyncFuseRequests<'a, S> {
+	socket: &'a S,
+	builder: FuseRequestBuilder,
+}
+
+impl<'a, S> AsyncFuseRequests<'a, S> {
+	pub fn new(
+		socket: &'a S,
+		init_response: &FuseInitResponse,
+	) -> Self {
+		Self {
+			socket,
+			builder: FuseRequestBuilder::from_init_response(init_response),
+		}
+	}
+}
+
+impl<S: io::AsyncFuseServerSocket> AsyncFuseRequests<'_, S> {
+	pub async fn try_next<'a>(
+		&self,
+		buf: &'a mut [u8],
+	) -> Result<Option<FuseRequest<'a>>, ServerError<S::Error>> {
+		let recv_len = match self.socket.recv(buf).await {
+			Ok(x) => x,
+			Err(ServerRecvError::ConnectionClosed(_)) => return Ok(None),
+			Err(err) => return Err(err.into()),
+		};
+		Ok(Some(self.builder.build(&buf[..recv_len])?))
+	}
+}

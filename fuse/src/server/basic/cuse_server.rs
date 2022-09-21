@@ -15,6 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::io::{self, ServerSendError as SendError};
+use crate::protocol::cuse_init::CuseInitResponse;
 use crate::server::{self, CuseConnection, CuseRequest, ErrorResponse, Reply, ServerError};
 use crate::server::basic::{
 	NoopServerHooks,
@@ -26,9 +27,16 @@ use crate::server::basic::{
 use crate::server::basic::cuse_handlers::CuseHandlers;
 
 pub struct CuseServer<S, Handlers, Hooks> {
-	conn: CuseConnection<S>,
+	socket: S,
+	init_response: CuseInitResponse<'static>,
 	handlers: Handlers,
 	hooks: Option<Hooks>,
+}
+
+impl<S, Handlers, Hooks> CuseServer<S, Handlers, Hooks> {
+	fn requests(&self) -> server::CuseRequests<S> {
+		server::CuseRequests::new(&self.socket, &self.init_response)
+	}
 }
 
 impl<S, Handlers, Hooks> CuseServer<S, Handlers, Hooks>
@@ -38,9 +46,10 @@ where
 	Hooks: ServerHooks,
 {
 	pub fn serve(&self, buf: &mut [u8]) -> Result<(), ServerError<S::Error>> {
-		while let Some(request) = self.conn.recv(buf)? {
+		let requests = self.requests();
+		while let Some(request) = requests.try_next(buf)? {
 			let result = cuse_request_dispatch(
-				&self.conn,
+				&self.socket,
 				&self.handlers,
 				self.hooks.as_ref(),
 				request,
@@ -48,7 +57,7 @@ where
 			match result {
 				Ok(()) => {},
 				Err(SendError::NotFound(_)) => {},
-				Err(SendError::Other(err)) => return Err(ServerError::SendError(err)),
+				Err(err) => return Err(err.into()),
 			};
 		}
 		Ok(())
@@ -85,7 +94,8 @@ impl<S, Handlers, Hooks> CuseServerBuilder<S, Handlers, Hooks> {
 
 	pub fn build(self) -> CuseServer<S, Handlers, Hooks> {
 		CuseServer {
-			conn: self.conn,
+			socket: self.conn.socket,
+			init_response: self.conn.init_response,
 			handlers: self.handlers,
 			hooks: self.hooks,
 		}
@@ -93,7 +103,7 @@ impl<S, Handlers, Hooks> CuseServerBuilder<S, Handlers, Hooks> {
 }
 
 struct CuseReplySender<'a, S> {
-	conn: &'a CuseConnection<S>,
+	socket: &'a S,
 	response_ctx: crate::server::ResponseContext,
 	sent_reply: &'a mut bool,
 }
@@ -103,8 +113,7 @@ impl<S: io::CuseServerSocket> SendReply<S> for CuseReplySender<'_, S> {
 		self,
 		reply: &R,
 	) -> Result<SentReply<R>, SendError<S::Error>> {
-		let socket = self.conn.socket();
-		reply.send(socket, self.response_ctx)?;
+		reply.send(self.socket, self.response_ctx)?;
 		*self.sent_reply = true;
 		Ok(SentReply {
 			_phantom: core::marker::PhantomData,
@@ -116,7 +125,7 @@ impl<S: io::CuseServerSocket> SendReply<S> for CuseReplySender<'_, S> {
 		err: impl Into<crate::Error>,
 	) -> Result<SentReply<R>, SendError<S::Error>> {
 		let response = ErrorResponse::new(err.into());
-		response.send(self.conn.socket(), &self.response_ctx)?;
+		response.send(self.socket, &self.response_ctx)?;
 		*self.sent_reply = true;
 		Ok(SentReply {
 			_phantom: core::marker::PhantomData,
@@ -125,7 +134,7 @@ impl<S: io::CuseServerSocket> SendReply<S> for CuseReplySender<'_, S> {
 }
 
 fn cuse_request_dispatch<S: io::CuseServerSocket>(
-	conn: &CuseConnection<S>,
+	socket: &S,
 	handlers: &impl CuseHandlers<S>,
 	hooks: Option<&impl ServerHooks>,
 	request: CuseRequest,
@@ -151,7 +160,7 @@ fn cuse_request_dispatch<S: io::CuseServerSocket>(
 				Ok(request) => {
 					let mut sent_reply = false;
 					let reply_sender = CuseReplySender {
-						conn,
+						socket,
 						response_ctx,
 						sent_reply: &mut sent_reply,
 					};
@@ -160,7 +169,7 @@ fn cuse_request_dispatch<S: io::CuseServerSocket>(
 						handler_result?;
 					} else {
 						let response = ErrorResponse::new(crate::Error::EIO);
-						let err_result = response.send(conn.socket(), &response_ctx);
+						let err_result = response.send(socket, &response_ctx);
 						handler_result?;
 						err_result?;
 					}
@@ -171,7 +180,7 @@ fn cuse_request_dispatch<S: io::CuseServerSocket>(
 						hooks.request_error(header, err);
 					}
 					let response = ErrorResponse::new(crate::Error::EIO);
-					response.send(conn.socket(), &response_ctx)
+					response.send(socket, &response_ctx)
 				},
 			}
 		}};
@@ -194,7 +203,7 @@ fn cuse_request_dispatch<S: io::CuseServerSocket>(
 				hooks.unknown_request(&req);
 			}
 			let response = ErrorResponse::new(crate::Error::UNIMPLEMENTED);
-			response.send(conn.socket(), &response_ctx)
+			response.send(socket, &response_ctx)
 		},
 	}
 }

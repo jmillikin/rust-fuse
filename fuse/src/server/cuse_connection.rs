@@ -14,15 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::Version;
-use crate::io::{self, ServerRecvError as RecvError};
+use crate::io;
 use crate::protocol::cuse_init::{
 	CuseDeviceName,
 	CuseInitFlags,
 	CuseInitRequest,
 	CuseInitResponse,
 };
-use crate::server::{CuseRequest, CuseRequestBuilder, ServerError};
+use crate::server::ServerError;
 
 pub struct CuseConnectionBuilder<'a, S> {
 	socket: S,
@@ -91,31 +90,9 @@ impl<S: io::CuseServerSocket> CuseConnectionBuilder<'_, S> {
 	}
 }
 
-impl<S: io::AsyncCuseServerSocket> CuseConnectionBuilder<'_, S> {
-	pub async fn build_async(
-		self,
-	) -> Result<AsyncCuseConnection<S>, ServerError<S::Error>> {
-		let device_name = self.device_name;
-		let dev_major = self.dev_major;
-		let dev_minor = self.dev_minor;
-		let max_read = self.max_read;
-		let max_write = self.max_write;
-		let flags = self.flags;
-		AsyncCuseConnection::new(self.socket, |_request| {
-			let mut reply = CuseInitResponse::new(device_name);
-			reply.set_dev_major(dev_major);
-			reply.set_dev_minor(dev_minor);
-			reply.set_max_read(max_read);
-			reply.set_max_write(max_write);
-			*reply.flags_mut() = flags;
-			reply
-		}).await
-	}
-}
-
 pub struct CuseConnection<S> {
-	socket: S,
-	version: Version,
+	pub(crate) socket: S,
+	pub(crate) init_response: CuseInitResponse<'static>,
 }
 
 impl<S: io::CuseServerSocket> CuseConnection<S> {
@@ -123,97 +100,10 @@ impl<S: io::CuseServerSocket> CuseConnection<S> {
 		mut socket: S,
 		init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse<'a>,
 	) -> Result<Self, ServerError<S::Error>> {
-		let init_reply = super::cuse_init(&mut socket, init_fn)?;
+		let init_response = super::cuse_init(&mut socket, init_fn)?;
 		Ok(Self {
 			socket,
-			version: init_reply.version(),
+			init_response: init_response.drop_name(),
 		})
-	}
-
-	pub(crate) fn socket(&self) -> &S {
-		&self.socket
-	}
-}
-
-impl<S> CuseConnection<S> {
-	pub fn version(&self) -> Version {
-		self.version
-	}
-
-	pub fn try_clone<Error>(
-		&self,
-		clone_socket: impl FnOnce(&S) -> Result<S, Error>,
-	) -> Result<Self, Error> {
-		Ok(Self {
-			socket: clone_socket(&self.socket)?,
-			version: self.version,
-		})
-	}
-}
-
-impl<S: io::CuseServerSocket> CuseConnection<S> {
-	pub fn recv<'a>(
-		&self,
-		buf: &'a mut [u8],
-	) -> Result<Option<CuseRequest<'a>>, ServerError<S::Error>> {
-		let recv_len = match self.socket.recv(buf) {
-			Ok(x) => x,
-			Err(err) => return Err(ServerError::from(err)),
-		};
-		let request = CuseRequestBuilder::new()
-			.version(self.version)
-			.build(&buf[..recv_len])?;
-		Ok(Some(request))
-	}
-}
-
-pub struct AsyncCuseConnection<S> {
-	socket: S,
-	version: Version,
-}
-
-impl<S: io::AsyncCuseServerSocket> AsyncCuseConnection<S> {
-	pub async fn new<'a>(
-		mut socket: S,
-		init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse<'a>,
-	) -> Result<Self, ServerError<S::Error>> {
-		let init_reply = super::cuse_init_async(&mut socket, init_fn).await?;
-		Ok(Self {
-			socket,
-			version: init_reply.version(),
-		})
-	}
-}
-
-impl<S> AsyncCuseConnection<S> {
-	pub fn version(&self) -> Version {
-		self.version
-	}
-
-	pub fn try_clone<Error>(
-		&self,
-		clone_socket: impl FnOnce(&S) -> Result<S, Error>,
-	) -> Result<Self, Error> {
-		Ok(Self {
-			socket: clone_socket(&self.socket)?,
-			version: self.version,
-		})
-	}
-}
-
-impl<S: io::AsyncCuseServerSocket> AsyncCuseConnection<S> {
-	pub async fn recv<'a>(
-		&self,
-		buf: &'a mut [u8],
-	) -> Result<Option<CuseRequest<'a>>, ServerError<S::Error>> {
-		let recv_len = match self.socket.recv(buf).await {
-			Ok(x) => x,
-			Err(RecvError::ConnectionClosed(_)) => return Ok(None),
-			Err(RecvError::Other(err)) => return Err(ServerError::RecvError(err)),
-		};
-		let request = CuseRequestBuilder::new()
-			.version(self.version)
-			.build(&buf[..recv_len])?;
-		Ok(Some(request))
 	}
 }
