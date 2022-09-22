@@ -14,5 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-mod buffer;
-pub(crate) use self::buffer::ArrayBuffer;
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ResponseError {
+}

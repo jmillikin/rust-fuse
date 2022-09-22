@@ -24,6 +24,7 @@ use std::slice;
 use crate::Version;
 use crate::internal::fuse_kernel;
 use crate::io;
+use crate::server;
 
 pub(crate) struct MessageBuilder {
 	header: Option<fuse_kernel::fuse_in_header>,
@@ -124,20 +125,20 @@ impl FakeSocket {
 	}
 }
 
-impl io::ServerSocket for FakeSocket {
+impl server::io::Socket for FakeSocket {
 	type Error = std::io::Error;
 
 	fn recv(
 		&self,
 		_buf: &mut [u8],
-	) -> Result<usize, io::ServerRecvError<Self::Error>> {
+	) -> Result<usize, server::io::RecvError<Self::Error>> {
 		unimplemented!()
 	}
 
 	fn send(
 		&self,
 		buf: &[u8],
-	) -> Result<(), io::ServerSendError<Self::Error>> {
+	) -> Result<(), server::io::SendError<Self::Error>> {
 		if self.write.borrow().is_some() {
 			panic!("expected exactly one write to FakeSocket");
 		}
@@ -148,7 +149,7 @@ impl io::ServerSocket for FakeSocket {
 	fn send_vectored<const N: usize>(
 		&self,
 		bufs: &[&[u8]; N],
-	) -> Result<(), io::ServerSendError<Self::Error>> {
+	) -> Result<(), server::io::SendError<Self::Error>> {
 		let mut vec = Vec::new();
 		for buf in bufs {
 			vec.extend(buf.to_vec());

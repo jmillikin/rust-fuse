@@ -28,9 +28,10 @@ pub(super) use std::ffi::{CStr, CString};
 pub(super) use std::time;
 
 pub(super) use crate::internal::fuse_kernel;
-pub(super) use crate::io;
-pub(super) use crate::io::decode::{self, RequestError};
-pub(super) use crate::io::encode;
+pub(super) use crate::server::io;
+pub(super) use crate::server::io::decode;
+pub(super) use crate::server::io::encode;
+pub(super) use crate::server::io::RequestError;
 pub(super) use crate::protocol::common::{
 	DebugBytesAsString,
 	DebugClosure,
@@ -56,22 +57,22 @@ pub(crate) fn try_node_id(raw: u64) -> Result<NodeId, io::RequestError> {
 
 macro_rules! response_send_funcs {
 	() => {
-		pub fn send<S: crate::io::ServerSocket>(
+		pub fn send<S: crate::server::io::Socket>(
 			&self,
 			socket: &S,
 			response_ctx: &crate::server::ResponseContext,
-		) -> Result<(), crate::io::ServerSendError<S::Error>> {
-			use crate::io::encode::SyncSendOnce;
+		) -> Result<(), crate::server::io::SendError<S::Error>> {
+			use crate::server::io::encode::SyncSendOnce;
 			let send = SyncSendOnce::new(socket);
 			self.encode(send, response_ctx)
 		}
 
-		pub async fn send_async<S: crate::io::AsyncServerSocket>(
+		pub async fn send_async<S: crate::server::io::AsyncSocket>(
 			&self,
 			socket: &S,
 			response_ctx: &crate::server::ResponseContext,
-		) -> Result<(), crate::io::ServerSendError<S::Error>> {
-			use crate::io::encode::AsyncSendOnce;
+		) -> Result<(), crate::server::io::SendError<S::Error>> {
+			use crate::server::io::encode::AsyncSendOnce;
 			let send = AsyncSendOnce::new(socket);
 			self.encode(send, response_ctx).await
 		}

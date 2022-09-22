@@ -19,10 +19,10 @@ use core::mem::{self, MaybeUninit};
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::{env, ffi, fs, io, panic, path, sync, thread};
 
-use fuse::io::{ServerSendError as SendError, ServerRecvError as RecvError};
 use fuse::server;
 use fuse::server::cuse_rpc;
 use fuse::server::fuse_rpc;
+use fuse::server::io::{SendError, RecvError};
 
 #[cfg(target_os = "linux")]
 pub use linux_errno as ErrorCode;
@@ -44,7 +44,7 @@ impl server::ServerHooks for PrintHooks {
 	fn request_error(
 		&self,
 		header: &fuse::server::RequestHeader,
-		err: fuse::io::RequestError,
+		err: server::io::RequestError,
 	) {
 		println!("\n[request_error]\n{:#?}", header);
 		println!("{:#?}", err);
@@ -188,9 +188,9 @@ impl DevCuse {
 	}
 }
 
-impl fuse::io::CuseServerSocket for DevCuse {}
+impl server::io::CuseSocket for DevCuse {}
 
-impl fuse::io::ServerSocket for DevCuse {
+impl server::io::Socket for DevCuse {
 	type Error = io::Error;
 
 	fn send(&self, buf: &[u8]) -> Result<(), SendError<io::Error>> {

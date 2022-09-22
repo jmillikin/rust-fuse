@@ -18,10 +18,8 @@ use core::mem::{self, MaybeUninit};
 // use core::ffi::CStr;
 use std::ffi::CStr;
 
-use fuse::io::{
-	ServerRecvError as RecvError,
-	ServerSendError as SendError,
-};
+use fuse::server;
+use fuse::server::io::{RecvError, SendError};
 use linux_errno::{self as errno, Error};
 
 use crate::sys;
@@ -133,9 +131,9 @@ impl CuseServerSocket {
 	}
 }
 
-impl fuse::io::CuseServerSocket for CuseServerSocket {}
+impl server::io::CuseSocket for CuseServerSocket {}
 
-impl fuse::io::ServerSocket for CuseServerSocket {
+impl server::io::Socket for CuseServerSocket {
 	type Error = Error;
 
 	fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<Error>> {
@@ -179,9 +177,9 @@ impl FuseServerSocket {
 	}
 }
 
-impl fuse::io::FuseServerSocket for FuseServerSocket {}
+impl server::io::FuseSocket for FuseServerSocket {}
 
-impl fuse::io::ServerSocket for FuseServerSocket {
+impl server::io::Socket for FuseServerSocket {
 	type Error = Error;
 
 	fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<Error>> {

@@ -17,7 +17,7 @@
 use core::mem::size_of;
 
 use crate::internal::fuse_kernel;
-use crate::io;
+use crate::server::io;
 
 pub(crate) trait SendOnce {
 	type Result;
@@ -30,20 +30,20 @@ pub(crate) trait SendOnce {
 pub(crate) struct SyncSendOnce<'a, S>(&'a S);
 pub(crate) struct AsyncSendOnce<'a, S>(&'a S);
 
-impl<'a, S: io::ServerSocket> SyncSendOnce<'a, S> {
+impl<'a, S: io::Socket> SyncSendOnce<'a, S> {
 	pub(crate) fn new(socket: &'a S) -> Self {
 		Self(socket)
 	}
 }
 
-impl<'a, S: io::AsyncServerSocket> AsyncSendOnce<'a, S> {
+impl<'a, S: io::AsyncSocket> AsyncSendOnce<'a, S> {
 	pub(crate) fn new(socket: &'a S) -> Self {
 		Self(socket)
 	}
 }
 
-impl<S: io::ServerSocket> SendOnce for SyncSendOnce<'_, S> {
-	type Result = Result<(), io::ServerSendError<S::Error>>;
+impl<S: io::Socket> SendOnce for SyncSendOnce<'_, S> {
+	type Result = Result<(), io::SendError<S::Error>>;
 
 	fn send(self, buf: &[u8]) -> Self::Result {
 		self.0.send(buf)
@@ -54,7 +54,7 @@ impl<S: io::ServerSocket> SendOnce for SyncSendOnce<'_, S> {
 	}
 }
 
-impl<S: io::AsyncServerSocket> SendOnce for AsyncSendOnce<'_, S> {
+impl<S: io::AsyncSocket> SendOnce for AsyncSendOnce<'_, S> {
 	type Result = S::SendFuture;
 
 	fn send(self, buf: &[u8]) -> Self::Result {

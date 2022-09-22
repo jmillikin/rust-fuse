@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::io;
+use crate::io::ArrayBuffer;
 use crate::protocol;
 use crate::protocol::cuse_init::{
 	CuseDeviceName,
@@ -23,12 +23,13 @@ use crate::protocol::cuse_init::{
 	CuseInitResponse,
 };
 use crate::server;
+use crate::server::io;
 use crate::server::{CuseRequestBuilder, ErrorResponse, ServerError};
 
 #[cfg(feature = "std")]
 use crate::server::ServerHooks;
 
-pub use crate::io::CuseServerSocket as CuseSocket;
+pub use crate::server::io::CuseSocket as CuseSocket;
 
 pub struct CuseServerBuilder<S, H> {
 	socket: S,
@@ -153,7 +154,7 @@ where
 	H: CuseHandlers<S>,
 {
 	pub fn serve(&self) -> Result<(), ServerError<S::Error>> {
-		let mut buf = io::ArrayBuffer::new();
+		let mut buf = ArrayBuffer::new();
 		while let Some(request) = self.try_next(buf.borrow_mut())? {
 			let result = cuse_request_dispatch(
 				&self.socket,
@@ -164,7 +165,7 @@ where
 			);
 			match result {
 				Ok(()) => {},
-				Err(io::ServerSendError::NotFound(_)) => {},
+				Err(io::SendError::NotFound(_)) => {},
 				Err(err) => return Err(err.into()),
 			};
 		}
@@ -195,7 +196,7 @@ mod sealed {
 
 use sealed::{Sealed, Sent};
 
-pub type CuseResult<R, E> = Result<Sent<R>, io::ServerSendError<E>>;
+pub type CuseResult<R, E> = Result<Sent<R>, io::SendError<E>>;
 
 pub trait CuseResponse: Sealed {}
 
@@ -292,7 +293,7 @@ fn cuse_request_dispatch<S: CuseSocket>(
 	#[cfg(feature = "std")]
 	hooks: Option<&dyn ServerHooks>,
 	request: server::CuseRequest,
-) -> Result<(), io::ServerSendError<S::Error>> {
+) -> Result<(), io::SendError<S::Error>> {
 	let header = request.header();
 	#[cfg(feature = "std")]
 	if let Some(hooks) = hooks {

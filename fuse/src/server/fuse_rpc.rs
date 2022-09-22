@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::io;
+use crate::io::ArrayBuffer;
 use crate::protocol;
 use crate::protocol::fuse_init::{
 	FuseInitFlags,
@@ -22,12 +22,13 @@ use crate::protocol::fuse_init::{
 	FuseInitResponse,
 };
 use crate::server;
+use crate::server::io;
 use crate::server::{ErrorResponse, FuseRequestBuilder, ServerError};
 
 #[cfg(feature = "std")]
 use crate::server::ServerHooks;
 
-pub use crate::io::FuseServerSocket as FuseSocket;
+pub use crate::server::io::FuseSocket as FuseSocket;
 
 pub struct FuseServerBuilder<S, H> {
 	socket: S,
@@ -123,7 +124,7 @@ where
 	H: FuseHandlers<S>,
 {
 	pub fn serve(&self) -> Result<(), ServerError<S::Error>> {
-		let mut buf = io::ArrayBuffer::new();
+		let mut buf = ArrayBuffer::new();
 		while let Some(request) = self.try_next(buf.borrow_mut())? {
 			let result = fuse_request_dispatch(
 				&self.socket,
@@ -134,7 +135,7 @@ where
 			);
 			match result {
 				Ok(()) => {},
-				Err(io::ServerSendError::NotFound(_)) => {},
+				Err(io::SendError::NotFound(_)) => {},
 				Err(err) => return Err(err.into()),
 			};
 		}
@@ -147,7 +148,7 @@ where
 	) -> Result<Option<server::FuseRequest<'a>>, ServerError<S::Error>> {
 		let recv_len = match self.socket.recv(buf) {
 			Ok(x) => x,
-			Err(io::ServerRecvError::ConnectionClosed(_)) => return Ok(None),
+			Err(io::RecvError::ConnectionClosed(_)) => return Ok(None),
 			Err(err) => return Err(err.into()),
 		};
 		Ok(Some(self.req_builder.build(&buf[..recv_len])?))
@@ -169,7 +170,7 @@ mod sealed {
 
 use sealed::{Sealed, Sent};
 
-pub type FuseResult<R, E> = Result<Sent<R>, io::ServerSendError<E>>;
+pub type FuseResult<R, E> = Result<Sent<R>, io::SendError<E>>;
 
 pub trait FuseResponse: Sealed {}
 
@@ -297,7 +298,7 @@ fn fuse_request_dispatch<S: FuseSocket>(
 	#[cfg(feature = "std")]
 	hooks: Option<&dyn ServerHooks>,
 	request: server::FuseRequest,
-) -> Result<(), io::ServerSendError<S::Error>> {
+) -> Result<(), io::SendError<S::Error>> {
 	let header = request.header();
 	#[cfg(feature = "std")]
 	if let Some(hooks) = hooks {

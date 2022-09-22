@@ -19,24 +19,11 @@ use core::mem::{align_of, size_of};
 use core::slice::from_raw_parts;
 
 use crate::internal::fuse_kernel;
+use crate::server::io::RequestError;
 
 #[cfg(rust_fuse_test = "decode_test")]
 #[path = "decode_test.rs"]
 mod decode_test;
-
-#[non_exhaustive]
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum ReplyError {
-}
-
-#[non_exhaustive]
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum RequestError {
-	InvalidLockType,
-	MissingNodeId,
-	OpcodeMismatch,
-	UnexpectedEof,
-}
 
 #[derive(Copy, Clone)]
 pub(crate) union RequestBuf<'a> {

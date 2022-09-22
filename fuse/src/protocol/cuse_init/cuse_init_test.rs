@@ -16,8 +16,8 @@
 
 use crate::Version;
 use crate::internal::testutil::MessageBuilder;
-use crate::io::decode::RequestBuf;
 use crate::protocol::prelude::*;
+use crate::server::io::decode::RequestBuf;
 
 use super::{CuseDeviceName, CuseInitFlags, CuseInitRequest, CuseInitResponse};
 

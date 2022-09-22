@@ -1,0 +1,79 @@
+// Copyright 2021 John Millikin and the rust-fuse contributors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// SPDX-License-Identifier: Apache-2.0
+
+use core::future::Future;
+
+pub(crate) mod decode;
+pub(crate) mod encode;
+
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum RequestError {
+	InvalidLockType,
+	MissingNodeId,
+	OpcodeMismatch,
+	UnexpectedEof,
+}
+
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum RecvError<IoError> {
+	ConnectionClosed(IoError),
+	Other(IoError),
+}
+
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum SendError<IoError> {
+	NotFound(IoError),
+	Other(IoError),
+}
+
+pub trait Socket {
+	type Error;
+
+	fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<Self::Error>>;
+
+	fn send(&self, buf: &[u8]) -> Result<(), SendError<Self::Error>>;
+
+	fn send_vectored<const N: usize>(
+		&self,
+		bufs: &[&[u8]; N],
+	) -> Result<(), SendError<Self::Error>>;
+}
+
+pub trait CuseSocket: Socket {}
+
+pub trait FuseSocket: Socket {}
+
+pub trait AsyncSocket {
+	type Error;
+	type RecvFuture: Future<Output = Result<usize, RecvError<Self::Error>>>;
+	type SendFuture: Future<Output = Result<(), SendError<Self::Error>>>;
+
+	fn recv(&self, buf: &mut [u8]) -> Self::RecvFuture;
+
+	fn send(&self, buf: &[u8]) -> Self::SendFuture;
+
+	fn send_vectored<const N: usize>(
+		&self,
+		bufs: &[&[u8]; N],
+	) -> Self::SendFuture;
+}
+
+pub trait AsyncCuseSocket: AsyncSocket {}
+
+pub trait AsyncFuseSocket: AsyncSocket {}

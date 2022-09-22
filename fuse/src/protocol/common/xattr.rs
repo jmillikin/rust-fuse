@@ -16,7 +16,7 @@
 
 use core::{cmp, fmt};
 
-use crate::io::decode;
+use crate::server::io::decode;
 
 // XattrError {{{
 
