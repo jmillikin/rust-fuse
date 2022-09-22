@@ -1,8 +1,7 @@
 load("@rules_rust//rust:defs.bzl", "rust_test")
 
-def rust_fuse_protocol_module(interop_test_os = None):
+def rust_fuse_protocol_module(name, interop_test_os = None):
     files = native.glob(["*.rs"])
-    name = native.package_name()[len("fuse/protocol/"):]
 
     if name + "_test.rs" in files:
         rust_test(
