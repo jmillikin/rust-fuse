@@ -17,7 +17,7 @@
 macro_rules! bitflags_struct {
 	(
 		$( #[$struct_doc:meta] )*
-		pub struct $struct_name:ident(u32);
+		pub struct $struct_name:ident($bits:ident);
 
 		$(
 			$( #[$item_doc:meta] )*
@@ -28,7 +28,7 @@ macro_rules! bitflags_struct {
 		#[non_exhaustive]
 		#[derive(Copy, Clone, PartialEq, Eq)]
 		pub struct $struct_name {
-			bits: u32,
+			bits: $bits,
 			$(
 				$( #[$item_doc] )*
 				pub $item_name: bool,
@@ -46,7 +46,7 @@ macro_rules! bitflags_struct {
 				}
 			}
 
-			fn known_field(&self, mask: u32) -> Option<(&'static str, bool)> {
+			fn known_field(&self, mask: $bits) -> Option<(&'static str, bool)> {
 				match mask {
 					$(
 						$item_mask => Some((
@@ -59,7 +59,7 @@ macro_rules! bitflags_struct {
 			}
 
 			#[allow(dead_code)]
-			fn from_bits(bits: u32) -> $struct_name {
+			fn from_bits(bits: $bits) -> $struct_name {
 				Self {
 					bits,
 					$(
@@ -69,7 +69,8 @@ macro_rules! bitflags_struct {
 			}
 
 			#[allow(dead_code)]
-			fn to_bits(&self) -> u32 {
+			fn to_bits(&self) -> $bits {
+				#[allow(unused_mut)]
 				let mut out = 0;
 				$(
 					if self.$item_name {
@@ -83,8 +84,8 @@ macro_rules! bitflags_struct {
 		impl fmt::Debug for $struct_name {
 			fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 				let mut out = fmt.debug_struct(stringify!($struct_name));
-				for off in 0..32 {
-					let mask: u32 = 1 << off;
+				for off in bitflags_bits_range!($bits) {
+					let mask: $bits = 1 << off;
 					match self.known_field(mask) {
 						Some((name, is_set)) => {
 							out.field(name, &is_set);
@@ -105,4 +106,9 @@ macro_rules! bitflags_struct {
 			}
 		}
 	}
+}
+
+macro_rules! bitflags_bits_range {
+	(u32) => { 0..32 };
+	(u64) => { 0..64 };
 }
