@@ -17,16 +17,14 @@
 use std::panic;
 use std::sync::mpsc;
 
-mod fuse {
-	pub use ::fuse::*;
-	pub use ::fuse::io::*;
-	pub use ::fuse::protocol::*;
-	pub use ::fuse::server::fuse_rpc::*;
+use fuse::server::fuse_rpc;
 
-	pub use interop_testutil::ErrorCode;
-}
-
-use interop_testutil::{diff_str, fuse_interop_test, path_cstr};
+use interop_testutil::{
+	diff_str,
+	fuse_interop_test,
+	path_cstr,
+	ErrorCode,
+};
 
 struct TestFS {
 	requests: mpsc::Sender<String>,
@@ -34,19 +32,18 @@ struct TestFS {
 
 impl interop_testutil::TestFS for TestFS {}
 
-impl<S: fuse::ServerSocket> fuse::FuseHandlers<S> for TestFS {
+impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 	fn lookup(
 		&self,
-		_ctx: fuse::ServerContext,
+		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::LookupRequest,
-		send_reply: impl fuse::SendReply<S>,
-	) -> fuse::SendResult<fuse::LookupResponse, S::Error> {
+	) -> fuse_rpc::FuseResult<fuse::LookupResponse, S::Error> {
 		if request.parent_id() != fuse::ROOT_ID {
-			return send_reply.err(fuse::ErrorCode::ENOENT);
+			return call.respond_err(ErrorCode::ENOENT);
 		}
 		if request.name() != fuse::NodeName::from_bytes(b"access.txt").unwrap()
 		{
-			return send_reply.err(fuse::ErrorCode::ENOENT);
+			return call.respond_err(ErrorCode::ENOENT);
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -58,27 +55,25 @@ impl<S: fuse::ServerSocket> fuse::FuseHandlers<S> for TestFS {
 		attr.set_mode(fuse::FileType::Regular | 0o755);
 		attr.set_nlink(2);
 
-		send_reply.ok(&resp)
+		call.respond_ok(&resp)
 	}
 
 	fn access(
 		&self,
-		_ctx: fuse::ServerContext,
+		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::AccessRequest,
-		send_reply: impl fuse::SendReply<S>,
-	) -> fuse::SendResult<fuse::AccessResponse, S::Error> {
+	) -> fuse_rpc::FuseResult<fuse::AccessResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let resp = fuse::AccessResponse::new();
-		send_reply.ok(&resp)
+		call.respond_ok(&resp)
 	}
 
 	fn getattr(
 		&self,
-		_ctx: fuse::ServerContext,
+		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::GetattrRequest,
-		send_reply: impl fuse::SendReply<S>,
-	) -> fuse::SendResult<fuse::GetattrResponse, S::Error> {
+	) -> fuse_rpc::FuseResult<fuse::GetattrResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut resp = fuse::GetattrResponse::new();
@@ -86,7 +81,7 @@ impl<S: fuse::ServerSocket> fuse::FuseHandlers<S> for TestFS {
 		attr.set_mode(fuse::FileType::Regular | 0o755);
 		attr.set_nlink(2);
 
-		send_reply.ok(&resp)
+		call.respond_ok(&resp)
 	}
 }
 

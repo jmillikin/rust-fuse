@@ -44,18 +44,17 @@ const HELLO_TXT: HelloTxt = HelloTxt {};
 
 struct HelloWorldFS {}
 
-impl<S: fuse::ServerSocket> fuse_rpc::FuseHandlers<S> for HelloWorldFS {
+impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for HelloWorldFS {
 	fn lookup(
 		&self,
-		_ctx: fuse_rpc::ServerContext,
+		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::LookupRequest,
-		send_reply: impl fuse_rpc::SendReply<S>,
-	) -> fuse_rpc::SendResult<fuse::LookupResponse, S::Error> {
+	) -> fuse_rpc::FuseResult<fuse::LookupResponse, S::Error> {
 		if request.parent_id() != fuse::ROOT_ID {
-			return send_reply.err(fuse::Error::NOT_FOUND);
+			return call.respond_err(fuse::Error::NOT_FOUND);
 		}
 		if request.name() != HELLO_TXT.name() {
-			return send_reply.err(fuse::Error::NOT_FOUND);
+			return call.respond_err(fuse::Error::NOT_FOUND);
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -63,15 +62,14 @@ impl<S: fuse::ServerSocket> fuse_rpc::FuseHandlers<S> for HelloWorldFS {
 		node.set_id(HELLO_TXT.node_id());
 		HELLO_TXT.set_attr(node.attr_mut());
 
-		send_reply.ok(&resp)
+		call.respond_ok(&resp)
 	}
 
 	fn getattr(
 		&self,
-		_ctx: fuse_rpc::ServerContext,
+		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::GetattrRequest,
-		send_reply: impl fuse_rpc::SendReply<S>,
-	) -> fuse_rpc::SendResult<fuse::GetattrResponse, S::Error> {
+	) -> fuse_rpc::FuseResult<fuse::GetattrResponse, S::Error> {
 		let mut resp = fuse::GetattrResponse::new();
 		let attr = resp.attr_mut();
 
@@ -80,73 +78,69 @@ impl<S: fuse::ServerSocket> fuse_rpc::FuseHandlers<S> for HelloWorldFS {
 			attr.set_group_id(getgid());
 			attr.set_mode(fuse::FileType::Directory | 0o755);
 			attr.set_nlink(2);
-			return send_reply.ok(&resp);
+			return call.respond_ok(&resp);
 		}
 
 		if request.node_id() == HELLO_TXT.node_id() {
 			HELLO_TXT.set_attr(attr);
-			return send_reply.ok(&resp);
+			return call.respond_ok(&resp);
 		}
 
-		send_reply.err(fuse::Error::NOT_FOUND)
+		call.respond_err(fuse::Error::NOT_FOUND)
 	}
 
 	fn open(
 		&self,
-		_ctx: fuse_rpc::ServerContext,
+		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::OpenRequest,
-		send_reply: impl fuse_rpc::SendReply<S>,
-	) -> fuse_rpc::SendResult<fuse::OpenResponse, S::Error> {
+	) -> fuse_rpc::FuseResult<fuse::OpenResponse, S::Error> {
 		if request.node_id() != HELLO_TXT.node_id() {
-			return send_reply.err(fuse::Error::NOT_FOUND);
+			return call.respond_err(fuse::Error::NOT_FOUND);
 		}
 
 		let mut resp = fuse::OpenResponse::new();
 		resp.set_handle(1001);
-		send_reply.ok(&resp)
+		call.respond_ok(&resp)
 	}
 
 	fn read(
 		&self,
-		_ctx: fuse_rpc::ServerContext,
+		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::ReadRequest,
-		send_reply: impl fuse_rpc::SendReply<S>,
-	) -> fuse_rpc::SendResult<fuse::ReadResponse, S::Error> {
+	) -> fuse_rpc::FuseResult<fuse::ReadResponse, S::Error> {
 		if request.handle() != 1001 {
-			return send_reply.err(fuse::Error::INVALID_ARGUMENT);
+			return call.respond_err(fuse::Error::INVALID_ARGUMENT);
 		}
 
 		let resp = fuse::ReadResponse::from_bytes(HELLO_WORLD);
-		send_reply.ok(&resp)
+		call.respond_ok(&resp)
 	}
 
 	fn opendir(
 		&self,
-		_ctx: fuse_rpc::ServerContext,
+		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::OpendirRequest,
-		send_reply: impl fuse_rpc::SendReply<S>,
-	) -> fuse_rpc::SendResult<fuse::OpendirResponse, S::Error> {
+	) -> fuse_rpc::FuseResult<fuse::OpendirResponse, S::Error> {
 		if request.node_id() != fuse::ROOT_ID {
-			return send_reply.err(fuse::Error::NOT_FOUND);
+			return call.respond_err(fuse::Error::NOT_FOUND);
 		}
 
 		let mut resp = fuse::OpendirResponse::new();
 		resp.set_handle(1002);
-		send_reply.ok(&resp)
+		call.respond_ok(&resp)
 	}
 
 	fn readdir(
 		&self,
-		_ctx: fuse_rpc::ServerContext,
+		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::ReaddirRequest,
-		send_reply: impl fuse_rpc::SendReply<S>,
-	) -> fuse_rpc::SendResult<fuse::ReaddirResponse, S::Error> {
+	) -> fuse_rpc::FuseResult<fuse::ReaddirResponse, S::Error> {
 		if request.handle() != 1002 {
-			return send_reply.err(fuse::Error::INVALID_ARGUMENT);
+			return call.respond_err(fuse::Error::INVALID_ARGUMENT);
 		}
 
 		if request.cursor().is_some() {
-			return send_reply.ok(fuse::ReaddirResponse::EMPTY);
+			return call.respond_ok(fuse::ReaddirResponse::EMPTY);
 		}
 
 		let mut resp = fuse::ReaddirResponse::with_max_size(request.size());
@@ -155,21 +149,20 @@ impl<S: fuse::ServerSocket> fuse_rpc::FuseHandlers<S> for HelloWorldFS {
 		resp.add_entry(HELLO_TXT.node_id(), HELLO_TXT.name(), node_offset)
 			.set_file_type(fuse::FileType::Regular);
 
-		send_reply.ok(&resp)
+		call.respond_ok(&resp)
 	}
 
 	fn releasedir(
 		&self,
-		_ctx: fuse_rpc::ServerContext,
+		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::ReleasedirRequest,
-		send_reply: impl fuse_rpc::SendReply<S>,
-	) -> fuse_rpc::SendResult<fuse::ReleasedirResponse, S::Error> {
+	) -> fuse_rpc::FuseResult<fuse::ReleasedirResponse, S::Error> {
 		if request.handle() != 1002 {
-			return send_reply.err(fuse::Error::INVALID_ARGUMENT);
+			return call.respond_err(fuse::Error::INVALID_ARGUMENT);
 		}
 
 		let resp = fuse::ReleasedirResponse::new();
-		send_reply.ok(&resp)
+		call.respond_ok(&resp)
 	}
 }
 
@@ -218,11 +211,9 @@ fn main() {
 			.unwrap();
 	}
 
-	let conn = fuse::server::FuseConnectionBuilder::new(dev_fuse)
-		.build()
+	let srv = fuse_rpc::FuseServerBuilder::new(dev_fuse, handlers)
+		.fuse_init()
 		.unwrap();
-	let srv = fuse_rpc::FuseServerBuilder::new(conn, handlers).build();
 
-	let mut buf = fuse::io::ArrayBuffer::new();
-	srv.serve(buf.borrow_mut()).unwrap();
+	srv.serve().unwrap();
 }

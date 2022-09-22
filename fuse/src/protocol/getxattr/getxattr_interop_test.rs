@@ -17,16 +17,15 @@
 use std::sync::mpsc;
 use std::{ffi, panic};
 
-mod fuse {
-	pub use ::fuse::*;
-	pub use ::fuse::io::*;
-	pub use ::fuse::protocol::*;
-	pub use ::fuse::server::fuse_rpc::*;
+use fuse::server::fuse_rpc;
 
-	pub use interop_testutil::ErrorCode;
-}
-
-use interop_testutil::{diff_str, errno, fuse_interop_test, path_cstr};
+use interop_testutil::{
+	diff_str,
+	errno,
+	fuse_interop_test,
+	path_cstr,
+	ErrorCode,
+};
 
 struct TestFS {
 	requests: mpsc::Sender<String>,
@@ -34,19 +33,18 @@ struct TestFS {
 
 impl interop_testutil::TestFS for TestFS {}
 
-impl<S: fuse::ServerSocket> fuse::FuseHandlers<S> for TestFS {
+impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 	fn lookup(
 		&self,
-		_ctx: fuse::ServerContext,
+		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::LookupRequest,
-		send_reply: impl fuse::SendReply<S>,
-	) -> fuse::SendResult<fuse::LookupResponse, S::Error> {
+	) -> fuse_rpc::FuseResult<fuse::LookupResponse, S::Error> {
 		if request.parent_id() != fuse::ROOT_ID {
-			return send_reply.err(fuse::ErrorCode::ENOENT);
+			return call.respond_err(ErrorCode::ENOENT);
 		}
 		if request.name() != fuse::NodeName::from_bytes(b"xattrs.txt").unwrap()
 		{
-			return send_reply.err(fuse::ErrorCode::ENOENT);
+			return call.respond_err(ErrorCode::ENOENT);
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -58,15 +56,14 @@ impl<S: fuse::ServerSocket> fuse::FuseHandlers<S> for TestFS {
 		attr.set_mode(fuse::FileType::Regular | 0o644);
 		attr.set_nlink(1);
 
-		send_reply.ok(&resp)
+		call.respond_ok(&resp)
 	}
 
 	fn getxattr(
 		&self,
-		_ctx: fuse::ServerContext,
+		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::GetxattrRequest,
-		send_reply: impl fuse::SendReply<S>,
-	) -> fuse::SendResult<fuse::GetxattrResponse, S::Error> {
+	) -> fuse_rpc::FuseResult<fuse::GetxattrResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let xattr_small =
@@ -77,27 +74,27 @@ impl<S: fuse::ServerSocket> fuse::FuseHandlers<S> for TestFS {
 		if request.name() == xattr_small {
 			let mut resp = fuse::GetxattrResponse::new(request.size());
 			return match resp.try_set_value(b"small xattr value") {
-				Ok(_) => send_reply.ok(&resp),
+				Ok(_) => call.respond_ok(&resp),
 				Err(_) => {
 					// TODO: error should either have enough public info to let the caller
 					// return an appropriate error code, or ERANGE should be handled by
 					// the response dispatcher.
-					send_reply.err(fuse::ErrorCode::ERANGE)
+					call.respond_err(ErrorCode::ERANGE)
 				},
 			};
 		}
 
 		if request.name() == xattr_toobig {
-			return send_reply.err(fuse::ErrorCode::E2BIG);
+			return call.respond_err(ErrorCode::E2BIG);
 		}
 
 		#[cfg(target_os = "linux")]
-		let err = fuse::ErrorCode::ENODATA;
+		let err = ErrorCode::ENODATA;
 
 		#[cfg(target_os = "freebsd")]
-		let err = fuse::ErrorCode::ENOATTR;
+		let err = ErrorCode::ENOATTR;
 
-		send_reply.err(err)
+		call.respond_err(err)
 	}
 }
 

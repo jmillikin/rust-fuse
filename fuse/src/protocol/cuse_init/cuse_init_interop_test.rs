@@ -19,7 +19,11 @@ use std::sync::mpsc;
 
 use ::fuse::server::cuse_rpc;
 
-use interop_testutil::{cuse_interop_test, diff_str, path_cstr};
+use interop_testutil::{
+	cuse_interop_test,
+	diff_str,
+	path_cstr,
+};
 
 struct TestCharDev {
 	requests: mpsc::Sender<String>,

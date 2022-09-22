@@ -173,16 +173,15 @@ impl<'a> ReaddirResponse<'a> {
 	/// ```
 	/// use fuse::server::fuse_rpc;
 	/// # struct Handlers {}
-	/// # impl<S: fuse::ServerSocket> fuse_rpc::FuseHandlers<S> for Handlers {
+	/// # impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for Handlers {
 	/// fn readdir(
 	/// 	&self,
-	/// 	ctx: fuse_rpc::ServerContext,
+	/// 	call: fuse_rpc::FuseCall<S>,
 	/// 	request: &fuse::ReaddirRequest,
-	/// 	send_reply: impl fuse_rpc::SendReply<S>,
-	/// ) -> Result<fuse_rpc::SentReply<fuse::ReaddirResponse>, fuse::io::SendError<S::Error>> {
+	/// ) -> fuse_rpc::FuseResult<fuse::ReaddirResponse, S::Error> {
 	/// 	let mut response = fuse::ReaddirResponse::with_max_size(request.size());
 	/// 	/* fill in response */
-	/// 	send_reply.ok(&response)
+	/// 	call.respond_ok(&response)
 	/// }
 	/// # }
 	/// ```
@@ -212,17 +211,16 @@ impl<'a> ReaddirResponse<'a> {
 	/// use fuse::server::fuse_rpc;
 	/// # fn new_aligned_buf(_size: u32) -> Vec<u8> { Vec::new() }
 	/// # struct Handlers {}
-	/// # impl<S: fuse::ServerSocket> fuse_rpc::FuseHandlers<S> for Handlers {
+	/// # impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for Handlers {
 	/// fn readdir(
 	/// 	&self,
-	/// 	ctx: fuse_rpc::ServerContext,
+	/// 	call: fuse_rpc::FuseCall<S>,
 	/// 	request: &fuse::ReaddirRequest,
-	/// 	send_reply: impl fuse_rpc::SendReply<S>,
-	/// ) -> Result<fuse_rpc::SentReply<fuse::ReaddirResponse>, fuse::io::SendError<S::Error>> {
+	/// ) -> fuse_rpc::FuseResult<fuse::ReaddirResponse, S::Error> {
 	/// 	let mut buf = new_aligned_buf(request.size());
 	/// 	let mut response = fuse::ReaddirResponse::with_capacity(&mut buf);
 	/// 	/* fill in response */
-	/// 	send_reply.ok(&response)
+	/// 	call.respond_ok(&response)
 	/// }
 	/// # }
 	/// ```

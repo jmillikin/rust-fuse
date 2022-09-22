@@ -20,7 +20,7 @@ mod buffer;
 pub(crate) mod decode;
 pub(crate) mod encode;
 
-pub use self::buffer::ArrayBuffer;
+pub(crate) use self::buffer::ArrayBuffer;
 pub use self::decode::{ReplyError, RequestError};
 
 #[non_exhaustive]
@@ -36,8 +36,6 @@ pub enum ServerSendError<IoError> {
 	NotFound(IoError),
 	Other(IoError),
 }
-
-pub type SendError<E> = ServerSendError<E>;
 
 pub trait ServerSocket {
 	type Error;

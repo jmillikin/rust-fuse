@@ -17,16 +17,15 @@
 use std::panic;
 use std::sync::mpsc;
 
-mod fuse {
-	pub use ::fuse::*;
-	pub use ::fuse::io::*;
-	pub use ::fuse::protocol::*;
-	pub use ::fuse::server::fuse_rpc::*;
+use fuse::server::fuse_rpc;
 
-	pub use interop_testutil::ErrorCode;
-}
-
-use interop_testutil::{diff_str, errno, fuse_interop_test, path_cstr};
+use interop_testutil::{
+	diff_str,
+	errno,
+	fuse_interop_test,
+	path_cstr,
+	ErrorCode,
+};
 
 struct TestFS {
 	requests: mpsc::Sender<String>,
@@ -34,15 +33,14 @@ struct TestFS {
 
 impl interop_testutil::TestFS for TestFS {}
 
-impl<S: fuse::ServerSocket> fuse::FuseHandlers<S> for TestFS {
+impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 	fn lookup(
 		&self,
-		_ctx: fuse::ServerContext,
+		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::LookupRequest,
-		send_reply: impl fuse::SendReply<S>,
-	) -> fuse::SendResult<fuse::LookupResponse, S::Error> {
+	) -> fuse_rpc::FuseResult<fuse::LookupResponse, S::Error> {
 		if request.parent_id() != fuse::ROOT_ID {
-			return send_reply.err(fuse::ErrorCode::ENOENT);
+			return call.respond_err(ErrorCode::ENOENT);
 		}
 
 		let node_id;
@@ -54,7 +52,7 @@ impl<S: fuse::ServerSocket> fuse::FuseHandlers<S> for TestFS {
 		{
 			node_id = fuse::NodeId::new(3).unwrap();
 		} else {
-			return send_reply.err(fuse::ErrorCode::ENOENT);
+			return call.respond_err(ErrorCode::ENOENT);
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -66,15 +64,14 @@ impl<S: fuse::ServerSocket> fuse::FuseHandlers<S> for TestFS {
 		attr.set_mode(fuse::FileType::Regular | 0o644);
 		attr.set_nlink(1);
 
-		send_reply.ok(&resp)
+		call.respond_ok(&resp)
 	}
 
 	fn listxattr(
 		&self,
-		_ctx: fuse::ServerContext,
+		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::ListxattrRequest,
-		send_reply: impl fuse::SendReply<S>,
-	) -> fuse::SendResult<fuse::ListxattrResponse, S::Error> {
+	) -> fuse_rpc::FuseResult<fuse::ListxattrResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let xattr_small =
@@ -90,16 +87,16 @@ impl<S: fuse::ServerSocket> fuse::FuseHandlers<S> for TestFS {
 		};
 
 		if request.node_id() == fuse::NodeId::new(3).unwrap() {
-			return send_reply.err(fuse::ErrorCode::E2BIG);
+			return call.respond_err(ErrorCode::E2BIG);
 		}
 
 		if let Err(_) = resp.try_add_name(xattr_small) {
-			return send_reply.err(fuse::ErrorCode::ERANGE);
+			return call.respond_err(ErrorCode::ERANGE);
 		}
 		if let Err(_) = resp.try_add_name(xattr_toobig) {
-			return send_reply.err(fuse::ErrorCode::ERANGE);
+			return call.respond_err(ErrorCode::ERANGE);
 		}
-		send_reply.ok(&resp)
+		call.respond_ok(&resp)
 	}
 }
 

@@ -16,64 +16,120 @@
 
 use crate::io;
 use crate::protocol;
-use crate::protocol::fuse_init::FuseInitResponse;
-use crate::server;
-use crate::server::{ErrorResponse, FuseConnection, ServerError};
-
-pub use crate::server::reply::{
-	Reply,
-	SendReply,
-	SendResult,
-	SentReply,
+use crate::protocol::fuse_init::{
+	FuseInitFlags,
+	FuseInitRequest,
+	FuseInitResponse,
 };
+use crate::server;
+use crate::server::{ErrorResponse, FuseRequestBuilder, ServerError};
 
-pub struct ServerContext<'a> {
-	header: &'a server::RequestHeader,
-	hooks: Option<&'a dyn server::ServerHooks>,
-}
+#[cfg(feature = "std")]
+use crate::server::ServerHooks;
 
-impl<'a> ServerContext<'a> {
-	pub fn header(&self) -> &'a server::RequestHeader {
-		self.header
-	}
-}
+pub use crate::io::FuseServerSocket as FuseSocket;
 
-fn unhandled_request<S: io::ServerSocket, R>(
-	ctx: ServerContext,
-	send_reply: impl SendReply<S>,
-) -> Result<SentReply<R>, io::ServerSendError<S::Error>> {
-	if let Some(hooks) = ctx.hooks {
-		hooks.unhandled_request(ctx.header);
-	}
-	send_reply.err(crate::Error::UNIMPLEMENTED)
-}
-
-pub struct FuseServer<S, Handlers, Hooks> {
+pub struct FuseServerBuilder<S, H> {
 	socket: S,
-	init_response: FuseInitResponse,
-	handlers: Handlers,
-	hooks: Option<Hooks>,
+	handlers: H,
+	opts: FuseOptions,
+
+	#[cfg(feature = "std")]
+	hooks: Option<Box<dyn ServerHooks>>,
 }
 
-impl<S, Handlers, Hooks> FuseServer<S, Handlers, Hooks> {
-	fn requests(&self) -> server::FuseRequests<S> {
-		server::FuseRequests::new(&self.socket, &self.init_response)
+struct FuseOptions {
+	max_write: u32,
+	flags: FuseInitFlags,
+}
+
+impl<S, H> FuseServerBuilder<S, H> {
+	pub fn new(socket: S, handlers: H) -> Self {
+		Self {
+			socket,
+			handlers,
+			opts: FuseOptions {
+				max_write: 0,
+				flags: FuseInitFlags::new(),
+			},
+			#[cfg(feature = "std")]
+			hooks: None,
+		}
+	}
+
+	pub fn max_write(mut self, max_write: u32) -> Self {
+		self.opts.max_write = max_write;
+		self
+	}
+
+	#[cfg(feature = "std")]
+	pub fn server_hooks(mut self, hooks: Box<dyn ServerHooks>) -> Self {
+		self.hooks = Some(hooks);
+		self
 	}
 }
 
-impl<S, Handlers, Hooks> FuseServer<S, Handlers, Hooks>
+impl<S: FuseSocket, H> FuseServerBuilder<S, H> {
+	pub fn fuse_init(self) -> Result<FuseServer<S, H>, ServerError<S::Error>> {
+		self.fuse_init_fn(|_init_request, _init_response| {})
+	}
+
+	pub fn fuse_init_fn(
+		self,
+		mut init_fn: impl FnMut(&FuseInitRequest, &mut FuseInitResponse),
+	) -> Result<FuseServer<S, H>, ServerError<S::Error>> {
+		let opts = self.opts;
+		let mut socket = self.socket;
+		let init_response = server::fuse_init(&mut socket, |request| {
+			let mut response = opts.init_response(request);
+			init_fn(request, &mut response);
+			response
+		})?;
+
+		Ok(FuseServer {
+			socket: socket,
+			handlers: self.handlers,
+			req_builder: FuseRequestBuilder::from_init_response(&init_response),
+			#[cfg(feature = "std")]
+			hooks: self.hooks,
+		})
+	}
+}
+
+impl FuseOptions {
+	fn init_response<'a>(
+		&self,
+		_request: &FuseInitRequest,
+	) -> FuseInitResponse {
+		let mut response = FuseInitResponse::new();
+		response.set_max_write(self.max_write);
+		*response.flags_mut() = self.flags;
+		response
+	}
+}
+
+pub struct FuseServer<S, H> {
+	socket: S,
+	handlers: H,
+	req_builder: FuseRequestBuilder,
+
+	#[cfg(feature = "std")]
+	hooks: Option<Box<dyn ServerHooks>>,
+}
+
+impl<S, H> FuseServer<S, H>
 where
-	S: io::FuseServerSocket,
-	Handlers: FuseHandlers<S>,
-	Hooks: server::ServerHooks,
+	S: FuseSocket,
+	H: FuseHandlers<S>,
 {
-	pub fn serve(&self, buf: &mut [u8]) -> Result<(), ServerError<S::Error>> {
-		let requests = self.requests();
-		while let Some(request) = requests.try_next(buf)? {
+	pub fn serve(&self) -> Result<(), ServerError<S::Error>> {
+		let mut buf = io::ArrayBuffer::new();
+		while let Some(request) = self.try_next(buf.borrow_mut())? {
 			let result = fuse_request_dispatch(
 				&self.socket,
 				&self.handlers,
-				self.hooks.as_ref(),
+				#[cfg(feature = "std")]
+				self.hooks.as_ref().map(|h| h.as_ref()),
 				request,
 			);
 			match result {
@@ -84,115 +140,187 @@ where
 		}
 		Ok(())
 	}
-}
 
-pub struct FuseServerBuilder<S, Handlers, Hooks> {
-	conn: FuseConnection<S>,
-	handlers: Handlers,
-	hooks: Option<Hooks>,
-}
-
-mod internal {
-	pub enum NoopServerHooks {}
-
-	impl crate::server::ServerHooks for NoopServerHooks {}
-}
-
-impl<S, Handlers> FuseServerBuilder<S, Handlers, internal::NoopServerHooks> {
-	pub fn new(conn: FuseConnection<S>, handlers: Handlers) -> Self {
-		Self {
-			conn,
-			handlers,
-			hooks: None,
-		}
+	fn try_next<'a>(
+		&self,
+		buf: &'a mut [u8],
+	) -> Result<Option<server::FuseRequest<'a>>, ServerError<S::Error>> {
+		let recv_len = match self.socket.recv(buf) {
+			Ok(x) => x,
+			Err(io::ServerRecvError::ConnectionClosed(_)) => return Ok(None),
+			Err(err) => return Err(err.into()),
+		};
+		Ok(Some(self.req_builder.build(&buf[..recv_len])?))
 	}
 }
 
-impl<S, Handlers, Hooks> FuseServerBuilder<S, Handlers, Hooks> {
-	pub fn server_hooks<H>(
-		self,
-		hooks: H,
-	) -> FuseServerBuilder<S, Handlers, H> {
-		FuseServerBuilder {
-			conn: self.conn,
-			handlers: self.handlers,
-			hooks: Some(hooks),
-		}
+mod sealed {
+	pub struct Sent<T: ?Sized> {
+		pub(super) _phantom: core::marker::PhantomData<fn(&T)>,
 	}
 
-	pub fn build(self) -> FuseServer<S, Handlers, Hooks> {
-		FuseServer {
-			socket: self.conn.socket,
-			init_response: self.conn.init_response,
-			handlers: self.handlers,
-			hooks: self.hooks,
-		}
+	pub trait Sealed {
+		fn __internal_send<S: super::FuseSocket>(
+			&self,
+			call: super::FuseCall<S>,
+		) -> super::FuseResult<Self, S::Error>;
 	}
 }
 
-struct FuseReplySender<'a, S> {
+use sealed::{Sealed, Sent};
+
+pub type FuseResult<R, E> = Result<Sent<R>, io::ServerSendError<E>>;
+
+pub trait FuseResponse: Sealed {}
+
+macro_rules! impl_fuse_response {
+	( $( $t:ident $( , )? )+ ) => {
+		$(
+			impl FuseResponse for protocol::$t<'_> {}
+			impl Sealed for protocol::$t<'_> {
+				fn __internal_send<S: FuseSocket>(
+					&self,
+					call: FuseCall<S>,
+				) -> FuseResult<Self, S::Error> {
+					self.send(call.socket, &call.response_ctx)?;
+					call.sent()
+				}
+			}
+		)+
+	}
+}
+
+impl_fuse_response! {
+	AccessResponse,
+	CreateResponse,
+	FallocateResponse,
+	FlushResponse,
+	FsyncdirResponse,
+	FsyncResponse,
+	GetattrResponse,
+	GetlkResponse,
+	GetxattrResponse,
+	LinkResponse,
+	ListxattrResponse,
+	LookupResponse,
+	LseekResponse,
+	MkdirResponse,
+	MknodResponse,
+	OpendirResponse,
+	OpenResponse,
+	ReaddirResponse,
+	ReadlinkResponse,
+	ReadResponse,
+	ReleasedirResponse,
+	ReleaseResponse,
+	RemovexattrResponse,
+	RenameResponse,
+	RmdirResponse,
+	SetlkResponse,
+	SetxattrResponse,
+	StatfsResponse,
+	SymlinkResponse,
+	UnlinkResponse,
+	WriteResponse,
+}
+
+#[cfg(any(doc, feature = "unstable_bmap"))]
+impl_fuse_response! { BmapResponse }
+
+#[cfg(any(doc, feature = "unstable_ioctl"))]
+impl_fuse_response! { IoctlResponse }
+
+#[cfg(any(doc, feature = "unstable_setattr"))]
+impl_fuse_response! { SetattrResponse }
+
+pub struct FuseCall<'a, S> {
 	socket: &'a S,
+	header: &'a server::RequestHeader,
 	response_ctx: server::ResponseContext,
 	sent_reply: &'a mut bool,
+
+	#[cfg(feature = "std")]
+	hooks: Option<&'a dyn ServerHooks>,
 }
 
-impl<S: io::FuseServerSocket> SendReply<S> for FuseReplySender<'_, S> {
-	fn ok<R: Reply>(
-		self,
-		reply: &R,
-	) -> Result<SentReply<R>, io::ServerSendError<S::Error>> {
-		reply.send(self.socket, self.response_ctx)?;
+impl<S> FuseCall<'_, S> {
+	pub fn header(&self) -> &server::RequestHeader {
+		self.header
+	}
+
+	pub fn response_context(&self) -> server::ResponseContext {
+		self.response_ctx
+	}
+}
+
+impl<S: FuseSocket> FuseCall<'_, S> {
+	fn sent<T>(self) -> FuseResult<T, S::Error> {
 		*self.sent_reply = true;
-		Ok(SentReply {
+		Ok(Sent {
 			_phantom: core::marker::PhantomData,
 		})
 	}
+}
 
-	fn err<R>(
+impl<S: FuseSocket> FuseCall<'_, S> {
+	pub fn respond_ok<R: FuseResponse>(
+		self,
+		response: &R,
+	) -> FuseResult<R, S::Error> {
+		response.__internal_send(self)
+	}
+
+	pub fn respond_err<R>(
 		self,
 		err: impl Into<crate::Error>,
-	) -> Result<SentReply<R>, io::ServerSendError<S::Error>> {
+	) -> FuseResult<R, S::Error> {
 		let response = ErrorResponse::new(err.into());
 		response.send(self.socket, &self.response_ctx)?;
 		*self.sent_reply = true;
-		Ok(SentReply {
+		Ok(Sent {
 			_phantom: core::marker::PhantomData,
 		})
 	}
+
+	fn unimplemented<R>(self) -> FuseResult<R, S::Error> {
+		#[cfg(feature = "std")]
+		if let Some(hooks) = self.hooks {
+			hooks.unhandled_request(self.header);
+		}
+		self.respond_err(crate::Error::UNIMPLEMENTED)
+	}
 }
 
-fn fuse_request_dispatch<S: io::FuseServerSocket>(
+fn fuse_request_dispatch<S: FuseSocket>(
 	socket: &S,
 	handlers: &impl FuseHandlers<S>,
-	hooks: Option<&impl server::ServerHooks>,
+	#[cfg(feature = "std")]
+	hooks: Option<&dyn ServerHooks>,
 	request: server::FuseRequest,
 ) -> Result<(), io::ServerSendError<S::Error>> {
 	let header = request.header();
+	#[cfg(feature = "std")]
 	if let Some(hooks) = hooks {
 		hooks.request(header);
 	}
 
-	let ctx = ServerContext {
-		header,
-		hooks: match hooks {
-			None => None,
-			Some(x) => Some(x),
-		},
-	};
-
 	let response_ctx = request.response_context();
+
+	let mut sent_reply = false;
+	let call = FuseCall {
+		socket,
+		header,
+		response_ctx,
+		sent_reply: &mut sent_reply,
+		#[cfg(feature = "std")]
+		hooks,
+	};
 
 	macro_rules! do_dispatch {
 		($req_type:ty, $handler:tt) => {{
 			match <$req_type>::from_fuse_request(&request) {
 				Ok(request) => {
-					let mut sent_reply = false;
-					let reply_sender = FuseReplySender {
-						socket,
-						response_ctx,
-						sent_reply: &mut sent_reply,
-					};
-					let handler_result = handlers.$handler(ctx, &request, reply_sender);
+					let handler_result = handlers.$handler(call, &request);
 					if sent_reply {
 						handler_result?;
 					} else {
@@ -204,9 +332,11 @@ fn fuse_request_dispatch<S: io::FuseServerSocket>(
 					Ok(())
 				},
 				Err(err) => {
+					#[cfg(feature = "std")]
 					if let Some(ref hooks) = hooks {
 						hooks.request_error(header, err);
 					}
+					let _ = err;
 					let response = ErrorResponse::new(crate::Error::EIO);
 					response.send(socket, &response_ctx)
 				},
@@ -225,11 +355,13 @@ fn fuse_request_dispatch<S: io::FuseServerSocket>(
 		Op::FUSE_FLUSH => do_dispatch!(FlushRequest, flush),
 		Op::FUSE_FORGET | Op::FUSE_BATCH_FORGET => {
 			match ForgetRequest::from_fuse_request(&request) {
-				Ok(request) => handlers.forget(ctx, &request),
+				Ok(request) => handlers.forget(call, &request),
 				Err(err) => {
+					#[cfg(feature = "std")]
 					if let Some(ref hooks) = hooks {
 						hooks.request_error(header, err);
 					}
+					let _ = err;
 				},
 			};
 			Ok(())
@@ -268,6 +400,7 @@ fn fuse_request_dispatch<S: io::FuseServerSocket>(
 		Op::FUSE_UNLINK => do_dispatch!(UnlinkRequest, unlink),
 		Op::FUSE_WRITE => do_dispatch!(WriteRequest, write),
 		_ => {
+			#[cfg(feature = "std")]
 			if let Some(hooks) = hooks {
 				let req = server::UnknownRequest::from_fuse_request(&request);
 				hooks.unknown_request(&req);
@@ -293,336 +426,299 @@ fn fuse_request_dispatch<S: io::FuseServerSocket>(
 /// [`ServerResponseWriter`]: struct.ServerResponseWriter.html
 /// [`Error::UNIMPLEMENTED`]: crate::Error::UNIMPLEMENTED
 #[allow(unused_variables)]
-pub trait FuseHandlers<S: io::ServerSocket> {
+pub trait FuseHandlers<S: FuseSocket> {
 	fn access(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::AccessRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::AccessResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::AccessResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	#[cfg(any(doc, feature = "unstable_bmap"))]
 	fn bmap(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::BmapRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::BmapResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::BmapResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn create(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::CreateRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::CreateResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::CreateResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn fallocate(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::FallocateRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::FallocateResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::FallocateResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn flush(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::FlushRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::FlushResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::FlushResponse, S::Error> {
+		call.unimplemented()
 	}
 
-	fn forget(
-		&self,
-		ctx: ServerContext,
-		request: &protocol::ForgetRequest,
-	) {
-		if let Some(hooks) = ctx.hooks {
-			hooks.unhandled_request(ctx.header);
+	fn forget(&self, call: FuseCall<S>, request: &protocol::ForgetRequest) {
+		#[cfg(feature = "std")]
+		if let Some(hooks) = call.hooks {
+			hooks.unhandled_request(call.header);
 		}
 	}
 
 	fn fsync(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::FsyncRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::FsyncResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::FsyncResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn fsyncdir(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::FsyncdirRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::FsyncdirResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::FsyncdirResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn getattr(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::GetattrRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::GetattrResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::GetattrResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn getlk(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::GetlkRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::GetlkResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::GetlkResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn getxattr(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::GetxattrRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::GetxattrResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::GetxattrResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	#[cfg(any(doc, feature = "unstable_ioctl"))]
 	fn ioctl(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::IoctlRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::IoctlResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::IoctlResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn link(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::LinkRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::LinkResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::LinkResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn listxattr(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::ListxattrRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::ListxattrResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::ListxattrResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn lookup(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::LookupRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::LookupResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::LookupResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn lseek(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::LseekRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::LseekResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::LseekResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn mkdir(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::MkdirRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::MkdirResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::MkdirResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn mknod(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::MknodRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::MknodResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::MknodResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn open(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::OpenRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::OpenResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::OpenResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn opendir(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::OpendirRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::OpendirResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::OpendirResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn read(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::ReadRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::ReadResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::ReadResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn readdir(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::ReaddirRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::ReaddirResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::ReaddirResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn readlink(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::ReadlinkRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::ReadlinkResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::ReadlinkResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn release(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::ReleaseRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::ReleaseResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::ReleaseResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn releasedir(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::ReleasedirRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::ReleasedirResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::ReleasedirResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn removexattr(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::RemovexattrRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::RemovexattrResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::RemovexattrResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn rename(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::RenameRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::RenameResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::RenameResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn rmdir(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::RmdirRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::RmdirResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::RmdirResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	#[cfg(any(doc, feature = "unstable_setattr"))]
 	fn setattr(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::SetattrRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::SetattrResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::SetattrResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn setlk(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::SetlkRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::SetlkResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::SetlkResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn setxattr(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::SetxattrRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::SetxattrResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::SetxattrResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn statfs(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::StatfsRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::StatfsResponse>, io::ServerSendError<S::Error>> {
+	) -> FuseResult<protocol::StatfsResponse, S::Error> {
 		#[cfg(not(target_os = "freebsd"))]
 		{
-			unhandled_request(ctx, send_reply)
+			call.unimplemented()
 		}
 
 		#[cfg(target_os = "freebsd")]
 		{
-			if let Some(hooks) = ctx.hooks {
-				hooks.unhandled_request(ctx.header);
+			#[cfg(feature = "std")]
+			if let Some(hooks) = call.hooks {
+				hooks.unhandled_request(call.header);
 			}
 			let resp = protocol::StatfsResponse::new();
-			send_reply.ok(&resp)
+			call.respond_ok(&resp)
 		}
-
 	}
 
 	fn symlink(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::SymlinkRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::SymlinkResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::SymlinkResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn unlink(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::UnlinkRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::UnlinkResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::UnlinkResponse, S::Error> {
+		call.unimplemented()
 	}
 
 	fn write(
 		&self,
-		ctx: ServerContext,
+		call: FuseCall<S>,
 		request: &protocol::WriteRequest,
-		send_reply: impl SendReply<S>,
-	) -> Result<SentReply<protocol::WriteResponse>, io::ServerSendError<S::Error>> {
-		unhandled_request(ctx, send_reply)
+	) -> FuseResult<protocol::WriteResponse, S::Error> {
+		call.unimplemented()
 	}
 }

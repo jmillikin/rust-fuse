@@ -43,7 +43,7 @@ impl<'a, S: io::AsyncServerSocket> AsyncSendOnce<'a, S> {
 }
 
 impl<S: io::ServerSocket> SendOnce for SyncSendOnce<'_, S> {
-	type Result = Result<(), io::SendError<S::Error>>;
+	type Result = Result<(), io::ServerSendError<S::Error>>;
 
 	fn send(self, buf: &[u8]) -> Self::Result {
 		self.0.send(buf)

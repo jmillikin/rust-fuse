@@ -19,13 +19,8 @@ use core::cmp::min;
 use core::fmt;
 use core::mem::{size_of, transmute};
 
-mod fuse_connection;
-mod reply;
-
 pub mod cuse_rpc;
 pub mod fuse_rpc;
-
-pub use self::fuse_connection::{FuseConnection, FuseConnectionBuilder};
 
 use crate::Version;
 use crate::internal::fuse_kernel::fuse_in_header;

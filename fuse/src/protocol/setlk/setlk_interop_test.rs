@@ -17,17 +17,14 @@
 use std::panic;
 use std::sync::mpsc;
 
-mod fuse {
-	pub use ::fuse::*;
-	pub use ::fuse::io::*;
-	pub use ::fuse::protocol::*;
-	pub use ::fuse::protocol::fuse_init::*;
-	pub use ::fuse::server::fuse_rpc::*;
+use fuse::server::fuse_rpc;
 
-	pub use interop_testutil::ErrorCode;
-}
-
-use interop_testutil::{diff_str, fuse_interop_test, path_cstr};
+use interop_testutil::{
+	diff_str,
+	fuse_interop_test,
+	path_cstr,
+	ErrorCode,
+};
 
 struct TestFS {
 	requests: mpsc::Sender<String>,
@@ -35,28 +32,25 @@ struct TestFS {
 
 impl interop_testutil::TestFS for TestFS {
 	fn fuse_init(
-		&self,
 		_init_request: &fuse::FuseInitRequest,
-	) -> fuse::FuseInitResponse {
-		let mut resp = fuse::FuseInitResponse::new();
+		resp: &mut fuse::FuseInitResponse,
+	) {
 		resp.flags_mut().flock_locks = true;
 		resp.flags_mut().posix_locks = true;
-		resp
 	}
 }
 
-impl<S: fuse::ServerSocket> fuse::FuseHandlers<S> for TestFS {
+impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 	fn lookup(
 		&self,
-		_ctx: fuse::ServerContext,
+		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::LookupRequest,
-		send_reply: impl fuse::SendReply<S>,
-	) -> fuse::SendResult<fuse::LookupResponse, S::Error> {
+	) -> fuse_rpc::FuseResult<fuse::LookupResponse, S::Error> {
 		if request.parent_id() != fuse::ROOT_ID {
-			return send_reply.err(fuse::ErrorCode::ENOENT);
+			return call.respond_err(ErrorCode::ENOENT);
 		}
 		if request.name() != fuse::NodeName::from_bytes(b"setlk.txt").unwrap() {
-			return send_reply.err(fuse::ErrorCode::ENOENT);
+			return call.respond_err(ErrorCode::ENOENT);
 		}
 
 		let mut resp = fuse::LookupResponse::new();
@@ -68,26 +62,24 @@ impl<S: fuse::ServerSocket> fuse::FuseHandlers<S> for TestFS {
 		attr.set_mode(fuse::FileType::Regular | 0o644);
 		attr.set_nlink(2);
 
-		send_reply.ok(&resp)
+		call.respond_ok(&resp)
 	}
 
 	fn open(
 		&self,
-		_ctx: fuse::ServerContext,
+		call: fuse_rpc::FuseCall<S>,
 		_request: &fuse::OpenRequest,
-		send_reply: impl fuse::SendReply<S>,
-	) -> fuse::SendResult<fuse::OpenResponse, S::Error> {
+	) -> fuse_rpc::FuseResult<fuse::OpenResponse, S::Error> {
 		let mut resp = fuse::OpenResponse::new();
 		resp.set_handle(12345);
-		send_reply.ok(&resp)
+		call.respond_ok(&resp)
 	}
 
 	fn setlk(
 		&self,
-		_ctx: fuse::ServerContext,
+		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::SetlkRequest,
-		send_reply: impl fuse::SendReply<S>,
-	) -> fuse::SendResult<fuse::SetlkResponse, S::Error> {
+	) -> fuse_rpc::FuseResult<fuse::SetlkResponse, S::Error> {
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the lock owner, which is non-deterministic.
@@ -102,7 +94,7 @@ impl<S: fuse::ServerSocket> fuse::FuseHandlers<S> for TestFS {
 		self.requests.send(request_str).unwrap();
 
 		let resp = fuse::SetlkResponse::new();
-		send_reply.ok(&resp)
+		call.respond_ok(&resp)
 	}
 }
 

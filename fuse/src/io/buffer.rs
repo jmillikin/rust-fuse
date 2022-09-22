@@ -16,20 +16,22 @@
 
 use crate::MIN_READ_BUFFER;
 
-pub struct ArrayBuffer(ArrayBufferImpl);
+pub(crate) struct ArrayBuffer(ArrayBufferImpl);
 
 #[repr(align(8))]
 struct ArrayBufferImpl([u8; MIN_READ_BUFFER]);
 
 impl ArrayBuffer {
-	pub fn new() -> Self {
+	pub(crate) fn new() -> Self {
 		ArrayBuffer(ArrayBufferImpl([0u8; MIN_READ_BUFFER]))
 	}
 
-	pub fn borrow(&self) -> &[u8] {
+	#[allow(unused)]
+	pub(crate) fn borrow(&self) -> &[u8] {
 		&self.0 .0
 	}
-	pub fn borrow_mut(&mut self) -> &mut [u8] {
+
+	pub(crate) fn borrow_mut(&mut self) -> &mut [u8] {
 		&mut self.0 .0
 	}
 }

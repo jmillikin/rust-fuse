@@ -20,7 +20,6 @@ use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::{env, ffi, fs, io, panic, path, sync, thread};
 
 use fuse::io::{ServerSendError as SendError, ServerRecvError as RecvError};
-use fuse::protocol::fuse_init;
 use fuse::server;
 use fuse::server::cuse_rpc;
 use fuse::server::fuse_rpc;
@@ -58,18 +57,17 @@ type DevFuse = fuse_linux::FuseServerSocket;
 #[cfg(target_os = "freebsd")]
 type DevFuse = fuse_libc::FuseServerSocket;
 
-pub trait TestFS : fuse_rpc::FuseHandlers<DevFuse> {
+pub trait TestFS: fuse_rpc::FuseHandlers<DevFuse> {
+	#[allow(unused)]
 	fn fuse_init(
-		&self,
-		init_request: &fuse_init::FuseInitRequest,
-	) -> fuse_init::FuseInitResponse {
-		let _ = init_request;
-		fuse_init::FuseInitResponse::new()
+		init_request: &fuse::FuseInitRequest,
+		init_response: &mut fuse::FuseInitResponse,
+	) {
 	}
 }
 
-pub fn fuse_interop_test(
-	handlers: impl TestFS + Send + 'static,
+pub fn fuse_interop_test<H: TestFS + Send + 'static>(
+	handlers: H,
 	test_fn: impl FnOnce(&std::path::Path) + panic::UnwindSafe,
 ) {
 	let mut mkdtemp_template = {
@@ -114,19 +112,18 @@ pub fn fuse_interop_test(
 	let server_thread = {
 		let ready = sync::Arc::clone(&server_ready);
 		thread::spawn(move || {
-			use fuse::server::FuseConnection;
 			use fuse_rpc::FuseServerBuilder;
 
-			let conn = FuseConnection::new(dev_fuse, |init_request| {
-				handlers.fuse_init(init_request)
-			}).unwrap();
-			let srv = FuseServerBuilder::new(conn, handlers)
-				.server_hooks(PrintHooks {})
-				.build();
+			let builder = FuseServerBuilder::new(dev_fuse, handlers);
+			let srv = builder
+				.server_hooks(Box::new(PrintHooks {}))
+				.fuse_init_fn(|req, resp| {
+					H::fuse_init(req, resp);
+				})
+				.unwrap();
 			ready.wait();
 
-			let mut buf = fuse::io::ArrayBuffer::new();
-			srv.serve(buf.borrow_mut()).unwrap();
+			srv.serve().unwrap();
 		})
 	};
 
