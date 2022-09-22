@@ -33,6 +33,12 @@ def rust_fuse_protocol_module(interop_test_os = None):
                     "//fuse",
                     "//fuse/internal:interop_testutil",
                     "@rust_libc//:libc",
-                ],
+                ] + select({
+                    "@platforms//os:linux": [
+                        "@rust_linux_errno//linux-errno",
+                        "@rust_linux_syscall//linux-syscall",
+                    ],
+                    "//conditions:default": [],
+                }),
                 tags = ["manual"],
             )
