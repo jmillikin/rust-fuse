@@ -34,6 +34,10 @@ pub mod bmap;
 #[cfg(any(doc, feature = "unstable_bmap"))]
 pub use self::bmap::*;
 
+#[path = "copy_file_range/copy_file_range.rs"]
+pub mod copy_file_range;
+pub use self::copy_file_range::*;
+
 #[path = "create/create.rs"]
 pub mod create;
 pub use self::create::*;

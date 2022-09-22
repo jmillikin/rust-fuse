@@ -193,6 +193,7 @@ macro_rules! impl_fuse_response {
 
 impl_fuse_response! {
 	AccessResponse,
+	CopyFileRangeResponse,
 	CreateResponse,
 	FallocateResponse,
 	FlushResponse,
@@ -351,6 +352,9 @@ fn fuse_request_dispatch<S: FuseSocket>(
 		Op::FUSE_ACCESS => do_dispatch!(AccessRequest, access),
 		#[cfg(feature = "unstable_bmap")]
 		Op::FUSE_BMAP => do_dispatch!(BmapRequest, bmap),
+		Op::FUSE_COPY_FILE_RANGE => {
+			do_dispatch!(CopyFileRangeRequest, copy_file_range)
+		},
 		Op::FUSE_CREATE => do_dispatch!(CreateRequest, create),
 		Op::FUSE_FALLOCATE => do_dispatch!(FallocateRequest, fallocate),
 		Op::FUSE_FLUSH => do_dispatch!(FlushRequest, flush),
@@ -442,6 +446,14 @@ pub trait FuseHandlers<S: FuseSocket> {
 		call: FuseCall<S>,
 		request: &protocol::BmapRequest,
 	) -> FuseResult<protocol::BmapResponse, S::Error> {
+		call.unimplemented()
+	}
+
+	fn copy_file_range(
+		&self,
+		call: FuseCall<S>,
+		request: &protocol::CopyFileRangeRequest,
+	) -> FuseResult<protocol::CopyFileRangeResponse, S::Error> {
 		call.unimplemented()
 	}
 

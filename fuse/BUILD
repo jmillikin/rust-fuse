@@ -18,6 +18,7 @@ rust_library(
         "//fuse/protocol/access:access.rs",
         "//fuse/protocol/bmap:bmap.rs",
         "//fuse/protocol/create:create.rs",
+        "//fuse/protocol/copy_file_range:copy_file_range.rs",
         "//fuse/protocol/cuse_init:cuse_init.rs",
         "//fuse/protocol/fallocate:fallocate.rs",
         "//fuse/protocol/flush:flush.rs",
