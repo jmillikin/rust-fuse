@@ -19,14 +19,12 @@ use core::cmp::min;
 use core::fmt;
 use core::mem::{size_of, transmute};
 
-mod cuse_connection;
 mod fuse_connection;
 mod reply;
 
 pub mod cuse_rpc;
 pub mod fuse_rpc;
 
-pub use self::cuse_connection::{CuseConnection, CuseConnectionBuilder};
 pub use self::fuse_connection::{FuseConnection, FuseConnectionBuilder};
 
 use crate::Version;

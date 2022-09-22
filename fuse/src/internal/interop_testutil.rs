@@ -342,22 +342,32 @@ pub fn cuse_interop_test(
 	let server_thread = {
 		let ready = sync::Arc::clone(&server_ready);
 		thread::spawn(move || {
-			use fuse::server::CuseConnectionBuilder;
 			use cuse_rpc::CuseServerBuilder;
 
 			let devname = fuse::CuseDeviceName::from_bytes(&mktemp_template)
 				.unwrap();
-			let conn = CuseConnectionBuilder::new(dev_cuse, devname)
+			let srv = CuseServerBuilder::new(dev_cuse, handlers)
 				.device_number(CUSE_DEV_MAJOR, CUSE_DEV_MINOR)
-				.build()
+				.server_hooks(Box::new(PrintHooks {}))
+				.cuse_init(devname)
 				.unwrap();
-			let srv = CuseServerBuilder::new(conn, handlers)
-				.server_hooks(PrintHooks {})
-				.build();
 			ready.wait();
 
-			let mut buf = fuse::io::ArrayBuffer::new();
-			srv.serve(buf.borrow_mut()).unwrap();
+			use fuse::server::ServerError;
+			fn is_conn_reset(err: &ServerError<io::Error>) -> bool {
+				if let ServerError::RecvError(err) = err {
+					if err.kind() == io::ErrorKind::ConnectionReset {
+						return true;
+					}
+				}
+				false
+			}
+
+			match srv.serve() {
+				Ok(_) => {},
+				Err(err) if is_conn_reset(&err) => {},
+				err => err.unwrap(),
+			}
 		})
 	};
 

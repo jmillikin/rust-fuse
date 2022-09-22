@@ -163,14 +163,6 @@ impl<'a> CuseInitResponse<'a> {
 		}
 	}
 
-	pub(crate) fn drop_name(&self) -> CuseInitResponse<'static> {
-		CuseInitResponse {
-			raw: self.raw,
-			flags: self.flags,
-			device_name: None,
-		}
-	}
-
 	pub(crate) fn version(&self) -> Version {
 		Version::new(self.raw.major, self.raw.minor)
 	}
@@ -218,6 +210,11 @@ impl<'a> CuseInitResponse<'a> {
 
 	pub fn set_dev_minor(&mut self, dev_minor: u32) {
 		self.raw.dev_minor = dev_minor;
+	}
+
+	pub fn set_device_number(&mut self, major: u32, minor: u32) {
+		self.raw.dev_major = major;
+		self.raw.dev_minor = minor;
 	}
 
 	response_send_funcs!();
