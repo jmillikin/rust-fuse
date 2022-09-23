@@ -16,23 +16,23 @@
 
 #![allow(unused_imports)]
 
-pub(super) use core::cmp::min;
-pub(super) use core::marker::PhantomData;
-pub(super) use core::mem::size_of;
-pub(super) use core::time::Duration;
-pub(super) use core::{cmp, fmt, mem, num, ptr, slice};
+pub(crate) use core::cmp::min;
+pub(crate) use core::marker::PhantomData;
+pub(crate) use core::mem::size_of;
+pub(crate) use core::time::Duration;
+pub(crate) use core::{cmp, fmt, mem, num, ptr, slice};
 
 #[cfg(feature = "std")]
-pub(super) use std::ffi::{CStr, CString};
+pub(crate) use std::ffi::{CStr, CString};
 #[cfg(feature = "std")]
-pub(super) use std::time;
+pub(crate) use std::time;
 
-pub(super) use crate::internal::fuse_kernel;
-pub(super) use crate::server::io;
-pub(super) use crate::server::io::decode;
-pub(super) use crate::server::io::encode;
-pub(super) use crate::server::io::RequestError;
-pub(super) use crate::protocol::common::{
+pub(crate) use crate::internal::fuse_kernel;
+pub(crate) use crate::server::io;
+pub(crate) use crate::server::io::decode;
+pub(crate) use crate::server::io::encode;
+pub(crate) use crate::server::io::RequestError;
+pub(crate) use crate::protocol::common::{
 	DebugBytesAsString,
 	DebugClosure,
 	DebugHexU32,
@@ -46,7 +46,7 @@ pub(super) use crate::protocol::common::{
 	XattrName,
 };
 
-pub(super) use crate::server::{CuseRequest, FuseRequest};
+pub(crate) use crate::server::{CuseRequest, FuseRequest};
 
 pub(crate) fn try_node_id(raw: u64) -> Result<NodeId, io::RequestError> {
 	match NodeId::new(raw) {

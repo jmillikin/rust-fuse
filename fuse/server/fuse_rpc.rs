@@ -15,8 +15,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::io::ArrayBuffer;
-use crate::protocol;
-use crate::protocol::fuse_init::{
+use crate::operations;
+use crate::operations::fuse_init::{
 	FuseInitFlags,
 	FuseInitRequest,
 	FuseInitResponse,
@@ -177,8 +177,8 @@ pub trait FuseResponse: Sealed {}
 macro_rules! impl_fuse_response {
 	( $( $t:ident $( , )? )+ ) => {
 		$(
-			impl FuseResponse for protocol::$t<'_> {}
-			impl Sealed for protocol::$t<'_> {
+			impl FuseResponse for operations::$t<'_> {}
+			impl Sealed for operations::$t<'_> {
 				fn __internal_send<S: FuseSocket>(
 					&self,
 					call: FuseCall<S>,
@@ -347,7 +347,7 @@ fn fuse_request_dispatch<S: FuseSocket>(
 	}
 
 	use crate::Opcode as Op;
-	use crate::protocol::*;
+	use crate::operations::*;
 	match request.header().opcode() {
 		Op::FUSE_ACCESS => do_dispatch!(AccessRequest, access),
 		#[cfg(feature = "unstable_bmap")]
@@ -435,8 +435,8 @@ pub trait FuseHandlers<S: FuseSocket> {
 	fn access(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::AccessRequest,
-	) -> FuseResult<protocol::AccessResponse, S::Error> {
+		request: &operations::AccessRequest,
+	) -> FuseResult<operations::AccessResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -444,44 +444,44 @@ pub trait FuseHandlers<S: FuseSocket> {
 	fn bmap(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::BmapRequest,
-	) -> FuseResult<protocol::BmapResponse, S::Error> {
+		request: &operations::BmapRequest,
+	) -> FuseResult<operations::BmapResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn copy_file_range(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::CopyFileRangeRequest,
-	) -> FuseResult<protocol::CopyFileRangeResponse, S::Error> {
+		request: &operations::CopyFileRangeRequest,
+	) -> FuseResult<operations::CopyFileRangeResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn create(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::CreateRequest,
-	) -> FuseResult<protocol::CreateResponse, S::Error> {
+		request: &operations::CreateRequest,
+	) -> FuseResult<operations::CreateResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn fallocate(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::FallocateRequest,
-	) -> FuseResult<protocol::FallocateResponse, S::Error> {
+		request: &operations::FallocateRequest,
+	) -> FuseResult<operations::FallocateResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn flush(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::FlushRequest,
-	) -> FuseResult<protocol::FlushResponse, S::Error> {
+		request: &operations::FlushRequest,
+	) -> FuseResult<operations::FlushResponse, S::Error> {
 		call.unimplemented()
 	}
 
-	fn forget(&self, call: FuseCall<S>, request: &protocol::ForgetRequest) {
+	fn forget(&self, call: FuseCall<S>, request: &operations::ForgetRequest) {
 		#[cfg(feature = "std")]
 		if let Some(hooks) = call.hooks {
 			hooks.unhandled_request(call.header);
@@ -491,40 +491,40 @@ pub trait FuseHandlers<S: FuseSocket> {
 	fn fsync(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::FsyncRequest,
-	) -> FuseResult<protocol::FsyncResponse, S::Error> {
+		request: &operations::FsyncRequest,
+	) -> FuseResult<operations::FsyncResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn fsyncdir(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::FsyncdirRequest,
-	) -> FuseResult<protocol::FsyncdirResponse, S::Error> {
+		request: &operations::FsyncdirRequest,
+	) -> FuseResult<operations::FsyncdirResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn getattr(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::GetattrRequest,
-	) -> FuseResult<protocol::GetattrResponse, S::Error> {
+		request: &operations::GetattrRequest,
+	) -> FuseResult<operations::GetattrResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn getlk(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::GetlkRequest,
-	) -> FuseResult<protocol::GetlkResponse, S::Error> {
+		request: &operations::GetlkRequest,
+	) -> FuseResult<operations::GetlkResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn getxattr(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::GetxattrRequest,
-	) -> FuseResult<protocol::GetxattrResponse, S::Error> {
+		request: &operations::GetxattrRequest,
+	) -> FuseResult<operations::GetxattrResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -532,136 +532,136 @@ pub trait FuseHandlers<S: FuseSocket> {
 	fn ioctl(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::IoctlRequest,
-	) -> FuseResult<protocol::IoctlResponse, S::Error> {
+		request: &operations::IoctlRequest,
+	) -> FuseResult<operations::IoctlResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn link(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::LinkRequest,
-	) -> FuseResult<protocol::LinkResponse, S::Error> {
+		request: &operations::LinkRequest,
+	) -> FuseResult<operations::LinkResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn listxattr(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::ListxattrRequest,
-	) -> FuseResult<protocol::ListxattrResponse, S::Error> {
+		request: &operations::ListxattrRequest,
+	) -> FuseResult<operations::ListxattrResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn lookup(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::LookupRequest,
-	) -> FuseResult<protocol::LookupResponse, S::Error> {
+		request: &operations::LookupRequest,
+	) -> FuseResult<operations::LookupResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn lseek(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::LseekRequest,
-	) -> FuseResult<protocol::LseekResponse, S::Error> {
+		request: &operations::LseekRequest,
+	) -> FuseResult<operations::LseekResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn mkdir(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::MkdirRequest,
-	) -> FuseResult<protocol::MkdirResponse, S::Error> {
+		request: &operations::MkdirRequest,
+	) -> FuseResult<operations::MkdirResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn mknod(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::MknodRequest,
-	) -> FuseResult<protocol::MknodResponse, S::Error> {
+		request: &operations::MknodRequest,
+	) -> FuseResult<operations::MknodResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn open(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::OpenRequest,
-	) -> FuseResult<protocol::OpenResponse, S::Error> {
+		request: &operations::OpenRequest,
+	) -> FuseResult<operations::OpenResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn opendir(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::OpendirRequest,
-	) -> FuseResult<protocol::OpendirResponse, S::Error> {
+		request: &operations::OpendirRequest,
+	) -> FuseResult<operations::OpendirResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn read(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::ReadRequest,
-	) -> FuseResult<protocol::ReadResponse, S::Error> {
+		request: &operations::ReadRequest,
+	) -> FuseResult<operations::ReadResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn readdir(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::ReaddirRequest,
-	) -> FuseResult<protocol::ReaddirResponse, S::Error> {
+		request: &operations::ReaddirRequest,
+	) -> FuseResult<operations::ReaddirResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn readlink(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::ReadlinkRequest,
-	) -> FuseResult<protocol::ReadlinkResponse, S::Error> {
+		request: &operations::ReadlinkRequest,
+	) -> FuseResult<operations::ReadlinkResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn release(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::ReleaseRequest,
-	) -> FuseResult<protocol::ReleaseResponse, S::Error> {
+		request: &operations::ReleaseRequest,
+	) -> FuseResult<operations::ReleaseResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn releasedir(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::ReleasedirRequest,
-	) -> FuseResult<protocol::ReleasedirResponse, S::Error> {
+		request: &operations::ReleasedirRequest,
+	) -> FuseResult<operations::ReleasedirResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn removexattr(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::RemovexattrRequest,
-	) -> FuseResult<protocol::RemovexattrResponse, S::Error> {
+		request: &operations::RemovexattrRequest,
+	) -> FuseResult<operations::RemovexattrResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn rename(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::RenameRequest,
-	) -> FuseResult<protocol::RenameResponse, S::Error> {
+		request: &operations::RenameRequest,
+	) -> FuseResult<operations::RenameResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn rmdir(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::RmdirRequest,
-	) -> FuseResult<protocol::RmdirResponse, S::Error> {
+		request: &operations::RmdirRequest,
+	) -> FuseResult<operations::RmdirResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -669,32 +669,32 @@ pub trait FuseHandlers<S: FuseSocket> {
 	fn setattr(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::SetattrRequest,
-	) -> FuseResult<protocol::SetattrResponse, S::Error> {
+		request: &operations::SetattrRequest,
+	) -> FuseResult<operations::SetattrResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn setlk(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::SetlkRequest,
-	) -> FuseResult<protocol::SetlkResponse, S::Error> {
+		request: &operations::SetlkRequest,
+	) -> FuseResult<operations::SetlkResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn setxattr(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::SetxattrRequest,
-	) -> FuseResult<protocol::SetxattrResponse, S::Error> {
+		request: &operations::SetxattrRequest,
+	) -> FuseResult<operations::SetxattrResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn statfs(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::StatfsRequest,
-	) -> FuseResult<protocol::StatfsResponse, S::Error> {
+		request: &operations::StatfsRequest,
+	) -> FuseResult<operations::StatfsResponse, S::Error> {
 		#[cfg(not(target_os = "freebsd"))]
 		{
 			call.unimplemented()
@@ -706,7 +706,7 @@ pub trait FuseHandlers<S: FuseSocket> {
 			if let Some(hooks) = call.hooks {
 				hooks.unhandled_request(call.header);
 			}
-			let resp = protocol::StatfsResponse::new();
+			let resp = operations::StatfsResponse::new();
 			call.respond_ok(&resp)
 		}
 	}
@@ -714,24 +714,24 @@ pub trait FuseHandlers<S: FuseSocket> {
 	fn symlink(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::SymlinkRequest,
-	) -> FuseResult<protocol::SymlinkResponse, S::Error> {
+		request: &operations::SymlinkRequest,
+	) -> FuseResult<operations::SymlinkResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn unlink(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::UnlinkRequest,
-	) -> FuseResult<protocol::UnlinkResponse, S::Error> {
+		request: &operations::UnlinkRequest,
+	) -> FuseResult<operations::UnlinkResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn write(
 		&self,
 		call: FuseCall<S>,
-		request: &protocol::WriteRequest,
-	) -> FuseResult<protocol::WriteResponse, S::Error> {
+		request: &operations::WriteRequest,
+	) -> FuseResult<operations::WriteResponse, S::Error> {
 		call.unimplemented()
 	}
 }

@@ -51,8 +51,12 @@ mod io;
 
 pub use crate::error::Error;
 
-pub mod protocol;
-pub use crate::protocol::*;
+#[macro_use]
+mod protocol;
+
+pub mod operations;
+
+pub use self::operations::types_only::*;
 
 pub use self::protocol::common::{
 	FileMode,
@@ -63,6 +67,7 @@ pub use self::protocol::common::{
 	NodeAttr,
 	NodeId,
 	NodeName,
+	XattrError,
 	XattrName,
 	NODE_NAME_MAX,
 	ROOT_ID,

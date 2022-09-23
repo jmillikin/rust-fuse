@@ -15,8 +15,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::io::ArrayBuffer;
-use crate::protocol;
-use crate::protocol::cuse_init::{
+use crate::operations;
+use crate::operations::cuse_init::{
 	CuseDeviceName,
 	CuseInitFlags,
 	CuseInitRequest,
@@ -203,8 +203,8 @@ pub trait CuseResponse: Sealed {}
 macro_rules! impl_cuse_response {
 	( $( $t:ident $( , )? )+ ) => {
 		$(
-			impl CuseResponse for protocol::$t<'_> {}
-			impl Sealed for protocol::$t<'_> {
+			impl CuseResponse for operations::$t<'_> {}
+			impl Sealed for operations::$t<'_> {
 				fn __internal_send<S: CuseSocket>(
 					&self,
 					call: CuseCall<S>,
@@ -341,7 +341,7 @@ fn cuse_request_dispatch<S: CuseSocket>(
 	}
 
 	use crate::Opcode as Op;
-	use crate::protocol::*;
+	use crate::operations::*;
 	match request.header().opcode() {
 		Op::FUSE_FLUSH => do_dispatch!(FlushRequest, flush),
 		Op::FUSE_FSYNC => do_dispatch!(FsyncRequest, fsync),
@@ -369,16 +369,16 @@ pub trait CuseHandlers<S: CuseSocket> {
 	fn flush(
 		&self,
 		call: CuseCall<S>,
-		request: &protocol::FlushRequest,
-	) -> CuseResult<protocol::FlushResponse, S::Error> {
+		request: &operations::FlushRequest,
+	) -> CuseResult<operations::FlushResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn fsync(
 		&self,
 		call: CuseCall<S>,
-		request: &protocol::FsyncRequest,
-	) -> CuseResult<protocol::FsyncResponse, S::Error> {
+		request: &operations::FsyncRequest,
+	) -> CuseResult<operations::FsyncResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -386,40 +386,40 @@ pub trait CuseHandlers<S: CuseSocket> {
 	fn ioctl(
 		&self,
 		call: CuseCall<S>,
-		request: &protocol::IoctlRequest,
-	) -> CuseResult<protocol::IoctlResponse, S::Error> {
+		request: &operations::IoctlRequest,
+	) -> CuseResult<operations::IoctlResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn open(
 		&self,
 		call: CuseCall<S>,
-		request: &protocol::OpenRequest,
-	) -> CuseResult<protocol::OpenResponse, S::Error> {
+		request: &operations::OpenRequest,
+	) -> CuseResult<operations::OpenResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn read(
 		&self,
 		call: CuseCall<S>,
-		request: &protocol::ReadRequest,
-	) -> CuseResult<protocol::ReadResponse, S::Error> {
+		request: &operations::ReadRequest,
+	) -> CuseResult<operations::ReadResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn release(
 		&self,
 		call: CuseCall<S>,
-		request: &protocol::ReleaseRequest,
-	) -> CuseResult<protocol::ReleaseResponse, S::Error> {
+		request: &operations::ReleaseRequest,
+	) -> CuseResult<operations::ReleaseResponse, S::Error> {
 		call.unimplemented()
 	}
 
 	fn write(
 		&self,
 		call: CuseCall<S>,
-		request: &protocol::WriteRequest,
-	) -> CuseResult<protocol::WriteResponse, S::Error> {
+		request: &operations::WriteRequest,
+	) -> CuseResult<operations::WriteResponse, S::Error> {
 		call.unimplemented()
 	}
 }

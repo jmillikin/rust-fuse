@@ -26,12 +26,12 @@ pub mod io;
 use crate::Version;
 use crate::internal::fuse_kernel::fuse_in_header;
 use crate::io::ArrayBuffer;
-use crate::protocol::cuse_init::{
+use crate::operations::cuse_init::{
 	CuseInitFlags,
 	CuseInitRequest,
 	CuseInitResponse,
 };
-use crate::protocol::fuse_init::{
+use crate::operations::fuse_init::{
 	FuseInitFlags,
 	FuseInitRequest,
 	FuseInitResponse,
