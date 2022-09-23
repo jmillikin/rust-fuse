@@ -1,6 +1,6 @@
 load("@rules_rust//rust:defs.bzl", "rust_test")
 
-def rust_fuse_protocol_module(name, interop_test_os = None):
+def operation_tests(name, interop_test_os = None):
     files = native.glob(["*.rs"])
 
     if name + "_test.rs" in files:
@@ -30,7 +30,7 @@ def rust_fuse_protocol_module(name, interop_test_os = None):
                 crate_features = ["std"],
                 deps = [
                     "//fuse",
-                    "//fuse/internal:interop_testutil",
+                    "//fuse/internal/testing:interop_testutil",
                     "@rust_libc//:libc",
                 ] + select({
                     "@platforms//os:linux": [

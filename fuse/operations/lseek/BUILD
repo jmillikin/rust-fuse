@@ -1,8 +1,6 @@
-load("//fuse:protocol/common.bzl", "rust_fuse_protocol_module")
+load("//fuse/internal/testing:testing.bzl", "operation_tests")
 
-exports_files(glob(["*.rs"]))
-
-rust_fuse_protocol_module(
+operation_tests(
     "lseek",
     interop_test_os = ["linux"],
 )

@@ -1,7 +1,5 @@
 load("@rules_rust//rust:defs.bzl", "rust_doc", "rust_doc_test", "rust_library")
 
-ALL_SRCS = glob(["**/*.rs"])
-
 filegroup(
     name = "test_srcs",
     srcs = ["//fuse/internal:testutil.rs"],
@@ -10,13 +8,12 @@ filegroup(
 
 rust_library(
     name = "fuse",
-    srcs = [src for src in ALL_SRCS if not src.endswith("_test.rs")] + [
-        "//fuse/internal:fuse_kernel_util.rs",
-        "//fuse/internal:fuse_kernel.rs",
-        "//fuse/internal:mod.rs",
+    srcs = glob(["**/*.rs"]) + [
+        "//fuse/client:srcs",
+        "//fuse/internal:srcs",
         "//fuse/operations:srcs",
         "//fuse/os:srcs",
-        "//fuse/server/io:srcs",
+        "//fuse/server:srcs",
     ],
     crate_features = ["std"],
     edition = "2018",

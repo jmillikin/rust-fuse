@@ -1,9 +1,6 @@
-load("@rules_rust//rust:defs.bzl", "rust_test")
-load("//fuse:protocol/common.bzl", "rust_fuse_protocol_module")
+load("//fuse/internal/testing:testing.bzl", "operation_tests")
 
-exports_files(glob(["*.rs"]))
-
-rust_fuse_protocol_module(
+operation_tests(
     "copy_file_range",
     interop_test_os = ["linux"],
 )
