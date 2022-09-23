@@ -14,11 +14,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::NodeId;
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
+use fuse::NodeId;
+use fuse::operations::forget::{ForgetRequest, ForgetRequestItem};
 
-use super::{ForgetRequest, ForgetRequestItem};
+use fuse_testutil::{decode_request, MessageBuilder};
 
 #[test]
 fn request_single() {

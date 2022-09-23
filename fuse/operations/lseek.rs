@@ -24,9 +24,6 @@ use crate::server::io;
 use crate::server::io::decode;
 use crate::server::io::encode;
 
-#[cfg(rust_fuse_test = "lseek_test")]
-mod lseek_test;
-
 // LseekRequest {{{
 
 pub struct LseekRequest<'a> {

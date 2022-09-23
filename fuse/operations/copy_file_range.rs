@@ -24,9 +24,6 @@ use crate::server::io;
 use crate::server::io::decode;
 use crate::server::io::encode;
 
-#[cfg(rust_fuse_test = "copy_file_range_test")]
-mod copy_file_range_test;
-
 // CopyFileRangeRequest {{{
 
 /// Request type for [`FUSE_COPY_FILE_RANGE`].

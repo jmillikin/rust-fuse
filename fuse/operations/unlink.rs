@@ -25,9 +25,6 @@ use crate::server::io;
 use crate::server::io::decode;
 use crate::server::io::encode;
 
-#[cfg(rust_fuse_test = "unlink_test")]
-mod unlink_test;
-
 // UnlinkRequest {{{
 
 /// Request type for [`FuseHandlers::unlink`].

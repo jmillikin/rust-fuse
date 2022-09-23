@@ -24,9 +24,6 @@ use crate::server::io;
 use crate::server::io::decode;
 use crate::server::io::encode;
 
-#[cfg(rust_fuse_test = "fallocate_test")]
-mod fallocate_test;
-
 // FallocateRequest {{{
 
 const FALLOC_FL_KEEP_SIZE: u32 = 1 << 0;

@@ -24,9 +24,6 @@ use crate::server::io;
 use crate::server::io::decode;
 use crate::server::io::encode;
 
-#[cfg(rust_fuse_test = "access_test")]
-mod access_test;
-
 // AccessRequest {{{
 
 /// Request type for [`FuseHandlers::access`].

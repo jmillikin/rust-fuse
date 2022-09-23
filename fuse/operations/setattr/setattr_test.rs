@@ -14,14 +14,15 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#![cfg(feature = "unstable_setattr")]
+
 use core::mem::size_of;
 use core::time;
 
-use crate::FileType;
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
+use fuse::FileType;
+use fuse::operations::setattr::{SetattrRequest, SetattrResponse};
 
-use super::{SetattrRequest, SetattrResponse};
+use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request() {

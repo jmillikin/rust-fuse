@@ -26,9 +26,6 @@ use crate::server::io::encode;
 
 use crate::protocol::common::file_lock::{Lock, F_RDLCK, F_UNLCK, F_WRLCK};
 
-#[cfg(rust_fuse_test = "getlk_test")]
-mod getlk_test;
-
 // GetlkRequest {{{
 
 /// Request type for [`FuseHandlers::getlk`].

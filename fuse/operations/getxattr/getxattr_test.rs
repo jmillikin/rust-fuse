@@ -17,11 +17,10 @@
 use core::mem::size_of;
 use core::num;
 
-use crate::XattrName;
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
+use fuse::XattrName;
+use fuse::operations::getxattr::{GetxattrRequest, GetxattrResponse};
 
-use super::{GetxattrRequest, GetxattrResponse};
+use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request_sized() {
@@ -67,11 +66,18 @@ fn request_unsized() {
 
 #[test]
 fn request_impl_debug() {
-	let request = &GetxattrRequest {
-		node_id: crate::ROOT_ID,
-		size: num::NonZeroU32::new(11),
-		name: XattrName::from_bytes(b"hello.world!").unwrap(),
-	};
+	let buf;
+	let request = fuse_testutil::build_request!(buf, GetxattrRequest, {
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_GETXATTR;
+			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+		})
+		.push_sized(&fuse_kernel::fuse_getxattr_in {
+			size: 11,
+			..fuse_kernel::fuse_getxattr_in::zeroed()
+		})
+		.push_bytes(b"hello.world!\x00")
+	});
 
 	assert_eq!(
 		format!("{:#?}", request),
@@ -117,14 +123,14 @@ fn response_unsized() {
 	assert_eq!(resp.request_size(), None);
 
 	// set_value() doesn't allow value sizes larger than XATTR_SIZE_MAX
-	assert!(resp.try_set_value(&[0; crate::XATTR_SIZE_MAX + 1]).is_err());
-	assert!(resp.value.is_empty());
-	assert_eq!(resp.raw.size, 0);
+	assert!(resp.try_set_value(&[0; fuse::XATTR_SIZE_MAX + 1]).is_err());
+	assert!(resp.value().is_empty());
+	//assert_eq!(resp.raw.size, 0);
 
 	// set_value() doesn't store value bytes for unsized responses
 	resp.set_value(&[1, 2, 3, 4]);
-	assert!(resp.value.is_empty());
-	assert_eq!(resp.raw.size, 4);
+	assert!(resp.value().is_empty());
+	//assert_eq!(resp.raw.size, 4);
 
 	let encoded = encode_response!(resp);
 

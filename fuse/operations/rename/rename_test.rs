@@ -16,11 +16,10 @@
 
 use core::mem::size_of;
 
-use crate::NodeId;
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
+use fuse::NodeId;
+use fuse::operations::rename::{RenameRequest, RenameResponse};
 
-use super::{RenameRequest, RenameResponse};
+use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request_rename() {

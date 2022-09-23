@@ -14,13 +14,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::marker::PhantomData;
 use core::mem::size_of;
 
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
+use fuse::operations::read::{ReadRequest, ReadResponse};
 
-use super::{ReadRequest, ReadResponse};
+use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 const DUMMY_READ_FLAG: u32 = 0x80000000;
 
@@ -31,12 +29,10 @@ fn request_v7p1() {
 			h.opcode = fuse_kernel::FUSE_READ;
 			h.nodeid = 123;
 		})
-		.push_sized(&super::fuse_read_in_v7p1 {
-			fh: 123,
-			offset: 45,
-			size: 12,
-			padding: 0,
-		})
+		.push_sized(&123u64) // fuse_read_in::
+		.push_sized(&45u64) // fuse_read_in::
+		.push_sized(&12u32) // fuse_read_in::
+		.push_sized(&0u32) // fuse_read_in::
 		.build_aligned();
 
 	let req = decode_request!(ReadRequest, buf, {
@@ -104,15 +100,22 @@ fn request_lock_owner() {
 
 #[test]
 fn request_impl_debug() {
-	let request = &ReadRequest {
-		phantom: PhantomData,
-		node_id: crate::ROOT_ID,
-		size: 1,
-		offset: 2,
-		handle: 3,
-		lock_owner: None,
-		open_flags: 0x4,
-	};
+	let buf;
+	let request = fuse_testutil::build_request!(buf, ReadRequest, {
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_READ;
+			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+		})
+		.push_sized(&fuse_kernel::fuse_read_in {
+			fh: 3,
+			offset: 2,
+			size: 1,
+			read_flags: 0,
+			lock_owner: 0,
+			flags: 0x4,
+			padding: 0,
+		})
+	});
 
 	assert_eq!(
 		format!("{:#?}", request),
@@ -131,7 +134,8 @@ fn request_impl_debug() {
 
 #[test]
 fn response() {
-	let resp = ReadResponse::from_bytes(&[255, 0, 255]);
+	let resp_bytes = &[255, 0, 255];
+	let resp = ReadResponse::from_bytes(resp_bytes);
 	let encoded = encode_response!(resp);
 
 	assert_eq!(
@@ -139,7 +143,7 @@ fn response() {
 		MessageBuilder::new()
 			.push_sized(&fuse_kernel::fuse_out_header {
 				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ resp.bytes.len()) as u32,
+					+ resp_bytes.len()) as u32,
 				error: 0,
 				unique: 0,
 			})

@@ -16,12 +16,11 @@
 
 use core::mem::size_of;
 
-use crate::FileType;
-use crate::NodeId;
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
+use fuse::FileType;
+use fuse::NodeId;
+use fuse::operations::mknod::{MknodRequest, MknodResponse};
 
-use super::{MknodRequest, MknodResponse};
+use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request_v7p1() {
@@ -30,10 +29,8 @@ fn request_v7p1() {
 			h.opcode = fuse_kernel::FUSE_MKNOD;
 			h.nodeid = 100;
 		})
-		.push_sized(&super::fuse_mknod_in_v7p1 {
-			mode: 0o644,
-			rdev: 0,
-		})
+		.push_sized(&0o644u32)
+		.push_sized(&0u32)
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 

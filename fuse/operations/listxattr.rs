@@ -29,9 +29,6 @@ use crate::server::io::encode;
 
 use crate::protocol::common::DebugClosure;
 
-#[cfg(rust_fuse_test = "listxattr_test")]
-mod listxattr_test;
-
 // ListxattrRequest {{{
 
 /// Request type for [`FuseHandlers::listxattr`].

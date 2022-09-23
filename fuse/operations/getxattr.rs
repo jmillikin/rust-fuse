@@ -28,9 +28,6 @@ use crate::server::io::encode;
 
 use crate::protocol::common::DebugBytesAsString;
 
-#[cfg(rust_fuse_test = "getxattr_test")]
-mod getxattr_test;
-
 // GetxattrRequest {{{
 
 /// Request type for [`FuseHandlers::getxattr`].

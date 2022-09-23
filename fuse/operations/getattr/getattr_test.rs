@@ -14,16 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::marker::PhantomData;
 use core::mem::size_of;
 use core::time;
 
-use crate::FileType;
-use crate::NodeId;
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
+use fuse::FileType;
+use fuse::NodeId;
+use fuse::operations::getattr::{GetattrRequest, GetattrResponse};
 
-use super::{GetattrRequest, GetattrResponse};
+use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request_v7p1() {
@@ -85,11 +83,18 @@ fn request_v7p9_with_handle() {
 
 #[test]
 fn request_impl_debug() {
-	let request = &GetattrRequest {
-		phantom: PhantomData,
-		node_id: crate::ROOT_ID,
-		handle: Some(123),
-	};
+	let buf;
+	let request = fuse_testutil::build_request!(buf, GetattrRequest, {
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_GETATTR;
+			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+		})
+		.push_sized(&fuse_kernel::fuse_getattr_in {
+			getattr_flags: fuse_kernel::FUSE_GETATTR_FH,
+			dummy: 0,
+			fh: 123,
+		})
+	});
 
 	assert_eq!(
 		format!("{:#?}", request),

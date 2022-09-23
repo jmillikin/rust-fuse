@@ -16,10 +16,9 @@
 
 use core::mem::size_of;
 
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
+use fuse::operations::fallocate::{FallocateRequest, FallocateResponse};
 
-use super::{FallocateRequest, FallocateResponse};
+use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request() {
@@ -48,17 +47,20 @@ fn request() {
 
 #[test]
 fn request_impl_debug() {
-	let request = FallocateRequest {
-		raw: &fuse_kernel::fuse_fallocate_in {
+	let buf;
+	let request = fuse_testutil::build_request!(buf, FallocateRequest, {
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_FALLOCATE;
+			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+		})
+		.push_sized(&fuse_kernel::fuse_fallocate_in {
 			fh: 123,
 			offset: 1024,
 			length: 4096,
 			mode: 0b11,
 			padding: 0,
-		},
-		node_id: crate::ROOT_ID,
-		mode: super::FallocateMode::from_bits(0b11),
-	};
+		})
+	});
 
 	assert_eq!(
 		format!("{:#?}", request),

@@ -27,9 +27,6 @@ use crate::server::io;
 use crate::server::io::decode;
 use crate::server::io::encode;
 
-#[cfg(rust_fuse_test = "getattr_test")]
-mod getattr_test;
-
 // GetattrRequest {{{
 
 /// Request type for [`FuseHandlers::getattr`].

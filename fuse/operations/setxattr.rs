@@ -27,9 +27,6 @@ use crate::server::io::encode;
 
 use crate::protocol::common::DebugBytesAsString;
 
-#[cfg(rust_fuse_test = "setxattr_test")]
-mod setxattr_test;
-
 // SetxattrRequest {{{
 
 const XATTR_CREATE: u32 = 1 << 0;

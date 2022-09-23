@@ -16,15 +16,14 @@
 
 use core::mem::size_of;
 
-use crate::NodeId;
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
-
-use super::{
+use fuse::NodeId;
+use fuse::operations::copy_file_range::{
 	CopyFileRangeFlags,
 	CopyFileRangeRequest,
 	CopyFileRangeResponse,
 };
+
+use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request() {

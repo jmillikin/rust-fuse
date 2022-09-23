@@ -31,9 +31,6 @@ use crate::server::io::encode;
 
 use crate::protocol::common::DebugBytesAsString;
 
-#[cfg(rust_fuse_test = "readlink_test")]
-mod readlink_test;
-
 // ReadlinkRequest {{{
 
 /// Request type for [`FuseHandlers::readlink`].

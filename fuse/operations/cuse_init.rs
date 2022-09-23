@@ -28,9 +28,6 @@ use crate::server::io::encode;
 
 use crate::protocol::common::DebugBytesAsString;
 
-#[cfg(rust_fuse_test = "cuse_init_test")]
-mod cuse_init_test;
-
 // CuseDeviceName {{{
 
 #[derive(Hash)]
@@ -174,11 +171,11 @@ impl<'a> CuseInitResponse<'a> {
 		}
 	}
 
-	pub(crate) fn version(&self) -> Version {
+	pub fn version(&self) -> Version {
 		Version::new(self.raw.major, self.raw.minor)
 	}
 
-	pub(crate) fn set_version(&mut self, v: Version) {
+	pub fn set_version(&mut self, v: Version) {
 		self.raw.major = v.major();
 		self.raw.minor = v.minor();
 	}

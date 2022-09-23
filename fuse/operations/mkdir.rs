@@ -27,9 +27,6 @@ use crate::server::io;
 use crate::server::io::decode;
 use crate::server::io::encode;
 
-#[cfg(rust_fuse_test = "mkdir_test")]
-mod mkdir_test;
-
 // MkdirRequest {{{
 
 /// Request type for [`FuseHandlers::mkdir`].

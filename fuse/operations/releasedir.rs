@@ -27,9 +27,6 @@ use crate::server::io::encode;
 
 use crate::protocol::common::DebugHexU32;
 
-#[cfg(rust_fuse_test = "releasedir_test")]
-mod releasedir_test;
-
 // ReleasedirRequest {{{
 
 /// Request type for [`FuseHandlers::releasedir`].

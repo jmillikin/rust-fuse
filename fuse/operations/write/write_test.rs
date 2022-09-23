@@ -16,31 +16,23 @@
 
 use core::mem::size_of;
 
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
+use fuse::operations::write::{WriteRequest, WriteResponse};
 
-use super::{WriteRequest, WriteResponse};
+use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 const DUMMY_WRITE_FLAG: u32 = 0x80000000;
 
 #[test]
 fn request_v7p1() {
-	assert_eq!(
-		size_of::<super::fuse_write_in_v7p1>(),
-		fuse_kernel::FUSE_COMPAT_WRITE_IN_SIZE
-	);
-
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
 			h.opcode = fuse_kernel::FUSE_WRITE;
 			h.nodeid = 123;
 		})
-		.push_sized(&super::fuse_write_in_v7p1 {
-			fh: 123,
-			offset: 45,
-			size: 12,
-			write_flags: 0,
-		})
+		.push_sized(&123u64) // fuse_write_in::fh
+		.push_sized(&45u64) // fuse_write_in::offset
+		.push_sized(&12u32) // fuse_write_in::size
+		.push_sized(&0u32) // fuse_write_in::write_flags
 		.push_bytes(b"hello.world!")
 		.build_aligned();
 
@@ -93,9 +85,6 @@ fn request_lock_owner() {
 		.set_header(|h| {
 			h.opcode = fuse_kernel::FUSE_WRITE;
 			h.nodeid = 123;
-		})
-		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_WRITE;
 		})
 		.push_sized(&fuse_kernel::fuse_write_in {
 			fh: 0,

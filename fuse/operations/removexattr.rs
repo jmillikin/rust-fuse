@@ -25,9 +25,6 @@ use crate::server::io;
 use crate::server::io::decode;
 use crate::server::io::encode;
 
-#[cfg(rust_fuse_test = "removexattr_test")]
-mod removexattr_test;
-
 // RemovexattrRequest {{{
 
 pub struct RemovexattrRequest<'a> {

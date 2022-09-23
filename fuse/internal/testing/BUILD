@@ -1,10 +1,23 @@
 load("@rules_rust//rust:defs.bzl", "rust_library")
 
+package(
+    default_testonly = True,
+    default_visibility = ["//fuse:__subpackages__"],
+)
+
+rust_library(
+    name = "fuse_testutil",
+    srcs = ["fuse_testutil.rs"],
+    edition = "2018",
+    deps = [
+        "//fuse/internal:fuse_kernel",
+    ],
+)
+
 rust_library(
     name = "interop_testutil",
     srcs = ["interop_testutil.rs"],
     edition = "2018",
-    visibility = ["//fuse:__subpackages__"],
     deps = [
         "//fuse",
         "@rust_diff//:diff",

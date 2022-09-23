@@ -16,10 +16,9 @@
 
 use core::mem::size_of;
 
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
+use fuse::operations::lseek::{LseekRequest, LseekResponse, LseekWhence};
 
-use super::{LseekRequest, LseekResponse, LseekWhence};
+use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request() {
@@ -31,7 +30,7 @@ fn request() {
 		.push_sized(&fuse_kernel::fuse_lseek_in {
 			fh: 12,
 			offset: 34,
-			whence: LseekWhence::SEEK_DATA.0,
+			whence: 3,
 			padding: 0,
 		})
 		.build_aligned();
@@ -45,15 +44,19 @@ fn request() {
 
 #[test]
 fn request_impl_debug() {
-	let request = LseekRequest {
-		raw: &fuse_kernel::fuse_lseek_in {
+	let buf;
+	let request = fuse_testutil::build_request!(buf, LseekRequest, {
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_LSEEK;
+			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+		})
+		.push_sized(&fuse_kernel::fuse_lseek_in {
 			fh: 12,
 			offset: 34,
 			whence: 3,
 			padding: 0,
-		},
-		node_id: crate::ROOT_ID,
-	};
+		})
+	});
 
 	assert_eq!(
 		format!("{:#?}", request),

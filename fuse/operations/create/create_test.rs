@@ -16,13 +16,11 @@
 
 use core::mem::size_of;
 
-use crate::FileType;
-use crate::NodeId;
-use crate::NodeName;
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
+use fuse::FileType;
+use fuse::NodeId;
+use fuse::operations::create::{CreateRequest, CreateResponse};
 
-use super::{CreateRequest, CreateResponse};
+use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request_v7p1() {
@@ -31,10 +29,8 @@ fn request_v7p1() {
 			h.opcode = fuse_kernel::FUSE_CREATE;
 			h.nodeid = 123;
 		})
-		.push_sized(&super::fuse_create_in_v7p1 {
-			flags: 0xFF,
-			unused: 0,
-		})
+		.push_sized(&0xFFu32) // fuse_create_in::flags
+		.push_sized(&0u32) // fuse_create_in::unused
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 
@@ -78,13 +74,20 @@ fn request_v7p12() {
 
 #[test]
 fn request_impl_debug() {
-	let request = &CreateRequest {
-		node_id: crate::ROOT_ID,
-		name: NodeName::from_bytes(b"hello.world").unwrap(),
-		flags: 123,
-		mode: 0o100644,
-		umask: 0o22,
-	};
+	let buf;
+	let request = fuse_testutil::build_request!(buf, CreateRequest, {
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_CREATE;
+			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+		})
+		.push_sized(&fuse_kernel::fuse_create_in {
+			flags: 123,
+			mode: 0o100644,
+			umask: 0o22,
+			open_flags: 0, // TODO
+		})
+		.push_bytes(b"hello.world\x00")
+	});
 
 	assert_eq!(
 		format!("{:#?}", request),

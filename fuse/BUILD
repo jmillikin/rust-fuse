@@ -1,11 +1,5 @@
 load("@rules_rust//rust:defs.bzl", "rust_doc", "rust_doc_test", "rust_library")
 
-filegroup(
-    name = "test_srcs",
-    srcs = ["//fuse/internal:testutil.rs"],
-    visibility = ["//fuse:__subpackages__"],
-)
-
 rust_library(
     name = "fuse",
     srcs = glob(["**/*.rs"]) + [

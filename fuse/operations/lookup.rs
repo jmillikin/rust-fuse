@@ -26,9 +26,6 @@ use crate::server::io;
 use crate::server::io::decode;
 use crate::server::io::encode;
 
-#[cfg(rust_fuse_test = "lookup_test")]
-mod lookup_test;
-
 // LookupRequest {{{
 
 /// Request type for [`FuseHandlers::lookup`].

@@ -14,13 +14,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::marker::PhantomData;
 use core::mem::size_of;
 
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
+use fuse::operations::flush::{FlushRequest, FlushResponse};
 
-use super::{FlushRequest, FlushResponse};
+use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request() {
@@ -45,13 +43,19 @@ fn request() {
 
 #[test]
 fn request_impl_debug() {
-	let request = FlushRequest {
-		phantom: PhantomData,
-		node_id: crate::ROOT_ID,
-		handle: 12,
-		lock_owner: 34,
-	};
-
+	let buf;
+	let request = fuse_testutil::build_request!(buf, FlushRequest, {
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_FLUSH;
+			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+		})
+		.push_sized(&fuse_kernel::fuse_flush_in {
+			fh: 12,
+			unused: 0,
+			padding: 0,
+			lock_owner: 34,
+		})
+	});
 	assert_eq!(
 		format!("{:#?}", request),
 		concat!(

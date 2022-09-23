@@ -28,9 +28,6 @@ use crate::server::io::encode;
 
 use crate::protocol::common::DebugBytesAsString;
 
-#[cfg(rust_fuse_test = "symlink_test")]
-mod symlink_test;
-
 // SymlinkRequest {{{
 
 /// Request type for [`FuseHandlers::symlink`].

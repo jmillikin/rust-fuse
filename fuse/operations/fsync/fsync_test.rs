@@ -14,13 +14,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::marker::PhantomData;
 use core::mem::size_of;
 
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
+use fuse::operations::fsync::{FsyncRequest, FsyncResponse};
 
-use super::{FsyncRequest, FsyncResponse};
+use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request() {
@@ -44,12 +42,18 @@ fn request() {
 
 #[test]
 fn request_impl_debug() {
-	let request = &FsyncRequest {
-		phantom: PhantomData,
-		node_id: crate::ROOT_ID,
-		handle: 3,
-		flags: super::FsyncRequestFlags::from_bits(0x1),
-	};
+	let buf;
+	let request = fuse_testutil::build_request!(buf, FsyncRequest, {
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_FSYNC;
+			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+		})
+		.push_sized(&fuse_kernel::fuse_fsync_in {
+			fh: 3,
+			fsync_flags: 0x1,
+			padding: 0,
+		})
+	});
 
 	assert_eq!(
 		format!("{:#?}", request),

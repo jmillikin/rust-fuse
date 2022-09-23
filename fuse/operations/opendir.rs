@@ -26,9 +26,6 @@ use crate::server::io::encode;
 
 use crate::protocol::common::DebugHexU32;
 
-#[cfg(rust_fuse_test = "opendir_test")]
-mod opendir_test;
-
 // OpendirRequest {{{
 
 /// Request type for [`FuseHandlers::opendir`].

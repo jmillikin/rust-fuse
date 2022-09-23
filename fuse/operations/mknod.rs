@@ -28,9 +28,6 @@ use crate::server::io;
 use crate::server::io::decode;
 use crate::server::io::encode;
 
-#[cfg(rust_fuse_test = "mknod_test")]
-mod mknod_test;
-
 // MknodRequest {{{
 
 /// Request type for [`FuseHandlers::mknod`].

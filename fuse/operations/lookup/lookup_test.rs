@@ -22,12 +22,11 @@ use linux_errno as os_errno;
 #[cfg(target_os = "freebsd")]
 use freebsd_errno as os_errno;
 
-use crate::FileType;
-use crate::NodeId;
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
+use fuse::FileType;
+use fuse::NodeId;
+use fuse::operations::lookup::{LookupRequest, LookupResponse};
 
-use super::{LookupRequest, LookupResponse};
+use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request() {

@@ -6,17 +6,22 @@ def operation_tests(name, interop_test_os = None):
     if name + "_test.rs" in files:
         rust_test(
             name = name + "_test",
-            srcs = [name + "_test.rs"] + [
-                "//fuse:test_srcs",
-            ],
+            srcs = [name + "_test.rs"],
             size = "small",
             timeout = "short",
-            crate = "//fuse",
-            crate_features = [
-                "std",
-                "unstable_" + name,
-            ],
-            rustc_flags = ['--cfg=rust_fuse_test="{}_test"'.format(name)],
+            deps = [
+                "//fuse",
+                "//fuse/internal:fuse_kernel",
+                "//fuse/internal/testing:fuse_testutil",
+            ] + select({
+                "@platforms//os:freebsd": [
+                    "@rust_freebsd_errno//freebsd-errno",
+                ],
+                "@platforms//os:linux": [
+                    "@rust_linux_errno//linux-errno",
+                ],
+                "//conditions:default": [],
+            }),
         )
 
     if name + "_interop_test.rs" in files:
@@ -27,7 +32,6 @@ def operation_tests(name, interop_test_os = None):
                 srcs = [test_name + ".rs"],
                 size = "medium",
                 timeout = "short",
-                crate_features = ["std"],
                 deps = [
                     "//fuse",
                     "//fuse/internal/testing:interop_testutil",

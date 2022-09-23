@@ -24,9 +24,6 @@ use crate::server::io;
 use crate::server::io::decode;
 use crate::server::io::encode;
 
-#[cfg(rust_fuse_test = "fsyncdir_test")]
-mod fsyncdir_test;
-
 // FsyncdirRequest {{{
 
 const FSYNCDIR_DATASYNC: u32 = 1 << 0;

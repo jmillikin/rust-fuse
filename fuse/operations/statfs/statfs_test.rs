@@ -14,13 +14,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::marker::PhantomData;
 use core::mem::size_of;
 
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
+use fuse::operations::statfs::{StatfsRequest, StatfsResponse};
 
-use super::{StatfsRequest, StatfsResponse};
+use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request() {
@@ -36,10 +34,13 @@ fn request() {
 
 #[test]
 fn request_impl_debug() {
-	let request = &StatfsRequest {
-		phantom: PhantomData,
-		node_id: crate::ROOT_ID,
-	};
+	let buf;
+	let request = fuse_testutil::build_request!(buf, StatfsRequest, {
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_STATFS;
+			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+		})
+	});
 
 	assert_eq!(
 		format!("{:#?}", request),

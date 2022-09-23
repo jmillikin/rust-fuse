@@ -16,11 +16,10 @@
 
 use core::mem::size_of;
 
-use crate::XattrName;
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
+use fuse::XattrName;
+use fuse::operations::removexattr::{RemovexattrRequest, RemovexattrResponse};
 
-use super::{RemovexattrRequest, RemovexattrResponse};
+use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request() {
@@ -40,10 +39,14 @@ fn request() {
 
 #[test]
 fn request_impl_debug() {
-	let request = &RemovexattrRequest {
-		node_id: crate::ROOT_ID,
-		name: XattrName::from_bytes(b"hello.world!").unwrap(),
-	};
+	let buf;
+	let request = fuse_testutil::build_request!(buf, RemovexattrRequest, {
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_REMOVEXATTR;
+			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+		})
+		.push_bytes(b"hello.world!\x00")
+	});
 
 	assert_eq!(
 		format!("{:#?}", request),

@@ -16,8 +16,9 @@
 
 use core::mem::size_of;
 
+use fuse_testutil::MessageBuilder;
+
 use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
 use crate::server::io::RequestError;
 
 use super::{RequestBuf, RequestDecoder};

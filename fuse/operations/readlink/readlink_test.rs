@@ -14,14 +14,12 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::marker::PhantomData;
 use core::mem::size_of;
 
-use crate::NodeName;
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
+use fuse::NodeName;
+use fuse::operations::readlink::{ReadlinkRequest, ReadlinkResponse};
 
-use super::{ReadlinkRequest, ReadlinkResponse};
+use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request_empty() {
@@ -37,10 +35,13 @@ fn request_empty() {
 
 #[test]
 fn request_impl_debug() {
-	let request = &ReadlinkRequest {
-		phantom: PhantomData,
-		node_id: crate::ROOT_ID,
-	};
+	let buf;
+	let request = fuse_testutil::build_request!(buf, ReadlinkRequest, {
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_READLINK;
+			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+		})
+	});
 
 	assert_eq!(
 		format!("{:#?}", request),

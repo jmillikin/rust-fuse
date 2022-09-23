@@ -35,9 +35,6 @@ use crate::protocol::common::DebugBytesAsString;
 use crate::protocol::common::DebugClosure;
 use crate::protocol::common::DebugHexU32;
 
-#[cfg(rust_fuse_test = "readdir_test")]
-mod readdir_test;
-
 // ReaddirRequest {{{
 
 /// Request type for [`FuseHandlers::readdir`].

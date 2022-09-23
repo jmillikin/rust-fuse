@@ -15,11 +15,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #[macro_use]
-mod fuse_kernel_util;
+mod fuse_kernel_util_pub;
 
 #[allow(dead_code, non_camel_case_types)]
-pub(crate) mod fuse_kernel;
+#[path = "fuse_kernel.rs"]
+mod fuse_kernel;
 
-#[cfg(test)]
-#[macro_use]
-pub(crate) mod testutil;
+pub use self::fuse_kernel::*;

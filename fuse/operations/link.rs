@@ -26,9 +26,6 @@ use crate::server::io;
 use crate::server::io::decode;
 use crate::server::io::encode;
 
-#[cfg(rust_fuse_test = "link_test")]
-mod link_test;
-
 // LinkRequest {{{
 
 /// Request type for [`FuseHandlers::link`].

@@ -26,9 +26,6 @@ use crate::server::io::encode;
 
 use crate::protocol::common::file_lock::{Lock, LockRange, F_UNLCK};
 
-#[cfg(rust_fuse_test = "setlk_test")]
-mod setlk_test;
-
 // SetlkRequest {{{
 
 /// Request type for [`FuseHandlers::setlk`].

@@ -23,9 +23,6 @@ use crate::internal::fuse_kernel;
 use crate::server;
 use crate::server::io;
 
-#[cfg(rust_fuse_test = "forget_test")]
-mod forget_test;
-
 // ForgetRequest {{{
 
 #[derive(Debug)]

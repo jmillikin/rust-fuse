@@ -14,13 +14,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::marker::PhantomData;
 use core::mem::size_of;
 
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
+use fuse::operations::release::{ReleaseRequest, ReleaseResponse};
 
-use super::{ReleaseRequest, ReleaseResponse};
+use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 const DUMMY_RELEASE_FLAG: u32 = 0x80000000;
 
@@ -31,11 +29,9 @@ fn request_v7p1() {
 			h.opcode = fuse_kernel::FUSE_RELEASE;
 			h.nodeid = 123;
 		})
-		.push_sized(&super::fuse_release_in_v7p1 {
-			fh: 123,
-			flags: 0xFF,
-			padding: 0,
-		})
+		.push_sized(&123u64) // fuse_release_in::fh
+		.push_sized(&0xFFu32) // fuse_release_in::flags
+		.push_sized(&0u32) // fuse_release_in::padding
 		.build_aligned();
 
 	let req = decode_request!(ReleaseRequest, buf, {
@@ -96,13 +92,19 @@ fn request_lock_owner() {
 
 #[test]
 fn request_impl_debug() {
-	let request = &ReleaseRequest {
-		phantom: PhantomData,
-		node_id: crate::ROOT_ID,
-		handle: 3,
-		lock_owner: None,
-		open_flags: 0x4,
-	};
+	let buf;
+	let request = fuse_testutil::build_request!(buf, ReleaseRequest, {
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_RELEASE;
+			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+		})
+		.push_sized(&fuse_kernel::fuse_release_in {
+			fh: 3,
+			flags: 0x4,
+			release_flags: 0,
+			lock_owner: 0,
+		})
+	});
 
 	assert_eq!(
 		format!("{:#?}", request),

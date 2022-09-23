@@ -14,19 +14,16 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::marker::PhantomData;
 use core::mem;
 use core::mem::size_of;
 use core::num;
 
-use crate::FileType;
-use crate::NodeId;
-use crate::NodeName;
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
-use crate::operations::read::fuse_read_in_v7p1;
+use fuse::FileType;
+use fuse::NodeId;
+use fuse::NodeName;
+use fuse::operations::readdir::{ReaddirRequest, ReaddirResponse};
 
-use super::{ReaddirRequest, ReaddirResponse};
+use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn readdir_request_v7p1() {
@@ -35,12 +32,10 @@ fn readdir_request_v7p1() {
 			h.opcode = fuse_kernel::FUSE_READDIR;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_read_in_v7p1 {
-			fh: 123,
-			offset: 45,
-			size: 4096,
-			padding: 0,
-		})
+		.push_sized(&123u64) // fuse_read_in::fh
+		.push_sized(&45u64) // fuse_read_in::offset
+		.push_sized(&4096u32) // fuse_read_in::size
+		.push_sized(&0u32) // fuse_read_in::padding
 		.build_aligned();
 
 	let req = decode_request!(ReaddirRequest, buf, {
@@ -82,14 +77,22 @@ fn readdir_request_v7p9() {
 
 #[test]
 fn request_impl_debug() {
-	let request = &ReaddirRequest {
-		phantom: PhantomData,
-		node_id: crate::ROOT_ID,
-		size: 1,
-		cursor: num::NonZeroU64::new(2),
-		handle: 3,
-		opendir_flags: 0x4,
-	};
+	let buf;
+	let request = fuse_testutil::build_request!(buf, ReaddirRequest, {
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_READDIR;
+			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+		})
+		.push_sized(&fuse_kernel::fuse_read_in {
+			fh: 3,
+			offset: 2,
+			size: 1,
+			read_flags: 0,
+			lock_owner: 0,
+			flags: 0x4,
+			padding: 0,
+		})
+	});
 
 	assert_eq!(
 		format!("{:#?}", request),

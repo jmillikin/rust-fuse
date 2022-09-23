@@ -25,9 +25,6 @@ use crate::server::io;
 use crate::server::io::decode;
 use crate::server::io::encode;
 
-#[cfg(rust_fuse_test = "rmdir_test")]
-mod rmdir_test;
-
 // RmdirRequest {{{
 
 /// Request type for [`FuseHandlers::rmdir`].

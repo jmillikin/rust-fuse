@@ -27,9 +27,6 @@ use crate::server;
 use crate::server::io;
 use crate::server::io::encode;
 
-#[cfg(rust_fuse_test = "setattr_test")]
-mod setattr_test;
-
 // SetattrRequest {{{
 
 pub struct SetattrRequest<'a> {

@@ -14,16 +14,13 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::marker::PhantomData;
 use core::mem::size_of;
 
-use crate::Version;
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
-use crate::server::CuseRequest;
-use crate::server::io::decode::RequestBuf;
+use fuse::Version;
+use fuse::operations::cuse_init::{CuseDeviceName, CuseInitRequest, CuseInitResponse};
+use fuse::server::CuseRequestBuilder;
 
-use super::{CuseDeviceName, CuseInitFlags, CuseInitRequest, CuseInitResponse};
+use fuse_testutil::{encode_response, MessageBuilder};
 
 #[test]
 fn request() {
@@ -37,26 +34,33 @@ fn request() {
 		})
 		.build_aligned();
 
-	let request_buf = RequestBuf::new(buf.borrow()).unwrap();
-	let cuse_request = CuseRequest {
-		buf: request_buf,
-		version_minor: Version::LATEST.minor(),
-	};
+	let cuse_request = CuseRequestBuilder::new()
+		.build(buf.borrow())
+		.unwrap();
 	let req = CuseInitRequest::from_cuse_request(&cuse_request).unwrap();
 
 	assert_eq!(req.version().major(), 7);
 	assert_eq!(req.version().minor(), 6);
-	assert_eq!(*req.flags(), CuseInitFlags::from_bits(0xFFFFFFFF));
+	//assert_eq!(*req.flags(), CuseInitFlags::from_bits(0xFFFFFFFF));
 }
 
 #[test]
 fn request_impl_debug() {
-	let version = Version::new(7, 1);
-	let request = &CuseInitRequest {
-		phantom: PhantomData,
-		version: version,
-		flags: CuseInitFlags::from_bits(0x1),
-	};
+	let buf = MessageBuilder::new()
+		.set_opcode(fuse_kernel::CUSE_INIT)
+		.push_sized(&fuse_kernel::cuse_init_in {
+			major: 7,
+			minor: 1,
+			unused: 0,
+			flags: 0x1,
+		})
+		.build_aligned();
+
+	let cuse_request = CuseRequestBuilder::new()
+		.build(buf.borrow())
+		.unwrap();
+
+	let request = CuseInitRequest::from_cuse_request(&cuse_request).unwrap();
 
 	assert_eq!(
 		format!("{:#?}", request),
@@ -80,7 +84,7 @@ fn response() {
 	let mut resp = CuseInitResponse::new(device_name);
 	resp.set_version(Version::new(7, 23));
 	resp.set_max_write(4096);
-	*resp.flags_mut() = CuseInitFlags::from_bits(0xFFFFFFFF);
+	//*resp.flags_mut() = CuseInitFlags::from_bits(0xFFFFFFFF);
 	let encoded = encode_response!(resp);
 
 	assert_eq!(
@@ -97,7 +101,8 @@ fn response() {
 				major: 7,
 				minor: 23,
 				unused: 0,
-				flags: 0xFFFFFFFF,
+				//flags: 0xFFFFFFFF,
+				flags: 0,
 				max_read: 0,
 				max_write: 4096,
 				dev_major: 0,

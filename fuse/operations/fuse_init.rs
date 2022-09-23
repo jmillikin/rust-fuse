@@ -23,9 +23,6 @@ use crate::server;
 use crate::server::io;
 use crate::server::io::encode;
 
-#[cfg(rust_fuse_test = "fuse_init_test")]
-mod fuse_init_test;
-
 // FuseInitRequest {{{
 
 /// Request type for [`FuseHandlers::fuse_init`].
@@ -165,11 +162,11 @@ impl FuseInitResponse {
 		}
 	}
 
-	pub(crate) fn version(&self) -> Version {
+	pub fn version(&self) -> Version {
 		Version::new(self.raw.major, self.raw.minor)
 	}
 
-	pub(crate) fn set_version(&mut self, v: Version) {
+	pub fn set_version(&mut self, v: Version) {
 		self.raw.major = v.major();
 		self.raw.minor = v.minor();
 	}

@@ -14,15 +14,13 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::marker::PhantomData;
 use core::mem::size_of;
 use core::num;
 
-use crate::XattrName;
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
+use fuse::XattrName;
+use fuse::operations::listxattr::{ListxattrRequest, ListxattrResponse};
 
-use super::{ListxattrRequest, ListxattrResponse};
+use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request_sized() {
@@ -62,11 +60,17 @@ fn request_unsized() {
 
 #[test]
 fn request_impl_debug() {
-	let request = &ListxattrRequest {
-		phantom: PhantomData,
-		node_id: crate::ROOT_ID,
-		size: num::NonZeroU32::new(11),
-	};
+	let buf;
+	let request = fuse_testutil::build_request!(buf, ListxattrRequest, {
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_LISTXATTR;
+			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+		})
+		.push_sized(&fuse_kernel::fuse_getxattr_in {
+			size: 11,
+			..fuse_kernel::fuse_getxattr_in::zeroed()
+		})
+	});
 
 	assert_eq!(
 		format!("{:#?}", request),

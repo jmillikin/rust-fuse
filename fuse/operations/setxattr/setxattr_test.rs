@@ -16,11 +16,10 @@
 
 use core::mem::size_of;
 
-use crate::XattrName;
-use crate::internal::fuse_kernel;
-use crate::internal::testutil::MessageBuilder;
+use fuse::XattrName;
+use fuse::operations::setxattr::{SetxattrRequest, SetxattrResponse};
 
-use super::{SetxattrRequest, SetxattrResponse};
+use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request() {
@@ -29,10 +28,8 @@ fn request() {
 			h.opcode = fuse_kernel::FUSE_SETXATTR;
 			h.nodeid = 123;
 		})
-		.push_sized(&super::fuse_setxattr_in_v7p1 {
-			size: 10,
-			flags: 0b11,
-		})
+		.push_sized(&10u32) // fuse_setxattr_in::size
+		.push_sized(&0b11u32) // fuse_setxattr_in::flags
 		.push_bytes(b"hello.world!\x00")
 		.push_bytes(b"some\x00value")
 		.build_aligned();
@@ -48,12 +45,17 @@ fn request() {
 
 #[test]
 fn request_impl_debug() {
-	let request = &SetxattrRequest {
-		node_id: crate::ROOT_ID,
-		name: XattrName::from_bytes(b"hello.world!").unwrap(),
-		flags: super::SetxattrRequestFlags::from_bits(0),
-		value: b"some\x00value",
-	};
+	let buf;
+	let request = fuse_testutil::build_request!(buf, SetxattrRequest, {
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_SETXATTR;
+			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+		})
+		.push_sized(&10u32) // fuse_setxattr_in::size
+		.push_sized(&0u32) // fuse_setxattr_in::flags
+		.push_bytes(b"hello.world!\x00")
+		.push_bytes(b"some\x00value")
+	});
 
 	assert_eq!(
 		format!("{:#?}", request),

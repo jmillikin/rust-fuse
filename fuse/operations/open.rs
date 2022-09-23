@@ -26,9 +26,6 @@ use crate::server::io::encode;
 
 use crate::protocol::common::DebugHexU32;
 
-#[cfg(rust_fuse_test = "open_test")]
-mod open_test;
-
 // OpenRequest {{{
 
 /// Request type for [`FuseHandlers::open`].

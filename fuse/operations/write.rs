@@ -27,9 +27,6 @@ use crate::server::io::encode;
 use crate::protocol::common::DebugBytesAsString;
 use crate::protocol::common::DebugHexU32;
 
-#[cfg(rust_fuse_test = "write_test")]
-mod write_test;
-
 // WriteRequest {{{
 
 /// Request type for [`FuseHandlers::write`].

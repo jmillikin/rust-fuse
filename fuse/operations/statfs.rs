@@ -25,9 +25,6 @@ use crate::server::io;
 use crate::server::io::decode;
 use crate::server::io::encode;
 
-#[cfg(rust_fuse_test = "statfs_test")]
-mod statfs_test;
-
 // StatfsRequest {{{
 
 pub struct StatfsRequest<'a> {

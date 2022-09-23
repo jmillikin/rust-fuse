@@ -27,9 +27,6 @@ use crate::server::io::encode;
 use crate::protocol::common::DebugBytesAsString;
 use crate::protocol::common::DebugHexU32;
 
-#[cfg(rust_fuse_test = "read_test")]
-mod read_test;
-
 // ReadRequest {{{
 
 /// Request type for [`FuseHandlers::read`].
