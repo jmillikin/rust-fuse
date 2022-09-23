@@ -14,11 +14,17 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::marker::PhantomData;
+use core::mem;
+use core::mem::size_of;
 use core::num;
 
+use crate::FileType;
+use crate::NodeId;
+use crate::NodeName;
+use crate::internal::fuse_kernel;
 use crate::internal::testutil::MessageBuilder;
 use crate::operations::read::fuse_read_in_v7p1;
-use crate::protocol::prelude::*;
 
 use super::{ReaddirRequest, ReaddirResponse};
 

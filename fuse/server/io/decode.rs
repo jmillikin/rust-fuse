@@ -197,3 +197,10 @@ impl<'a> NulTerminatedBytes<'a> {
 		&self.0[0..self.0.len() - 1]
 	}
 }
+
+pub(crate) fn node_id(raw: u64) -> Result<crate::NodeId, RequestError> {
+	match crate::NodeId::new(raw) {
+		Some(x) => Ok(x),
+		None => Err(RequestError::MissingNodeId),
+	}
+}

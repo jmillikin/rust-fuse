@@ -14,7 +14,19 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::prelude::*;
+use core::fmt;
+use core::marker::PhantomData;
+
+use crate::FileMode;
+use crate::FileType;
+use crate::Node;
+use crate::NodeId;
+use crate::NodeName;
+use crate::internal::fuse_kernel;
+use crate::server;
+use crate::server::io;
+use crate::server::io::decode;
+use crate::server::io::encode;
 
 #[cfg(rust_fuse_test = "mknod_test")]
 mod mknod_test;
@@ -38,13 +50,13 @@ pub(crate) struct fuse_mknod_in_v7p1 {
 
 impl<'a> MknodRequest<'a> {
 	pub fn from_fuse_request(
-		request: &FuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		let version_minor = request.version_minor;
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_MKNOD)?;
 
-		let parent_id = try_node_id(dec.header().nodeid)?;
+		let parent_id = decode::node_id(dec.header().nodeid)?;
 
 		if version_minor < 12 {
 			let raw: &fuse_mknod_in_v7p1 = dec.next_sized()?;
@@ -151,7 +163,7 @@ impl MknodResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		ctx: &crate::server::ResponseContext,
+		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		self.node().encode_entry(enc, ctx.version_minor)

@@ -14,7 +14,20 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::prelude::*;
+use core::fmt;
+use core::marker::PhantomData;
+use core::num;
+
+use crate::NodeId;
+use crate::XattrError;
+use crate::XattrName;
+use crate::internal::fuse_kernel;
+use crate::server;
+use crate::server::io;
+use crate::server::io::decode;
+use crate::server::io::encode;
+
+use crate::protocol::common::DebugClosure;
 
 #[cfg(rust_fuse_test = "listxattr_test")]
 mod listxattr_test;
@@ -32,15 +45,15 @@ pub struct ListxattrRequest<'a> {
 
 impl<'a> ListxattrRequest<'a> {
 	pub fn from_fuse_request(
-		request: &FuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_LISTXATTR)?;
 
 		let raw: &fuse_kernel::fuse_getxattr_in = dec.next_sized()?;
 		Ok(Self {
 			phantom: PhantomData,
-			node_id: try_node_id(dec.header().nodeid)?,
+			node_id: decode::node_id(dec.header().nodeid)?,
 			size: num::NonZeroU32::new(raw.size),
 		})
 	}
@@ -264,7 +277,7 @@ impl ListxattrResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		ctx: &crate::server::ResponseContext,
+		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		match &self.buf {

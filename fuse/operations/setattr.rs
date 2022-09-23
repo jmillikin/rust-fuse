@@ -14,9 +14,18 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::fmt;
+use core::marker::PhantomData;
+use core::slice;
+
 use std::time;
 
-use crate::protocol::prelude::*;
+use crate::FileMode;
+use crate::NodeAttr;
+use crate::internal::fuse_kernel;
+use crate::server;
+use crate::server::io;
+use crate::server::io::encode;
 
 #[cfg(rust_fuse_test = "setattr_test")]
 mod setattr_test;
@@ -30,8 +39,8 @@ pub struct SetattrRequest<'a> {
 
 impl<'a> SetattrRequest<'a> {
 	pub fn from_fuse_request(
-		request: &FuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_SETATTR)?;
 		let header = dec.header();
@@ -182,7 +191,7 @@ impl SetattrResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		ctx: &crate::server::ResponseContext,
+		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 

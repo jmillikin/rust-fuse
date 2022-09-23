@@ -14,7 +14,18 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::prelude::*;
+use core::fmt;
+use core::marker::PhantomData;
+use core::slice;
+use core::time::Duration;
+
+use crate::NodeAttr;
+use crate::NodeId;
+use crate::internal::fuse_kernel;
+use crate::server;
+use crate::server::io;
+use crate::server::io::decode;
+use crate::server::io::encode;
 
 #[cfg(rust_fuse_test = "getattr_test")]
 mod getattr_test;
@@ -32,13 +43,13 @@ pub struct GetattrRequest<'a> {
 
 impl<'a> GetattrRequest<'a> {
 	pub fn from_fuse_request(
-		request: &FuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		let version_minor = request.version_minor;
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_GETATTR)?;
 
-		let node_id = try_node_id(dec.header().nodeid)?;
+		let node_id = decode::node_id(dec.header().nodeid)?;
 
 		// FUSE versions before v7.9 had no request type for `getattr()`.
 		if version_minor < 9 {
@@ -133,7 +144,7 @@ impl GetattrResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		ctx: &crate::server::ResponseContext,
+		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 

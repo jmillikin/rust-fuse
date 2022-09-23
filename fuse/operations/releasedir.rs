@@ -14,8 +14,18 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::fmt;
+use core::marker::PhantomData;
+
+use crate::NodeId;
+use crate::internal::fuse_kernel;
 use crate::operations::release::fuse_release_in_v7p1;
-use crate::protocol::prelude::*;
+use crate::server;
+use crate::server::io;
+use crate::server::io::decode;
+use crate::server::io::encode;
+
+use crate::protocol::common::DebugHexU32;
 
 #[cfg(rust_fuse_test = "releasedir_test")]
 mod releasedir_test;
@@ -35,13 +45,13 @@ pub struct ReleasedirRequest<'a> {
 
 impl<'a> ReleasedirRequest<'a> {
 	pub fn from_fuse_request(
-		request: &FuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		let version_minor = request.version_minor;
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_RELEASEDIR)?;
 
-		let node_id = try_node_id(dec.header().nodeid)?;
+		let node_id = decode::node_id(dec.header().nodeid)?;
 
 		// FUSE v7.8 added new fields to `fuse_release_in`.
 		if version_minor < 8 {
@@ -138,7 +148,7 @@ impl ReleasedirResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		ctx: &crate::server::ResponseContext,
+		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		enc.encode_header_only()

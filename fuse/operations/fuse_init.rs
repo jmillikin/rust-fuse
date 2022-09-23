@@ -14,8 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::fmt;
+use core::marker::PhantomData;
+
 use crate::Version;
-use crate::protocol::prelude::*;
+use crate::internal::fuse_kernel;
+use crate::server;
+use crate::server::io;
+use crate::server::io::encode;
 
 #[cfg(rust_fuse_test = "fuse_init_test")]
 mod fuse_init_test;
@@ -48,8 +54,8 @@ struct fuse_init_in_v7p6 {
 
 impl<'a> FuseInitRequest<'a> {
 	pub fn from_fuse_request(
-		request: &FuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_INIT)?;
 
@@ -253,7 +259,7 @@ impl FuseInitResponse {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		ctx: &crate::server::ResponseContext,
+		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		if self.raw.minor >= 23 {

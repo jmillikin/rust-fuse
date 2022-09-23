@@ -14,7 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::prelude::*;
+use core::fmt;
+use core::mem::size_of;
+use core::slice;
+
+use crate::NodeId;
+use crate::internal::fuse_kernel;
+use crate::server;
+use crate::server::io;
 
 #[cfg(rust_fuse_test = "forget_test")]
 mod forget_test;
@@ -47,8 +54,8 @@ pub struct ForgetRequest<'a> {
 
 impl<'a> ForgetRequest<'a> {
 	pub fn from_fuse_request(
-		request: &FuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		let mut dec = request.decoder();
 		let header = dec.header();
 		if header.opcode == fuse_kernel::FUSE_BATCH_FORGET {

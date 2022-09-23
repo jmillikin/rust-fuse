@@ -14,7 +14,18 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::prelude::*;
+use core::fmt;
+use core::marker::PhantomData;
+
+use crate::FileMode;
+use crate::Node;
+use crate::NodeId;
+use crate::NodeName;
+use crate::internal::fuse_kernel;
+use crate::server;
+use crate::server::io;
+use crate::server::io::decode;
+use crate::server::io::encode;
 
 #[cfg(rust_fuse_test = "create_test")]
 mod create_test;
@@ -40,14 +51,14 @@ struct fuse_create_in_v7p1 {
 
 impl<'a> CreateRequest<'a> {
 	pub fn from_fuse_request(
-		request: &FuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		let version_minor = request.version_minor;
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_CREATE)?;
 
 		let header = dec.header();
-		let node_id = try_node_id(header.nodeid)?;
+		let node_id = decode::node_id(header.nodeid)?;
 
 		if version_minor < 12 {
 			let raw: &'a fuse_create_in_v7p1 = dec.next_sized()?;
@@ -166,7 +177,7 @@ impl CreateResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		ctx: &crate::server::ResponseContext,
+		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		let open_out = fuse_kernel::fuse_open_out {

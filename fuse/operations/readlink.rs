@@ -18,7 +18,18 @@
 #[cfg(feature = "std")]
 use std::ffi::CStr;
 
-use crate::protocol::prelude::*;
+use core::fmt;
+use core::marker::PhantomData;
+
+use crate::NodeId;
+use crate::NodeName;
+use crate::internal::fuse_kernel;
+use crate::server;
+use crate::server::io;
+use crate::server::io::decode;
+use crate::server::io::encode;
+
+use crate::protocol::common::DebugBytesAsString;
 
 #[cfg(rust_fuse_test = "readlink_test")]
 mod readlink_test;
@@ -35,13 +46,13 @@ pub struct ReadlinkRequest<'a> {
 
 impl<'a> ReadlinkRequest<'a> {
 	pub fn from_fuse_request(
-		request: &FuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		let dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_READLINK)?;
 		Ok(Self {
 			phantom: PhantomData,
-			node_id: try_node_id(dec.header().nodeid)?,
+			node_id: decode::node_id(dec.header().nodeid)?,
 		})
 	}
 
@@ -94,7 +105,7 @@ impl ReadlinkResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		ctx: &crate::server::ResponseContext,
+		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		enc.encode_bytes(self.target)

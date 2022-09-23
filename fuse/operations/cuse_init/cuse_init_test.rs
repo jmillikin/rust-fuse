@@ -14,9 +14,13 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::marker::PhantomData;
+use core::mem::size_of;
+
 use crate::Version;
+use crate::internal::fuse_kernel;
 use crate::internal::testutil::MessageBuilder;
-use crate::protocol::prelude::*;
+use crate::server::CuseRequest;
 use crate::server::io::decode::RequestBuf;
 
 use super::{CuseDeviceName, CuseInitFlags, CuseInitRequest, CuseInitResponse};

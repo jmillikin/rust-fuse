@@ -14,7 +14,18 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::prelude::*;
+use core::fmt;
+use core::marker::PhantomData;
+
+use crate::NodeId;
+use crate::XattrName;
+use crate::internal::fuse_kernel;
+use crate::server;
+use crate::server::io;
+use crate::server::io::decode;
+use crate::server::io::encode;
+
+use crate::protocol::common::DebugBytesAsString;
 
 #[cfg(rust_fuse_test = "setxattr_test")]
 mod setxattr_test;
@@ -39,15 +50,15 @@ pub(crate) struct fuse_setxattr_in_v7p1 {
 
 impl<'a> SetxattrRequest<'a> {
 	pub fn from_fuse_request(
-		request: &FuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_SETXATTR)?;
 		let raw: &'a fuse_setxattr_in_v7p1 = dec.next_sized()?;
 		let name = XattrName::new(dec.next_nul_terminated_bytes()?);
 		let value = dec.next_bytes(raw.size)?;
 		Ok(Self {
-			node_id: try_node_id(dec.header().nodeid)?,
+			node_id: decode::node_id(dec.header().nodeid)?,
 			flags: SetxattrRequestFlags::from_bits(raw.flags),
 			name,
 			value,
@@ -120,7 +131,7 @@ impl SetxattrResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		ctx: &crate::server::ResponseContext,
+		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		enc.encode_header_only()

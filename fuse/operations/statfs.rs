@@ -14,7 +14,16 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::prelude::*;
+use core::fmt;
+use core::marker::PhantomData;
+use core::slice;
+
+use crate::NodeId;
+use crate::internal::fuse_kernel;
+use crate::server;
+use crate::server::io;
+use crate::server::io::decode;
+use crate::server::io::encode;
 
 #[cfg(rust_fuse_test = "statfs_test")]
 mod statfs_test;
@@ -28,14 +37,14 @@ pub struct StatfsRequest<'a> {
 
 impl<'a> StatfsRequest<'a> {
 	pub fn from_fuse_request(
-		request: &FuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		let dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_STATFS)?;
 
 		Ok(Self {
 			phantom: PhantomData,
-			node_id: try_node_id(dec.header().nodeid)?,
+			node_id: decode::node_id(dec.header().nodeid)?,
 		})
 	}
 
@@ -123,7 +132,7 @@ impl StatfsResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		ctx: &crate::server::ResponseContext,
+		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		if ctx.version_minor < 4 {

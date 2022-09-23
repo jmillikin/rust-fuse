@@ -14,8 +14,17 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::fmt;
+use core::marker::PhantomData;
+
+use crate::NodeId;
+use crate::internal::fuse_kernel;
+use crate::server;
+use crate::server::io;
+use crate::server::io::decode;
+use crate::server::io::encode;
+
 use crate::protocol::common::file_lock::{Lock, F_RDLCK, F_UNLCK, F_WRLCK};
-use crate::protocol::prelude::*;
 
 #[cfg(rust_fuse_test = "getlk_test")]
 mod getlk_test;
@@ -33,13 +42,13 @@ pub struct GetlkRequest<'a> {
 
 impl<'a> GetlkRequest<'a> {
 	pub fn from_fuse_request(
-		request: &FuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_GETLK)?;
 
 		let raw: &fuse_kernel::fuse_lk_in = dec.next_sized()?;
-		let node_id = try_node_id(dec.header().nodeid)?;
+		let node_id = decode::node_id(dec.header().nodeid)?;
 
 		let lock = match Lock::parse(raw.lk) {
 			Some(l) => l,
@@ -119,7 +128,7 @@ impl GetlkResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		ctx: &crate::server::ResponseContext,
+		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let lock = match self.lock {
 			None => fuse_kernel::fuse_file_lock {

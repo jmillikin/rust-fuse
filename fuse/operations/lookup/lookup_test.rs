@@ -14,14 +14,18 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::mem::size_of;
+
 #[cfg(target_os = "linux")]
 use linux_errno as os_errno;
 
 #[cfg(target_os = "freebsd")]
 use freebsd_errno as os_errno;
 
+use crate::FileType;
+use crate::NodeId;
+use crate::internal::fuse_kernel;
 use crate::internal::testutil::MessageBuilder;
-use crate::protocol::prelude::*;
 
 use super::{LookupRequest, LookupResponse};
 

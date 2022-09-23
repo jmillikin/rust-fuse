@@ -14,8 +14,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::mem::size_of;
+
+use crate::internal::fuse_kernel;
 use crate::internal::testutil::MessageBuilder;
-use crate::protocol::prelude::*;
 
 use super::{FallocateRequest, FallocateResponse};
 

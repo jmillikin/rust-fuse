@@ -14,8 +14,19 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::cmp;
+use core::fmt;
+use core::marker::PhantomData;
+use core::mem::size_of;
+use core::slice;
+
 use crate::Version;
-use crate::protocol::prelude::*;
+use crate::internal::fuse_kernel;
+use crate::server;
+use crate::server::io;
+use crate::server::io::encode;
+
+use crate::protocol::common::DebugBytesAsString;
 
 #[cfg(rust_fuse_test = "cuse_init_test")]
 mod cuse_init_test;
@@ -98,8 +109,8 @@ pub struct CuseInitRequest<'a> {
 
 impl<'a> CuseInitRequest<'a> {
 	pub fn from_cuse_request(
-		request: &CuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::CuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::CUSE_INIT)?;
 
@@ -240,7 +251,7 @@ impl CuseInitResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		ctx: &crate::server::ResponseContext,
+		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let mut out = self.raw;
 		out.flags = self.flags.to_bits();

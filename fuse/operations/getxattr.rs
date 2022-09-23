@@ -14,7 +14,19 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::prelude::*;
+use core::fmt;
+use core::num;
+
+use crate::NodeId;
+use crate::XattrError;
+use crate::XattrName;
+use crate::internal::fuse_kernel;
+use crate::server;
+use crate::server::io;
+use crate::server::io::decode;
+use crate::server::io::encode;
+
+use crate::protocol::common::DebugBytesAsString;
 
 #[cfg(rust_fuse_test = "getxattr_test")]
 mod getxattr_test;
@@ -32,14 +44,14 @@ pub struct GetxattrRequest<'a> {
 
 impl<'a> GetxattrRequest<'a> {
 	pub fn from_fuse_request(
-		request: &FuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_GETXATTR)?;
 
 		let raw: &'a fuse_kernel::fuse_getxattr_in = dec.next_sized()?;
 		Ok(Self {
-			node_id: try_node_id(dec.header().nodeid)?,
+			node_id: decode::node_id(dec.header().nodeid)?,
 			size: num::NonZeroU32::new(raw.size),
 			name: XattrName::new(dec.next_nul_terminated_bytes()?),
 		})
@@ -143,7 +155,7 @@ impl GetxattrResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		ctx: &crate::server::ResponseContext,
+		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		if self.raw.size != 0 {

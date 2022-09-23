@@ -14,6 +14,30 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+macro_rules! response_send_funcs {
+	() => {
+		pub fn send<S: crate::server::io::Socket>(
+			&self,
+			socket: &S,
+			response_ctx: &crate::server::ResponseContext,
+		) -> Result<(), crate::server::io::SendError<S::Error>> {
+			use crate::server::io::encode::SyncSendOnce;
+			let send = SyncSendOnce::new(socket);
+			self.encode(send, response_ctx)
+		}
+
+		pub async fn send_async<S: crate::server::io::AsyncSocket>(
+			&self,
+			socket: &S,
+			response_ctx: &crate::server::ResponseContext,
+		) -> Result<(), crate::server::io::SendError<S::Error>> {
+			use crate::server::io::encode::AsyncSendOnce;
+			let send = AsyncSendOnce::new(socket);
+			self.encode(send, response_ctx).await
+		}
+	};
+}
+
 pub mod access;
 #[doc(inline)]
 pub use self::access::*;

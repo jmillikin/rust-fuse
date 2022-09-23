@@ -353,7 +353,7 @@ impl ErrorResponse {
 	pub async fn send_async<S: io::AsyncSocket>(
 		&self,
 		socket: &S,
-		response_ctx: &crate::server::ResponseContext,
+		response_ctx: &ResponseContext,
 	) -> Result<(), SendError<S::Error>> {
 		let send = encode::AsyncSendOnce::new(socket);
 		let enc = encode::ReplyEncoder::new(send, response_ctx.request_id);

@@ -14,8 +14,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::NodeId;
+use crate::internal::fuse_kernel;
 use crate::internal::testutil::MessageBuilder;
-use crate::protocol::prelude::*;
 
 use super::{ForgetRequest, ForgetRequestItem};
 

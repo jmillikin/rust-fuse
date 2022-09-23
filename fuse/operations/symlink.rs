@@ -14,7 +14,19 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::prelude::*;
+use core::fmt;
+use core::marker::PhantomData;
+
+use crate::Node;
+use crate::NodeId;
+use crate::NodeName;
+use crate::internal::fuse_kernel;
+use crate::server;
+use crate::server::io;
+use crate::server::io::decode;
+use crate::server::io::encode;
+
+use crate::protocol::common::DebugBytesAsString;
 
 #[cfg(rust_fuse_test = "symlink_test")]
 mod symlink_test;
@@ -32,14 +44,14 @@ pub struct SymlinkRequest<'a> {
 
 impl<'a> SymlinkRequest<'a> {
 	pub fn from_fuse_request(
-		request: &FuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_SYMLINK)?;
 		let content = dec.next_nul_terminated_bytes()?.to_bytes_without_nul();
 		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
 		Ok(Self {
-			parent_id: try_node_id(dec.header().nodeid)?,
+			parent_id: decode::node_id(dec.header().nodeid)?,
 			name,
 			content,
 		})
@@ -111,7 +123,7 @@ impl SymlinkResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		ctx: &crate::server::ResponseContext,
+		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		self.node().encode_entry(enc, ctx.version_minor)

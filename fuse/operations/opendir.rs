@@ -14,7 +14,17 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::prelude::*;
+use core::fmt;
+use core::marker::PhantomData;
+
+use crate::NodeId;
+use crate::internal::fuse_kernel;
+use crate::server;
+use crate::server::io;
+use crate::server::io::decode;
+use crate::server::io::encode;
+
+use crate::protocol::common::DebugHexU32;
 
 #[cfg(rust_fuse_test = "opendir_test")]
 mod opendir_test;
@@ -32,14 +42,14 @@ pub struct OpendirRequest<'a> {
 
 impl<'a> OpendirRequest<'a> {
 	pub fn from_fuse_request(
-		request: &FuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_OPENDIR)?;
 		let raw: &'a fuse_kernel::fuse_open_in = dec.next_sized()?;
 		Ok(Self {
 			phantom: PhantomData,
-			node_id: try_node_id(dec.header().nodeid)?,
+			node_id: decode::node_id(dec.header().nodeid)?,
 			flags: raw.flags,
 		})
 	}
@@ -118,7 +128,7 @@ impl OpendirResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		ctx: &crate::server::ResponseContext,
+		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		enc.encode_sized(&fuse_kernel::fuse_open_out {

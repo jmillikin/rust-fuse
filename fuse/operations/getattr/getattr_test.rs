@@ -14,8 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::marker::PhantomData;
+use core::mem::size_of;
+use core::time;
+
+use crate::FileType;
+use crate::NodeId;
+use crate::internal::fuse_kernel;
 use crate::internal::testutil::MessageBuilder;
-use crate::protocol::prelude::*;
 
 use super::{GetattrRequest, GetattrResponse};
 

@@ -14,8 +14,17 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::fmt;
+use core::marker::PhantomData;
+
+use crate::NodeId;
+use crate::internal::fuse_kernel;
+use crate::server;
+use crate::server::io;
+use crate::server::io::decode;
+use crate::server::io::encode;
+
 use crate::protocol::common::file_lock::{Lock, LockRange, F_UNLCK};
-use crate::protocol::prelude::*;
 
 #[cfg(rust_fuse_test = "setlk_test")]
 mod setlk_test;
@@ -33,8 +42,8 @@ pub struct SetlkRequest<'a> {
 
 impl<'a> SetlkRequest<'a> {
 	pub fn from_fuse_request(
-		request: &FuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		let mut dec = request.decoder();
 		let header = dec.header();
 
@@ -47,7 +56,7 @@ impl<'a> SetlkRequest<'a> {
 		}
 
 		let raw: &fuse_kernel::fuse_lk_in = dec.next_sized()?;
-		let node_id = try_node_id(header.nodeid)?;
+		let node_id = decode::node_id(header.nodeid)?;
 		let command = parse_setlk_cmd(is_setlkw, &raw.lk)?;
 
 		Ok(Self {
@@ -163,7 +172,7 @@ impl SetlkResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		ctx: &crate::server::ResponseContext,
+		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		enc.encode_header_only()

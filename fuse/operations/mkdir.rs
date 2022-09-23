@@ -14,7 +14,18 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::prelude::*;
+use core::fmt;
+use core::marker::PhantomData;
+
+use crate::FileMode;
+use crate::Node;
+use crate::NodeId;
+use crate::NodeName;
+use crate::internal::fuse_kernel;
+use crate::server;
+use crate::server::io;
+use crate::server::io::decode;
+use crate::server::io::encode;
 
 #[cfg(rust_fuse_test = "mkdir_test")]
 mod mkdir_test;
@@ -32,15 +43,15 @@ pub struct MkdirRequest<'a> {
 
 impl<'a> MkdirRequest<'a> {
 	pub fn from_fuse_request(
-		request: &FuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_MKDIR)?;
 
 		let raw: &fuse_kernel::fuse_mkdir_in = dec.next_sized()?;
 		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
 		Ok(Self {
-			parent_id: try_node_id(dec.header().nodeid)?,
+			parent_id: decode::node_id(dec.header().nodeid)?,
 			name,
 			raw: *raw,
 		})
@@ -117,7 +128,7 @@ impl MkdirResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		ctx: &crate::server::ResponseContext,
+		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		self.node().encode_entry(enc, ctx.version_minor)

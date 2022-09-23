@@ -14,7 +14,19 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::prelude::*;
+use core::fmt;
+use core::marker::PhantomData;
+
+use crate::FileMode;
+use crate::Node;
+use crate::NodeId;
+use crate::NodeName;
+use crate::Version;
+use crate::internal::fuse_kernel;
+use crate::server;
+use crate::server::io;
+use crate::server::io::decode;
+use crate::server::io::encode;
 
 // IoctlRequest {{{
 
@@ -26,8 +38,8 @@ pub struct IoctlRequest<'a> {
 
 impl<'a> IoctlRequest<'a> {
 	pub fn from_fuse_request(
-		request: &FuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_IOCTL)?;
 
@@ -136,7 +148,7 @@ impl IoctlResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		ctx: &crate::server::ResponseContext,
+		ctx: &server::ResponseContext,
 	) -> S::Result {
 		todo!()
 		//w.append_sized(&self.raw);

@@ -191,8 +191,8 @@ macro_rules! decode_request_opts {
 	({}) => {
 		DecodeRequestOpts {
 			protocol_version: (
-				fuse_kernel::FUSE_KERNEL_VERSION,
-				fuse_kernel::FUSE_KERNEL_MINOR_VERSION,
+				crate::internal::fuse_kernel::FUSE_KERNEL_VERSION,
+				crate::internal::fuse_kernel::FUSE_KERNEL_MINOR_VERSION,
 			),
 		}
 	};
@@ -239,8 +239,8 @@ macro_rules! encode_request_opts {
 	({}) => {
 		EncodeRequestOpts {
 			protocol_version: (
-				fuse_kernel::FUSE_KERNEL_VERSION,
-				fuse_kernel::FUSE_KERNEL_MINOR_VERSION,
+				crate::internal::fuse_kernel::FUSE_KERNEL_VERSION,
+				crate::internal::fuse_kernel::FUSE_KERNEL_MINOR_VERSION,
 			),
 		}
 	};

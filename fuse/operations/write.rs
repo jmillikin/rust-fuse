@@ -14,7 +14,18 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::prelude::*;
+use core::fmt;
+use core::marker::PhantomData;
+
+use crate::NodeId;
+use crate::internal::fuse_kernel;
+use crate::server;
+use crate::server::io;
+use crate::server::io::decode;
+use crate::server::io::encode;
+
+use crate::protocol::common::DebugBytesAsString;
+use crate::protocol::common::DebugHexU32;
 
 #[cfg(rust_fuse_test = "write_test")]
 mod write_test;
@@ -45,14 +56,14 @@ struct fuse_write_in_v7p1 {
 
 impl<'a> WriteRequest<'a> {
 	pub fn from_fuse_request(
-		request: &FuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		decode_request(request.buf, request.version_minor, false)
 	}
 
 	pub fn from_cuse_request(
-		request: &CuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::CuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		decode_request(request.buf, request.version_minor, true)
 	}
 
@@ -126,7 +137,7 @@ fn decode_request<'a>(
 	let node_id = if is_cuse {
 		crate::ROOT_ID
 	} else {
-		try_node_id(buf.header().nodeid)?
+		decode::node_id(buf.header().nodeid)?
 	};
 
 	let mut dec = decode::RequestDecoder::new(buf);
@@ -207,7 +218,7 @@ impl WriteResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		ctx: &crate::server::ResponseContext,
+		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		enc.encode_sized(&self.raw)

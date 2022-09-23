@@ -14,10 +14,26 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::fmt;
+use core::marker::PhantomData;
+use core::mem;
+use core::mem::size_of;
 use core::num;
+use core::ptr;
 
+use crate::FileType;
+use crate::NodeId;
+use crate::NodeName;
+use crate::internal::fuse_kernel;
 use crate::operations::read::fuse_read_in_v7p1;
-use crate::protocol::prelude::*;
+use crate::server;
+use crate::server::io;
+use crate::server::io::decode;
+use crate::server::io::encode;
+
+use crate::protocol::common::DebugBytesAsString;
+use crate::protocol::common::DebugClosure;
+use crate::protocol::common::DebugHexU32;
 
 #[cfg(rust_fuse_test = "readdir_test")]
 mod readdir_test;
@@ -38,12 +54,12 @@ pub struct ReaddirRequest<'a> {
 
 impl<'a> ReaddirRequest<'a> {
 	pub fn from_fuse_request(
-		request: &FuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		let version_minor = request.version_minor;
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_READDIR)?;
-		let node_id = try_node_id(dec.header().nodeid)?;
+		let node_id = decode::node_id(dec.header().nodeid)?;
 
 		// FUSE v7.9 added new fields to `fuse_read_in`.
 		if version_minor < 9 {
@@ -526,7 +542,7 @@ impl ReaddirResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		ctx: &crate::server::ResponseContext,
+		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		match &self.buf {

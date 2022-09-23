@@ -14,7 +14,15 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::protocol::prelude::*;
+use core::fmt;
+use core::marker::PhantomData;
+
+use crate::NodeId;
+use crate::internal::fuse_kernel;
+use crate::server;
+use crate::server::io;
+use crate::server::io::decode;
+use crate::server::io::encode;
 
 #[cfg(rust_fuse_test = "copy_file_range_test")]
 mod copy_file_range_test;
@@ -63,15 +71,15 @@ impl<'a> CopyFileRangeRequest<'a> {
 	}
 
 	pub fn from_fuse_request(
-		request: &FuseRequest<'a>,
-	) -> Result<Self, RequestError> {
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, io::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_COPY_FILE_RANGE)?;
 
 		let header = dec.header();
 		let body: &'a fuse_kernel::fuse_copy_file_range_in = dec.next_sized()?;
-		try_node_id(header.nodeid)?;
-		try_node_id(body.nodeid_out)?;
+		decode::node_id(header.nodeid)?;
+		decode::node_id(body.nodeid_out)?;
 
 		Ok(Self { header, body })
 	}
@@ -139,7 +147,7 @@ impl CopyFileRangeResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
 		send: S,
-		ctx: &crate::server::ResponseContext,
+		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		enc.encode_sized(&self.raw)
