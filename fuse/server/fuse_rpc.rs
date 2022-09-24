@@ -218,6 +218,7 @@ impl_fuse_response! {
 	RemovexattrResponse,
 	RenameResponse,
 	RmdirResponse,
+	SetattrResponse,
 	SetlkResponse,
 	SetxattrResponse,
 	StatfsResponse,
@@ -231,9 +232,6 @@ impl_fuse_response! { BmapResponse }
 
 #[cfg(any(doc, feature = "unstable_ioctl"))]
 impl_fuse_response! { IoctlResponse }
-
-#[cfg(any(doc, feature = "unstable_setattr"))]
-impl_fuse_response! { SetattrResponse }
 
 pub struct FuseCall<'a, S> {
 	socket: &'a S,
@@ -396,7 +394,6 @@ fn fuse_request_dispatch<S: FuseSocket>(
 			do_dispatch!(RenameRequest, rename)
 		},
 		Op::FUSE_RMDIR => do_dispatch!(RmdirRequest, rmdir),
-		#[cfg(feature = "unstable_setattr")]
 		Op::FUSE_SETATTR => do_dispatch!(SetattrRequest, setattr),
 		Op::FUSE_SETLK | Op::FUSE_SETLKW => do_dispatch!(SetlkRequest, setlk),
 		Op::FUSE_SETXATTR => do_dispatch!(SetxattrRequest, setxattr),
@@ -665,7 +662,6 @@ pub trait FuseHandlers<S: FuseSocket> {
 		call.unimplemented()
 	}
 
-	#[cfg(any(doc, feature = "unstable_setattr"))]
 	fn setattr(
 		&self,
 		call: FuseCall<S>,

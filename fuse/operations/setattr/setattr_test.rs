@@ -14,20 +14,21 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#![cfg(feature = "unstable_setattr")]
-
 use core::mem::size_of;
 use core::time;
 
 use fuse::FileType;
+use fuse::NodeId;
 use fuse::operations::setattr::{SetattrRequest, SetattrResponse};
-
-use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request() {
-	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_SETATTR)
+	let buf;
+	let request = fuse_testutil::build_request!(buf, SetattrRequest, {
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_SETATTR;
+			h.nodeid = 1000;
+		})
 		.push_sized(&fuse_kernel::fuse_setattr_in {
 			valid: 0xFFFF,
 			padding: 0,
@@ -46,42 +47,88 @@ fn request() {
 			gid: 13,
 			unused5: 14,
 		})
-		.build_aligned();
+	});
 
-	let req = decode_request!(SetattrRequest, buf);
+	assert_eq!(request.node_id(), NodeId::new(1000).unwrap());
+	assert_eq!(request.handle(), Some(1));
+	assert_eq!(request.size(), Some(2));
+	assert_eq!(request.lock_owner(), Some(3));
+	assert_eq!(request.atime(), Some(time::Duration::new(4, 7)));
+	assert_eq!(request.atime_now(), true);
+	assert_eq!(request.mtime(), Some(time::Duration::new(5, 8)));
+	assert_eq!(request.mtime_now(), true);
+	assert_eq!(request.ctime(), Some(time::Duration::new(6, 9)));
+	assert_eq!(request.mode(), Some(FileType::Regular | 0o644));
+	assert_eq!(request.user_id(), Some(12));
+	assert_eq!(request.group_id(), Some(13));
+}
 
-	assert_eq!(req.handle(), Some(1));
-	assert_eq!(req.size(), Some(2));
-	assert_eq!(req.lock_owner(), Some(3));
-	assert_eq!(req.atime(), Some(super::systime(4, 7)));
-	assert_eq!(req.atime_now(), true);
-	assert_eq!(req.mtime(), Some(super::systime(5, 8)));
-	assert_eq!(req.mtime_now(), true);
-	assert_eq!(req.ctime(), Some(super::systime(6, 9)));
-	assert_eq!(req.mode(), Some(FileType::Regular | 0o644));
-	assert_eq!(req.user_id(), Some(12));
-	assert_eq!(req.group_id(), Some(13));
+#[test]
+fn request_impl_debug() {
+	let buf;
+	let request = fuse_testutil::build_request!(buf, SetattrRequest, {
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_SETATTR;
+			h.nodeid = 1000;
+		})
+		.push_sized(&fuse_kernel::fuse_setattr_in {
+			valid: 0xFFFF,
+			padding: 0,
+			fh: 1,
+			size: 2,
+			lock_owner: 3,
+			atime: 4,
+			mtime: 5,
+			ctime: 6,
+			atimensec: 7,
+			mtimensec: 8,
+			ctimensec: 9,
+			mode: u32::from(FileType::Regular | 0o644),
+			unused4: 11,
+			uid: 12,
+			gid: 13,
+			unused5: 14,
+		})
+	});
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"SetattrRequest {\n",
+			"    node_id: 1000,\n",
+			"    handle: Some(1),\n",
+			"    size: Some(2),\n",
+			"    lock_owner: Some(3),\n",
+			"    atime: Some(4.000000007s),\n",
+			"    atime_now: true,\n",
+			"    mtime: Some(5.000000008s),\n",
+			"    mtime_now: true,\n",
+			"    ctime: Some(6.000000009s),\n",
+			"    mode: Some(0o100644),\n",
+			"    user_id: Some(12),\n",
+			"    group_id: Some(13),\n",
+			"}",
+		),
+	);
 }
 
 #[test]
 fn response_v7p1() {
-	return; // SKIP TEST
+	let mut response = SetattrResponse::new();
+	let attr = response.attr_mut();
+	attr.set_node_id(NodeId::new(2).unwrap());
+	attr.set_mode(fuse::FileType::Regular | 0o644);
+	attr.set_nlink(1);
+	attr.set_size(999);
+	response.set_cache_duration(time::Duration::new(123, 456));
 
-	let resp: SetattrResponse = todo!();
-	/*
-		let resp = SetattrRequest {
-			header: &HEADER,
-			raw: &Default::default(),
-		}.new_response();
-	*/
-
-	let encoded = encode_response!(resp, {
+	let encoded = fuse_testutil::encode_response!(response, {
 		protocol_version: (7, 1),
 	});
 
 	assert_eq!(
 		encoded,
-		MessageBuilder::new()
+		fuse_testutil::MessageBuilder::new()
 			.push_sized(&fuse_kernel::fuse_out_header {
 				len: (size_of::<fuse_kernel::fuse_out_header>()
 					+ fuse_kernel::FUSE_COMPAT_ATTR_OUT_SIZE) as u32,
@@ -89,10 +136,16 @@ fn response_v7p1() {
 				unique: 0,
 			})
 			.push_sized(&fuse_kernel::fuse_attr_out {
-				attr_valid: 0,
-				attr_valid_nsec: 0,
+				attr_valid: 123,
+				attr_valid_nsec: 456,
 				dummy: 0,
-				attr: fuse_kernel::fuse_attr::zeroed(),
+				attr: fuse_kernel::fuse_attr {
+					ino: 2,
+					size: 999,
+					mode: 0o100644,
+					nlink: 1,
+					..fuse_kernel::fuse_attr::zeroed()
+				},
 			})
 			.unpush(
 				size_of::<fuse_kernel::fuse_attr_out>()
@@ -104,26 +157,21 @@ fn response_v7p1() {
 
 #[test]
 fn response_v7p9() {
-	return; // SKIP TEST
+	let mut response = SetattrResponse::new();
+	let attr = response.attr_mut();
+	attr.set_node_id(NodeId::new(2).unwrap());
+	attr.set_mode(fuse::FileType::Regular | 0o644);
+	attr.set_nlink(1);
+	attr.set_size(999);
+	response.set_cache_duration(time::Duration::new(123, 456));
 
-	let resp: SetattrResponse = todo!();
-	/*
-	let mut resp = SetattrRequest {
-		header: &HEADER,
-		raw: &Default::default(),
-		}.new_response();
-		*/
-
-	resp.attr_mut().set_size(999);
-	resp.set_cache_duration(time::Duration::new(123, 456));
-
-	let encoded = encode_response!(resp, {
+	let encoded = fuse_testutil::encode_response!(response, {
 		protocol_version: (7, 9),
 	});
 
 	assert_eq!(
 		encoded,
-		MessageBuilder::new()
+		fuse_testutil::MessageBuilder::new()
 			.push_sized(&fuse_kernel::fuse_out_header {
 				len: (size_of::<fuse_kernel::fuse_out_header>()
 					+ size_of::<fuse_kernel::fuse_attr_out>()) as u32,
@@ -135,10 +183,47 @@ fn response_v7p9() {
 				attr_valid_nsec: 456,
 				dummy: 0,
 				attr: fuse_kernel::fuse_attr {
+					ino: 2,
 					size: 999,
+					mode: 0o100644,
+					nlink: 1,
 					..fuse_kernel::fuse_attr::zeroed()
 				},
 			})
 			.build()
+	);
+}
+
+#[test]
+fn response_impl_debug() {
+	let mut response = SetattrResponse::new();
+	let attr = response.attr_mut();
+	attr.set_node_id(NodeId::new(2).unwrap());
+	attr.set_mode(fuse::FileType::Regular | 0o644);
+	attr.set_nlink(1);
+	attr.set_size(999);
+	response.set_cache_duration(time::Duration::new(123, 456));
+
+	assert_eq!(
+		format!("{:#?}", response),
+		concat!(
+			"SetattrResponse {\n",
+			"    attr: NodeAttr {\n",
+			"        node_id: Some(2),\n",
+			"        size: 999,\n",
+			"        blocks: 0,\n",
+			"        atime: 0ns,\n",
+			"        mtime: 0ns,\n",
+			"        ctime: 0ns,\n",
+			"        mode: 0o100644,\n",
+			"        nlink: 1,\n",
+			"        uid: 0,\n",
+			"        gid: 0,\n",
+			"        rdev: 0,\n",
+			"        blksize: 0,\n",
+			"    },\n",
+			"    cache_duration: 123.000000456s,\n",
+			"}",
+		),
 	);
 }

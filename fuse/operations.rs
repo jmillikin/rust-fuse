@@ -166,9 +166,7 @@ pub mod rmdir;
 #[doc(inline)]
 pub use self::rmdir::*;
 
-#[cfg(any(doc, feature = "unstable_setattr"))]
 pub mod setattr;
-#[cfg(any(doc, feature = "unstable_setattr"))]
 #[doc(inline)]
 pub use self::setattr::*;
 

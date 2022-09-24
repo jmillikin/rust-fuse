@@ -17,14 +17,15 @@
 use core::fmt;
 use core::marker::PhantomData;
 use core::slice;
-
-use std::time;
+use core::time;
 
 use crate::FileMode;
 use crate::NodeAttr;
+use crate::NodeId;
 use crate::internal::fuse_kernel;
 use crate::server;
 use crate::server::io;
+use crate::server::io::decode;
 use crate::server::io::encode;
 
 // SetattrRequest {{{
@@ -41,12 +42,13 @@ impl<'a> SetattrRequest<'a> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_SETATTR)?;
 		let header = dec.header();
+		decode::node_id(header.nodeid)?;
 		let raw = dec.next_sized()?;
 		Ok(Self { header, raw })
 	}
 
-	pub fn node_id(&self) -> u64 {
-		self.header.nodeid
+	pub fn node_id(&self) -> NodeId {
+		unsafe { NodeId::new_unchecked(self.header.nodeid) }
 	}
 
 	fn get<T>(&self, bitmask: u32, value: T) -> Option<T> {
@@ -61,11 +63,11 @@ impl<'a> SetattrRequest<'a> {
 		bitmask: u32,
 		seconds: u64,
 		nanos: u32,
-	) -> Option<time::SystemTime> {
+	) -> Option<time::Duration> {
 		if self.raw.valid & bitmask == 0 {
 			return None;
 		}
-		Some(systime(seconds, nanos))
+		Some(time::Duration::new(seconds, nanos))
 	}
 
 	pub fn handle(&self) -> Option<u64> {
@@ -80,7 +82,7 @@ impl<'a> SetattrRequest<'a> {
 		self.get(fuse_kernel::FATTR_LOCKOWNER, self.raw.lock_owner)
 	}
 
-	pub fn atime(&self) -> Option<time::SystemTime> {
+	pub fn atime(&self) -> Option<time::Duration> {
 		self.get_timestamp(
 			fuse_kernel::FATTR_ATIME,
 			self.raw.atime,
@@ -92,7 +94,7 @@ impl<'a> SetattrRequest<'a> {
 		self.raw.valid & fuse_kernel::FATTR_ATIME_NOW > 0
 	}
 
-	pub fn mtime(&self) -> Option<time::SystemTime> {
+	pub fn mtime(&self) -> Option<time::Duration> {
 		self.get_timestamp(
 			fuse_kernel::FATTR_MTIME,
 			self.raw.mtime,
@@ -104,7 +106,7 @@ impl<'a> SetattrRequest<'a> {
 		self.raw.valid & fuse_kernel::FATTR_MTIME_NOW > 0
 	}
 
-	pub fn ctime(&self) -> Option<time::SystemTime> {
+	pub fn ctime(&self) -> Option<time::Duration> {
 		self.get_timestamp(
 			fuse_kernel::FATTR_CTIME,
 			self.raw.ctime,
@@ -125,8 +127,23 @@ impl<'a> SetattrRequest<'a> {
 	}
 }
 
-fn systime(seconds: u64, nanos: u32) -> time::SystemTime {
-	time::UNIX_EPOCH + time::Duration::new(seconds, nanos)
+impl fmt::Debug for SetattrRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("SetattrRequest")
+			.field("node_id", &self.node_id())
+			.field("handle", &format_args!("{:?}", self.handle()))
+			.field("size", &format_args!("{:?}", self.size()))
+			.field("lock_owner", &format_args!("{:?}", self.lock_owner()))
+			.field("atime", &format_args!("{:?}", self.atime()))
+			.field("atime_now", &self.atime_now())
+			.field("mtime", &format_args!("{:?}", self.mtime()))
+			.field("mtime_now", &self.mtime_now())
+			.field("ctime", &format_args!("{:?}", self.ctime()))
+			.field("mode", &format_args!("{:?}", self.mode()))
+			.field("user_id", &format_args!("{:?}", self.user_id()))
+			.field("group_id", &format_args!("{:?}", self.group_id()))
+			.finish()
+	}
 }
 
 // }}}
@@ -139,19 +156,10 @@ pub struct SetattrResponse<'a> {
 }
 
 impl<'a> SetattrResponse<'a> {
-	// TODO: fix API
-	pub fn new(request: &SetattrRequest) -> SetattrResponse<'a> {
+	pub fn new() -> SetattrResponse<'a> {
 		Self {
 			phantom: PhantomData,
-			raw: fuse_kernel::fuse_attr_out {
-				attr_valid: 0,
-				attr_valid_nsec: 0,
-				dummy: 0,
-				attr: fuse_kernel::fuse_attr {
-					ino: request.header.nodeid,
-					..fuse_kernel::fuse_attr::zeroed()
-				},
-			},
+			raw: fuse_kernel::fuse_attr_out::zeroed(),
 		}
 	}
 
