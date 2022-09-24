@@ -1,47 +1,59 @@
 load("@rules_rust//rust:defs.bzl", "rust_test")
 
 def operation_tests(name, interop_test_os = None):
-    files = native.glob(["*.rs"])
+    for filename in native.glob(["*.rs"]):
+        if not filename.startswith(name + "_"):
+            continue
+        if filename.endswith("_interop_test.rs"):
+            _operation_interop_test(filename, interop_test_os)
+        elif filename.endswith("_test.rs"):
+            _operation_test(filename)
 
-    if name + "_test.rs" in files:
-        rust_test(
-            name = name + "_test",
-            srcs = [name + "_test.rs"],
-            size = "small",
-            timeout = "short",
-            deps = [
-                "//fuse",
-                "//fuse/internal:fuse_kernel",
-                "//fuse/internal/testing:fuse_testutil",
-            ] + select({
-                "@platforms//os:freebsd": [
-                    "@rust_freebsd_errno//freebsd-errno",
-                ],
-                "@platforms//os:linux": [
-                    "@rust_linux_errno//linux-errno",
-                ],
-                "//conditions:default": [],
-            }),
-        )
+def _operation_test(filename):
+    target_name = filename[:-len(".rs")]
+    if target_name in native.existing_rules():
+        return
 
-    if name + "_interop_test.rs" in files:
-        test_name = name + "_interop_test"
-        if test_name not in native.existing_rules():
-            rust_test(
-                name = test_name,
-                srcs = [test_name + ".rs"],
-                size = "medium",
-                timeout = "short",
-                deps = [
-                    "//fuse",
-                    "//fuse/internal/testing:interop_testutil",
-                    "@rust_libc//:libc",
-                ] + select({
-                    "@platforms//os:linux": [
-                        "@rust_linux_errno//linux-errno",
-                        "@rust_linux_syscall//linux-syscall",
-                    ],
-                    "//conditions:default": [],
-                }),
-                tags = ["manual"],
-            )
+    rust_test(
+        name = target_name,
+        srcs = [filename],
+        size = "small",
+        timeout = "short",
+        deps = [
+            "//fuse",
+            "//fuse/internal:fuse_kernel",
+            "//fuse/internal/testing:fuse_testutil",
+        ] + select({
+            "@platforms//os:freebsd": [
+                "@rust_freebsd_errno//freebsd-errno",
+            ],
+            "@platforms//os:linux": [
+                "@rust_linux_errno//linux-errno",
+            ],
+            "//conditions:default": [],
+        }),
+    )
+
+def _operation_interop_test(filename, interop_test_os):
+    target_name = filename[:-len(".rs")]
+    if target_name in native.existing_rules():
+        return
+
+    rust_test(
+        name = target_name,
+        srcs = [filename],
+        size = "medium",
+        timeout = "short",
+        deps = [
+            "//fuse",
+            "//fuse/internal/testing:interop_testutil",
+            "@rust_libc//:libc",
+        ] + select({
+            "@platforms//os:linux": [
+                "@rust_linux_errno//linux-errno",
+                "@rust_linux_syscall//linux-syscall",
+            ],
+            "//conditions:default": [],
+        }),
+        tags = ["manual"],
+    )
