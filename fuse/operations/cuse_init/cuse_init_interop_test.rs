@@ -29,6 +29,8 @@ struct TestCharDev {
 	requests: mpsc::Sender<String>,
 }
 
+impl interop_testutil::TestDev for TestCharDev {}
+
 impl<S: cuse_rpc::CuseSocket> cuse_rpc::CuseHandlers<S> for TestCharDev {
 	fn open(
 		&self,

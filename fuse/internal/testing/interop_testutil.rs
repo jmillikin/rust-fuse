@@ -57,6 +57,15 @@ type DevFuse = fuse_linux::FuseServerSocket;
 #[cfg(target_os = "freebsd")]
 type DevFuse = fuse_libc::FuseServerSocket;
 
+pub trait TestDev: cuse_rpc::CuseHandlers<DevCuse> {
+	#[allow(unused)]
+	fn cuse_init(
+		init_request: &fuse::CuseInitRequest,
+		init_response: &mut fuse::CuseInitResponse,
+	) {
+	}
+}
+
 pub trait TestFS: fuse_rpc::FuseHandlers<DevFuse> {
 	#[allow(unused)]
 	fn fuse_init(
@@ -302,8 +311,8 @@ extern "C" {
 const CUSE_DEV_MAJOR: libc::c_uint = 240; // "LOCAL/EXPERIMENTAL USE"
 const CUSE_DEV_MINOR: libc::c_uint = 1;
 
-pub fn cuse_interop_test(
-	handlers: impl cuse_rpc::CuseHandlers<DevCuse> + Send + 'static,
+pub fn cuse_interop_test<H: TestDev + Send + 'static>(
+	handlers: H,
 	test_fn: impl FnOnce(&path::Path) + panic::UnwindSafe,
 ) {
 	let mut mktemp_template = {
@@ -346,7 +355,9 @@ pub fn cuse_interop_test(
 			let srv = CuseServerBuilder::new(dev_cuse, handlers)
 				.device_number(CUSE_DEV_MAJOR, CUSE_DEV_MINOR)
 				.server_hooks(Box::new(PrintHooks {}))
-				.cuse_init(devname)
+				.cuse_init_fn(devname, |req, resp| {
+					H::cuse_init(req, resp);
+				})
 				.unwrap();
 			ready.wait();
 
