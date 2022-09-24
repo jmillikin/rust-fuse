@@ -56,6 +56,42 @@ fn request() {
 }
 
 #[test]
+fn request_impl_debug() {
+	let buf;
+	let request = fuse_testutil::build_request!(buf, CopyFileRangeRequest, {
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_COPY_FILE_RANGE;
+			h.nodeid = 10;
+		})
+		.push_sized(&fuse_kernel::fuse_copy_file_range_in {
+			fh_in: 11,
+			off_in: 12,
+			nodeid_out: 13,
+			fh_out: 14,
+			off_out: 15,
+			len: 16,
+			flags: 0,
+		})
+	});
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"CopyFileRangeRequest {\n",
+			"    input_node_id: 10,\n",
+			"    input_handle: 11,\n",
+			"    input_offset: 12,\n",
+			"    output_node_id: 13,\n",
+			"    output_handle: 14,\n",
+			"    output_offset: 15,\n",
+			"    len: 16,\n",
+			"    flags: CopyFileRangeFlags,\n",
+			"}",
+		),
+	);
+}
+
+#[test]
 fn response() {
 	let mut resp = CopyFileRangeResponse::new();
 	resp.set_size(123);
