@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_OPENDIR` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -28,9 +30,10 @@ use crate::protocol::common::DebugHexU32;
 
 // OpendirRequest {{{
 
-/// Request type for [`FuseHandlers::opendir`].
+/// Request type for `FUSE_OPENDIR`.
 ///
-/// [`FuseHandlers::opendir`]: ../../trait.FuseHandlers.html#method.opendir
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_OPENDIR` operation.
 pub struct OpendirRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -76,9 +79,10 @@ impl fmt::Debug for OpendirRequest<'_> {
 
 // OpendirResponse {{{
 
-/// Response type for [`FuseHandlers::opendir`].
+/// Response type for `FUSE_OPENDIR`.
 ///
-/// [`FuseHandlers::opendir`]: ../../trait.FuseHandlers.html#method.opendir
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_OPENDIR` operation.
 pub struct OpendirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	handle: u64,
@@ -109,9 +113,9 @@ impl<'a> OpendirResponse<'a> {
 	pub fn flags_mut(&mut self) -> &mut OpendirResponseFlags {
 		&mut self.flags
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(OpendirResponse<'_>);
 
 impl fmt::Debug for OpendirResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -142,8 +146,6 @@ impl OpendirResponse<'_> {
 
 bitflags_struct! {
 	/// Optional flags set on [`OpendirResponse`].
-	///
-	/// [`OpendirResponse`]: struct.OpendirResponse.html
 	pub struct OpendirResponseFlags(u32);
 
 	/// Allow the kernel to preserve cached directory entries from the last

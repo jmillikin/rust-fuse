@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_ACCESS` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -26,9 +28,10 @@ use crate::server::io::encode;
 
 // AccessRequest {{{
 
-/// Request type for [`FuseHandlers::access`].
+/// Request type for `FUSE_ACCESS`.
 ///
-/// [`FuseHandlers::access`]: ../../trait.FuseHandlers.html#method.access
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_ACCESS` operation.
 pub struct AccessRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -71,9 +74,10 @@ impl fmt::Debug for AccessRequest<'_> {
 
 // AccessResponse {{{
 
-/// Response type for [`FuseHandlers::access`].
+/// Response type for `FUSE_ACCESS`.
 ///
-/// [`FuseHandlers::access`]: ../../trait.FuseHandlers.html#method.access
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_ACCESS` operation.
 pub struct AccessResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
@@ -84,9 +88,9 @@ impl<'a> AccessResponse<'a> {
 			phantom: PhantomData,
 		}
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(AccessResponse<'_>);
 
 impl fmt::Debug for AccessResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

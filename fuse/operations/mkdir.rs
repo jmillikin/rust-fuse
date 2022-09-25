@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_MKDIR` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -29,9 +31,10 @@ use crate::server::io::encode;
 
 // MkdirRequest {{{
 
-/// Request type for [`FuseHandlers::mkdir`].
+/// Request type for `FUSE_MKDIR`.
 ///
-/// [`FuseHandlers::mkdir`]: ../../trait.FuseHandlers.html#method.mkdir
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_MKDIR` operation.
 pub struct MkdirRequest<'a> {
 	parent_id: NodeId,
 	name: &'a NodeName,
@@ -86,9 +89,10 @@ impl fmt::Debug for MkdirRequest<'_> {
 
 // MkdirResponse {{{
 
-/// Response type for [`FuseHandlers::mkdir`].
+/// Response type for `FUSE_MKDIR`.
 ///
-/// [`FuseHandlers::mkdir`]: ../../trait.FuseHandlers.html#method.mkdir
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_MKDIR` operation.
 pub struct MkdirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_entry_out,
@@ -109,9 +113,9 @@ impl<'a> MkdirResponse<'a> {
 	pub fn node_mut(&mut self) -> &mut Node {
 		Node::new_ref_mut(&mut self.raw)
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(MkdirResponse<'_>);
 
 impl fmt::Debug for MkdirResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

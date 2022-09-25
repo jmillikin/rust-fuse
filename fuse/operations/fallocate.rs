@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_FALLOCATE` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -33,6 +35,10 @@ const FALLOC_FL_ZERO_RANGE: u32 = 1 << 4;
 const FALLOC_FL_INSERT_RANGE: u32 = 1 << 5;
 const FALLOC_FL_UNSHARE_RANGE: u32 = 1 << 6;
 
+/// Request type for `FUSE_FALLOCATE`.
+///
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_FALLOCATE` operation.
 pub struct FallocateRequest<'a> {
 	raw: &'a fuse_kernel::fuse_fallocate_in,
 	node_id: NodeId,
@@ -77,8 +83,6 @@ impl<'a> FallocateRequest<'a> {
 
 bitflags_struct! {
 	/// Mode bits set in an [`FallocateRequest`].
-	///
-	/// [`FallocateRequest`]: struct.FallocateRequest.html
 	pub struct FallocateMode(u32);
 
 	FALLOC_FL_KEEP_SIZE: keep_size,
@@ -105,6 +109,10 @@ impl fmt::Debug for FallocateRequest<'_> {
 
 // FallocateResponse {{{
 
+/// Response type for `FUSE_FALLOCATE`.
+///
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_FALLOCATE` operation.
 pub struct FallocateResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
@@ -115,9 +123,9 @@ impl<'a> FallocateResponse<'a> {
 			phantom: PhantomData,
 		}
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(FallocateResponse<'_>);
 
 impl fmt::Debug for FallocateResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

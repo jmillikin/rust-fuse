@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_RELEASEDIR` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -29,9 +31,10 @@ use crate::protocol::common::DebugHexU32;
 
 // ReleasedirRequest {{{
 
-/// Request type for [`FuseHandlers::releasedir`].
+/// Request type for `FUSE_RELEASEDIR`.
 ///
-/// [`FuseHandlers::releasedir`]: ../../trait.FuseHandlers.html#method.releasedir
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_RELEASEDIR` operation.
 pub struct ReleasedirRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -84,7 +87,7 @@ impl<'a> ReleasedirRequest<'a> {
 
 	/// The value passed to [`OpendirResponse::set_handle`], or zero if not set.
 	///
-	/// [`OpendirResponse::set_handle`]: protocol/struct.OpendirResponse.html#method.set_handle
+	/// [`OpendirResponse::set_handle`]: crate::operations::opendir::OpendirResponse::set_handle
 	pub fn handle(&self) -> u64 {
 		self.handle
 	}
@@ -93,11 +96,12 @@ impl<'a> ReleasedirRequest<'a> {
 		self.lock_owner
 	}
 
-	/// Platform-specific flags passed to [`FuseHandlers::opendir`]. See
-	/// [`OpendirRequest::flags`] for details.
+	/// Platform-specific flags passed to [`open(2)`].
 	///
-	/// [`FuseHandlers::opendir`]: ../../trait.FuseHandlers.html#method.opendir
-	/// [`OpendirRequest::flags`]: struct.OpendirRequest.html#method.flags
+	/// See [`OpendirRequest::flags`] for details.
+	///
+	/// [`open(2)`]: https://pubs.opengroup.org/onlinepubs/9699919799/functions/open.html
+	/// [`OpendirRequest::flags`]: crate::operations::opendir::OpendirRequest::flags
 	pub fn opendir_flags(&self) -> u32 {
 		self.opendir_flags
 	}
@@ -118,9 +122,10 @@ impl fmt::Debug for ReleasedirRequest<'_> {
 
 // ReleasedirResponse {{{
 
-/// Response type for [`FuseHandlers::releasedir`].
+/// Response type for `FUSE_RELEASEDIR`.
 ///
-/// [`FuseHandlers::releasedir`]: ../../trait.FuseHandlers.html#method.releasedir
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_RELEASEDIR` operation.
 pub struct ReleasedirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
@@ -131,9 +136,9 @@ impl<'a> ReleasedirResponse<'a> {
 			phantom: PhantomData,
 		}
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(ReleasedirResponse<'_>);
 
 impl fmt::Debug for ReleasedirResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

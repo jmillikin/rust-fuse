@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_WRITE` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -29,9 +31,10 @@ use crate::protocol::common::DebugHexU32;
 
 // WriteRequest {{{
 
-/// Request type for [`FuseHandlers::write`].
+/// Request type for `FUSE_WRITE`.
 ///
-/// [`FuseHandlers::write`]: ../../trait.FuseHandlers.html#method.write
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_WRITE` operation.
 pub struct WriteRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -74,7 +77,7 @@ impl<'a> WriteRequest<'a> {
 
 	/// The value passed to [`OpenResponse::set_handle`], or zero if not set.
 	///
-	/// [`OpenResponse::set_handle`]: struct.OpenResponse.html#method.set_handle
+	/// [`OpenResponse::set_handle`]: crate::operations::open::OpenResponse::set_handle
 	pub fn handle(&self) -> u64 {
 		self.handle
 	}
@@ -91,20 +94,13 @@ impl<'a> WriteRequest<'a> {
 		self.lock_owner
 	}
 
-	/// Platform-specific flags passed to [`FuseHandlers::open`]. See
-	/// [`OpenRequest::flags`] for details.
-	///
-	/// [`FuseHandlers::open`]: ../../trait.FuseHandlers.html#method.open
-	/// [`OpenRequest::flags`]: struct.OpenRequest.html#method.flags
 	pub fn open_flags(&self) -> u32 {
 		self.open_flags
 	}
 }
 
 bitflags_struct! {
-	/// Optional flags set on [`WriteRequest`].
-	///
-	/// [`WriteRequest`]: struct.OpendirResponse.html
+	/// Request flags for `FUSE_WRITE`.
 	pub struct WriteRequestFlags(u32);
 
 	fuse_kernel::FUSE_WRITE_CACHE: write_cache,
@@ -177,9 +173,10 @@ fn decode_request<'a>(
 
 // WriteResponse {{{
 
-/// Response type for [`FuseHandlers::write`].
+/// Response type for `FUSE_WRITE`.
 ///
-/// [`FuseHandlers::write`]: ../../trait.FuseHandlers.html#method.write
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_WRITE` operation.
 pub struct WriteResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_write_out,
@@ -199,9 +196,9 @@ impl<'a> WriteResponse<'a> {
 	pub fn set_size(&mut self, size: u32) {
 		self.raw.size = size;
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(WriteResponse<'_>);
 
 impl fmt::Debug for WriteResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_READDIR` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 use core::mem;
@@ -37,9 +39,10 @@ use crate::protocol::common::DebugHexU32;
 
 // ReaddirRequest {{{
 
-/// Request type for [`FuseHandlers::readdir`].
+/// Request type for `FUSE_READDIR`.
 ///
-/// [`FuseHandlers::readdir`]: ../../trait.FuseHandlers.html#method.readdir
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_READDIR` operation.
 pub struct ReaddirRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -96,16 +99,17 @@ impl<'a> ReaddirRequest<'a> {
 
 	/// The value passed to [`OpendirResponse::set_handle`], or zero if not set.
 	///
-	/// [`OpendirResponse::set_handle`]: struct.OpendirResponse.html#method.set_handle
+	/// [`OpendirResponse::set_handle`]: crate::operations::opendir::OpendirResponse::set_handle
 	pub fn handle(&self) -> u64 {
 		self.handle
 	}
 
-	/// Platform-specific flags passed to [`FuseHandlers::opendir`]. See
-	/// [`OpendirRequest::flags`] for details.
+	/// Platform-specific flags passed to [`open(2)`].
 	///
-	/// [`FuseHandlers::opendir`]: ../../trait.FuseHandlers.html#method.opendir
-	/// [`OpendirRequest::flags`]: struct.OpendirRequest.html#method.flags
+	/// See [`OpendirRequest::flags`] for details.
+	///
+	/// [`open(2)`]: https://pubs.opengroup.org/onlinepubs/9699919799/functions/open.html
+	/// [`OpendirRequest::flags`]: crate::operations::opendir::OpendirRequest::flags
 	pub fn opendir_flags(&self) -> u32 {
 		self.opendir_flags
 	}
@@ -161,9 +165,10 @@ impl fmt::Display for ReaddirError {
 #[cfg(feature = "std")]
 impl std::error::Error for ReaddirError {}
 
-/// Response type for [`FuseHandlers::readdir`].
+/// Response type for `FUSE_READDIR`.
 ///
-/// [`FuseHandlers::readdir`]: ../../trait.FuseHandlers.html#method.readdir
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_READDIR` operation.
 pub struct ReaddirResponse<'a> {
 	buf: ReaddirBuf<'a, fuse_kernel::fuse_dirent>,
 }
@@ -301,9 +306,9 @@ impl<'a> ReaddirResponse<'a> {
 			Ok(ReaddirEntry::new_ref_mut(&mut *dirent_ptr))
 		}
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(ReaddirResponse<'_>);
 
 enum ReaddirBuf<'a, Dirent> {
 	None,

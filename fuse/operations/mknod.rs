@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_MKNOD` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -30,9 +32,10 @@ use crate::server::io::encode;
 
 // MknodRequest {{{
 
-/// Request type for [`FuseHandlers::mknod`].
+/// Request type for `FUSE_MKNOD`.
 ///
-/// [`FuseHandlers::mknod`]: ../../trait.FuseHandlers.html#method.mknod
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_MKNOD` operation.
 pub struct MknodRequest<'a> {
 	parent_id: NodeId,
 	name: &'a NodeName,
@@ -121,9 +124,10 @@ impl fmt::Debug for MknodRequest<'_> {
 
 // MknodResponse {{{
 
-/// Response type for [`FuseHandlers::mknod`].
+/// Response type for `FUSE_MKNOD`.
 ///
-/// [`FuseHandlers::mknod`]: ../../trait.FuseHandlers.html#method.mknod
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_MKNOD` operation.
 pub struct MknodResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_entry_out,
@@ -144,9 +148,9 @@ impl<'a> MknodResponse<'a> {
 	pub fn node_mut(&mut self) -> &mut Node {
 		Node::new_ref_mut(&mut self.raw)
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(MknodResponse<'_>);
 
 impl fmt::Debug for MknodResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

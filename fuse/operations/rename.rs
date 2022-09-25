@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_RENAME` and `FUSE_RENAME2` operations.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -31,9 +33,10 @@ const RENAME_NOREPLACE: u32 = 1 << 0;
 const RENAME_EXCHANGE: u32 = 1 << 1;
 const RENAME_WHITEOUT: u32 = 1 << 2;
 
-/// Request type for [`FuseHandlers::rename`].
+/// Request type for `FUSE_RENAME` and `FUSE_RENAME2`.
 ///
-/// [`FuseHandlers::rename`]: ../../trait.FuseHandlers.html#method.rename
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_RENAME` and `FUSE_RENAME2` operations.
 pub struct RenameRequest<'a> {
 	old_directory_id: NodeId,
 	old_name: &'a NodeName,
@@ -94,8 +97,6 @@ impl<'a> RenameRequest<'a> {
 
 bitflags_struct! {
 	/// Optional flags set on [`RenameRequest`].
-	///
-	/// [`RenameRequest`]: struct.RenameRequest.html
 	pub struct RenameRequestFlags(u32);
 
 	RENAME_EXCHANGE: exchange,
@@ -119,9 +120,10 @@ impl fmt::Debug for RenameRequest<'_> {
 
 // RenameResponse {{{
 
-/// Response type for [`FuseHandlers::rename`].
+/// Response type for `FUSE_RENAME` and `FUSE_RENAME2`.
 ///
-/// [`FuseHandlers::rename`]: ../../trait.FuseHandlers.html#method.rename
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_RENAME` and `FUSE_RENAME2` operations.
 pub struct RenameResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
@@ -132,9 +134,9 @@ impl<'a> RenameResponse<'a> {
 			phantom: PhantomData,
 		}
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(RenameResponse<'_>);
 
 impl fmt::Debug for RenameResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

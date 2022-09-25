@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_BMAP` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -26,6 +28,10 @@ use crate::server::io::encode;
 
 // BmapRequest {{{
 
+/// Request type for `FUSE_BMAP`.
+///
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_BMAP` operation.
 pub struct BmapRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	raw: &'a fuse_kernel::fuse_bmap_in,
@@ -60,6 +66,10 @@ impl<'a> BmapRequest<'a> {
 
 // BmapResponse {{{
 
+/// Response type for `FUSE_BMAP`.
+///
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_BMAP` operation.
 pub struct BmapResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_bmap_out,
@@ -80,9 +90,9 @@ impl<'a> BmapResponse<'a> {
 	pub fn set_block(&mut self, block: u64) {
 		self.raw.block = block;
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(BmapResponse<'_>);
 
 impl fmt::Debug for BmapResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

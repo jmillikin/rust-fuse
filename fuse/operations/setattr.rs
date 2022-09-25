@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_SETATTR` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 use core::slice;
@@ -30,6 +32,10 @@ use crate::server::io::encode;
 
 // SetattrRequest {{{
 
+/// Request type for `FUSE_SETATTR`.
+///
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_SETATTR` operation.
 pub struct SetattrRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	raw: &'a fuse_kernel::fuse_setattr_in,
@@ -150,6 +156,10 @@ impl fmt::Debug for SetattrRequest<'_> {
 
 // SetattrResponse {{{
 
+/// Response type for `FUSE_SETATTR`.
+///
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_SETATTR` operation.
 pub struct SetattrResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_attr_out,
@@ -179,9 +189,9 @@ impl<'a> SetattrResponse<'a> {
 		self.raw.attr_valid = cache_duration.as_secs();
 		self.raw.attr_valid_nsec = cache_duration.subsec_nanos();
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(SetattrResponse<'_>);
 
 impl fmt::Debug for SetattrResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

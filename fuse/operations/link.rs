@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_LINK` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -28,9 +30,10 @@ use crate::server::io::encode;
 
 // LinkRequest {{{
 
-/// Request type for [`FuseHandlers::link`].
+/// Request type for `FUSE_LINK`.
 ///
-/// [`FuseHandlers::link`]: ../../trait.FuseHandlers.html#method.link
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_LINK` operation.
 #[derive(Debug)]
 pub struct LinkRequest<'a> {
 	node_id: NodeId,
@@ -71,9 +74,10 @@ impl<'a> LinkRequest<'a> {
 
 // LinkResponse {{{
 
-/// Response type for [`FuseHandlers::link`].
+/// Response type for `FUSE_LINK`.
 ///
-/// [`FuseHandlers::link`]: ../../trait.FuseHandlers.html#method.link
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_LINK` operation.
 pub struct LinkResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_entry_out,
@@ -94,9 +98,9 @@ impl<'a> LinkResponse<'a> {
 	pub fn node_mut(&mut self) -> &mut Node {
 		Node::new_ref_mut(&mut self.raw)
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(LinkResponse<'_>);
 
 impl fmt::Debug for LinkResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

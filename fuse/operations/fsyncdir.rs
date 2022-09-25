@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_FSYNCDIR` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -28,6 +30,10 @@ use crate::server::io::encode;
 
 const FSYNCDIR_DATASYNC: u32 = 1 << 0;
 
+/// Request type for `FUSE_FSYNCDIR`.
+///
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_FSYNCDIR` operation.
 pub struct FsyncdirRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -66,8 +72,6 @@ impl<'a> FsyncdirRequest<'a> {
 
 bitflags_struct! {
 	/// Optional flags set on [`FsyncdirRequest`].
-	///
-	/// [`FsyncdirRequest`]: struct.FsyncdirRequest.html
 	pub struct FsyncdirRequestFlags(u32);
 
 	FSYNCDIR_DATASYNC: datasync,
@@ -87,6 +91,10 @@ impl fmt::Debug for FsyncdirRequest<'_> {
 
 // FsyncdirResponse {{{
 
+/// Response type for `FUSE_FSYNCDIR`.
+///
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_FSYNCDIR` operation.
 pub struct FsyncdirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
@@ -97,9 +105,9 @@ impl<'a> FsyncdirResponse<'a> {
 			phantom: PhantomData,
 		}
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(FsyncdirResponse<'_>);
 
 impl fmt::Debug for FsyncdirResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

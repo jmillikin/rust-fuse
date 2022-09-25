@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_CREATE` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -29,9 +31,10 @@ use crate::server::io::encode;
 
 // CreateRequest {{{
 
-/// Request type for [`FuseHandlers::create`].
+/// Request type for `FUSE_CREATE`.
 ///
-/// [`FuseHandlers::create`]: ../../trait.FuseHandlers.html#method.create
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_CREATE` operation.
 pub struct CreateRequest<'a> {
 	node_id: NodeId,
 	name: &'a NodeName,
@@ -117,9 +120,10 @@ impl fmt::Debug for CreateRequest<'_> {
 
 // CreateResponse {{{
 
-/// Response type for [`FuseHandlers::create`].
+/// Response type for `FUSE_CREATE`.
 ///
-/// [`FuseHandlers::create`]: ../../trait.FuseHandlers.html#method.create
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_CREATE` operation.
 pub struct CreateResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	entry_out: fuse_kernel::fuse_entry_out,
@@ -156,9 +160,9 @@ impl<'a> CreateResponse<'a> {
 	pub fn flags_mut(&mut self) -> &mut CreateResponseFlags {
 		&mut self.flags
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(CreateResponse<'_>);
 
 impl fmt::Debug for CreateResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -192,8 +196,6 @@ impl CreateResponse<'_> {
 
 bitflags_struct! {
 	/// Optional flags set on [`CreateResponse`].
-	///
-	/// [`CreateResponse`]: struct.CreateResponse.html
 	pub struct CreateResponseFlags(u32);
 
 	/// Use [page-based direct I/O][direct-io] on this file.

@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_COPY_FILE_RANGE` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -26,9 +28,10 @@ use crate::server::io::encode;
 
 // CopyFileRangeRequest {{{
 
-/// Request type for [`FUSE_COPY_FILE_RANGE`].
+/// Request type for `FUSE_COPY_FILE_RANGE`.
 ///
-/// [`FUSE_COPY_FILE_RANGE`]: crate::Opcode::FUSE_COPY_FILE_RANGE
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_COPY_FILE_RANGE` operation.
 pub struct CopyFileRangeRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	body: &'a fuse_kernel::fuse_copy_file_range_in,
@@ -106,9 +109,10 @@ impl fmt::Debug for CopyFileRangeRequest<'_> {
 
 // CopyFileRangeResponse {{{
 
-/// Response type for [`FUSE_COPY_FILE_RANGE`].
+/// Response type for `FUSE_COPY_FILE_RANGE`.
 ///
-/// [`FUSE_COPY_FILE_RANGE`]: crate::Opcode::FUSE_COPY_FILE_RANGE
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_COPY_FILE_RANGE` operation.
 pub struct CopyFileRangeResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_write_out,
@@ -128,9 +132,9 @@ impl<'a> CopyFileRangeResponse<'a> {
 	pub fn set_size(&mut self, size: u32) {
 		self.raw.size = size;
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(CopyFileRangeResponse<'_>);
 
 impl fmt::Debug for CopyFileRangeResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

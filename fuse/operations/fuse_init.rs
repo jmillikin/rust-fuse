@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_INIT` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -25,9 +27,10 @@ use crate::server::io::encode;
 
 // FuseInitRequest {{{
 
-/// Request type for [`FuseHandlers::fuse_init`].
+/// Request type for `FUSE_INIT`.
 ///
-/// [`FuseHandlers::fuse_init`]: ../../trait.FuseHandlers.html#method.fuse_init
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_INIT` operation.
 pub struct FuseInitRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	version: Version,
@@ -133,9 +136,10 @@ impl fmt::Debug for FuseInitRequest<'_> {
 
 // FuseInitResponse {{{
 
-/// Response type for [`FuseHandlers::fuse_init`].
+/// Response type for `FUSE_INIT`.
 ///
-/// [`FuseHandlers::fuse_init`]: ../../trait.FuseHandlers.html#method.fuse_init
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_INIT` operation.
 pub struct FuseInitResponse {
 	raw: fuse_kernel::fuse_init_out,
 	flags: FuseInitFlags,
@@ -218,9 +222,9 @@ impl FuseInitResponse {
 	pub fn set_time_granularity(&mut self, granularity: u32) {
 		self.raw.time_gran = granularity;
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(FuseInitResponse);
 
 impl fmt::Debug for FuseInitResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

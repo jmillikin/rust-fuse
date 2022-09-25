@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_GETLK` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -28,9 +30,10 @@ use crate::protocol::common::file_lock::{Lock, F_RDLCK, F_UNLCK, F_WRLCK};
 
 // GetlkRequest {{{
 
-/// Request type for [`FuseHandlers::getlk`].
+/// Request type for `FUSE_GETLK`.
 ///
-/// [`FuseHandlers::getlk`]: ../../trait.FuseHandlers.html#method.getlk
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_GETLK` operation.
 pub struct GetlkRequest<'a> {
 	raw: &'a fuse_kernel::fuse_lk_in,
 	node_id: NodeId,
@@ -86,9 +89,10 @@ impl fmt::Debug for GetlkRequest<'_> {
 
 // GetlkResponse {{{
 
-/// Response type for [`FuseHandlers::getlk`].
+/// Response type for `FUSE_GETLK`.
 ///
-/// [`FuseHandlers::getlk`]: ../../trait.FuseHandlers.html#method.getlk
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_GETLK` operation.
 pub struct GetlkResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	lock: Option<Lock>,
@@ -109,9 +113,9 @@ impl<'a> GetlkResponse<'a> {
 	pub fn set_lock(&mut self, lock: Option<Lock>) {
 		self.lock = lock;
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(GetlkResponse<'_>);
 
 impl fmt::Debug for GetlkResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

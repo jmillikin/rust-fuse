@@ -36,6 +36,11 @@ macro_rules! response_send_funcs {
 			self.encode(send, response_ctx).await
 		}
 	};
+	($t:ty) => {
+		impl $t {
+			response_send_funcs!();
+		}
+	};
 }
 
 pub mod access;

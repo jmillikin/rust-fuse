@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_GETXATTR` operation.
+
 use core::fmt;
 use core::num;
 
@@ -30,9 +32,10 @@ use crate::protocol::common::DebugBytesAsString;
 
 // GetxattrRequest {{{
 
-/// Request type for [`FuseHandlers::getxattr`].
+/// Request type for `FUSE_GETXATTR`.
 ///
-/// [`FuseHandlers::getxattr`]: ../../trait.FuseHandlers.html#method.getxattr
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_GETXATTR` operation.
 pub struct GetxattrRequest<'a> {
 	node_id: NodeId,
 	size: Option<num::NonZeroU32>,
@@ -81,9 +84,10 @@ impl fmt::Debug for GetxattrRequest<'_> {
 
 // GetxattrResponse {{{
 
-/// Response type for [`FuseHandlers::getxattr`].
+/// Response type for `FUSE_GETXATTR`.
 ///
-/// [`FuseHandlers::getxattr`]: ../../trait.FuseHandlers.html#method.getxattr
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_GETXATTR` operation.
 pub struct GetxattrResponse<'a> {
 	request_size: Option<num::NonZeroU32>,
 	raw: fuse_kernel::fuse_getxattr_out,
@@ -133,9 +137,9 @@ impl<'a> GetxattrResponse<'a> {
 		}
 		return Ok(());
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(GetxattrResponse<'_>);
 
 impl fmt::Debug for GetxattrResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

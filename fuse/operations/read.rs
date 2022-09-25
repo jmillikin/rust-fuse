@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_READ` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -29,9 +31,10 @@ use crate::protocol::common::DebugHexU32;
 
 // ReadRequest {{{
 
-/// Request type for [`FuseHandlers::read`].
+/// Request type for `FUSE_READ`.
 ///
-/// [`FuseHandlers::read`]: ../../trait.FuseHandlers.html#method.read
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_READ` operation.
 pub struct ReadRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -77,7 +80,7 @@ impl<'a> ReadRequest<'a> {
 
 	/// The value passed to [`OpenResponse::set_handle`], or zero if not set.
 	///
-	/// [`OpenResponse::set_handle`]: struct.OpenResponse.html#method.set_handle
+	/// [`OpenResponse::set_handle`]: crate::operations::open::OpenResponse::set_handle
 	pub fn handle(&self) -> u64 {
 		self.handle
 	}
@@ -86,11 +89,12 @@ impl<'a> ReadRequest<'a> {
 		self.lock_owner
 	}
 
-	/// Platform-specific flags passed to [`FuseHandlers::open`]. See
-	/// [`OpenRequest::flags`] for details.
+	/// Platform-specific flags passed to [`open(2)`].
 	///
-	/// [`FuseHandlers::open`]: ../../trait.FuseHandlers.html#method.open
-	/// [`OpenRequest::flags`]: struct.OpenRequest.html#method.flags
+	/// See [`OpenRequest::flags`] for details.
+	///
+	/// [`open(2)`]: https://pubs.opengroup.org/onlinepubs/9699919799/functions/open.html
+	/// [`OpenRequest::flags`]: crate::operations::open::OpenRequest::flags
 	pub fn open_flags(&self) -> u32 {
 		self.open_flags
 	}
@@ -159,9 +163,10 @@ fn decode_request<'a>(
 
 // ReadResponse {{{
 
-/// Response type for [`FuseHandlers::read`].
+/// Response type for `FUSE_READ`.
 ///
-/// [`FuseHandlers::read`]: ../../trait.FuseHandlers.html#method.read
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_READ` operation.
 pub struct ReadResponse<'a> {
 	bytes: &'a [u8],
 }
@@ -174,9 +179,9 @@ impl<'a> ReadResponse<'a> {
 	// TODO; from &[std::io::IoSlice]
 
 	// TODO: from file descriptor (for splicing)
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(ReadResponse<'_>);
 
 impl fmt::Debug for ReadResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

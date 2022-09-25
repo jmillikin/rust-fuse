@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_GETATTR` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 use core::slice;
@@ -29,9 +31,10 @@ use crate::server::io::encode;
 
 // GetattrRequest {{{
 
-/// Request type for [`FuseHandlers::getattr`].
+/// Request type for `FUSE_GETATTR`.
 ///
-/// [`FuseHandlers::getattr`]: ../../trait.FuseHandlers.html#method.getattr
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_GETATTR` operation.
 pub struct GetattrRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -91,9 +94,10 @@ impl fmt::Debug for GetattrRequest<'_> {
 
 // GetattrResponse {{{
 
-/// Response type for [`FuseHandlers::getattr`].
+/// Response type for `FUSE_GETATTR`.
 ///
-/// [`FuseHandlers::getattr`]: ../../trait.FuseHandlers.html#method.getattr
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_GETATTR` operation.
 pub struct GetattrResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_attr_out,
@@ -123,10 +127,9 @@ impl<'a> GetattrResponse<'a> {
 	pub fn attr_mut(&mut self) -> &mut NodeAttr {
 		NodeAttr::new_ref_mut(&mut self.raw.attr)
 	}
-
-	response_send_funcs!();
 }
 
+response_send_funcs!(GetattrResponse<'_>);
 
 impl fmt::Debug for GetattrResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

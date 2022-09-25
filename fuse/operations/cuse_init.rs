@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `CUSE_INIT` operation.
+
 use core::cmp;
 use core::fmt;
 use core::marker::PhantomData;
@@ -95,9 +97,10 @@ impl PartialOrd for CuseDeviceName {
 
 // CuseInitRequest {{{
 
-/// Request type for [`CuseHandlers::cuse_init`].
+/// Request type for `CUSE_INIT`.
 ///
-/// [`CuseHandlers::cuse_init`]: ../../trait.CuseHandlers.html#method.cuse_init
+/// See the [module-level documentation](self) for an overview of the
+/// `CUSE_INIT` operation.
 pub struct CuseInitRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	version: Version,
@@ -145,9 +148,10 @@ impl fmt::Debug for CuseInitRequest<'_> {
 
 // CuseInitResponse {{{
 
-/// Response type for [`CuseHandlers::cuse_init`].
+/// Response type for `CUSE_INIT`.
 ///
-/// [`CuseHandlers::cuse_init`]: ../../trait.CuseHandlers.html#method.cuse_init
+/// See the [module-level documentation](self) for an overview of the
+/// `CUSE_INIT` operation.
 pub struct CuseInitResponse<'a> {
 	raw: fuse_kernel::cuse_init_out,
 	flags: CuseInitFlags,
@@ -224,9 +228,9 @@ impl<'a> CuseInitResponse<'a> {
 		self.raw.dev_major = major;
 		self.raw.dev_minor = minor;
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(CuseInitResponse<'_>);
 
 impl fmt::Debug for CuseInitResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

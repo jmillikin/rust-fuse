@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_LISTXATTR` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 use core::num;
@@ -31,9 +33,10 @@ use crate::protocol::common::DebugClosure;
 
 // ListxattrRequest {{{
 
-/// Request type for [`FuseHandlers::listxattr`].
+/// Request type for `FUSE_LISTXATTR`.
 ///
-/// [`FuseHandlers::listxattr`]: ../../trait.FuseHandlers.html#method.listxattr
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_LISTXATTR` operation.
 pub struct ListxattrRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -77,9 +80,10 @@ impl fmt::Debug for ListxattrRequest<'_> {
 
 // ListxattrResponse {{{
 
-/// Response type for [`FuseHandlers::listxattr`].
+/// Response type for `FUSE_LISTXATTR`.
 ///
-/// [`FuseHandlers::listxattr`]: ../../trait.FuseHandlers.html#method.listxattr
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_LISTXATTR` operation.
 pub struct ListxattrResponse<'a> {
 	buf: ListxattrBuf<'a>,
 }
@@ -179,9 +183,9 @@ impl<'a> ListxattrResponse<'a> {
 		name_nul[0] = 0;
 		Ok(())
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(ListxattrResponse<'_>);
 
 enum ListxattrBuf<'a> {
 	SizeOnly {

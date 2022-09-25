@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_SETLK` and `FUSE_SETLKW` operations.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -28,9 +30,10 @@ use crate::protocol::common::file_lock::{Lock, LockRange, F_UNLCK};
 
 // SetlkRequest {{{
 
-/// Request type for [`FuseHandlers::setlk`].
+/// Request type for `FUSE_SETLK` and `FUSE_SETLKW`.
 ///
-/// [`FuseHandlers::setlk`]: ../../trait.FuseHandlers.html#method.setlk
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_SETLK` and `FUSE_SETLKW` operations.
 pub struct SetlkRequest<'a> {
 	raw: &'a fuse_kernel::fuse_lk_in,
 	node_id: NodeId,
@@ -98,8 +101,6 @@ pub enum SetlkCommand {
 
 bitflags_struct! {
 	/// Optional flags set on [`SetlkRequest`].
-	///
-	/// [`SetlkRequest`]: struct.SetlkRequest.html
 	pub struct SetlkRequestFlags(u32);
 
 	fuse_kernel::FUSE_LK_FLOCK: flock,
@@ -142,9 +143,10 @@ fn parse_setlk_cmd(
 
 // SetlkResponse {{{
 
-/// Response type for [`FuseHandlers::setlk`].
+/// Response type for `FUSE_SETLK` and `FUSE_SETLKW`.
 ///
-/// [`FuseHandlers::setlk`]: ../../trait.FuseHandlers.html#method.setlk
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_SETLK` and `FUSE_SETLKW` operations.
 pub struct SetlkResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
@@ -155,9 +157,9 @@ impl<'a> SetlkResponse<'a> {
 			phantom: PhantomData,
 		}
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(SetlkResponse<'_>);
 
 impl fmt::Debug for SetlkResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

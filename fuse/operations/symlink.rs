@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_SYMLINK` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -30,9 +32,10 @@ use crate::protocol::common::DebugBytesAsString;
 
 // SymlinkRequest {{{
 
-/// Request type for [`FuseHandlers::symlink`].
+/// Request type for `FUSE_SYMLINK`.
 ///
-/// [`FuseHandlers::symlink`]: ../../trait.FuseHandlers.html#method.symlink
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_SYMLINK` operation.
 pub struct SymlinkRequest<'a> {
 	parent_id: NodeId,
 	name: &'a NodeName,
@@ -81,9 +84,10 @@ impl fmt::Debug for SymlinkRequest<'_> {
 
 // SymlinkResponse {{{
 
-/// Response type for [`FuseHandlers::symlink`].
+/// Response type for `FUSE_SYMLINK`.
 ///
-/// [`FuseHandlers::symlink`]: ../../trait.FuseHandlers.html#method.symlink
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_SYMLINK` operation.
 pub struct SymlinkResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_entry_out,
@@ -104,9 +108,9 @@ impl<'a> SymlinkResponse<'a> {
 	pub fn node_mut(&mut self) -> &mut Node {
 		Node::new_ref_mut(&mut self.raw)
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(SymlinkResponse<'_>);
 
 impl fmt::Debug for SymlinkResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

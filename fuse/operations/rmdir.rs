@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_RMDIR` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -27,9 +29,10 @@ use crate::server::io::encode;
 
 // RmdirRequest {{{
 
-/// Request type for [`FuseHandlers::rmdir`].
+/// Request type for `FUSE_RMDIR`.
 ///
-/// [`FuseHandlers::rmdir`]: ../../trait.FuseHandlers.html#method.rmdir
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_RMDIR` operation.
 #[derive(Debug)]
 pub struct RmdirRequest<'a> {
 	parent_id: NodeId,
@@ -61,9 +64,10 @@ impl<'a> RmdirRequest<'a> {
 
 // RmdirResponse {{{
 
-/// Response type for [`FuseHandlers::rmdir`].
+/// Response type for `FUSE_RMDIR`.
 ///
-/// [`FuseHandlers::rmdir`]: ../../trait.FuseHandlers.html#method.rmdir
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_RMDIR` operation.
 pub struct RmdirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
@@ -74,9 +78,9 @@ impl<'a> RmdirResponse<'a> {
 			phantom: PhantomData,
 		}
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(RmdirResponse<'_>);
 
 impl fmt::Debug for RmdirResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

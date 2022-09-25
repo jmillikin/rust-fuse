@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_FORGET` and `FUSE_BATCH_FORGET` operations.
+
 use core::fmt;
 use core::mem::size_of;
 use core::slice;
@@ -41,9 +43,10 @@ impl ForgetRequestItem {
 	}
 }
 
-/// Request type for [`FuseHandlers::forget`].
+/// Request type for `FUSE_FORGET` and `FUSE_BATCH_FORGET`.
 ///
-/// [`FuseHandlers::forget`]: ../../trait.FuseHandlers.html#method.forget
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_FORGET` and `FUSE_BATCH_FORGET` operations.
 pub struct ForgetRequest<'a> {
 	forget: Option<fuse_kernel::fuse_forget_one>,
 	batch_forgets: &'a [fuse_kernel::fuse_forget_one],

@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_REMOVEXATTR` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -27,6 +29,10 @@ use crate::server::io::encode;
 
 // RemovexattrRequest {{{
 
+/// Request type for `FUSE_REMOVEXATTR`.
+///
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_REMOVEXATTR` operation.
 pub struct RemovexattrRequest<'a> {
 	node_id: NodeId,
 	name: &'a XattrName,
@@ -67,6 +73,10 @@ impl fmt::Debug for RemovexattrRequest<'_> {
 
 // RemovexattrResponse {{{
 
+/// Response type for `FUSE_REMOVEXATTR`.
+///
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_REMOVEXATTR` operation.
 pub struct RemovexattrResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
@@ -77,9 +87,9 @@ impl<'a> RemovexattrResponse<'a> {
 			phantom: PhantomData,
 		}
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(RemovexattrResponse<'_>);
 
 impl fmt::Debug for RemovexattrResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

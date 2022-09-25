@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_STATFS` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 use core::slice;
@@ -27,6 +29,10 @@ use crate::server::io::encode;
 
 // StatfsRequest {{{
 
+/// Request type for `FUSE_STATFS`.
+///
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_STATFS` operation.
 pub struct StatfsRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -62,6 +68,10 @@ impl fmt::Debug for StatfsRequest<'_> {
 
 // StatfsResponse {{{
 
+/// Response type for `FUSE_STATFS`.
+///
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_STATFS` operation.
 pub struct StatfsResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	raw: fuse_kernel::fuse_statfs_out,
@@ -106,9 +116,9 @@ impl<'a> StatfsResponse<'a> {
 	pub fn set_max_filename_length(&mut self, max_filename_length: u32) {
 		self.raw.st.namelen = max_filename_length;
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(StatfsResponse<'_>);
 
 impl fmt::Debug for StatfsResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

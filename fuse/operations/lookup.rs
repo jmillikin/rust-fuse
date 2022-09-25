@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_LOOKUP` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -28,9 +30,10 @@ use crate::server::io::encode;
 
 // LookupRequest {{{
 
-/// Request type for [`FuseHandlers::lookup`].
+/// Request type for `FUSE_LOOKUP`.
 ///
-/// [`FuseHandlers::lookup`]: ../../trait.FuseHandlers.html#method.lookup
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_LOOKUP` operation.
 #[derive(Debug)]
 pub struct LookupRequest<'a> {
 	parent_id: NodeId,
@@ -62,9 +65,10 @@ impl<'a> LookupRequest<'a> {
 
 // LookupResponse {{{
 
-/// Response type for [`FuseHandlers::lookup`].
+/// Response type for `FUSE_LOOKUP`.
 ///
-/// [`FuseHandlers::lookup`]: ../../trait.FuseHandlers.html#method.lookup
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_LOOKUP` operation.
 pub struct LookupResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	entry_out: fuse_kernel::fuse_entry_out,
@@ -85,9 +89,9 @@ impl<'a> LookupResponse<'a> {
 	pub fn node_mut(&mut self) -> &mut Node {
 		Node::new_ref_mut(&mut self.entry_out)
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(LookupResponse<'_>);
 
 impl fmt::Debug for LookupResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

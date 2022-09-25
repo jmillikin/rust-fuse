@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_FSYNC` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -28,6 +30,10 @@ use crate::server::io::encode;
 
 const FSYNC_DATASYNC: u32 = 1 << 0;
 
+/// Request type for `FUSE_FSYNC`.
+///
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_FSYNC` operation.
 pub struct FsyncRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -63,8 +69,6 @@ impl<'a> FsyncRequest<'a> {
 
 bitflags_struct! {
 	/// Optional flags set on [`FsyncRequest`].
-	///
-	/// [`FsyncRequest`]: struct.FsyncRequest.html
 	pub struct FsyncRequestFlags(u32);
 
 	FSYNC_DATASYNC: datasync,
@@ -106,6 +110,10 @@ fn decode_request<'a>(
 
 // FsyncResponse {{{
 
+/// Response type for `FUSE_FSYNC`.
+///
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_FSYNC` operation.
 pub struct FsyncResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
@@ -116,9 +124,9 @@ impl<'a> FsyncResponse<'a> {
 			phantom: PhantomData,
 		}
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(FsyncResponse<'_>);
 
 impl fmt::Debug for FsyncResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

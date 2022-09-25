@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_UNLINK` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -27,9 +29,10 @@ use crate::server::io::encode;
 
 // UnlinkRequest {{{
 
-/// Request type for [`FuseHandlers::unlink`].
+/// Request type for `FUSE_UNLINK`.
 ///
-/// [`FuseHandlers::unlink`]: ../../trait.FuseHandlers.html#method.unlink
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_UNLINK` operation.
 #[derive(Debug)]
 pub struct UnlinkRequest<'a> {
 	parent_id: NodeId,
@@ -61,9 +64,10 @@ impl<'a> UnlinkRequest<'a> {
 
 // UnlinkResponse {{{
 
-/// Response type for [`FuseHandlers::unlink`].
+/// Response type for `FUSE_UNLINK`.
 ///
-/// [`FuseHandlers::unlink`]: ../../trait.FuseHandlers.html#method.unlink
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_UNLINK` operation.
 pub struct UnlinkResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
@@ -74,9 +78,9 @@ impl<'a> UnlinkResponse<'a> {
 			phantom: PhantomData,
 		}
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(UnlinkResponse<'_>);
 
 impl fmt::Debug for UnlinkResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

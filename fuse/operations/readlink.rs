@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_READLINK` operation.
+
 // use core::ffi::CStr;
 #[cfg(feature = "std")]
 use std::ffi::CStr;
@@ -33,9 +35,10 @@ use crate::protocol::common::DebugBytesAsString;
 
 // ReadlinkRequest {{{
 
-/// Request type for [`FuseHandlers::readlink`].
+/// Request type for `FUSE_READLINK`.
 ///
-/// [`FuseHandlers::readlink`]: ../../trait.FuseHandlers.html#method.readlink
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_READLINK` operation.
 pub struct ReadlinkRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -70,9 +73,10 @@ impl fmt::Debug for ReadlinkRequest<'_> {
 
 // ReadlinkResponse {{{
 
-/// Response type for [`FuseHandlers::readlink`].
+/// Response type for `FUSE_READLINK`.
 ///
-/// [`FuseHandlers::readlink`]: ../../trait.FuseHandlers.html#method.readlink
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_READLINK` operation.
 pub struct ReadlinkResponse<'a> {
 	target: &'a [u8],
 }
@@ -86,9 +90,9 @@ impl<'a> ReadlinkResponse<'a> {
 	pub fn from_name(target: &'a NodeName) -> ReadlinkResponse<'a> {
 		Self { target: target.as_bytes() }
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(ReadlinkResponse<'_>);
 
 impl fmt::Debug for ReadlinkResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

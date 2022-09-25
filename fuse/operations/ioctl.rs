@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_IOCTL` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 use core::mem::size_of;
@@ -30,9 +32,10 @@ use crate::protocol::common::DebugHexU64;
 
 // IoctlRequest {{{
 
-/// Request type for [`FUSE_IOCTL`].
+/// Request type for `FUSE_IOCTL`.
 ///
-/// [`FUSE_IOCTL`]: crate::Opcode::FUSE_IOCTL
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_IOCTL` operation.
 pub struct IoctlRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	body: &'a fuse_kernel::fuse_ioctl_in,
@@ -283,9 +286,10 @@ bitflags_struct! {
 
 // IoctlResponse {{{
 
-/// Response type for [`FUSE_IOCTL`].
+/// Response type for `FUSE_IOCTL`.
 ///
-/// [`FUSE_IOCTL`]: crate::Opcode::FUSE_IOCTL
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_IOCTL` operation.
 pub struct IoctlResponse<'a> {
 	raw: fuse_kernel::fuse_ioctl_out,
 	output: IoctlResponseOutput<'a>,
@@ -325,9 +329,9 @@ impl<'a> IoctlResponse<'a> {
 		self.raw.result = result;
 		self.set_result = true;
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(IoctlResponse<'_>);
 
 impl fmt::Debug for IoctlResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

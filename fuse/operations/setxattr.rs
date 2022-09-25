@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_SETXATTR` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -32,6 +34,10 @@ use crate::protocol::common::DebugBytesAsString;
 const XATTR_CREATE: u32 = 1 << 0;
 const XATTR_REPLACE: u32 = 1 << 1;
 
+/// Request type for `FUSE_SETXATTR`.
+///
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_SETXATTR` operation.
 pub struct SetxattrRequest<'a> {
 	node_id: NodeId,
 	flags: SetxattrRequestFlags,
@@ -81,8 +87,6 @@ impl<'a> SetxattrRequest<'a> {
 
 bitflags_struct! {
 	/// Optional flags set on [`SetxattrRequest`].
-	///
-	/// [`SetxattrRequest`]: struct.SetxattrRequest.html
 	pub struct SetxattrRequestFlags(u32);
 
 	XATTR_CREATE: create,
@@ -104,6 +108,10 @@ impl fmt::Debug for SetxattrRequest<'_> {
 
 // SetxattrResponse {{{
 
+/// Response type for `FUSE_SETXATTR`.
+///
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_SETXATTR` operation.
 pub struct SetxattrResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
@@ -114,9 +122,9 @@ impl<'a> SetxattrResponse<'a> {
 			phantom: PhantomData,
 		}
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(SetxattrResponse<'_>);
 
 impl fmt::Debug for SetxattrResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

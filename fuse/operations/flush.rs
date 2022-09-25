@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_FLUSH` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -26,6 +28,10 @@ use crate::server::io::encode;
 
 // FlushRequest {{{
 
+/// Request type for `FUSE_FLUSH`.
+///
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_FLUSH` operation.
 pub struct FlushRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -95,6 +101,10 @@ fn decode_request<'a>(
 
 // FlushResponse {{{
 
+/// Response type for `FUSE_FLUSH`.
+///
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_FLUSH` operation.
 pub struct FlushResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
@@ -105,9 +115,9 @@ impl<'a> FlushResponse<'a> {
 			phantom: PhantomData,
 		}
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(FlushResponse<'_>);
 
 impl fmt::Debug for FlushResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

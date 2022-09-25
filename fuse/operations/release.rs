@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_RELEASE` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -28,9 +30,10 @@ use crate::protocol::common::DebugHexU32;
 
 // ReleaseRequest {{{
 
-/// Request type for [`FuseHandlers::release`].
+/// Request type for `FUSE_RELEASE`.
 ///
-/// [`FuseHandlers::release`]: ../../trait.FuseHandlers.html#method.release
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_RELEASE` operation.
 pub struct ReleaseRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -65,7 +68,7 @@ impl<'a> ReleaseRequest<'a> {
 
 	/// The value passed to [`OpenResponse::set_handle`], or zero if not set.
 	///
-	/// [`OpenResponse::set_handle`]: protocol/struct.OpenResponse.html#method.set_handle
+	/// [`OpenResponse::set_handle`]: crate::operations::open::OpenResponse::set_handle
 	pub fn handle(&self) -> u64 {
 		self.handle
 	}
@@ -74,11 +77,12 @@ impl<'a> ReleaseRequest<'a> {
 		self.lock_owner
 	}
 
-	/// Platform-specific flags passed to [`FuseHandlers::open`]. See
-	/// [`OpenRequest::flags`] for details.
+	/// Platform-specific flags passed to [`open(2)`].
 	///
-	/// [`FuseHandlers::open`]: ../../trait.FuseHandlers.html#method.open
-	/// [`OpenRequest::flags`]: struct.OpenRequest.html#method.flags
+	/// See [`OpenRequest::flags`] for details.
+	///
+	/// [`open(2)`]: https://pubs.opengroup.org/onlinepubs/9699919799/functions/open.html
+	/// [`OpenRequest::flags`]: crate::operations::open::OpenRequest::flags
 	pub fn open_flags(&self) -> u32 {
 		self.open_flags
 	}
@@ -141,9 +145,10 @@ fn decode_request<'a>(
 
 // ReleaseResponse {{{
 
-/// Response type for [`FuseHandlers::release`].
+/// Response type for `FUSE_RELEASE`.
 ///
-/// [`FuseHandlers::release`]: ../../trait.FuseHandlers.html#method.release
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_RELEASE` operation.
 pub struct ReleaseResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 }
@@ -154,9 +159,9 @@ impl<'a> ReleaseResponse<'a> {
 			phantom: PhantomData,
 		}
 	}
-
-	response_send_funcs!();
 }
+
+response_send_funcs!(ReleaseResponse<'_>);
 
 impl fmt::Debug for ReleaseResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

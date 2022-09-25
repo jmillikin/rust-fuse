@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Implements the `FUSE_OPEN` operation.
+
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -28,9 +30,10 @@ use crate::protocol::common::DebugHexU32;
 
 // OpenRequest {{{
 
-/// Request type for [`FuseHandlers::open`].
+/// Request type for `FUSE_OPEN`.
 ///
-/// [`FuseHandlers::open`]: ../../trait.FuseHandlers.html#method.open
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_OPEN` operation.
 pub struct OpenRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: NodeId,
@@ -96,9 +99,10 @@ fn decode_request<'a>(
 
 // OpenResponse {{{
 
-/// Response type for [`FuseHandlers::open`].
+/// Response type for `FUSE_OPEN`.
 ///
-/// [`FuseHandlers::open`]: ../../trait.FuseHandlers.html#method.open
+/// See the [module-level documentation](self) for an overview of the
+/// `FUSE_OPEN` operation.
 pub struct OpenResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	handle: u64,
@@ -129,10 +133,9 @@ impl<'a> OpenResponse<'a> {
 	pub fn flags_mut(&mut self) -> &mut OpenResponseFlags {
 		&mut self.flags
 	}
-
-	response_send_funcs!();
 }
 
+response_send_funcs!(OpenResponse<'_>);
 
 impl fmt::Debug for OpenResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -164,8 +167,6 @@ impl OpenResponse<'_> {
 
 bitflags_struct! {
 	/// Optional flags set on [`OpenResponse`].
-	///
-	/// [`OpenResponse`]: struct.OpenResponse.html
 	pub struct OpenResponseFlags(u32);
 
 	/// Use [page-based direct I/O][direct-io] on this file.
