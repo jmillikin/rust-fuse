@@ -96,9 +96,7 @@ pub mod getxattr;
 #[doc(inline)]
 pub use self::getxattr::*;
 
-#[cfg(any(doc, feature = "unstable_ioctl"))]
 pub mod ioctl;
-#[cfg(any(doc, feature = "unstable_ioctl"))]
 #[doc(inline)]
 pub use self::ioctl::*;
 

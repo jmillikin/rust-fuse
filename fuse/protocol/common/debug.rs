@@ -24,6 +24,14 @@ impl fmt::Debug for DebugHexU32 {
 	}
 }
 
+pub(crate) struct DebugHexU64(pub(crate) u64);
+
+impl fmt::Debug for DebugHexU64 {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		write!(fmt, "{:#020X}", self.0)
+	}
+}
+
 pub(crate) struct DebugBytesAsString<'a>(pub(crate) &'a [u8]);
 
 impl fmt::Debug for DebugBytesAsString<'_> {

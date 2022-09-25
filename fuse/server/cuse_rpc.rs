@@ -220,14 +220,12 @@ macro_rules! impl_cuse_response {
 impl_cuse_response! {
 	FlushResponse,
 	FsyncResponse,
+	IoctlResponse,
 	OpenResponse,
 	ReadResponse,
 	ReleaseResponse,
 	WriteResponse,
 }
-
-#[cfg(any(doc, feature = "unstable_ioctl"))]
-impl_cuse_response! { IoctlResponse }
 
 pub struct CuseCall<'a, S> {
 	socket: &'a S,
@@ -345,7 +343,6 @@ fn cuse_request_dispatch<S: CuseSocket>(
 	match request.header().opcode() {
 		Op::FUSE_FLUSH => do_dispatch!(FlushRequest, flush),
 		Op::FUSE_FSYNC => do_dispatch!(FsyncRequest, fsync),
-		#[cfg(feature = "unstable_ioctl")]
 		Op::FUSE_IOCTL => do_dispatch!(IoctlRequest, ioctl),
 		Op::FUSE_OPEN => do_dispatch!(OpenRequest, open),
 		Op::FUSE_READ => do_dispatch!(ReadRequest, read),
@@ -382,7 +379,6 @@ pub trait CuseHandlers<S: CuseSocket> {
 		call.unimplemented()
 	}
 
-	#[cfg(any(doc, feature = "unstable_ioctl"))]
 	fn ioctl(
 		&self,
 		call: CuseCall<S>,

@@ -67,10 +67,10 @@ rust_library(
     }),
 )
 """,
-    sha256 = "4d58d1b70b004888f764dfbf6a26a3b0342a1632d33968e4a179d8011c760614",
-    strip_prefix = "libc-0.2.80",
+    sha256 = "c0f80d65747a3e43d1596c7c5492d95d5edddaabd45a7fcdb02b95f644164966",
+    strip_prefix = "libc-0.2.133",
     type = "tar.gz",
-    url = "https://crates.io/api/v1/crates/libc/0.2.80/download",
+    url = "https://crates.io/api/v1/crates/libc/0.2.133/download",
 )
 
 load(

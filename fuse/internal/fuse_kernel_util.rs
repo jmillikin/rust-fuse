@@ -51,6 +51,7 @@ macro_rules! fuse_kernel_const_ty {
 	(FUSE_COMPAT_STATFS_SIZE) => {usize};
 	(FUSE_COMPAT_WRITE_IN_SIZE) => {usize};
 	(FUSE_HAS_INODE_DAX) => { u64 };
+	(FUSE_IOCTL_MAX_IOV) => { usize };
 	(FUSE_MIN_READ_BUFFER) => { usize };
 	(FUSE_ROOT_ID) => { u64 };
 	(FUSE_SECURITY_CTX) => { u64 };

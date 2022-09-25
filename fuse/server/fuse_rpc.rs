@@ -202,6 +202,7 @@ impl_fuse_response! {
 	GetattrResponse,
 	GetlkResponse,
 	GetxattrResponse,
+	IoctlResponse,
 	LinkResponse,
 	ListxattrResponse,
 	LookupResponse,
@@ -229,9 +230,6 @@ impl_fuse_response! {
 
 #[cfg(any(doc, feature = "unstable_bmap"))]
 impl_fuse_response! { BmapResponse }
-
-#[cfg(any(doc, feature = "unstable_ioctl"))]
-impl_fuse_response! { IoctlResponse }
 
 pub struct FuseCall<'a, S> {
 	socket: &'a S,
@@ -374,7 +372,6 @@ fn fuse_request_dispatch<S: FuseSocket>(
 		Op::FUSE_GETATTR => do_dispatch!(GetattrRequest, getattr),
 		Op::FUSE_GETLK => do_dispatch!(GetlkRequest, getlk),
 		Op::FUSE_GETXATTR => do_dispatch!(GetxattrRequest, getxattr),
-		#[cfg(feature = "unstable_ioctl")]
 		Op::FUSE_IOCTL => do_dispatch!(IoctlRequest, ioctl),
 		Op::FUSE_LINK => do_dispatch!(LinkRequest, link),
 		Op::FUSE_LISTXATTR => do_dispatch!(ListxattrRequest, listxattr),
@@ -525,7 +522,6 @@ pub trait FuseHandlers<S: FuseSocket> {
 		call.unimplemented()
 	}
 
-	#[cfg(any(doc, feature = "unstable_ioctl"))]
 	fn ioctl(
 		&self,
 		call: FuseCall<S>,

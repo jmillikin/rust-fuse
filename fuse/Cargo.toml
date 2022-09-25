@@ -20,4 +20,3 @@ default = ["std"]
 std = []
 
 unstable_bmap = []
-unstable_ioctl = []
