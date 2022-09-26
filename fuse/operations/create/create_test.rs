@@ -18,7 +18,12 @@ use core::mem::size_of;
 
 use fuse::FileType;
 use fuse::NodeId;
-use fuse::operations::create::{CreateRequest, CreateResponse};
+use fuse::operations::create::{
+	CreateRequest,
+	CreateRequestFlags,
+	CreateResponse,
+	CreateResponseFlag,
+};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
@@ -40,7 +45,8 @@ fn request_v7p1() {
 
 	let expect: &[u8] = b"hello.world!";
 	assert_eq!(req.name(), expect);
-	assert_eq!(req.flags(), 0xFF);
+	assert_eq!(req.flags(), CreateRequestFlags::new());
+	assert_eq!(req.open_flags(), 0xFF);
 	assert_eq!(req.mode(), 0);
 	assert_eq!(req.umask(), 0);
 }
@@ -67,7 +73,8 @@ fn request_v7p12() {
 
 	let expect: &[u8] = b"hello.world!";
 	assert_eq!(req.name(), expect);
-	assert_eq!(req.flags(), 0xFF);
+	assert_eq!(req.flags(), CreateRequestFlags::new());
+	assert_eq!(req.open_flags(), 0xFF);
 	assert_eq!(req.mode(), 0xEE);
 	assert_eq!(req.umask(), 0xDD);
 }
@@ -95,7 +102,8 @@ fn request_impl_debug() {
 			"CreateRequest {\n",
 			"    node_id: 1,\n",
 			"    name: \"hello.world\",\n",
-			"    flags: 123,\n",
+			"    flags: CreateRequestFlags {},\n",
+			"    open_flags: 0x0000007B,\n",
 			"    mode: 0o100644,\n",
 			"    umask: 18,\n",
 			"}",
@@ -112,8 +120,8 @@ fn response_v7p1() {
 		.attr_mut()
 		.set_node_id(NodeId::new(11).unwrap());
 	resp.set_handle(123);
-	resp.flags_mut().direct_io = true;
-	resp.flags_mut().keep_cache = true;
+	resp.mut_flags().set(CreateResponseFlag::DIRECT_IO);
+	resp.mut_flags().set(CreateResponseFlag::KEEP_CACHE);
 
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 1),
@@ -163,8 +171,8 @@ fn response_v7p9() {
 		.attr_mut()
 		.set_node_id(NodeId::new(11).unwrap());
 	resp.set_handle(123);
-	resp.flags_mut().direct_io = true;
-	resp.flags_mut().keep_cache = true;
+	resp.mut_flags().set(CreateResponseFlag::DIRECT_IO);
+	resp.mut_flags().set(CreateResponseFlag::KEEP_CACHE);
 
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 9),
@@ -212,8 +220,8 @@ fn response_impl_debug() {
 	node.attr_mut().set_mode(FileType::Regular | 0o644);
 
 	response.set_handle(123);
-	response.flags_mut().direct_io = true;
-	response.flags_mut().keep_cache = true;
+	response.mut_flags().set(CreateResponseFlag::DIRECT_IO);
+	response.mut_flags().set(CreateResponseFlag::KEEP_CACHE);
 
 	assert_eq!(
 		format!("{:#?}", response),
@@ -247,9 +255,8 @@ fn response_impl_debug() {
 			"    },\n",
 			"    handle: 123,\n",
 			"    flags: CreateResponseFlags {\n",
-			"        direct_io: true,\n",
-			"        keep_cache: true,\n",
-			"        nonseekable: false,\n",
+			"        DIRECT_IO,\n",
+			"        KEEP_CACHE,\n",
 			"    },\n",
 			"}",
 		),

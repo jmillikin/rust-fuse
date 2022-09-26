@@ -97,7 +97,8 @@ fn create() {
 		r#"CreateRequest {{
     node_id: 1,
     name: "create.txt",
-    flags: {},
+    flags: CreateRequestFlags {{}},
+    open_flags: {:#010X},
     mode: 0o100644,
     umask: 18,
 }}"#,
@@ -134,7 +135,8 @@ fn create_open() {
 		r#"CreateRequest {{
     node_id: 1,
     name: "create.txt",
-    flags: {},
+    flags: CreateRequestFlags {{}},
+    open_flags: {:#010X},
     mode: 0o100644,
     umask: 18,
 }}"#,
@@ -175,7 +177,8 @@ fn create_exclusive() {
 		r#"CreateRequest {{
     node_id: 1,
     name: "create.txt",
-    flags: {},
+    flags: CreateRequestFlags {{}},
+    open_flags: {:#010X},
     mode: 0o100644,
     umask: 18,
 }}"#,

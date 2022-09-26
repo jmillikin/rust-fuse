@@ -39,8 +39,7 @@ fn request() {
 	let expect_name = XattrName::from_bytes(b"hello.world!").unwrap();
 	assert_eq!(req.name(), expect_name);
 	assert_eq!(req.value(), b"some\x00value");
-	assert_eq!(req.flags().create, true);
-	assert_eq!(req.flags().replace, true);
+	assert_eq!(req.setxattr_flags(), 0b11);
 }
 
 #[test]
@@ -63,10 +62,8 @@ fn request_impl_debug() {
 			"SetxattrRequest {\n",
 			"    node_id: 1,\n",
 			"    name: \"hello.world!\",\n",
-			"    flags: SetxattrRequestFlags {\n",
-			"        create: false,\n",
-			"        replace: false,\n",
-			"    },\n",
+			"    flags: SetxattrRequestFlags {},\n",
+			"    setxattr_flags: 0x00000000,\n",
 			"    value: \"some\\x00value\",\n",
 			"}",
 		),

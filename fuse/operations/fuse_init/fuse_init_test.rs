@@ -17,7 +17,12 @@
 use core::mem::size_of;
 
 use fuse::Version;
-use fuse::operations::fuse_init::{FuseInitFlags, FuseInitRequest, FuseInitResponse};
+use fuse::operations::fuse_init::{
+	FuseInitFlag,
+	FuseInitFlags,
+	FuseInitRequest,
+	FuseInitResponse,
+};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
@@ -34,7 +39,7 @@ fn request_v7p1() {
 	assert_eq!(req.version().major(), 7);
 	assert_eq!(req.version().minor(), 1);
 	assert_eq!(req.max_readahead(), 0);
-	assert_eq!(*req.flags(), FuseInitFlags::new());
+	assert_eq!(req.flags(), FuseInitFlags::new());
 }
 
 #[test]
@@ -44,7 +49,7 @@ fn request_v7p6() {
 		.push_sized(&7u32) // fuse_init_in::major
 		.push_sized(&6u32) // fuse_init_in::minor
 		.push_sized(&9u32) // fuse_init_in::max_readahead
-		.push_sized(&0xFFFFFFFFu32) // fuse_init_in::flags
+		.push_sized(&fuse_kernel::FUSE_ASYNC_READ) // fuse_init_in::flags
 		.build_aligned();
 
 	let req = decode_request!(FuseInitRequest, buf);
@@ -52,7 +57,7 @@ fn request_v7p6() {
 	assert_eq!(req.version().major(), 7);
 	assert_eq!(req.version().minor(), 6);
 	assert_eq!(req.max_readahead(), 9);
-	//assert_eq!(*req.flags(), FuseInitFlags::from_bits(0xFFFFFFFF));
+	assert_eq!(req.flags(), FuseInitFlag::ASYNC_READ);
 }
 
 #[test]
@@ -61,10 +66,10 @@ fn request_v7p36() {
 		.set_opcode(fuse_kernel::FUSE_INIT)
 		.push_sized(&fuse_kernel::fuse_init_in {
 			major: 7,
-			minor: 6,
+			minor: 36,
 			max_readahead: 9,
-			flags: 0xFFFFFFFF,
-			flags2: 0xFFFFFFFF,
+			flags: fuse_kernel::FUSE_ASYNC_READ,
+			flags2: (fuse_kernel::FUSE_HAS_INODE_DAX >> 32) as u32,
 			unused: [0; 11],
 		})
 		.build_aligned();
@@ -72,10 +77,12 @@ fn request_v7p36() {
 	let req = decode_request!(FuseInitRequest, buf);
 
 	assert_eq!(req.version().major(), 7);
-	assert_eq!(req.version().minor(), 6);
+	assert_eq!(req.version().minor(), 36);
 	assert_eq!(req.max_readahead(), 9);
-	//assert_eq!(*req.flags(), FuseInitFlags::from_bits(0xFFFFFFFF));
-	// TODO: flags2
+	assert_eq!(
+		req.flags(),
+		FuseInitFlag::ASYNC_READ | FuseInitFlag::HAS_INODE_DAX,
+	);
 }
 
 #[test]
@@ -97,7 +104,7 @@ fn request_major_mismatch() {
 	assert_eq!(req.version().major(), 0xFF);
 	assert_eq!(req.version().minor(), 0xFF);
 	assert_eq!(req.max_readahead(), 0);
-	assert_eq!(*req.flags(), FuseInitFlags::new());
+	assert_eq!(req.flags(), FuseInitFlags::new());
 }
 
 #[test]
@@ -149,7 +156,8 @@ fn response_v7p23() {
 	let mut resp = FuseInitResponse::new();
 	resp.set_version(Version::new(7, 23));
 	resp.set_max_readahead(4096);
-	//*resp.flags_mut() = FuseInitFlags::from_bits(0xFFFFFFFF);
+	resp.mut_flags().set(FuseInitFlag::ASYNC_READ);
+	resp.mut_flags().set(FuseInitFlag::HAS_INODE_DAX);
 	let encoded = encode_response!(resp);
 
 	assert_eq!(
@@ -165,15 +173,14 @@ fn response_v7p23() {
 				major: 7,
 				minor: 23,
 				max_readahead: 4096,
-				//flags: 0xFFFFFFFF,
-				flags: 0,
+				flags: fuse_kernel::FUSE_ASYNC_READ,
 				max_background: 0,
 				congestion_threshold: 0,
 				max_write: 0,
 				time_gran: 0,
 				max_pages: 0,
 				map_alignment: 0,
-				flags2: 0,
+				flags2: (fuse_kernel::FUSE_HAS_INODE_DAX >> 32) as u32,
 				unused: [0; 7],
 			})
 			.build()
@@ -189,8 +196,8 @@ fn init_flags() {
 			major: fuse_testutil::VERSION.0,
 			minor: fuse_testutil::VERSION.1,
 			max_readahead: 0,
-			flags: 0x3 | (1u32 << 31),
-			flags2: 0,
+			flags: 0x3,
+			flags2: 0x3 | (1u32 << 31),
 			unused: [0; 11],
 		})
 	});
@@ -201,29 +208,11 @@ fn init_flags() {
 		format!("{:#?}", request.flags()),
 		concat!(
 			"FuseInitFlags {\n",
-			"    async_read: true,\n",
-			"    posix_locks: true,\n",
-			"    file_ops: false,\n",
-			"    atomic_o_trunc: false,\n",
-			"    export_support: false,\n",
-			"    big_writes: false,\n",
-			"    dont_mask: false,\n",
-			"    splice_write: false,\n",
-			"    splice_move: false,\n",
-			"    splice_read: false,\n",
-			"    flock_locks: false,\n",
-			"    has_ioctl_dir: false,\n",
-			"    auto_inval_data: false,\n",
-			"    do_readdirplus: false,\n",
-			"    readdirplus_auto: false,\n",
-			"    async_dio: false,\n",
-			"    writeback_cache: false,\n",
-			"    no_open_support: false,\n",
-			"    parallel_dirops: false,\n",
-			"    handle_killpriv: false,\n",
-			"    posix_acl: false,\n",
-			"    abort_error: false,\n",
-			"    0x80000000: true,\n",
+			"    ASYNC_READ,\n",
+			"    POSIX_LOCKS,\n",
+			"    SECURITY_CTX,\n",
+			"    HAS_INODE_DAX,\n",
+			"    0x008000000000000000,\n",
 			"}",
 		),
 	);
@@ -254,28 +243,7 @@ fn request_impl_debug() {
 			"    },\n",
 			"    max_readahead: 4096,\n",
 			"    flags: FuseInitFlags {\n",
-			"        async_read: true,\n",
-			"        posix_locks: false,\n",
-			"        file_ops: false,\n",
-			"        atomic_o_trunc: false,\n",
-			"        export_support: false,\n",
-			"        big_writes: false,\n",
-			"        dont_mask: false,\n",
-			"        splice_write: false,\n",
-			"        splice_move: false,\n",
-			"        splice_read: false,\n",
-			"        flock_locks: false,\n",
-			"        has_ioctl_dir: false,\n",
-			"        auto_inval_data: false,\n",
-			"        do_readdirplus: false,\n",
-			"        readdirplus_auto: false,\n",
-			"        async_dio: false,\n",
-			"        writeback_cache: false,\n",
-			"        no_open_support: false,\n",
-			"        parallel_dirops: false,\n",
-			"        handle_killpriv: false,\n",
-			"        posix_acl: false,\n",
-			"        abort_error: false,\n",
+			"        ASYNC_READ,\n",
 			"    },\n",
 			"}",
 		),
@@ -290,7 +258,7 @@ fn response_impl_debug() {
 	response.set_max_background(10);
 	response.set_congestion_threshold(11);
 	response.set_time_granularity(100);
-	response.flags_mut().async_read = true;
+	response.mut_flags().set(FuseInitFlag::ASYNC_READ);
 
 	assert_eq!(
 		format!("{:#?}", response),
@@ -298,28 +266,7 @@ fn response_impl_debug() {
 			"FuseInitResponse {\n",
 			"    max_readahead: 4096,\n",
 			"    flags: FuseInitFlags {\n",
-			"        async_read: true,\n",
-			"        posix_locks: false,\n",
-			"        file_ops: false,\n",
-			"        atomic_o_trunc: false,\n",
-			"        export_support: false,\n",
-			"        big_writes: false,\n",
-			"        dont_mask: false,\n",
-			"        splice_write: false,\n",
-			"        splice_move: false,\n",
-			"        splice_read: false,\n",
-			"        flock_locks: false,\n",
-			"        has_ioctl_dir: false,\n",
-			"        auto_inval_data: false,\n",
-			"        do_readdirplus: false,\n",
-			"        readdirplus_auto: false,\n",
-			"        async_dio: false,\n",
-			"        writeback_cache: false,\n",
-			"        no_open_support: false,\n",
-			"        parallel_dirops: false,\n",
-			"        handle_killpriv: false,\n",
-			"        posix_acl: false,\n",
-			"        abort_error: false,\n",
+			"        ASYNC_READ,\n",
 			"    },\n",
 			"    max_background: 10,\n",
 			"    congestion_threshold: 11,\n",

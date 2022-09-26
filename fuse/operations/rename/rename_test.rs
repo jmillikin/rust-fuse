@@ -41,9 +41,7 @@ fn request_rename() {
 	assert_eq!(request.new_name(), expect_new);
 	assert_eq!(request.old_directory_id(), NodeId::new(123).unwrap());
 	assert_eq!(request.new_directory_id(), NodeId::new(456).unwrap());
-	assert_eq!(request.flags().exchange, false);
-	assert_eq!(request.flags().no_replace, false);
-	assert_eq!(request.flags().whiteout, false);
+	assert_eq!(request.rename_flags(), 0);
 }
 
 #[test]
@@ -70,9 +68,7 @@ fn request_rename2() {
 	assert_eq!(request.new_name(), expect_new);
 	assert_eq!(request.old_directory_id(), NodeId::new(123).unwrap());
 	assert_eq!(request.new_directory_id(), NodeId::new(456).unwrap());
-	assert_eq!(request.flags().exchange, true);
-	assert_eq!(request.flags().no_replace, true);
-	assert_eq!(request.flags().whiteout, true);
+	assert_eq!(request.rename_flags(), 0b111);
 }
 
 #[test]
@@ -100,11 +96,7 @@ fn request_impl_debug() {
 			"    old_name: \"old\",\n",
 			"    new_directory_id: 456,\n",
 			"    new_name: \"new\",\n",
-			"    flags: RenameRequestFlags {\n",
-			"        no_replace: true,\n",
-			"        exchange: true,\n",
-			"        whiteout: true,\n",
-			"    },\n",
+			"    rename_flags: 0x00000007,\n",
 			"}",
 		),
 	);

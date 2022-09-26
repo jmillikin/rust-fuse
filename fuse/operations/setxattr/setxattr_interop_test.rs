@@ -121,10 +121,8 @@ fn setxattr() {
 	let expect = r#"SetxattrRequest {
     node_id: 2,
     name: "user.xattr_name",
-    flags: SetxattrRequestFlags {
-        create: false,
-        replace: false,
-    },
+    flags: SetxattrRequestFlags {},
+    setxattr_flags: 0x00000000,
     value: "some\x00value",
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
@@ -157,10 +155,8 @@ fn setxattr_flag_create() {
 	let expect = r#"SetxattrRequest {
     node_id: 2,
     name: "user.xattr_name",
-    flags: SetxattrRequestFlags {
-        create: true,
-        replace: false,
-    },
+    flags: SetxattrRequestFlags {},
+    setxattr_flags: 0x00000001,
     value: "some\x00value",
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
@@ -193,10 +189,8 @@ fn setxattr_flag_replace() {
 	let expect = r#"SetxattrRequest {
     node_id: 2,
     name: "user.xattr_name",
-    flags: SetxattrRequestFlags {
-        create: false,
-        replace: true,
-    },
+    flags: SetxattrRequestFlags {},
+    setxattr_flags: 0x00000002,
     value: "some\x00value",
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {

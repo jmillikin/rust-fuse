@@ -15,6 +15,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #[macro_use]
+mod bitflags;
+
+#[macro_use]
 mod fuse_kernel_util;
 
 #[allow(dead_code, non_camel_case_types)]

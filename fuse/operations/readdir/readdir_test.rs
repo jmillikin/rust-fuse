@@ -71,7 +71,7 @@ fn readdir_request_v7p9() {
 
 	assert_eq!(req.handle(), 123);
 	assert_eq!(req.cursor(), num::NonZeroU64::new(45));
-	assert_eq!(req.opendir_flags(), 67);
+	assert_eq!(req.open_flags(), 67);
 	assert_eq!(req.size(), 4096);
 }
 
@@ -102,7 +102,7 @@ fn request_impl_debug() {
 			"    size: 1,\n",
 			"    cursor: Some(2),\n",
 			"    handle: 3,\n",
-			"    opendir_flags: 0x00000004,\n",
+			"    open_flags: 0x00000004,\n",
 			"}",
 		),
 	);

@@ -35,9 +35,8 @@ use crate::protocol::common::DebugHexU32;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_OPENDIR` operation.
 pub struct OpendirRequest<'a> {
-	phantom: PhantomData<&'a ()>,
-	node_id: NodeId,
-	flags: u32,
+	header: &'a fuse_kernel::fuse_in_header,
+	body: &'a fuse_kernel::fuse_open_in,
 }
 
 impl<'a> OpendirRequest<'a> {
@@ -46,31 +45,34 @@ impl<'a> OpendirRequest<'a> {
 	) -> Result<Self, io::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_OPENDIR)?;
-		let raw: &'a fuse_kernel::fuse_open_in = dec.next_sized()?;
-		Ok(Self {
-			phantom: PhantomData,
-			node_id: decode::node_id(dec.header().nodeid)?,
-			flags: raw.flags,
-		})
+
+		let header = dec.header();
+		let body = dec.next_sized()?;
+		decode::node_id(header.nodeid)?;
+		Ok(Self { header, body })
 	}
 
 	pub fn node_id(&self) -> NodeId {
-		self.node_id
+		unsafe { NodeId::new_unchecked(self.header.nodeid) }
 	}
 
-	/// Platform-specific flags passed to [`open(2)`].
-	///
-	/// [`open(2)`]: https://pubs.opengroup.org/onlinepubs/9699919799/functions/open.html
-	pub fn flags(&self) -> u32 {
-		self.flags
+	pub fn flags(&self) -> OpendirRequestFlags {
+		OpendirRequestFlags {
+			bits: self.body.open_flags,
+		}
+	}
+
+	pub fn open_flags(&self) -> crate::OpenFlags {
+		self.body.flags
 	}
 }
 
 impl fmt::Debug for OpendirRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("OpendirRequest")
-			.field("node_id", &self.node_id)
-			.field("flags", &DebugHexU32(self.flags))
+			.field("node_id", &self.node_id())
+			.field("flags", &self.flags())
+			.field("open_flags", &DebugHexU32(self.open_flags()))
 			.finish()
 	}
 }
@@ -85,33 +87,37 @@ impl fmt::Debug for OpendirRequest<'_> {
 /// `FUSE_OPENDIR` operation.
 pub struct OpendirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
-	handle: u64,
-	flags: OpendirResponseFlags,
+	raw: fuse_kernel::fuse_open_out,
 }
 
 impl<'a> OpendirResponse<'a> {
 	pub fn new() -> OpendirResponse<'a> {
 		Self {
 			phantom: PhantomData,
-			handle: 0,
-			flags: OpendirResponseFlags::new(),
+			raw: fuse_kernel::fuse_open_out::zeroed(),
 		}
 	}
 
 	pub fn handle(&self) -> u64 {
-		self.handle
+		self.raw.fh
 	}
 
 	pub fn set_handle(&mut self, handle: u64) {
-		self.handle = handle;
+		self.raw.fh = handle;
 	}
 
-	pub fn flags(&self) -> &OpendirResponseFlags {
-		&self.flags
+	pub fn flags(&self) -> OpendirResponseFlags {
+		OpendirResponseFlags {
+			bits: self.raw.open_flags,
+		}
 	}
 
-	pub fn flags_mut(&mut self) -> &mut OpendirResponseFlags {
-		&mut self.flags
+	pub fn mut_flags(&mut self) -> &mut OpendirResponseFlags {
+		OpendirResponseFlags::reborrow_mut(&mut self.raw.open_flags)
+	}
+
+	pub fn set_flags(&mut self, flags: OpendirResponseFlags) {
+		self.raw.open_flags = flags.bits
 	}
 }
 
@@ -120,11 +126,12 @@ response_send_funcs!(OpendirResponse<'_>);
 impl fmt::Debug for OpendirResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("OpendirResponse")
-			.field("handle", &self.handle)
+			.field("handle", &self.handle())
 			.field("flags", &self.flags())
 			.finish()
 	}
 }
+
 impl OpendirResponse<'_> {
 	fn encode<S: encode::SendOnce>(
 		&self,
@@ -132,30 +139,55 @@ impl OpendirResponse<'_> {
 		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_sized(&fuse_kernel::fuse_open_out {
-			fh: self.handle,
-			open_flags: self.flags.to_bits(),
-			padding: 0,
-		})
+		enc.encode_sized(&self.raw)
 	}
+}
+
+// }}}
+
+// OpendirRequestFlags {{{
+
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct OpendirRequestFlags {
+	bits: u32,
+}
+
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct OpendirRequestFlag {
+	mask: u32,
+}
+
+mod request_flags {
+	use crate::internal::fuse_kernel;
+	bitflags!(OpendirRequestFlag, OpendirRequestFlags, u32, {
+		KILL_SUIDGID = fuse_kernel::FUSE_OPEN_KILL_SUIDGID;
+	});
 }
 
 // }}}
 
 // OpendirResponseFlags {{{
 
-bitflags_struct! {
-	/// Optional flags set on [`OpendirResponse`].
-	pub struct OpendirResponseFlags(u32);
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct OpendirResponseFlags {
+	bits: u32,
+}
 
-	/// Allow the kernel to preserve cached directory entries from the last
-	/// time this directory was opened.
-	fuse_kernel::FOPEN_KEEP_CACHE: keep_cache,
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct OpendirResponseFlag {
+	mask: u32,
+}
 
-	/// Tell the kernel this directory is not seekable.
-	fuse_kernel::FOPEN_NONSEEKABLE: nonseekable,
-
-	// TODO: CACHE_DIR
+mod response_flags {
+	use crate::internal::fuse_kernel;
+	bitflags!(OpendirResponseFlag, OpendirResponseFlags, u32, {
+		DIRECT_IO = fuse_kernel::FOPEN_DIRECT_IO;
+		KEEP_CACHE = fuse_kernel::FOPEN_KEEP_CACHE;
+		NONSEEKABLE = fuse_kernel::FOPEN_NONSEEKABLE;
+		CACHE_DIR = fuse_kernel::FOPEN_CACHE_DIR;
+		STREAM = fuse_kernel::FOPEN_STREAM;
+		NOFLUSH = fuse_kernel::FOPEN_NOFLUSH;
+	});
 }
 
 // }}}

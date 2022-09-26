@@ -81,6 +81,30 @@ pub use self::protocol::common::{
 
 pub const MIN_READ_BUFFER: usize = internal::fuse_kernel::FUSE_MIN_READ_BUFFER;
 
+mod sealed {
+	pub trait Sealed {}
+}
+
+pub trait Flags<Flag>: sealed::Sealed {
+	fn new() -> Self;
+
+	fn get(&self, flag: Flag) -> bool;
+
+	fn set(&mut self, flag: Flag);
+}
+
+/// OS-specific flags passed to `fallocate()`.
+pub type FallocateFlags = u32;
+
+/// OS-specific flags passed to `open()`.
+pub type OpenFlags = u32;
+
+/// OS-specific flags passed to `renameat2()`.
+pub type RenameFlags = u32;
+
+/// OS-specific flags passed to `setxattr()`.
+pub type SetxattrFlags = u32;
+
 /// A version of the FUSE protocol.
 ///
 /// FUSE protocol versions are a (major, minor) version tuple, but FUSE does

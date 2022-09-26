@@ -81,8 +81,8 @@ impl<S, H> CuseServerBuilder<S, H> {
 		self
 	}
 
-	pub fn unrestricted_ioctl(mut self, unrestricted_ioctl: bool) -> Self {
-		self.opts.flags.unrestricted_ioctl = unrestricted_ioctl;
+	pub fn cuse_init_flags(mut self, flags: CuseInitFlags) -> Self {
+		self.opts.flags = flags;
 		self
 	}
 
@@ -134,7 +134,7 @@ impl CuseOptions {
 		response.set_device_number(self.dev_major, self.dev_minor);
 		response.set_max_read(self.max_read);
 		response.set_max_write(self.max_write);
-		*response.flags_mut() = self.flags;
+		response.set_flags(self.flags);
 		response
 	}
 }

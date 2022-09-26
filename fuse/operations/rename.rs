@@ -27,11 +27,9 @@ use crate::server::io;
 use crate::server::io::decode;
 use crate::server::io::encode;
 
-// RenameRequest {{{
+use crate::protocol::common::DebugHexU32;
 
-const RENAME_NOREPLACE: u32 = 1 << 0;
-const RENAME_EXCHANGE: u32 = 1 << 1;
-const RENAME_WHITEOUT: u32 = 1 << 2;
+// RenameRequest {{{
 
 /// Request type for `FUSE_RENAME` and `FUSE_RENAME2`.
 ///
@@ -42,7 +40,7 @@ pub struct RenameRequest<'a> {
 	old_name: &'a NodeName,
 	new_directory_id: NodeId,
 	new_name: &'a NodeName,
-	flags: RenameRequestFlags,
+	rename_flags: u32,
 }
 
 impl<'a> RenameRequest<'a> {
@@ -52,11 +50,11 @@ impl<'a> RenameRequest<'a> {
 		let mut dec = request.decoder();
 		let header = dec.header();
 
-		let mut flags = 0;
+		let mut rename_flags = 0;
 		let new_dir: u64;
 		if header.opcode == fuse_kernel::FUSE_RENAME2 {
 			let parsed: &fuse_kernel::fuse_rename2_in = dec.next_sized()?;
-			flags = parsed.flags;
+			rename_flags = parsed.flags;
 			new_dir = parsed.newdir;
 		} else {
 			dec.expect_opcode(fuse_kernel::FUSE_RENAME)?;
@@ -70,7 +68,7 @@ impl<'a> RenameRequest<'a> {
 			old_name,
 			new_directory_id: decode::node_id(new_dir)?,
 			new_name,
-			flags: RenameRequestFlags::from_bits(flags),
+			rename_flags,
 		})
 	}
 
@@ -90,18 +88,9 @@ impl<'a> RenameRequest<'a> {
 		self.new_name
 	}
 
-	pub fn flags(&self) -> &RenameRequestFlags {
-		&self.flags
+	pub fn rename_flags(&self) -> crate::RenameFlags {
+		self.rename_flags
 	}
-}
-
-bitflags_struct! {
-	/// Optional flags set on [`RenameRequest`].
-	pub struct RenameRequestFlags(u32);
-
-	RENAME_EXCHANGE: exchange,
-	RENAME_NOREPLACE: no_replace,
-	RENAME_WHITEOUT: whiteout,
 }
 
 impl fmt::Debug for RenameRequest<'_> {
@@ -111,7 +100,7 @@ impl fmt::Debug for RenameRequest<'_> {
 			.field("old_name", &self.old_name)
 			.field("new_directory_id", &self.new_directory_id)
 			.field("new_name", &self.new_name)
-			.field("flags", &self.flags)
+			.field("rename_flags", &DebugHexU32(self.rename_flags))
 			.finish()
 	}
 }

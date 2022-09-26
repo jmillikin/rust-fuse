@@ -28,19 +28,17 @@ use crate::server::io::decode;
 use crate::server::io::encode;
 
 use crate::protocol::common::DebugBytesAsString;
+use crate::protocol::common::DebugHexU32;
 
 // SetxattrRequest {{{
-
-const XATTR_CREATE: u32 = 1 << 0;
-const XATTR_REPLACE: u32 = 1 << 1;
 
 /// Request type for `FUSE_SETXATTR`.
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_SETXATTR` operation.
 pub struct SetxattrRequest<'a> {
-	node_id: NodeId,
-	flags: SetxattrRequestFlags,
+	header: &'a fuse_kernel::fuse_in_header,
+	raw: fuse_kernel::fuse_setxattr_in,
 	name: &'a XattrName,
 	value: &'a [u8],
 }
@@ -57,27 +55,39 @@ impl<'a> SetxattrRequest<'a> {
 	) -> Result<Self, io::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_SETXATTR)?;
-		let raw: &'a fuse_setxattr_in_v7p1 = dec.next_sized()?;
+
+		let header = dec.header();
+		let mut raw = fuse_kernel::fuse_setxattr_in::zeroed();
+		if request.have_setxattr_ext() {
+			raw = *(dec.next_sized()?);
+		} else {
+			let old_raw: &fuse_setxattr_in_v7p1 = dec.next_sized()?;
+			raw.size = old_raw.size;
+			raw.flags = old_raw.flags;
+		}
+
+		decode::node_id(header.nodeid)?;
 		let name = XattrName::new(dec.next_nul_terminated_bytes()?);
 		let value = dec.next_bytes(raw.size)?;
-		Ok(Self {
-			node_id: decode::node_id(dec.header().nodeid)?,
-			flags: SetxattrRequestFlags::from_bits(raw.flags),
-			name,
-			value,
-		})
+		Ok(Self { header, raw, name, value })
 	}
 
 	pub fn node_id(&self) -> NodeId {
-		self.node_id
+		unsafe { NodeId::new_unchecked(self.header.nodeid) }
 	}
 
 	pub fn name(&self) -> &XattrName {
 		self.name
 	}
 
-	pub fn flags(&self) -> &SetxattrRequestFlags {
-		&self.flags
+	pub fn flags(&self) -> SetxattrRequestFlags {
+		SetxattrRequestFlags {
+			bits: self.raw.setxattr_flags,
+		}
+	}
+
+	pub fn setxattr_flags(&self) -> crate::SetxattrFlags {
+		self.raw.flags
 	}
 
 	pub fn value(&self) -> &[u8] {
@@ -85,20 +95,13 @@ impl<'a> SetxattrRequest<'a> {
 	}
 }
 
-bitflags_struct! {
-	/// Optional flags set on [`SetxattrRequest`].
-	pub struct SetxattrRequestFlags(u32);
-
-	XATTR_CREATE: create,
-	XATTR_REPLACE: replace,
-}
-
 impl fmt::Debug for SetxattrRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("SetxattrRequest")
-			.field("node_id", &self.node_id)
-			.field("name", &self.name)
-			.field("flags", &self.flags)
+			.field("node_id", &self.node_id())
+			.field("name", &self.name())
+			.field("flags", &self.flags())
+			.field("setxattr_flags", &DebugHexU32(self.setxattr_flags()))
 			.field("value", &DebugBytesAsString(&self.value))
 			.finish()
 	}
@@ -141,6 +144,28 @@ impl SetxattrResponse<'_> {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		enc.encode_header_only()
 	}
+}
+
+// }}}
+
+// SetxattrRequestFlags {{{
+
+/// Optional flags set on [`SetxattrRequest`].
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct SetxattrRequestFlags {
+	bits: u32,
+}
+
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct SetxattrRequestFlag {
+	mask: u32,
+}
+
+mod request_flags {
+	use crate::internal::fuse_kernel;
+	bitflags!(SetxattrRequestFlag, SetxattrRequestFlags, u32, {
+		ACL_KILL_SGID = fuse_kernel::FUSE_SETXATTR_ACL_KILL_SGID;
+	});
 }
 
 // }}}

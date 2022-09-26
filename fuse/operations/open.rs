@@ -35,9 +35,8 @@ use crate::protocol::common::DebugHexU32;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_OPEN` operation.
 pub struct OpenRequest<'a> {
-	phantom: PhantomData<&'a ()>,
-	node_id: NodeId,
-	flags: u32,
+	header: &'a fuse_kernel::fuse_in_header,
+	body: &'a fuse_kernel::fuse_open_in,
 }
 
 impl<'a> OpenRequest<'a> {
@@ -54,22 +53,29 @@ impl<'a> OpenRequest<'a> {
 	}
 
 	pub fn node_id(&self) -> NodeId {
-		self.node_id
+		match NodeId::new(self.header.nodeid) {
+			Some(id) => id,
+			None => crate::ROOT_ID,
+		}
 	}
 
-	/// Platform-specific flags passed to [`open(2)`].
-	///
-	/// [`open(2)`]: https://pubs.opengroup.org/onlinepubs/9699919799/functions/open.html
-	pub fn flags(&self) -> u32 {
-		self.flags
+	pub fn flags(&self) -> OpenRequestFlags {
+		OpenRequestFlags {
+			bits: self.body.open_flags,
+		}
+	}
+
+	pub fn open_flags(&self) -> crate::OpenFlags {
+		self.body.flags
 	}
 }
 
 impl fmt::Debug for OpenRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("OpenRequest")
-			.field("node_id", &self.node_id)
-			.field("flags", &DebugHexU32(self.flags))
+			.field("node_id", &self.node_id())
+			.field("flags", &self.flags())
+			.field("open_flags", &DebugHexU32(self.open_flags()))
 			.finish()
 	}
 }
@@ -78,21 +84,15 @@ fn decode_request<'a>(
 	buf: decode::RequestBuf<'a>,
 	is_cuse: bool,
 ) -> Result<OpenRequest<'a>, io::RequestError> {
-	buf.expect_opcode(fuse_kernel::FUSE_OPEN)?;
-
-	let node_id = if is_cuse {
-		crate::ROOT_ID
-	} else {
-		decode::node_id(buf.header().nodeid)?
-	};
 	let mut dec = decode::RequestDecoder::new(buf);
+	dec.expect_opcode(fuse_kernel::FUSE_OPEN)?;
 
-	let raw: &'a fuse_kernel::fuse_open_in = dec.next_sized()?;
-	Ok(OpenRequest {
-		phantom: PhantomData,
-		node_id,
-		flags: raw.flags,
-	})
+	let header = dec.header();
+	let body = dec.next_sized()?;
+	if !is_cuse {
+		decode::node_id(header.nodeid)?;
+	}
+	Ok(OpenRequest { header, body })
 }
 
 // }}}
@@ -105,33 +105,37 @@ fn decode_request<'a>(
 /// `FUSE_OPEN` operation.
 pub struct OpenResponse<'a> {
 	phantom: PhantomData<&'a ()>,
-	handle: u64,
-	flags: OpenResponseFlags,
+	raw: fuse_kernel::fuse_open_out,
 }
 
 impl<'a> OpenResponse<'a> {
 	pub fn new() -> OpenResponse<'a> {
 		Self {
 			phantom: PhantomData,
-			handle: 0,
-			flags: OpenResponseFlags::new(),
+			raw: fuse_kernel::fuse_open_out::zeroed(),
 		}
 	}
 
 	pub fn handle(&self) -> u64 {
-		self.handle
+		self.raw.fh
 	}
 
 	pub fn set_handle(&mut self, handle: u64) {
-		self.handle = handle;
+		self.raw.fh = handle;
 	}
 
-	pub fn flags(&self) -> &OpenResponseFlags {
-		&self.flags
+	pub fn flags(&self) -> OpenResponseFlags {
+		OpenResponseFlags {
+			bits: self.raw.open_flags,
+		}
 	}
 
-	pub fn flags_mut(&mut self) -> &mut OpenResponseFlags {
-		&mut self.flags
+	pub fn mut_flags(&mut self) -> &mut OpenResponseFlags {
+		OpenResponseFlags::reborrow_mut(&mut self.raw.open_flags)
+	}
+
+	pub fn set_flags(&mut self, flags: OpenResponseFlags) {
+		self.raw.open_flags = flags.bits
 	}
 }
 
@@ -140,7 +144,7 @@ response_send_funcs!(OpenResponse<'_>);
 impl fmt::Debug for OpenResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("OpenResponse")
-			.field("handle", &self.handle)
+			.field("handle", &self.handle())
 			.field("flags", &self.flags())
 			.finish()
 	}
@@ -153,33 +157,55 @@ impl OpenResponse<'_> {
 		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_sized(&fuse_kernel::fuse_open_out {
-			fh: self.handle,
-			open_flags: self.flags.to_bits(),
-			padding: 0,
-		})
+		enc.encode_sized(&self.raw)
 	}
+}
+
+// }}}
+
+// OpenRequestFlags {{{
+
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct OpenRequestFlags {
+	bits: u32,
+}
+
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct OpenRequestFlag {
+	mask: u32,
+}
+
+mod request_flags {
+	use crate::internal::fuse_kernel;
+	bitflags!(OpenRequestFlag, OpenRequestFlags, u32, {
+		KILL_SUIDGID = fuse_kernel::FUSE_OPEN_KILL_SUIDGID;
+	});
 }
 
 // }}}
 
 // OpenResponseFlags {{{
 
-bitflags_struct! {
-	/// Optional flags set on [`OpenResponse`].
-	pub struct OpenResponseFlags(u32);
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct OpenResponseFlags {
+	bits: u32,
+}
 
-	/// Use [page-based direct I/O][direct-io] on this file.
-	///
-	/// [direct-io]: https://lwn.net/Articles/348719/
-	fuse_kernel::FOPEN_DIRECT_IO: direct_io,
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct OpenResponseFlag {
+	mask: u32,
+}
 
-	/// Allow the kernel to preserve cached file data from the last time this
-	/// file was opened.
-	fuse_kernel::FOPEN_KEEP_CACHE: keep_cache,
-
-	/// Tell the kernel this file is not seekable.
-	fuse_kernel::FOPEN_NONSEEKABLE: nonseekable,
+mod response_flags {
+	use crate::internal::fuse_kernel;
+	bitflags!(OpenResponseFlag, OpenResponseFlags, u32, {
+		DIRECT_IO = fuse_kernel::FOPEN_DIRECT_IO;
+		KEEP_CACHE = fuse_kernel::FOPEN_KEEP_CACHE;
+		NONSEEKABLE = fuse_kernel::FOPEN_NONSEEKABLE;
+		CACHE_DIR = fuse_kernel::FOPEN_CACHE_DIR;
+		STREAM = fuse_kernel::FOPEN_STREAM;
+		NOFLUSH = fuse_kernel::FOPEN_NOFLUSH;
+	});
 }
 
 // }}}

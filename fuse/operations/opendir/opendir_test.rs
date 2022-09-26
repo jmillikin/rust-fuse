@@ -16,7 +16,11 @@
 
 use core::mem::size_of;
 
-use fuse::operations::opendir::{OpendirRequest, OpendirResponse};
+use fuse::operations::opendir::{
+	OpendirRequest,
+	OpendirResponse,
+	OpendirResponseFlag,
+};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
@@ -35,7 +39,7 @@ fn request() {
 
 	let req = decode_request!(OpendirRequest, buf);
 
-	assert_eq!(req.flags(), 0xFF);
+	assert_eq!(req.open_flags(), 0xFF);
 }
 
 #[test]
@@ -57,7 +61,8 @@ fn request_impl_debug() {
 		concat!(
 			"OpendirRequest {\n",
 			"    node_id: 1,\n",
-			"    flags: 0x00000001,\n",
+			"    flags: OpendirRequestFlags {},\n",
+			"    open_flags: 0x00000001,\n",
 			"}",
 		),
 	);
@@ -67,7 +72,7 @@ fn request_impl_debug() {
 fn response() {
 	let mut response = OpendirResponse::new();
 	response.set_handle(123);
-	response.flags_mut().keep_cache = true;
+	response.mut_flags().set(OpendirResponseFlag::KEEP_CACHE);
 
 	let encoded = encode_response!(response, {
 		protocol_version: (7, 1),
@@ -95,7 +100,7 @@ fn response() {
 fn response_impl_debug() {
 	let mut response = OpendirResponse::new();
 	response.set_handle(123);
-	response.flags_mut().keep_cache = true;
+	response.mut_flags().set(OpendirResponseFlag::KEEP_CACHE);
 
 	assert_eq!(
 		format!("{:#?}", response),
@@ -103,8 +108,7 @@ fn response_impl_debug() {
 			"OpendirResponse {\n",
 			"    handle: 123,\n",
 			"    flags: OpendirResponseFlags {\n",
-			"        keep_cache: true,\n",
-			"        nonseekable: false,\n",
+			"        KEEP_CACHE,\n",
 			"    },\n",
 			"}",
 		),

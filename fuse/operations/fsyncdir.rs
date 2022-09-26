@@ -28,17 +28,13 @@ use crate::server::io::encode;
 
 // FsyncdirRequest {{{
 
-const FSYNCDIR_DATASYNC: u32 = 1 << 0;
-
 /// Request type for `FUSE_FSYNCDIR`.
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_FSYNCDIR` operation.
 pub struct FsyncdirRequest<'a> {
-	phantom: PhantomData<&'a ()>,
-	node_id: NodeId,
-	handle: u64,
-	flags: FsyncdirRequestFlags,
+	header: &'a fuse_kernel::fuse_in_header,
+	body: &'a fuse_kernel::fuse_fsync_in,
 }
 
 impl<'a> FsyncdirRequest<'a> {
@@ -48,41 +44,33 @@ impl<'a> FsyncdirRequest<'a> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_FSYNCDIR)?;
 
-		let raw: &fuse_kernel::fuse_fsync_in = dec.next_sized()?;
-		Ok(Self {
-			phantom: PhantomData,
-			node_id: decode::node_id(dec.header().nodeid)?,
-			handle: raw.fh,
-			flags: FsyncdirRequestFlags::from_bits(raw.fsync_flags),
-		})
+		let header = dec.header();
+		let body = dec.next_sized()?;
+		decode::node_id(header.nodeid)?;
+		Ok(Self { header, body })
 	}
 
 	pub fn node_id(&self) -> NodeId {
-		self.node_id
+		unsafe { NodeId::new_unchecked(self.header.nodeid) }
 	}
 
 	pub fn handle(&self) -> u64 {
-		self.handle
+		self.body.fh
 	}
 
-	pub fn flags(&self) -> &FsyncdirRequestFlags {
-		&self.flags
+	pub fn flags(&self) -> FsyncdirRequestFlags {
+		FsyncdirRequestFlags {
+			bits: self.body.fsync_flags,
+		}
 	}
-}
-
-bitflags_struct! {
-	/// Optional flags set on [`FsyncdirRequest`].
-	pub struct FsyncdirRequestFlags(u32);
-
-	FSYNCDIR_DATASYNC: datasync,
 }
 
 impl fmt::Debug for FsyncdirRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("FsyncdirRequest")
-			.field("node_id", &self.node_id)
-			.field("handle", &self.handle)
-			.field("flags", &self.flags)
+			.field("node_id", &self.node_id())
+			.field("handle", &self.handle())
+			.field("flags", &self.flags())
 			.finish()
 	}
 }
@@ -124,6 +112,28 @@ impl FsyncdirResponse<'_> {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		enc.encode_header_only()
 	}
+}
+
+// }}}
+
+// FsyncdirRequestFlags {{{
+
+/// Optional flags set on [`FsyncdirRequest`].
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct FsyncdirRequestFlags {
+	bits: u32,
+}
+
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct FsyncdirRequestFlag {
+	mask: u32,
+}
+
+mod request_flags {
+	use crate::internal::fuse_kernel;
+	bitflags!(FsyncdirRequestFlag, FsyncdirRequestFlags, u32, {
+		FDATASYNC = fuse_kernel::FUSE_FSYNC_FDATASYNC;
+	});
 }
 
 // }}}

@@ -66,8 +66,10 @@ impl<'a> CopyFileRangeRequest<'a> {
 		self.body.len
 	}
 
-	pub fn flags(&self) -> CopyFileRangeFlags {
-		CopyFileRangeFlags::from_bits(self.body.flags)
+	pub fn flags(&self) -> CopyFileRangeRequestFlags {
+		CopyFileRangeRequestFlags {
+			bits: self.body.flags,
+		}
 	}
 
 	pub fn from_fuse_request(
@@ -76,18 +78,15 @@ impl<'a> CopyFileRangeRequest<'a> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_COPY_FILE_RANGE)?;
 
+		use fuse_kernel::fuse_copy_file_range_in;
+
 		let header = dec.header();
-		let body: &'a fuse_kernel::fuse_copy_file_range_in = dec.next_sized()?;
+		let body: &'a fuse_copy_file_range_in = dec.next_sized()?;
 		decode::node_id(header.nodeid)?;
 		decode::node_id(body.nodeid_out)?;
 
 		Ok(Self { header, body })
 	}
-}
-
-bitflags_struct! {
-	/// Optional flags set on [`CopyFileRangeRequest`].
-	pub struct CopyFileRangeFlags(u64);
 }
 
 impl fmt::Debug for CopyFileRangeRequest<'_> {
@@ -153,6 +152,26 @@ impl CopyFileRangeResponse<'_> {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		enc.encode_sized(&self.raw)
 	}
+}
+
+// }}}
+
+// CopyFileRangeRequestFlags {{{
+
+/// Optional flags set on [`CopyFileRangeRequest`].
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct CopyFileRangeRequestFlags {
+	bits: u64,
+}
+
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct CopyFileRangeRequestFlag {
+	mask: u64,
+}
+
+mod request_flags {
+	bitflags!(CopyFileRangeRequestFlag, CopyFileRangeRequestFlags, u64, {
+	});
 }
 
 // }}}

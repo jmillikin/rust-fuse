@@ -151,7 +151,8 @@ fn cuse_read() {
 
 		let expect = r#"OpenRequest {
     node_id: 1,
-    flags: 0x00008002,
+    flags: OpenRequestFlags {},
+    open_flags: 0x00008002,
 }"#;
 		if let Some(diff) = diff_str(expect, &requests[0]) {
 			println!("{}", diff);
@@ -210,7 +211,8 @@ fn cuse_write() {
 
 		let expect = r#"OpenRequest {
     node_id: 1,
-    flags: 0x00008002,
+    flags: OpenRequestFlags {},
+    open_flags: 0x00008002,
 }"#;
 		if let Some(diff) = diff_str(expect, &requests[0]) {
 			println!("{}", diff);
@@ -223,8 +225,7 @@ fn cuse_write() {
     handle: 12345,
     value: "new_file_content",
     flags: WriteRequestFlags {
-        write_cache: false,
-        0x00000002: true,
+        WRITE_LOCKOWNER,
     },
     lock_owner: FAKE_LOCK_OWNER,
     open_flags: 0x00008002,

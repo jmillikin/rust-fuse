@@ -39,7 +39,7 @@ fn request_v7p1() {
 	});
 
 	assert_eq!(req.handle(), 123);
-	assert_eq!(req.opendir_flags(), 0xFF);
+	assert_eq!(req.open_flags(), 0xFF);
 	assert_eq!(req.lock_owner(), None);
 }
 
@@ -63,7 +63,7 @@ fn request_v7p8() {
 	});
 
 	assert_eq!(req.handle(), 123);
-	assert_eq!(req.opendir_flags(), 0xFF);
+	assert_eq!(req.open_flags(), 0xFF);
 	assert_eq!(req.lock_owner(), None);
 }
 
@@ -113,7 +113,7 @@ fn request_impl_debug() {
 			"    node_id: 1,\n",
 			"    handle: 3,\n",
 			"    lock_owner: None,\n",
-			"    opendir_flags: 0x00000004,\n",
+			"    open_flags: 0x00000004,\n",
 			"}",
 		),
 	);

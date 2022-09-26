@@ -17,7 +17,12 @@
 use core::mem::size_of;
 
 use fuse::Version;
-use fuse::operations::cuse_init::{CuseDeviceName, CuseInitRequest, CuseInitResponse};
+use fuse::operations::cuse_init::{
+	CuseDeviceName,
+	CuseInitFlag,
+	CuseInitRequest,
+	CuseInitResponse,
+};
 use fuse::server::CuseRequestBuilder;
 
 use fuse_testutil::{encode_response, MessageBuilder};
@@ -30,7 +35,7 @@ fn request() {
 			major: 7,
 			minor: 6,
 			unused: 0,
-			flags: 0xFFFFFFFF,
+			flags: fuse_kernel::CUSE_UNRESTRICTED_IOCTL,
 		})
 		.build_aligned();
 
@@ -41,7 +46,7 @@ fn request() {
 
 	assert_eq!(req.version().major(), 7);
 	assert_eq!(req.version().minor(), 6);
-	//assert_eq!(*req.flags(), CuseInitFlags::from_bits(0xFFFFFFFF));
+	assert_eq!(req.flags(), CuseInitFlag::UNRESTRICTED_IOCTL);
 }
 
 #[test]
@@ -71,7 +76,7 @@ fn request_impl_debug() {
 			"        minor: 1,\n",
 			"    },\n",
 			"    flags: CuseInitFlags {\n",
-			"        unrestricted_ioctl: true,\n",
+			"        UNRESTRICTED_IOCTL,\n",
 			"    },\n",
 			"}",
 		),
@@ -84,7 +89,7 @@ fn response() {
 	let mut resp = CuseInitResponse::new(device_name);
 	resp.set_version(Version::new(7, 23));
 	resp.set_max_write(4096);
-	//*resp.flags_mut() = CuseInitFlags::from_bits(0xFFFFFFFF);
+	resp.mut_flags().set(CuseInitFlag::UNRESTRICTED_IOCTL);
 	let encoded = encode_response!(resp);
 
 	assert_eq!(
@@ -101,8 +106,7 @@ fn response() {
 				major: 7,
 				minor: 23,
 				unused: 0,
-				//flags: 0xFFFFFFFF,
-				flags: 0,
+				flags: fuse_kernel::CUSE_UNRESTRICTED_IOCTL,
 				max_read: 0,
 				max_write: 4096,
 				dev_major: 0,
@@ -122,7 +126,7 @@ fn response_impl_debug() {
 	response.set_max_write(8192);
 	response.set_dev_major(10);
 	response.set_dev_minor(11);
-	response.flags_mut().unrestricted_ioctl = true;
+	response.mut_flags().set(CuseInitFlag::UNRESTRICTED_IOCTL);
 
 	assert_eq!(
 		format!("{:#?}", response),
@@ -130,7 +134,7 @@ fn response_impl_debug() {
 			"CuseInitResponse {\n",
 			"    device_name: \"test-device\",\n",
 			"    flags: CuseInitFlags {\n",
-			"        unrestricted_ioctl: true,\n",
+			"        UNRESTRICTED_IOCTL,\n",
 			"    },\n",
 			"    max_read: 4096,\n",
 			"    max_write: 8192,\n",

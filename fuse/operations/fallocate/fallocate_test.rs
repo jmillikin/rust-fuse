@@ -41,8 +41,7 @@ fn request() {
 	assert_eq!(req.handle(), 12);
 	assert_eq!(req.offset(), 34);
 	assert_eq!(req.length(), 56);
-	assert_eq!(req.mode().keep_size, true);
-	assert_eq!(req.mode().punch_hole, true);
+	assert_eq!(req.fallocate_flags(), 0b11);
 }
 
 #[test]
@@ -70,14 +69,7 @@ fn request_impl_debug() {
 			"    handle: 123,\n",
 			"    offset: 1024,\n",
 			"    length: 4096,\n",
-			"    mode: FallocateMode {\n",
-			"        keep_size: true,\n",
-			"        punch_hole: true,\n",
-			"        collapse_range: false,\n",
-			"        zero_range: false,\n",
-			"        insert_range: false,\n",
-			"        unshare_range: false,\n",
-			"    },\n",
+			"    fallocate_flags: 0x00000003,\n",
 			"}",
 		),
 	);

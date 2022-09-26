@@ -77,7 +77,7 @@ impl<'a> FuseInitRequest<'a> {
 				phantom: PhantomData,
 				version: Version::new(raw_v7p1.major, raw_v7p1.minor),
 				max_readahead: 0,
-				flags: FuseInitFlags::from_bits(0),
+				flags: FuseInitFlags::new(),
 			});
 		}
 
@@ -87,17 +87,20 @@ impl<'a> FuseInitRequest<'a> {
 				phantom: PhantomData,
 				version: Version::new(raw.major, raw.minor),
 				max_readahead: raw.max_readahead,
-				flags: FuseInitFlags::from_bits(raw.flags),
-				// TODO: flags2
+				flags: FuseInitFlags {
+					bits: u64::from(raw.flags),
+				},
 			});
 		}
 
 		let raw: &'a fuse_kernel::fuse_init_in = dec.next_sized()?;
+		let mut flags = u64::from(raw.flags);
+		flags |= u64::from(raw.flags2) << 32;
 		Ok(FuseInitRequest {
 			phantom: PhantomData,
 			version: Version::new(raw.major, raw.minor),
 			max_readahead: raw.max_readahead,
-			flags: FuseInitFlags::from_bits(raw.flags),
+			flags: FuseInitFlags { bits: flags },
 		})
 	}
 
@@ -113,12 +116,16 @@ impl<'a> FuseInitRequest<'a> {
 		self.max_readahead = max_readahead;
 	}
 
-	pub fn flags(&self) -> &FuseInitFlags {
-		&self.flags
+	pub fn flags(&self) -> FuseInitFlags {
+		self.flags
 	}
 
-	pub fn flags_mut(&mut self) -> &mut FuseInitFlags {
+	pub fn mut_flags(&mut self) -> &mut FuseInitFlags {
 		&mut self.flags
+	}
+
+	pub fn set_flags(&mut self, flags: FuseInitFlags) {
+		self.flags = flags;
 	}
 }
 
@@ -175,12 +182,16 @@ impl FuseInitResponse {
 		self.raw.minor = v.minor();
 	}
 
-	pub fn flags(&self) -> &FuseInitFlags {
-		&self.flags
+	pub fn flags(&self) -> FuseInitFlags {
+		self.flags
 	}
 
-	pub fn flags_mut(&mut self) -> &mut FuseInitFlags {
+	pub fn mut_flags(&mut self) -> &mut FuseInitFlags {
 		&mut self.flags
+	}
+
+	pub fn set_flags(&mut self, flags: FuseInitFlags) {
+		self.flags = flags;
 	}
 
 	pub fn max_readahead(&self) -> u32 {
@@ -230,7 +241,7 @@ impl fmt::Debug for FuseInitResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("FuseInitResponse")
 			.field("max_readahead", &self.max_readahead())
-			.field("flags", self.flags())
+			.field("flags", &self.flags())
 			.field("max_background", &self.max_background())
 			.field("congestion_threshold", &self.congestion_threshold())
 			.field("max_write", &self.max_write())
@@ -265,7 +276,8 @@ impl FuseInitResponse {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		if self.raw.minor >= 23 {
 			let mut out = self.raw;
-			out.flags = self.flags.to_bits();
+			out.flags = (self.flags.bits & u64::from(u32::MAX)) as u32;
+			out.flags2 = (self.flags.bits >> 32) as u32;
 			return enc.encode_sized(&out);
 		}
 
@@ -274,7 +286,7 @@ impl FuseInitResponse {
 				major: self.raw.major,
 				minor: self.raw.minor,
 				max_readahead: self.raw.max_readahead,
-				flags: self.flags.to_bits(),
+				flags: (self.flags.bits & u64::from(u32::MAX)) as u32,
 				max_background: self.raw.max_background,
 				congestion_threshold: self.raw.congestion_threshold,
 				max_write: self.raw.max_write,
@@ -292,31 +304,55 @@ impl FuseInitResponse {
 
 // FuseInitFlags {{{
 
-bitflags_struct! {
-	pub struct FuseInitFlags(u32);
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct FuseInitFlags {
+	bits: u64,
+}
 
-	fuse_kernel::FUSE_ASYNC_READ: async_read,
-	fuse_kernel::FUSE_POSIX_LOCKS: posix_locks,
-	fuse_kernel::FUSE_FILE_OPS: file_ops,
-	fuse_kernel::FUSE_ATOMIC_O_TRUNC: atomic_o_trunc,
-	fuse_kernel::FUSE_EXPORT_SUPPORT: export_support,
-	fuse_kernel::FUSE_BIG_WRITES: big_writes,
-	fuse_kernel::FUSE_DONT_MASK: dont_mask,
-	fuse_kernel::FUSE_SPLICE_WRITE: splice_write,
-	fuse_kernel::FUSE_SPLICE_MOVE: splice_move,
-	fuse_kernel::FUSE_SPLICE_READ: splice_read,
-	fuse_kernel::FUSE_FLOCK_LOCKS: flock_locks,
-	fuse_kernel::FUSE_HAS_IOCTL_DIR: has_ioctl_dir,
-	fuse_kernel::FUSE_AUTO_INVAL_DATA: auto_inval_data,
-	fuse_kernel::FUSE_DO_READDIRPLUS: do_readdirplus,
-	fuse_kernel::FUSE_READDIRPLUS_AUTO: readdirplus_auto,
-	fuse_kernel::FUSE_ASYNC_DIO: async_dio,
-	fuse_kernel::FUSE_WRITEBACK_CACHE: writeback_cache,
-	fuse_kernel::FUSE_NO_OPEN_SUPPORT: no_open_support,
-	fuse_kernel::FUSE_PARALLEL_DIROPS: parallel_dirops,
-	fuse_kernel::FUSE_HANDLE_KILLPRIV: handle_killpriv,
-	fuse_kernel::FUSE_POSIX_ACL: posix_acl,
-	fuse_kernel::FUSE_ABORT_ERROR: abort_error,
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct FuseInitFlag {
+	mask: u64,
+}
+
+mod flags {
+	use crate::internal::fuse_kernel;
+
+	bitflags!(FuseInitFlag, FuseInitFlags, u64, {
+		ASYNC_READ = fuse_kernel::FUSE_ASYNC_READ;
+		POSIX_LOCKS = fuse_kernel::FUSE_POSIX_LOCKS;
+		FILE_OPS = fuse_kernel::FUSE_FILE_OPS;
+		ATOMIC_O_TRUNC = fuse_kernel::FUSE_ATOMIC_O_TRUNC;
+		EXPORT_SUPPORT = fuse_kernel::FUSE_EXPORT_SUPPORT;
+		BIG_WRITES = fuse_kernel::FUSE_BIG_WRITES;
+		DONT_MASK = fuse_kernel::FUSE_DONT_MASK;
+		SPLICE_WRITE = fuse_kernel::FUSE_SPLICE_WRITE;
+		SPLICE_MOVE = fuse_kernel::FUSE_SPLICE_MOVE;
+		SPLICE_READ = fuse_kernel::FUSE_SPLICE_READ;
+		FLOCK_LOCKS = fuse_kernel::FUSE_FLOCK_LOCKS;
+		HAS_IOCTL_DIR = fuse_kernel::FUSE_HAS_IOCTL_DIR;
+		AUTO_INVAL_DATA = fuse_kernel::FUSE_AUTO_INVAL_DATA;
+		DO_READDIRPLUS = fuse_kernel::FUSE_DO_READDIRPLUS;
+		READDIRPLUS_AUTO = fuse_kernel::FUSE_READDIRPLUS_AUTO;
+		ASYNC_DIO = fuse_kernel::FUSE_ASYNC_DIO;
+		WRITEBACK_CACHE = fuse_kernel::FUSE_WRITEBACK_CACHE;
+		NO_OPEN_SUPPORT = fuse_kernel::FUSE_NO_OPEN_SUPPORT;
+		PARALLEL_DIROPS = fuse_kernel::FUSE_PARALLEL_DIROPS;
+		HANDLE_KILLPRIV = fuse_kernel::FUSE_HANDLE_KILLPRIV;
+		POSIX_ACL = fuse_kernel::FUSE_POSIX_ACL;
+		ABORT_ERROR = fuse_kernel::FUSE_ABORT_ERROR;
+		MAX_PAGES = fuse_kernel::FUSE_MAX_PAGES;
+		CACHE_SYMLINKS = fuse_kernel::FUSE_CACHE_SYMLINKS;
+		NO_OPENDIR_SUPPORT = fuse_kernel::FUSE_NO_OPENDIR_SUPPORT;
+		EXPLICIT_INVAL_DATA = fuse_kernel::FUSE_EXPLICIT_INVAL_DATA;
+		MAP_ALIGNMENT = fuse_kernel::FUSE_MAP_ALIGNMENT;
+		SUBMOUNTS = fuse_kernel::FUSE_SUBMOUNTS;
+		HANDLE_KILLPRIV_V2 = fuse_kernel::FUSE_HANDLE_KILLPRIV_V2;
+		SETXATTR_EXT = fuse_kernel::FUSE_SETXATTR_EXT;
+		INIT_EXT = fuse_kernel::FUSE_INIT_EXT;
+		INIT_RESERVED = fuse_kernel::FUSE_INIT_RESERVED;
+		SECURITY_CTX = fuse_kernel::FUSE_SECURITY_CTX;
+		HAS_INODE_DAX = fuse_kernel::FUSE_HAS_INODE_DAX;
+	});
 }
 
 // }}}

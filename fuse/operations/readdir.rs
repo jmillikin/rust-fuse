@@ -49,7 +49,7 @@ pub struct ReaddirRequest<'a> {
 	size: u32,
 	cursor: Option<num::NonZeroU64>,
 	handle: u64,
-	opendir_flags: u32,
+	open_flags: u32,
 }
 
 impl<'a> ReaddirRequest<'a> {
@@ -70,7 +70,7 @@ impl<'a> ReaddirRequest<'a> {
 				size: raw.size,
 				cursor: num::NonZeroU64::new(raw.offset),
 				handle: raw.fh,
-				opendir_flags: 0,
+				open_flags: 0,
 			});
 		}
 
@@ -81,7 +81,7 @@ impl<'a> ReaddirRequest<'a> {
 			size: raw.size,
 			cursor: num::NonZeroU64::new(raw.offset),
 			handle: raw.fh,
-			opendir_flags: raw.flags,
+			open_flags: raw.flags,
 		})
 	}
 
@@ -104,14 +104,8 @@ impl<'a> ReaddirRequest<'a> {
 		self.handle
 	}
 
-	/// Platform-specific flags passed to [`open(2)`].
-	///
-	/// See [`OpendirRequest::flags`] for details.
-	///
-	/// [`open(2)`]: https://pubs.opengroup.org/onlinepubs/9699919799/functions/open.html
-	/// [`OpendirRequest::flags`]: crate::operations::opendir::OpendirRequest::flags
-	pub fn opendir_flags(&self) -> u32 {
-		self.opendir_flags
+	pub fn open_flags(&self) -> crate::OpenFlags {
+		self.open_flags
 	}
 }
 
@@ -122,7 +116,7 @@ impl fmt::Debug for ReaddirRequest<'_> {
 			.field("size", &self.size)
 			.field("cursor", &format_args!("{:?}", self.cursor))
 			.field("handle", &self.handle)
-			.field("opendir_flags", &DebugHexU32(self.opendir_flags))
+			.field("open_flags", &DebugHexU32(self.open_flags))
 			.finish()
 	}
 }

@@ -87,7 +87,9 @@ impl<'a> IoctlRequest<'a> {
 	}
 
 	pub fn flags(&self) -> IoctlRequestFlags {
-		IoctlRequestFlags::from_bits(self.body.flags)
+		IoctlRequestFlags {
+			bits: self.body.flags,
+		}
 	}
 }
 
@@ -269,17 +271,6 @@ impl<'a> IoctlInputReader<'a> {
 		let bytes = self.read(size_of::<T>())?;
 		Ok(&*(bytes.as_ptr() as *const T))
 	}
-}
-
-bitflags_struct! {
-	/// Optional flags set on an [`IoctlRequest`].
-	pub struct IoctlRequestFlags(u32);
-
-	fuse_kernel::FUSE_IOCTL_COMPAT: fuse_ioctl_compat,
-	fuse_kernel::FUSE_IOCTL_UNRESTRICTED: fuse_ioctl_unrestricted,
-	fuse_kernel::FUSE_IOCTL_32BIT: fuse_ioctl_32bit,
-	fuse_kernel::FUSE_IOCTL_DIR: fuse_ioctl_dir,
-	fuse_kernel::FUSE_IOCTL_COMPAT_X32: fuse_ioctl_compat_x32,
 }
 
 // }}}
@@ -552,6 +543,32 @@ impl IoctlRetryBuf {
 		self.output_slices_len += 1;
 		Ok(())
 	}
+}
+
+// }}}
+
+// IoctlRequestFlags {{{
+
+/// Optional flags set on an [`IoctlRequest`].
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct IoctlRequestFlags {
+	bits: u32,
+}
+
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct IoctlRequestFlag {
+	mask: u32,
+}
+
+mod request_flags {
+	use crate::internal::fuse_kernel;
+	bitflags!(IoctlRequestFlag, IoctlRequestFlags, u32, {
+		IOCTL_COMPAT = fuse_kernel::FUSE_IOCTL_COMPAT;
+		IOCTL_UNRESTRICTED = fuse_kernel::FUSE_IOCTL_UNRESTRICTED;
+		IOCTL_32BIT = fuse_kernel::FUSE_IOCTL_32BIT;
+		IOCTL_DIR = fuse_kernel::FUSE_IOCTL_DIR;
+		IOCTL_COMPAT_X32 = fuse_kernel::FUSE_IOCTL_COMPAT_X32;
+	});
 }
 
 // }}}

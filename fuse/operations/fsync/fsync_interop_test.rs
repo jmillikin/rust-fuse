@@ -108,9 +108,7 @@ fn fsync() {
 	let expect = r#"FsyncRequest {
     node_id: 2,
     handle: 12345,
-    flags: FsyncRequestFlags {
-        datasync: false,
-    },
+    flags: FsyncRequestFlags {},
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);
@@ -137,7 +135,7 @@ fn fsync_fdatasync() {
     node_id: 2,
     handle: 12345,
     flags: FsyncRequestFlags {
-        datasync: true,
+        FDATASYNC,
     },
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {

@@ -118,7 +118,7 @@ impl<'a> CuseInitRequest<'a> {
 		Ok(CuseInitRequest {
 			phantom: PhantomData,
 			version: Version::new(raw.major, raw.minor),
-			flags: CuseInitFlags::from_bits(raw.flags),
+			flags: CuseInitFlags { bits: raw.flags },
 		})
 	}
 
@@ -126,12 +126,16 @@ impl<'a> CuseInitRequest<'a> {
 		self.version
 	}
 
-	pub fn flags(&self) -> &CuseInitFlags {
-		&self.flags
+	pub fn flags(&self) -> CuseInitFlags {
+		self.flags
 	}
 
-	pub fn flags_mut(&mut self) -> &mut CuseInitFlags {
+	pub fn mut_flags(&mut self) -> &mut CuseInitFlags {
 		&mut self.flags
+	}
+
+	pub fn set_flags(&mut self, flags: CuseInitFlags) {
+		self.flags = flags;
 	}
 }
 
@@ -184,12 +188,16 @@ impl<'a> CuseInitResponse<'a> {
 		self.raw.minor = v.minor();
 	}
 
-	pub fn flags(&self) -> &CuseInitFlags {
-		&self.flags
+	pub fn flags(&self) -> CuseInitFlags {
+		self.flags
 	}
 
-	pub fn flags_mut(&mut self) -> &mut CuseInitFlags {
+	pub fn mut_flags(&mut self) -> &mut CuseInitFlags {
 		&mut self.flags
+	}
+
+	pub fn set_flags(&mut self, flags: CuseInitFlags) {
+		self.flags = flags;
 	}
 
 	pub fn max_read(&self) -> u32 {
@@ -239,7 +247,7 @@ impl fmt::Debug for CuseInitResponse<'_> {
 			dbg.field("device_name", &device_name);
 		}
 		dbg
-			.field("flags", self.flags())
+			.field("flags", &self.flags())
 			.field("max_read", &self.max_read())
 			.field("max_write", &self.max_write())
 			.field("dev_major", &self.dev_major())
@@ -255,7 +263,7 @@ impl CuseInitResponse<'_> {
 		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let mut out = self.raw;
-		out.flags = self.flags.to_bits();
+		out.flags = self.flags.bits;
 		let out_buf: &[u8] = unsafe {
 			slice::from_raw_parts(
 				(&out as *const fuse_kernel::cuse_init_out) as *const u8,
@@ -276,10 +284,21 @@ impl CuseInitResponse<'_> {
 
 // CuseInitFlags {{{
 
-bitflags_struct! {
-	pub struct CuseInitFlags(u32);
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct CuseInitFlags {
+	bits: u32,
+}
 
-	fuse_kernel::CUSE_UNRESTRICTED_IOCTL: unrestricted_ioctl,
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct CuseInitFlag {
+	mask: u32,
+}
+
+mod flags {
+	use crate::internal::fuse_kernel;
+	bitflags!(CuseInitFlag, CuseInitFlags, u32, {
+		UNRESTRICTED_IOCTL = fuse_kernel::CUSE_UNRESTRICTED_IOCTL;
+	});
 }
 
 // }}}

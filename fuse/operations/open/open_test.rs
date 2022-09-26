@@ -16,7 +16,12 @@
 
 use core::mem::size_of;
 
-use fuse::operations::open::{OpenRequest, OpenResponse};
+use fuse::operations::open::{
+	OpenRequest,
+	OpenRequestFlag,
+	OpenResponse,
+	OpenResponseFlag,
+};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
@@ -29,13 +34,14 @@ fn request() {
 		})
 		.push_sized(&fuse_kernel::fuse_open_in {
 			flags: 0xFF,
-			open_flags: 0, // TODO
+			open_flags: fuse_kernel::FUSE_OPEN_KILL_SUIDGID,
 		})
 		.build_aligned();
 
 	let req = decode_request!(OpenRequest, buf);
 
-	assert_eq!(req.flags(), 0xFF);
+	assert_eq!(req.flags().get(OpenRequestFlag::KILL_SUIDGID), true);
+	assert_eq!(req.open_flags(), 0xFF);
 }
 
 #[test]
@@ -47,8 +53,8 @@ fn request_impl_debug() {
 			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
 		})
 		.push_sized(&fuse_kernel::fuse_open_in {
-			flags: 0x1,
-			open_flags: 0,
+			flags: 0xFF,
+			open_flags: fuse_kernel::FUSE_OPEN_KILL_SUIDGID,
 		})
 	});
 
@@ -57,7 +63,10 @@ fn request_impl_debug() {
 		concat!(
 			"OpenRequest {\n",
 			"    node_id: 1,\n",
-			"    flags: 0x00000001,\n",
+			"    flags: OpenRequestFlags {\n",
+			"        KILL_SUIDGID,\n",
+			"    },\n",
+			"    open_flags: 0x000000FF,\n",
 			"}",
 		),
 	);
@@ -67,7 +76,7 @@ fn request_impl_debug() {
 fn response() {
 	let mut response = OpenResponse::new();
 	response.set_handle(123);
-	response.flags_mut().keep_cache = true;
+	response.mut_flags().set(OpenResponseFlag::KEEP_CACHE);
 
 	let encoded = encode_response!(response);
 
@@ -93,8 +102,8 @@ fn response() {
 fn response_impl_debug() {
 	let mut response = OpenResponse::new();
 	response.set_handle(123);
-	response.flags_mut().direct_io = true;
-	response.flags_mut().keep_cache = true;
+	response.mut_flags().set(OpenResponseFlag::DIRECT_IO);
+	response.mut_flags().set(OpenResponseFlag::KEEP_CACHE);
 
 	assert_eq!(
 		format!("{:#?}", response),
@@ -102,9 +111,8 @@ fn response_impl_debug() {
 			"OpenResponse {\n",
 			"    handle: 123,\n",
 			"    flags: OpenResponseFlags {\n",
-			"        direct_io: true,\n",
-			"        keep_cache: true,\n",
-			"        nonseekable: false,\n",
+			"        DIRECT_IO,\n",
+			"        KEEP_CACHE,\n",
 			"    },\n",
 			"}",
 		),

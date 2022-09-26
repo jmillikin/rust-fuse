@@ -109,9 +109,7 @@ fn fsyncdir_fsync() {
 	let expect = r#"FsyncdirRequest {
     node_id: 2,
     handle: 12345,
-    flags: FsyncdirRequestFlags {
-        datasync: false,
-    },
+    flags: FsyncdirRequestFlags {},
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);
@@ -138,7 +136,7 @@ fn fsyncdir_fdatasync() {
     node_id: 2,
     handle: 12345,
     flags: FsyncdirRequestFlags {
-        datasync: true,
+        FDATASYNC,
     },
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {

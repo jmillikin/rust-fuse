@@ -14,9 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#[macro_use]
-mod bitflags;
-
 mod debug;
 pub(crate) use self::debug::*;
 

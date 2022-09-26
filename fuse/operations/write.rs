@@ -86,24 +86,17 @@ impl<'a> WriteRequest<'a> {
 		self.value
 	}
 
-	pub fn flags(&self) -> &WriteRequestFlags {
-		&self.flags
+	pub fn flags(&self) -> WriteRequestFlags {
+		self.flags
 	}
 
 	pub fn lock_owner(&self) -> Option<u64> {
 		self.lock_owner
 	}
 
-	pub fn open_flags(&self) -> u32 {
+	pub fn open_flags(&self) -> crate::OpenFlags {
 		self.open_flags
 	}
-}
-
-bitflags_struct! {
-	/// Request flags for `FUSE_WRITE`.
-	pub struct WriteRequestFlags(u32);
-
-	fuse_kernel::FUSE_WRITE_CACHE: write_cache,
 }
 
 impl fmt::Debug for WriteRequest<'_> {
@@ -143,7 +136,9 @@ fn decode_request<'a>(
 			offset: raw.offset,
 			handle: raw.fh,
 			value,
-			flags: WriteRequestFlags::from_bits(raw.write_flags),
+			flags: WriteRequestFlags {
+				bits: raw.write_flags,
+			},
 			lock_owner: None,
 			open_flags: 0,
 		});
@@ -163,7 +158,9 @@ fn decode_request<'a>(
 		offset: raw.offset,
 		handle: raw.fh,
 		value,
-		flags: WriteRequestFlags::from_bits(raw.write_flags),
+		flags: WriteRequestFlags {
+			bits: raw.write_flags,
+		},
 		lock_owner,
 		open_flags: raw.flags,
 	})
@@ -217,6 +214,29 @@ impl WriteResponse<'_> {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		enc.encode_sized(&self.raw)
 	}
+}
+
+// }}}
+
+// WriteRequestFlags {{{
+
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct WriteRequestFlags {
+	bits: u32,
+}
+
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct WriteRequestFlag {
+	mask: u32,
+}
+
+mod request_flags {
+	use crate::internal::fuse_kernel;
+	bitflags!(WriteRequestFlag, WriteRequestFlags, u32, {
+		WRITE_CACHE = fuse_kernel::FUSE_WRITE_CACHE;
+		WRITE_LOCKOWNER = fuse_kernel::FUSE_WRITE_LOCKOWNER;
+		WRITE_KILL_SUIDGID = fuse_kernel::FUSE_WRITE_KILL_SUIDGID;
+	});
 }
 
 // }}}

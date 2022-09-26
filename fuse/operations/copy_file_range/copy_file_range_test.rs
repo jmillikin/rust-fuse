@@ -18,8 +18,8 @@ use core::mem::size_of;
 
 use fuse::NodeId;
 use fuse::operations::copy_file_range::{
-	CopyFileRangeFlags,
 	CopyFileRangeRequest,
+	CopyFileRangeRequestFlags,
 	CopyFileRangeResponse,
 };
 
@@ -52,7 +52,7 @@ fn request() {
 	assert_eq!(req.output_handle(), 14);
 	assert_eq!(req.output_offset(), 15);
 	assert_eq!(req.len(), 16);
-	assert_eq!(req.flags(), CopyFileRangeFlags::new());
+	assert_eq!(req.flags(), CopyFileRangeRequestFlags::new());
 }
 
 #[test]
@@ -85,7 +85,7 @@ fn request_impl_debug() {
 			"    output_handle: 14,\n",
 			"    output_offset: 15,\n",
 			"    len: 16,\n",
-			"    flags: CopyFileRangeFlags,\n",
+			"    flags: CopyFileRangeRequestFlags {},\n",
 			"}",
 		),
 	);

@@ -40,7 +40,7 @@ pub struct ReleasedirRequest<'a> {
 	node_id: NodeId,
 	handle: u64,
 	lock_owner: Option<u64>,
-	opendir_flags: u32,
+	open_flags: u32,
 }
 
 impl<'a> ReleasedirRequest<'a> {
@@ -61,7 +61,7 @@ impl<'a> ReleasedirRequest<'a> {
 				node_id,
 				handle: raw.fh,
 				lock_owner: None,
-				opendir_flags: raw.flags,
+				open_flags: raw.flags,
 			});
 		}
 
@@ -77,7 +77,7 @@ impl<'a> ReleasedirRequest<'a> {
 			node_id,
 			handle: raw.fh,
 			lock_owner,
-			opendir_flags: raw.flags,
+			open_flags: raw.flags,
 		})
 	}
 
@@ -96,14 +96,8 @@ impl<'a> ReleasedirRequest<'a> {
 		self.lock_owner
 	}
 
-	/// Platform-specific flags passed to [`open(2)`].
-	///
-	/// See [`OpendirRequest::flags`] for details.
-	///
-	/// [`open(2)`]: https://pubs.opengroup.org/onlinepubs/9699919799/functions/open.html
-	/// [`OpendirRequest::flags`]: crate::operations::opendir::OpendirRequest::flags
-	pub fn opendir_flags(&self) -> u32 {
-		self.opendir_flags
+	pub fn open_flags(&self) -> crate::OpenFlags {
+		self.open_flags
 	}
 }
 
@@ -113,7 +107,7 @@ impl fmt::Debug for ReleasedirRequest<'_> {
 			.field("node_id", &self.node_id)
 			.field("handle", &self.handle)
 			.field("lock_owner", &self.lock_owner)
-			.field("opendir_flags", &DebugHexU32(self.opendir_flags))
+			.field("open_flags", &DebugHexU32(self.open_flags))
 			.finish()
 	}
 }

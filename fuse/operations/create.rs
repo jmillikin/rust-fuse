@@ -29,6 +29,8 @@ use crate::server::io;
 use crate::server::io::decode;
 use crate::server::io::encode;
 
+use crate::protocol::common::DebugHexU32;
+
 // CreateRequest {{{
 
 /// Request type for `FUSE_CREATE`.
@@ -38,7 +40,8 @@ use crate::server::io::encode;
 pub struct CreateRequest<'a> {
 	node_id: NodeId,
 	name: &'a NodeName,
-	flags: u32,
+	flags: CreateRequestFlags,
+	open_flags: u32,
 	mode: u32,
 	umask: u32,
 }
@@ -66,7 +69,8 @@ impl<'a> CreateRequest<'a> {
 			return Ok(Self {
 				node_id,
 				name,
-				flags: raw.flags,
+				flags: CreateRequestFlags::new(),
+				open_flags: raw.flags,
 				mode: 0,
 				umask: 0,
 			});
@@ -77,7 +81,10 @@ impl<'a> CreateRequest<'a> {
 		Ok(Self {
 			node_id,
 			name,
-			flags: raw.flags,
+			flags: CreateRequestFlags {
+				bits: raw.open_flags,
+			},
+			open_flags: raw.flags,
 			mode: raw.mode,
 			umask: raw.umask,
 		})
@@ -91,8 +98,12 @@ impl<'a> CreateRequest<'a> {
 		self.name
 	}
 
-	pub fn flags(&self) -> u32 {
+	pub fn flags(&self) -> CreateRequestFlags {
 		self.flags
+	}
+
+	pub fn open_flags(&self) -> crate::OpenFlags {
+		self.open_flags
 	}
 
 	pub fn mode(&self) -> FileMode {
@@ -110,6 +121,7 @@ impl fmt::Debug for CreateRequest<'_> {
 			.field("node_id", &self.node_id)
 			.field("name", &self.name)
 			.field("flags", &self.flags)
+			.field("open_flags", &DebugHexU32(self.open_flags))
 			.field("mode", &FileMode(self.mode))
 			.field("umask", &self.umask)
 			.finish()
@@ -153,12 +165,16 @@ impl<'a> CreateResponse<'a> {
 		self.handle = handle;
 	}
 
-	pub fn flags(&self) -> &CreateResponseFlags {
-		&self.flags
+	pub fn flags(&self) -> CreateResponseFlags {
+		self.flags
 	}
 
-	pub fn flags_mut(&mut self) -> &mut CreateResponseFlags {
+	pub fn mut_flags(&mut self) -> &mut CreateResponseFlags {
 		&mut self.flags
+	}
+
+	pub fn set_flags(&mut self, flags: CreateResponseFlags) {
+		self.flags = flags;
 	}
 }
 
@@ -183,7 +199,7 @@ impl CreateResponse<'_> {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		let open_out = fuse_kernel::fuse_open_out {
 			fh: self.handle,
-			open_flags: self.flags.to_bits(),
+			open_flags: self.flags.bits,
 			padding: 0,
 		};
 		self.node().encode_entry_sized(enc, ctx.version_minor, &open_out)
@@ -192,23 +208,50 @@ impl CreateResponse<'_> {
 
 // }}}
 
+// CreateRequestFlags {{{
+
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct CreateRequestFlags {
+	bits: u32,
+}
+
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct CreateRequestFlag {
+	mask: u32,
+}
+
+mod request_flags {
+	use crate::internal::fuse_kernel;
+	bitflags!(CreateRequestFlag, CreateRequestFlags, u32, {
+		KILL_SUIDGID = fuse_kernel::FUSE_OPEN_KILL_SUIDGID;
+	});
+}
+
+// }}}
+
 // CreateResponseFlags {{{
 
-bitflags_struct! {
-	/// Optional flags set on [`CreateResponse`].
-	pub struct CreateResponseFlags(u32);
+/// Optional flags set on [`CreateResponse`].
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct CreateResponseFlags {
+	bits: u32,
+}
 
-	/// Use [page-based direct I/O][direct-io] on this file.
-	///
-	/// [direct-io]: https://lwn.net/Articles/348719/
-	fuse_kernel::FOPEN_DIRECT_IO: direct_io,
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct CreateResponseFlag {
+	mask: u32,
+}
 
-	/// Allow the kernel to preserve cached file data from the last time this
-	/// file was opened.
-	fuse_kernel::FOPEN_KEEP_CACHE: keep_cache,
-
-	/// Tell the kernel this file is not seekable.
-	fuse_kernel::FOPEN_NONSEEKABLE: nonseekable,
+mod response_flags {
+	use crate::internal::fuse_kernel;
+	bitflags!(CreateResponseFlag, CreateResponseFlags, u32, {
+		DIRECT_IO = fuse_kernel::FOPEN_DIRECT_IO;
+		KEEP_CACHE = fuse_kernel::FOPEN_KEEP_CACHE;
+		NONSEEKABLE = fuse_kernel::FOPEN_NONSEEKABLE;
+		CACHE_DIR = fuse_kernel::FOPEN_CACHE_DIR;
+		STREAM = fuse_kernel::FOPEN_STREAM;
+		NOFLUSH = fuse_kernel::FOPEN_NOFLUSH;
+	});
 }
 
 // }}}

@@ -165,7 +165,8 @@ fn copy_file_range() {
 	let expect = format!(
 		r#"OpenRequest {{
     node_id: 2,
-    flags: 0x00008000,
+    flags: OpenRequestFlags {{}},
+    open_flags: 0x00008000,
 }}"#,
 	);
 	if let Some(diff) = diff_str(&expect, &requests[0]) {
@@ -176,7 +177,8 @@ fn copy_file_range() {
 	let expect = format!(
 		r#"OpenRequest {{
     node_id: 3,
-    flags: 0x00008001,
+    flags: OpenRequestFlags {{}},
+    open_flags: 0x00008001,
 }}"#,
 	);
 	if let Some(diff) = diff_str(&expect, &requests[1]) {
@@ -193,7 +195,7 @@ fn copy_file_range() {
     output_handle: 20,
     output_offset: 5678,
     len: 1000,
-    flags: CopyFileRangeFlags,
+    flags: CopyFileRangeRequestFlags {{}},
 }}"#,
 	);
 	if let Some(diff) = diff_str(&expect, &requests[2]) {
@@ -201,4 +203,3 @@ fn copy_file_range() {
 		assert!(false);
 	}
 }
-

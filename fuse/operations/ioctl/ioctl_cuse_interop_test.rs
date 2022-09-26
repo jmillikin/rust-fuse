@@ -29,9 +29,9 @@ struct TestCharDev {
 impl interop_testutil::TestDev for TestCharDev {
 	fn cuse_init(
 		_request: &fuse::CuseInitRequest,
-		init_response: &mut fuse::CuseInitResponse,
+		response: &mut fuse::CuseInitResponse,
 	) {
-		init_response.flags_mut().unrestricted_ioctl = true;
+		response.mut_flags().set(fuse::CuseInitFlag::UNRESTRICTED_IOCTL);
 	}
 }
 
@@ -164,11 +164,7 @@ fn cuse_ioctl_tiocgwinsz() {
     arg: FAKE_ARG,
     output_len: 0,
     flags: IoctlRequestFlags {
-        fuse_ioctl_compat: false,
-        fuse_ioctl_unrestricted: true,
-        fuse_ioctl_32bit: false,
-        fuse_ioctl_dir: false,
-        fuse_ioctl_compat_x32: false,
+        IOCTL_UNRESTRICTED,
     },
     input: [],
 }"#;
@@ -185,11 +181,7 @@ fn cuse_ioctl_tiocgwinsz() {
     arg: FAKE_ARG,
     output_len: {output_len},
     flags: IoctlRequestFlags {{
-        fuse_ioctl_compat: false,
-        fuse_ioctl_unrestricted: true,
-        fuse_ioctl_32bit: false,
-        fuse_ioctl_dir: false,
-        fuse_ioctl_compat_x32: false,
+        IOCTL_UNRESTRICTED,
     }},
     input: [],
 }}"#,
@@ -236,11 +228,7 @@ fn cuse_ioctl_tiocswinsz() {
     arg: FAKE_ARG,
     output_len: 0,
     flags: IoctlRequestFlags {
-        fuse_ioctl_compat: false,
-        fuse_ioctl_unrestricted: true,
-        fuse_ioctl_32bit: false,
-        fuse_ioctl_dir: false,
-        fuse_ioctl_compat_x32: false,
+        IOCTL_UNRESTRICTED,
     },
     input: [],
 }"#;
@@ -263,11 +251,7 @@ fn cuse_ioctl_tiocswinsz() {
     arg: FAKE_ARG,
     output_len: 0,
     flags: IoctlRequestFlags {{
-        fuse_ioctl_compat: false,
-        fuse_ioctl_unrestricted: true,
-        fuse_ioctl_32bit: false,
-        fuse_ioctl_dir: false,
-        fuse_ioctl_compat_x32: false,
+        IOCTL_UNRESTRICTED,
     }},
     input: {indented_input},
 }}"#,

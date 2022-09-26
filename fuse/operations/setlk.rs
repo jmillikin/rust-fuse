@@ -83,7 +83,9 @@ impl<'a> SetlkRequest<'a> {
 	}
 
 	pub fn flags(&self) -> SetlkRequestFlags {
-		SetlkRequestFlags::from_bits(self.raw.lk_flags)
+		SetlkRequestFlags {
+			bits: self.raw.lk_flags,
+		}
 	}
 }
 
@@ -99,11 +101,22 @@ pub enum SetlkCommand {
 	},
 }
 
-bitflags_struct! {
-	/// Optional flags set on [`SetlkRequest`].
-	pub struct SetlkRequestFlags(u32);
+/// Optional flags set on [`SetlkRequest`].
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct SetlkRequestFlags {
+	bits: u32,
+}
 
-	fuse_kernel::FUSE_LK_FLOCK: flock,
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct SetlkRequestFlag {
+	mask: u32,
+}
+
+mod flags {
+	use crate::internal::fuse_kernel;
+	bitflags!(SetlkRequestFlag, SetlkRequestFlags, u32, {
+		LK_FLOCK = fuse_kernel::FUSE_LK_FLOCK;
+	});
 }
 
 impl fmt::Debug for SetlkRequest<'_> {

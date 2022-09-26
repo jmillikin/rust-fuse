@@ -33,10 +33,10 @@ struct TestFS {
 
 impl interop_testutil::TestFS for TestFS {
 	fn fuse_init(
-		_init_request: &fuse::FuseInitRequest,
-		resp: &mut fuse::FuseInitResponse,
+		_request: &fuse::FuseInitRequest,
+		response: &mut fuse::FuseInitResponse,
 	) {
-		resp.flags_mut().posix_locks = true;
+		response.mut_flags().set(fuse::FuseInitFlag::POSIX_LOCKS);
 	}
 }
 

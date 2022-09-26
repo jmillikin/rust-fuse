@@ -209,7 +209,7 @@ fn readdir() {
     size: 4096,
     cursor: None,
     handle: 12345,
-    opendir_flags: 0x00018000,
+    open_flags: 0x00018000,
 }"#;
 		if let Some(diff) = diff_str(expect, &requests[0]) {
 			println!("{}", diff);
@@ -221,7 +221,7 @@ fn readdir() {
     size: 4096,
     cursor: Some(1),
     handle: 12345,
-    opendir_flags: 0x00018000,
+    open_flags: 0x00018000,
 }"#;
 		if let Some(diff) = diff_str(expect, &requests[1]) {
 			println!("{}", diff);
@@ -233,7 +233,7 @@ fn readdir() {
     size: 4096,
     cursor: Some(2),
     handle: 12345,
-    opendir_flags: 0x00018000,
+    open_flags: 0x00018000,
 }"#;
 		if let Some(diff) = diff_str(expect, &requests[2]) {
 			println!("{}", diff);
@@ -250,7 +250,7 @@ fn readdir() {
     size: 4096,
     cursor: None,
     handle: 12345,
-    opendir_flags: 0x00000000,
+    open_flags: 0x00000000,
 }"#;
 		if let Some(diff) = diff_str(expect, &requests[0]) {
 			println!("{}", diff);
@@ -262,7 +262,7 @@ fn readdir() {
     size: 4096,
     cursor: Some(2),
     handle: 12345,
-    opendir_flags: 0x00000000,
+    open_flags: 0x00000000,
 }"#;
 		if let Some(diff) = diff_str(expect, &requests[1]) {
 			println!("{}", diff);

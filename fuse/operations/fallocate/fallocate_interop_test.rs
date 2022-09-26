@@ -112,14 +112,7 @@ fn fallocate() {
     handle: 12345,
     offset: 1024,
     length: 4096,
-    mode: FallocateMode {
-        keep_size: false,
-        punch_hole: false,
-        collapse_range: false,
-        zero_range: false,
-        insert_range: false,
-        unshare_range: false,
-    },
+    fallocate_flags: 0x00000000,
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);
@@ -147,14 +140,7 @@ fn posix_fallocate() {
     handle: 12345,
     offset: 1024,
     length: 4096,
-    mode: FallocateMode {
-        keep_size: false,
-        punch_hole: false,
-        collapse_range: false,
-        zero_range: false,
-        insert_range: false,
-        unshare_range: false,
-    },
+    fallocate_flags: 0x00000000,
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);
@@ -184,14 +170,7 @@ fn fallocate_keep_size() {
     handle: 12345,
     offset: 1024,
     length: 4096,
-    mode: FallocateMode {
-        keep_size: true,
-        punch_hole: false,
-        collapse_range: false,
-        zero_range: false,
-        insert_range: false,
-        unshare_range: false,
-    },
+    fallocate_flags: 0x00000001,
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);
@@ -226,14 +205,7 @@ fn fallocate_punch_hole() {
     handle: 12345,
     offset: 1024,
     length: 4096,
-    mode: FallocateMode {
-        keep_size: true,
-        punch_hole: true,
-        collapse_range: false,
-        zero_range: false,
-        insert_range: false,
-        unshare_range: false,
-    },
+    fallocate_flags: 0x00000003,
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);

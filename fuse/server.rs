@@ -32,6 +32,7 @@ use crate::operations::cuse_init::{
 	CuseInitResponse,
 };
 use crate::operations::fuse_init::{
+	FuseInitFlag,
 	FuseInitFlags,
 	FuseInitRequest,
 	FuseInitResponse,
@@ -153,7 +154,7 @@ impl CuseRequestBuilder {
 		init_response: &CuseInitResponse,
 	) -> CuseRequestBuilder {
 		CuseRequestBuilder {
-			init_flags: *init_response.flags(),
+			init_flags: init_response.flags(),
 			max_write: init_response.max_write(),
 			version: init_response.version(),
 		}
@@ -223,7 +224,7 @@ impl FuseRequestBuilder {
 		init_response: &FuseInitResponse,
 	) -> FuseRequestBuilder {
 		FuseRequestBuilder {
-			init_flags: *init_response.flags(),
+			init_flags: init_response.flags(),
 			max_write: init_response.max_write(),
 			version: init_response.version(),
 		}
@@ -245,9 +246,14 @@ impl FuseRequestBuilder {
 	}
 
 	pub fn build<'a>(&self, buf: &'a [u8]) -> Result<FuseRequest<'a>, RequestError> {
+		let mut toggles = 0;
+		if self.init_flags.get(FuseInitFlag::SETXATTR_EXT) {
+			toggles |= TOGGLE_SETXATTR_EXT;
+		}
 		Ok(FuseRequest {
 			buf: RequestBuf::new(buf)?,
 			version_minor: self.version.minor(),
+			toggles,
 		})
 	}
 }
@@ -255,7 +261,10 @@ impl FuseRequestBuilder {
 pub struct FuseRequest<'a> {
 	pub(crate) buf: RequestBuf<'a>,
 	pub(crate) version_minor: u32,
+	toggles: u32,
 }
+
+const TOGGLE_SETXATTR_EXT: u32 = 1 << 0;
 
 impl<'a> FuseRequest<'a> {
 	pub(crate) fn decoder(&self) -> RequestDecoder<'a> {
@@ -271,6 +280,10 @@ impl<'a> FuseRequest<'a> {
 			request_id: self.header().request_id(),
 			version_minor: self.version_minor,
 		}
+	}
+
+	pub(crate) fn have_setxattr_ext(&self) -> bool {
+		self.toggles & TOGGLE_SETXATTR_EXT > 0
 	}
 }
 

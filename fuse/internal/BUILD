@@ -3,6 +3,7 @@ load("@rules_rust//rust:defs.bzl", "rust_library")
 filegroup(
     name = "srcs",
     srcs = [
+        "bitflags.rs",
         "fuse_kernel.rs",
         "fuse_kernel_util.rs",
     ],

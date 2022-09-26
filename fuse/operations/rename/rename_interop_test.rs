@@ -124,11 +124,7 @@ fn rename() {
     old_name: "rename_old.txt",
     new_directory_id: 1,
     new_name: "rename_new.txt",
-    flags: RenameRequestFlags {
-        no_replace: false,
-        exchange: false,
-        whiteout: false,
-    },
+    rename_flags: 0x00000000,
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);
@@ -188,11 +184,7 @@ fn rename2_flag_exchange() {
     old_name: "rename_old.txt",
     new_directory_id: 1,
     new_name: "rename_dir.d",
-    flags: RenameRequestFlags {
-        no_replace: false,
-        exchange: true,
-        whiteout: false,
-    },
+    rename_flags: 0x00000002,
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);
@@ -226,11 +218,7 @@ fn rename2_flag_noreplace() {
     old_name: "rename_old.txt",
     new_directory_id: 1,
     new_name: "rename_noexist.txt",
-    flags: RenameRequestFlags {
-        no_replace: true,
-        exchange: false,
-        whiteout: false,
-    },
+    rename_flags: 0x00000001,
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);
@@ -264,11 +252,7 @@ fn rename2_flag_whiteout() {
     old_name: "rename_old.txt",
     new_directory_id: 1,
     new_name: "rename_noexist.txt",
-    flags: RenameRequestFlags {
-        no_replace: false,
-        exchange: false,
-        whiteout: true,
-    },
+    rename_flags: 0x00000004,
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);

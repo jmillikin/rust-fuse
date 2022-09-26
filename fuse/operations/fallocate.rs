@@ -26,23 +26,17 @@ use crate::server::io;
 use crate::server::io::decode;
 use crate::server::io::encode;
 
-// FallocateRequest {{{
+use crate::protocol::common::DebugHexU32;
 
-const FALLOC_FL_KEEP_SIZE: u32 = 1 << 0;
-const FALLOC_FL_PUNCH_HOLE: u32 = 1 << 1;
-const FALLOC_FL_COLLAPSE_RANGE: u32 = 1 << 3;
-const FALLOC_FL_ZERO_RANGE: u32 = 1 << 4;
-const FALLOC_FL_INSERT_RANGE: u32 = 1 << 5;
-const FALLOC_FL_UNSHARE_RANGE: u32 = 1 << 6;
+// FallocateRequest {{{
 
 /// Request type for `FUSE_FALLOCATE`.
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_FALLOCATE` operation.
 pub struct FallocateRequest<'a> {
-	raw: &'a fuse_kernel::fuse_fallocate_in,
-	node_id: NodeId,
-	mode: FallocateMode,
+	header: &'a fuse_kernel::fuse_in_header,
+	body: &'a fuse_kernel::fuse_fallocate_in,
 }
 
 impl<'a> FallocateRequest<'a> {
@@ -52,55 +46,41 @@ impl<'a> FallocateRequest<'a> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_FALLOCATE)?;
 
-		let raw = dec.next_sized()?;
-		Ok(Self {
-			raw,
-			node_id: decode::node_id(dec.header().nodeid)?,
-			mode: FallocateMode::from_bits(raw.mode),
-		})
+		let header = dec.header();
+		let body = dec.next_sized()?;
+		decode::node_id(header.nodeid)?;
+		Ok(Self { header, body })
 	}
 
 	pub fn node_id(&self) -> NodeId {
-		self.node_id
+		unsafe { NodeId::new_unchecked(self.header.nodeid) }
 	}
 
 	pub fn handle(&self) -> u64 {
-		self.raw.fh
+		self.body.fh
 	}
 
 	pub fn offset(&self) -> u64 {
-		self.raw.offset
+		self.body.offset
 	}
 
 	pub fn length(&self) -> u64 {
-		self.raw.length
+		self.body.length
 	}
 
-	pub fn mode(&self) -> FallocateMode {
-		self.mode
+	pub fn fallocate_flags(&self) -> crate::FallocateFlags {
+		self.body.mode
 	}
-}
-
-bitflags_struct! {
-	/// Mode bits set in an [`FallocateRequest`].
-	pub struct FallocateMode(u32);
-
-	FALLOC_FL_KEEP_SIZE: keep_size,
-	FALLOC_FL_PUNCH_HOLE: punch_hole,
-	FALLOC_FL_COLLAPSE_RANGE: collapse_range,
-	FALLOC_FL_ZERO_RANGE: zero_range,
-	FALLOC_FL_INSERT_RANGE: insert_range,
-	FALLOC_FL_UNSHARE_RANGE: unshare_range,
 }
 
 impl fmt::Debug for FallocateRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("FallocateRequest")
-			.field("node_id", &self.node_id)
-			.field("handle", &self.raw.fh)
-			.field("offset", &self.raw.offset)
-			.field("length", &self.raw.length)
-			.field("mode", &self.mode)
+			.field("node_id", &self.node_id())
+			.field("handle", &self.handle())
+			.field("offset", &self.offset())
+			.field("length", &self.length())
+			.field("fallocate_flags", &DebugHexU32(self.fallocate_flags()))
 			.finish()
 	}
 }

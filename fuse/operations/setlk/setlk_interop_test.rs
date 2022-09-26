@@ -32,11 +32,11 @@ struct TestFS {
 
 impl interop_testutil::TestFS for TestFS {
 	fn fuse_init(
-		_init_request: &fuse::FuseInitRequest,
-		resp: &mut fuse::FuseInitResponse,
+		_request: &fuse::FuseInitRequest,
+		response: &mut fuse::FuseInitResponse,
 	) {
-		resp.flags_mut().flock_locks = true;
-		resp.flags_mut().posix_locks = true;
+		response.mut_flags().set(fuse::FuseInitFlag::FLOCK_LOCKS);
+		response.mut_flags().set(fuse::FuseInitFlag::POSIX_LOCKS);
 	}
 }
 
@@ -184,9 +184,7 @@ fn setlk_fcntl_read() {
             process_id: {pid},
         }},
     ),
-    flags: SetlkRequestFlags {{
-        flock: false,
-    }},
+    flags: SetlkRequestFlags {{}},
 }}"#,
 		pid = lock_pid
 	);
@@ -232,9 +230,7 @@ fn setlk_fcntl_read_nonblocking() {
             process_id: {pid},
         }},
     ),
-    flags: SetlkRequestFlags {{
-        flock: false,
-    }},
+    flags: SetlkRequestFlags {{}},
 }}"#,
 		pid = lock_pid
 	);
@@ -281,9 +277,7 @@ fn setlk_fcntl_write() {
             process_id: {pid},
         }},
     ),
-    flags: SetlkRequestFlags {{
-        flock: false,
-    }},
+    flags: SetlkRequestFlags {{}},
 }}"#,
 		pid = lock_pid
 	);
@@ -328,9 +322,7 @@ fn setlk_fcntl_unlock() {
         range: 100..150,
         process_id: {pid},
     }},
-    flags: SetlkRequestFlags {{
-        flock: false,
-    }},
+    flags: SetlkRequestFlags {{}},
 }}"#,
 		pid = lock_pid
 	);
@@ -364,7 +356,7 @@ fn setlk_flock_shared() {
         }},
     ),
     flags: SetlkRequestFlags {{
-        flock: true,
+        LK_FLOCK,
     }},
 }}"#,
 		pid = lock_pid
@@ -399,7 +391,7 @@ fn setlk_flock_exclusive() {
         }},
     ),
     flags: SetlkRequestFlags {{
-        flock: true,
+        LK_FLOCK,
     }},
 }}"#,
 		pid = lock_pid
@@ -434,7 +426,7 @@ fn setlk_flock_shared_nonblocking() {
         }},
     ),
     flags: SetlkRequestFlags {{
-        flock: true,
+        LK_FLOCK,
     }},
 }}"#,
 		pid = lock_pid
@@ -467,7 +459,7 @@ fn setlk_flock_unlock() {
         process_id: {pid},
     }},
     flags: SetlkRequestFlags {{
-        flock: true,
+        LK_FLOCK,
     }},
 }}"#,
 		pid = lock_pid

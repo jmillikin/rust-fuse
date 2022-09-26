@@ -39,7 +39,7 @@ fn request() {
 	});
 
 	assert_eq!(req.handle(), 3);
-	assert_eq!(req.flags().datasync, true);
+	assert_eq!(req.flags().get(fuse::FsyncdirRequestFlag::FDATASYNC), true);
 }
 
 #[test]
@@ -64,7 +64,7 @@ fn request_impl_debug() {
 			"    node_id: 1,\n",
 			"    handle: 3,\n",
 			"    flags: FsyncdirRequestFlags {\n",
-			"        datasync: true,\n",
+			"        FDATASYNC,\n",
 			"    },\n",
 			"}",
 		),

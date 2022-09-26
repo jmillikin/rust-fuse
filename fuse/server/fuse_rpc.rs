@@ -63,6 +63,11 @@ impl<S, H> FuseServerBuilder<S, H> {
 		self
 	}
 
+	pub fn fuse_init_flags(mut self, flags: FuseInitFlags) -> Self {
+		self.opts.flags = flags;
+		self
+	}
+
 	#[cfg(feature = "std")]
 	pub fn server_hooks(mut self, hooks: Box<dyn ServerHooks>) -> Self {
 		self.hooks = Some(hooks);
@@ -104,7 +109,7 @@ impl FuseOptions {
 	) -> FuseInitResponse {
 		let mut response = FuseInitResponse::new();
 		response.set_max_write(self.max_write);
-		*response.flags_mut() = self.flags;
+		response.set_flags(self.flags);
 		response
 	}
 }

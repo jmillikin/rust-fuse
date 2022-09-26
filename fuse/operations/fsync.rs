@@ -28,17 +28,13 @@ use crate::server::io::encode;
 
 // FsyncRequest {{{
 
-const FSYNC_DATASYNC: u32 = 1 << 0;
-
 /// Request type for `FUSE_FSYNC`.
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_FSYNC` operation.
 pub struct FsyncRequest<'a> {
-	phantom: PhantomData<&'a ()>,
-	node_id: NodeId,
-	handle: u64,
-	flags: FsyncRequestFlags,
+	header: &'a fuse_kernel::fuse_in_header,
+	body: &'a fuse_kernel::fuse_fsync_in,
 }
 
 impl<'a> FsyncRequest<'a> {
@@ -55,31 +51,29 @@ impl<'a> FsyncRequest<'a> {
 	}
 
 	pub fn node_id(&self) -> NodeId {
-		self.node_id
+		match NodeId::new(self.header.nodeid) {
+			Some(id) => id,
+			None => crate::ROOT_ID,
+		}
 	}
 
 	pub fn handle(&self) -> u64 {
-		self.handle
+		self.body.fh
 	}
 
-	pub fn flags(&self) -> &FsyncRequestFlags {
-		&self.flags
+	pub fn flags(&self) -> FsyncRequestFlags {
+		FsyncRequestFlags {
+			bits: self.body.fsync_flags,
+		}
 	}
-}
-
-bitflags_struct! {
-	/// Optional flags set on [`FsyncRequest`].
-	pub struct FsyncRequestFlags(u32);
-
-	FSYNC_DATASYNC: datasync,
 }
 
 impl fmt::Debug for FsyncRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("FsyncRequest")
-			.field("node_id", &self.node_id)
-			.field("handle", &self.handle)
-			.field("flags", &self.flags)
+			.field("node_id", &self.node_id())
+			.field("handle", &self.handle())
+			.field("flags", &self.flags())
 			.finish()
 	}
 }
@@ -88,22 +82,15 @@ fn decode_request<'a>(
 	buf: decode::RequestBuf<'a>,
 	is_cuse: bool,
 ) -> Result<FsyncRequest<'a>, io::RequestError> {
-	buf.expect_opcode(fuse_kernel::FUSE_FSYNC)?;
-
-	let node_id = if is_cuse {
-		crate::ROOT_ID
-	} else {
-		decode::node_id(buf.header().nodeid)?
-	};
 	let mut dec = decode::RequestDecoder::new(buf);
+	dec.expect_opcode(fuse_kernel::FUSE_FSYNC)?;
 
-	let raw: &fuse_kernel::fuse_fsync_in = dec.next_sized()?;
-	Ok(FsyncRequest {
-		phantom: PhantomData,
-		node_id,
-		handle: raw.fh,
-		flags: FsyncRequestFlags::from_bits(raw.fsync_flags),
-	})
+	let header = dec.header();
+	let body = dec.next_sized()?;
+	if !is_cuse {
+		decode::node_id(header.nodeid)?;
+	}
+	Ok(FsyncRequest { header, body })
 }
 
 // }}}
@@ -143,6 +130,28 @@ impl FsyncResponse<'_> {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		enc.encode_header_only()
 	}
+}
+
+// }}}
+
+// FsyncRequestFlags {{{
+
+/// Optional flags set on [`FsyncRequest`].
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct FsyncRequestFlags {
+	bits: u32,
+}
+
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct FsyncRequestFlag {
+	mask: u32,
+}
+
+mod request_flags {
+	use crate::internal::fuse_kernel;
+	bitflags!(FsyncRequestFlag, FsyncRequestFlags, u32, {
+		FDATASYNC = fuse_kernel::FUSE_FSYNC_FDATASYNC;
+	});
 }
 
 // }}}
