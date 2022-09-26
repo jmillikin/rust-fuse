@@ -16,7 +16,6 @@
 
 //! Implements the `CUSE_INIT` operation.
 
-use core::cmp;
 use core::fmt;
 use core::marker::PhantomData;
 use core::mem::size_of;
@@ -32,12 +31,12 @@ use crate::protocol::common::DebugBytesAsString;
 
 // CuseDeviceName {{{
 
-#[derive(Hash)]
+#[derive(Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct CuseDeviceName([u8]);
 
 impl CuseDeviceName {
 	pub fn from_bytes<'a>(bytes: &'a [u8]) -> Option<&'a CuseDeviceName> {
-		if bytes.len() == 0 || bytes.contains(&0) {
+		if bytes.is_empty() || bytes.contains(&0) {
 			return None;
 		}
 		Some(unsafe { &*(bytes as *const [u8] as *const CuseDeviceName) })
@@ -61,35 +60,15 @@ impl fmt::Display for CuseDeviceName {
 	}
 }
 
-impl Eq for CuseDeviceName {}
-
-impl PartialEq for CuseDeviceName {
-	fn eq(&self, other: &Self) -> bool {
-		self.as_bytes().eq(other.as_bytes())
-	}
-}
-
 impl PartialEq<[u8]> for CuseDeviceName {
 	fn eq(&self, other: &[u8]) -> bool {
 		self.as_bytes().eq(other)
 	}
 }
 
-impl Ord for CuseDeviceName {
-	fn cmp(&self, other: &Self) -> cmp::Ordering {
-		self.as_bytes().cmp(&other.as_bytes())
-	}
-}
-
 impl PartialEq<CuseDeviceName> for [u8] {
 	fn eq(&self, other: &CuseDeviceName) -> bool {
 		self.eq(other.as_bytes())
-	}
-}
-
-impl PartialOrd for CuseDeviceName {
-	fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
-		self.as_bytes().partial_cmp(&other.as_bytes())
 	}
 }
 

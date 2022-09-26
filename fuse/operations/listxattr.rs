@@ -289,7 +289,7 @@ impl ListxattrResponse<'_> {
 				})
 			},
 			#[cfg(feature = "std")]
-			ListxattrBuf::Owned { cap, .. } => enc.encode_bytes(&cap),
+			ListxattrBuf::Owned { cap, .. } => enc.encode_bytes(cap),
 			ListxattrBuf::Borrowed { cap, size } => {
 				let (bytes, _) = cap.split_at(*size);
 				enc.encode_bytes(bytes)

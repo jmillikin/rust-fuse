@@ -36,7 +36,7 @@ impl LibcError {
 	}
 
 	pub(crate) fn from_raw_os_error(code: i32) -> Self {
-		return Self { code };
+		Self { code }
 	}
 }
 

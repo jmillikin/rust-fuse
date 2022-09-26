@@ -35,10 +35,10 @@ const DEFAULT_FLAGS: u32 = MS_NOSUID | MS_NODEV;
 // be fine.
 const PAGE_SIZE: usize = 4096;
 
-const DEV_CUSE: &'static CStr = unsafe {
+const DEV_CUSE: &CStr = unsafe {
 	CStr::from_bytes_with_nul_unchecked(b"/dev/cuse\0")
 };
-const DEV_FUSE: &'static CStr = unsafe {
+const DEV_FUSE: &CStr = unsafe {
 	CStr::from_bytes_with_nul_unchecked(b"/dev/fuse\0")
 };
 

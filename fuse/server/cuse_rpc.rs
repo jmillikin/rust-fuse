@@ -115,7 +115,7 @@ impl<S: CuseSocket, H> CuseServerBuilder<S, H> {
 		})?;
 
 		Ok(CuseServer {
-			socket: socket,
+			socket,
 			handlers: self.handlers,
 			req_builder: CuseRequestBuilder::from_init_response(&init_response),
 			#[cfg(feature = "std")]
@@ -327,7 +327,7 @@ fn cuse_request_dispatch<S: CuseSocket>(
 				},
 				Err(err) => {
 					#[cfg(feature = "std")]
-					if let Some(ref hooks) = hooks {
+					if let Some(hooks) = hooks {
 						hooks.request_error(header, err);
 					}
 					let _ = err;

@@ -1,4 +1,10 @@
-load("@rules_rust//rust:defs.bzl", "rust_doc", "rust_doc_test", "rust_library")
+load(
+    "@rules_rust//rust:defs.bzl",
+    "rust_clippy",
+    "rust_doc",
+    "rust_doc_test",
+    "rust_library",
+)
 
 rust_library(
     name = "fuse-libc",
@@ -14,6 +20,11 @@ rust_library(
         "//fuse",
         "@rust_libc//:libc",
     ],
+)
+
+rust_clippy(
+    name = "fuse-libc_clippy",
+    deps = [":fuse-libc"],
 )
 
 rust_doc(

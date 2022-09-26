@@ -135,7 +135,7 @@ impl<'a> GetxattrResponse<'a> {
 				self.value = value;
 			},
 		}
-		return Ok(());
+		Ok(())
 	}
 }
 
@@ -146,7 +146,7 @@ impl fmt::Debug for GetxattrResponse<'_> {
 		let mut out = fmt.debug_struct("GetxattrResponse");
 		out.field("request_size", &format_args!("{:?}", &self.request_size));
 		if self.request_size.is_some() {
-			out.field("value", &DebugBytesAsString(&self.value));
+			out.field("value", &DebugBytesAsString(self.value));
 		}
 		out.finish()
 	}
@@ -162,7 +162,7 @@ impl GetxattrResponse<'_> {
 		if self.raw.size != 0 {
 			enc.encode_sized(&self.raw)
 		} else {
-			enc.encode_bytes(&self.value)
+			enc.encode_bytes(self.value)
 		}
 	}
 }

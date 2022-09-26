@@ -21,7 +21,7 @@ use core::fmt::{self, Write};
 use std::ffi::CStr;
 
 #[cfg(feature = "std")]
-const CSTR_FUSE: &'static CStr = unsafe {
+const CSTR_FUSE: &CStr = unsafe {
 	CStr::from_bytes_with_nul_unchecked(b"fuse\0")
 };
 
@@ -168,11 +168,11 @@ pub struct MountData<'a> {
 impl<'a> MountData<'a> {
 	pub fn new(buf: &'a mut [u8], options: &MountOptions) -> Option<Self> {
 		let mut w = BufWriter { buf, count: 0 };
-		if let Ok(_) = write_mount_data(&mut w, options) {
-			let count = w.count;
-			return Some(Self { buf: &buf[..count] });
+		if write_mount_data(&mut w, options).is_err() {
+			return None;
 		}
-		None
+		let count = w.count;
+		Some(Self { buf: &buf[..count] })
 	}
 
 	pub fn as_bytes_with_nul(&self) -> &'a [u8] {

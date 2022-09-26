@@ -14,11 +14,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::{cmp, fmt};
+use core::fmt;
 
 use crate::server::io::decode;
 
-#[derive(Hash)]
+#[derive(Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct NodeName([u8]);
 
@@ -64,14 +64,6 @@ impl fmt::Display for NodeName {
 	}
 }
 
-impl Eq for NodeName {}
-
-impl PartialEq for NodeName {
-	fn eq(&self, other: &NodeName) -> bool {
-		self.as_bytes().eq(other.as_bytes())
-	}
-}
-
 impl PartialEq<[u8]> for NodeName {
 	fn eq(&self, other: &[u8]) -> bool {
 		self.as_bytes().eq(other)
@@ -93,17 +85,5 @@ impl PartialEq<str> for NodeName {
 impl PartialEq<NodeName> for str{
 	fn eq(&self, other: &NodeName) -> bool {
 		self.as_bytes().eq(other.as_bytes())
-	}
-}
-
-impl Ord for NodeName {
-	fn cmp(&self, other: &NodeName) -> cmp::Ordering {
-		self.as_bytes().cmp(&other.as_bytes())
-	}
-}
-
-impl PartialOrd for NodeName {
-	fn partial_cmp(&self, other: &NodeName) -> Option<cmp::Ordering> {
-		self.as_bytes().partial_cmp(&other.as_bytes())
 	}
 }

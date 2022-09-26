@@ -90,13 +90,13 @@ impl fmt::Debug for Node {
 
 impl Node {
 	pub(crate) fn encode_entry<'a, S: encode::SendOnce>(
-		&self,
+		&'a self,
 		enc: encode::ReplyEncoder<S>,
 		version_minor: u32,
 	) -> S::Result {
 		// The `fuse_attr::blksize` field was added in FUSE v7.9.
 		if version_minor < 9 {
-			let buf: &[u8] = unsafe {
+			let buf: &'a [u8] = unsafe {
 				slice::from_raw_parts(
 					(&self.0 as *const fuse_kernel::fuse_entry_out)
 						as *const u8,
@@ -110,14 +110,14 @@ impl Node {
 	}
 
 	pub(crate) fn encode_entry_sized<'a, S: encode::SendOnce, T: Sized>(
-		&self,
+		&'a self,
 		enc: encode::ReplyEncoder<S>,
 		version_minor: u32,
 		t: &T,
 	) -> S::Result {
 		// The `fuse_attr::blksize` field was added in FUSE v7.9.
 		if version_minor < 9 {
-			let buf: &[u8] = unsafe {
+			let buf: &'a [u8] = unsafe {
 				slice::from_raw_parts(
 					(&self.0 as *const fuse_kernel::fuse_entry_out)
 						as *const u8,

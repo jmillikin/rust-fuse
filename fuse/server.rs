@@ -313,7 +313,7 @@ impl<'a> UnknownRequest<'a> {
 	}
 
 	pub fn header(&self) -> &RequestHeader {
-		RequestHeader::new_ref(&self.header)
+		RequestHeader::new_ref(self.header)
 	}
 
 	pub fn body(&self) -> Result<&'a [u8], RequestError> {
@@ -422,7 +422,7 @@ fn cuse_handshake<'a, E>(
 ) -> Result<(CuseInitResponse<'a>, bool), ServerError<E>> {
 	match negotiate_version(request.version()) {
 		Some(version) => {
-			let mut response = init_fn(&request);
+			let mut response = init_fn(request);
 			response.set_version(version);
 			Ok((response, true))
 		},
@@ -482,7 +482,7 @@ fn fuse_handshake<E>(
 ) -> Result<(FuseInitResponse, bool), ServerError<E>> {
 	match negotiate_version(request.version()) {
 		Some(version) => {
-			let mut response = init_fn(&request);
+			let mut response = init_fn(request);
 			response.set_version(version);
 			Ok((response, true))
 		},

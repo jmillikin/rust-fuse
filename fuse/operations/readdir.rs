@@ -333,7 +333,7 @@ impl<Dirent: DirentT> ReaddirBuf<'_, Dirent> {
 		&mut self,
 		name: &[u8],
 	) -> Result<*mut u8, ReaddirError> {
-		debug_assert!(name.len() > 0);
+		debug_assert!(!name.is_empty());
 
 		let padding_len = (8 - (name.len() % 8)) % 8;
 		let overhead = padding_len + size_of::<Dirent>();
@@ -417,7 +417,7 @@ impl<Dirent: DirentT> ReaddirBuf<'_, Dirent> {
 		let padding = (8 - (name_len % 8)) % 8;
 		let entry_span = dirent_size + name_len + padding;
 
-		return Some((dirent, offset + entry_span));
+		Some((dirent, offset + entry_span))
 	}
 }
 
@@ -544,7 +544,7 @@ impl ReaddirResponse<'_> {
 		match &self.buf {
 			ReaddirBuf::None => enc.encode_header_only(),
 			#[cfg(feature = "std")]
-			ReaddirBuf::Owned { cap, .. } => enc.encode_bytes(&cap),
+			ReaddirBuf::Owned { cap, .. } => enc.encode_bytes(cap),
 			ReaddirBuf::Borrowed { cap, size, .. } => {
 				let (bytes, _) = cap.split_at(*size);
 				enc.encode_bytes(bytes)

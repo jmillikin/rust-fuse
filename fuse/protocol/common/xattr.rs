@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::{cmp, fmt};
+use core::fmt;
 
 use crate::server::io::decode;
 
@@ -100,7 +100,7 @@ impl std::error::Error for XattrError {}
 
 // }}}
 
-#[derive(Hash)]
+#[derive(Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct XattrName([u8]);
 
@@ -164,34 +164,14 @@ impl fmt::Display for XattrName {
 	}
 }
 
-impl Eq for XattrName {}
-
-impl PartialEq for XattrName {
-	fn eq(&self, other: &XattrName) -> bool {
-		self.as_bytes().eq(other.as_bytes())
-	}
-}
-
 impl PartialEq<[u8]> for XattrName {
 	fn eq(&self, other: &[u8]) -> bool {
 		self.as_bytes().eq(other)
 	}
 }
 
-impl Ord for XattrName {
-	fn cmp(&self, other: &XattrName) -> cmp::Ordering {
-		self.as_bytes().cmp(&other.as_bytes())
-	}
-}
-
 impl PartialEq<XattrName> for [u8] {
 	fn eq(&self, other: &XattrName) -> bool {
 		self.eq(other.as_bytes())
-	}
-}
-
-impl PartialOrd for XattrName {
-	fn partial_cmp(&self, other: &XattrName) -> Option<cmp::Ordering> {
-		self.as_bytes().partial_cmp(&other.as_bytes())
 	}
 }

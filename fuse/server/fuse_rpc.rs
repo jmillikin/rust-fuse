@@ -93,7 +93,7 @@ impl<S: FuseSocket, H> FuseServerBuilder<S, H> {
 		})?;
 
 		Ok(FuseServer {
-			socket: socket,
+			socket,
 			handlers: self.handlers,
 			req_builder: FuseRequestBuilder::from_init_response(&init_response),
 			#[cfg(feature = "std")]
@@ -103,7 +103,7 @@ impl<S: FuseSocket, H> FuseServerBuilder<S, H> {
 }
 
 impl FuseOptions {
-	fn init_response<'a>(
+	fn init_response(
 		&self,
 		_request: &FuseInitRequest,
 	) -> FuseInitResponse {
@@ -336,7 +336,7 @@ fn fuse_request_dispatch<S: FuseSocket>(
 				},
 				Err(err) => {
 					#[cfg(feature = "std")]
-					if let Some(ref hooks) = hooks {
+					if let Some(hooks) = hooks {
 						hooks.request_error(header, err);
 					}
 					let _ = err;
@@ -364,7 +364,7 @@ fn fuse_request_dispatch<S: FuseSocket>(
 				Ok(request) => handlers.forget(call, &request),
 				Err(err) => {
 					#[cfg(feature = "std")]
-					if let Some(ref hooks) = hooks {
+					if let Some(hooks) = hooks {
 						hooks.request_error(header, err);
 					}
 					let _ = err;

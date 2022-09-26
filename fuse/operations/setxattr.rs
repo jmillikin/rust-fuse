@@ -102,7 +102,7 @@ impl fmt::Debug for SetxattrRequest<'_> {
 			.field("name", &self.name())
 			.field("flags", &self.flags())
 			.field("setxattr_flags", &DebugHexU32(self.setxattr_flags()))
-			.field("value", &DebugBytesAsString(&self.value))
+			.field("value", &DebugBytesAsString(self.value))
 			.finish()
 	}
 }

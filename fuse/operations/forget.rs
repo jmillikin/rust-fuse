@@ -130,24 +130,20 @@ impl Iterator for ForgetRequestIter<'_> {
 
 	fn next(&mut self) -> Option<Self::Item> {
 		match self {
-			Self::One(None) => return None,
+			Self::One(None) => None,
 			Self::One(Some(item)) => {
 				let item = *item;
 				*self = Self::One(None);
-				match NodeId::new(item.nodeid) {
-					Some(node_id) => {
-						return Some(ForgetRequestItem {
-							node_id,
-							lookup_count: item.nlookup,
-						});
-					},
-					None => return None,
-				};
+				let node_id = NodeId::new(item.nodeid)?;
+				Some(ForgetRequestItem {
+					node_id,
+					lookup_count: item.nlookup,
+				})
 			},
 			Self::Batch(items) => {
 				let (head, tail) = next_batch_item(items);
 				*self = Self::Batch(tail);
-				return head;
+				head
 			},
 		}
 	}

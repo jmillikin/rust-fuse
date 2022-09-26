@@ -1,4 +1,10 @@
-load("@rules_rust//rust:defs.bzl", "rust_doc", "rust_doc_test", "rust_library")
+load(
+    "@rules_rust//rust:defs.bzl",
+    "rust_clippy",
+    "rust_doc",
+    "rust_doc_test",
+    "rust_library",
+)
 
 rust_library(
     name = "fuse-linux",
@@ -10,6 +16,11 @@ rust_library(
         "@rust_linux_errno//linux-errno",
         "@rust_linux_syscall//linux-syscall",
     ],
+)
+
+rust_clippy(
+    name = "fuse-linux_clippy",
+    deps = [":fuse-linux"],
 )
 
 rust_doc(

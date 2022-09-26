@@ -478,15 +478,15 @@ impl IoctlRetryBuf {
 		}
 	}
 
-	pub fn input_slices<'a>(&'a self) -> &'a [IoctlSlice] {
+	pub fn input_slices(&self) -> &[IoctlSlice] {
 		&self.input_slices[..self.input_slices_len]
 	}
 
-	pub fn output_slices<'a>(&'a self) -> &'a [IoctlSlice] {
+	pub fn output_slices(&self) -> &[IoctlSlice] {
 		&self.output_slices[..self.output_slices_len]
 	}
 
-	pub fn borrow<'a>(&'a self) -> IoctlRetry<'a> {
+	pub fn borrow(&self) -> IoctlRetry {
 		IoctlRetry {
 			input_slices: self.input_slices(),
 			output_slices: self.output_slices(),

@@ -27,8 +27,11 @@ pub const ROOT_ID: NodeId = NodeId(unsafe {
 });
 
 impl NodeId {
-	pub fn new(id: u64) -> Option<NodeId> {
-		num::NonZeroU64::new(id).map(|bits| NodeId(bits))
+	pub const fn new(id: u64) -> Option<NodeId> {
+		match num::NonZeroU64::new(id) {
+			Some(id) => Some(NodeId(id)),
+			None => None,
+		}
 	}
 
 	pub(crate) unsafe fn new_unchecked(id: u64) -> NodeId {

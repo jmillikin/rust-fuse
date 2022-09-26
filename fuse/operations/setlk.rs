@@ -148,7 +148,7 @@ fn parse_setlk_cmd(
 		} else {
 			SetlkCommand::TrySetLock(lock)
 		}),
-		None => return Err(io::RequestError::InvalidLockType),
+		None => Err(io::RequestError::InvalidLockType),
 	}
 }
 

@@ -16,6 +16,15 @@
 
 #![cfg_attr(not(any(doc, feature = "std")), no_std)]
 
+#![allow(clippy::collapsible_if)] // TODO
+#![allow(clippy::len_without_is_empty)]
+#![allow(clippy::missing_safety_doc)] // TODO
+#![allow(clippy::needless_late_init)] // TODO
+#![allow(clippy::needless_lifetimes)] // TODO
+#![allow(clippy::new_without_default)]
+#![allow(clippy::tabs_in_doc_comments)]
+#![allow(clippy::wrong_self_convention)] // TODO
+
 #[macro_use]
 mod internal;
 
