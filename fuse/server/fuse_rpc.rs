@@ -229,6 +229,7 @@ impl_fuse_response! {
 	SetxattrResponse,
 	StatfsResponse,
 	SymlinkResponse,
+	SyncfsResponse,
 	UnlinkResponse,
 	WriteResponse,
 }
@@ -401,6 +402,7 @@ fn fuse_request_dispatch<S: FuseSocket>(
 		Op::FUSE_SETXATTR => do_dispatch!(SetxattrRequest, setxattr),
 		Op::FUSE_STATFS => do_dispatch!(StatfsRequest, statfs),
 		Op::FUSE_SYMLINK => do_dispatch!(SymlinkRequest, symlink),
+		Op::FUSE_SYNCFS => do_dispatch!(SyncfsRequest, syncfs),
 		Op::FUSE_UNLINK => do_dispatch!(UnlinkRequest, unlink),
 		Op::FUSE_WRITE => do_dispatch!(WriteRequest, write),
 		_ => {
@@ -713,6 +715,14 @@ pub trait FuseHandlers<S: FuseSocket> {
 		call: FuseCall<S>,
 		request: &operations::SymlinkRequest,
 	) -> FuseResult<operations::SymlinkResponse, S::Error> {
+		call.unimplemented()
+	}
+
+	fn syncfs(
+		&self,
+		call: FuseCall<S>,
+		request: &operations::SyncfsRequest,
+	) -> FuseResult<operations::SyncfsResponse, S::Error> {
 		call.unimplemented()
 	}
 

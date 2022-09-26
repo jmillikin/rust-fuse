@@ -189,6 +189,10 @@ pub mod symlink;
 #[doc(inline)]
 pub use self::symlink::*;
 
+pub mod syncfs;
+#[doc(inline)]
+pub use self::syncfs::*;
+
 pub mod unlink;
 #[doc(inline)]
 pub use self::unlink::*;
