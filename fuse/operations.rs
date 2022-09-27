@@ -137,6 +137,10 @@ pub mod opendir;
 #[doc(inline)]
 pub use self::opendir::*;
 
+pub mod poll;
+#[doc(inline)]
+pub use self::poll::*;
+
 pub mod read;
 #[doc(inline)]
 pub use self::read::*;

@@ -216,6 +216,7 @@ impl_fuse_response! {
 	MknodResponse,
 	OpendirResponse,
 	OpenResponse,
+	PollResponse,
 	ReaddirResponse,
 	ReadlinkResponse,
 	ReadResponse,
@@ -387,6 +388,7 @@ fn fuse_request_dispatch<S: FuseSocket>(
 		Op::FUSE_MKNOD => do_dispatch!(MknodRequest, mknod),
 		Op::FUSE_OPEN => do_dispatch!(OpenRequest, open),
 		Op::FUSE_OPENDIR => do_dispatch!(OpendirRequest, opendir),
+		Op::FUSE_POLL => do_dispatch!(PollRequest, poll),
 		Op::FUSE_READ => do_dispatch!(ReadRequest, read),
 		Op::FUSE_READDIR => do_dispatch!(ReaddirRequest, readdir),
 		Op::FUSE_READLINK => do_dispatch!(ReadlinkRequest, readlink),
@@ -598,6 +600,14 @@ pub trait FuseHandlers<S: FuseSocket> {
 		call: FuseCall<S>,
 		request: &operations::OpendirRequest,
 	) -> FuseResult<operations::OpendirResponse, S::Error> {
+		call.unimplemented()
+	}
+
+	fn poll(
+		&self,
+		call: FuseCall<S>,
+		request: &operations::PollRequest,
+	) -> FuseResult<operations::PollResponse, S::Error> {
 		call.unimplemented()
 	}
 

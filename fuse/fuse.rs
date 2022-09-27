@@ -114,6 +114,20 @@ pub type RenameFlags = u32;
 /// OS-specific flags passed to `setxattr()`.
 pub type SetxattrFlags = u32;
 
+/// OS-specific event types used with `poll()`.
+pub type PollEvents = u32;
+
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct PollHandle {
+	bits: u64,
+}
+
+impl core::fmt::Debug for PollHandle {
+	fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
+		self.bits.fmt(fmt)
+	}
+}
+
 /// A version of the FUSE protocol.
 ///
 /// FUSE protocol versions are a (major, minor) version tuple, but FUSE does
