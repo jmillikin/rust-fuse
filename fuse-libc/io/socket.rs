@@ -14,9 +14,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::mem;
 // use core::ffi::CStr;
 use std::ffi::CStr;
 
+use fuse::io::SendBuf;
 use fuse::server;
 use fuse::server::io::{RecvError, SendError};
 use crate::io::iovec::IoVec;
@@ -94,26 +96,6 @@ impl Socket {
 		}
 	}
 
-	fn send(&self, buf: &[u8]) -> Result<(), SendError<LibcError>> {
-		let buf_ptr = buf.as_ptr() as *const libc::c_void;
-		let buf_len = buf.len();
-		loop {
-			let write_rc = unsafe {
-				libc::write(self.fd, buf_ptr, buf_len)
-			};
-			if write_rc == -1 {
-				self.check_send_err()?;
-				continue;
-			}
-
-			if write_rc == buf_len as isize {
-				return Ok(());
-			}
-			let err = LibcError::from_raw_os_error(libc::EIO);
-			return Err(SendError::Other(err));
-		}
-	}
-
 	#[cold]
 	fn check_send_err(&self) -> Result<(), SendError<LibcError>> {
 		let errno = errno();
@@ -127,28 +109,32 @@ impl Socket {
 		})
 	}
 
-	fn send_vectored<const N: usize>(
-		&self,
-		bufs: &[&[u8]; N],
-	) -> Result<(), SendError<LibcError>> {
-		IoVec::borrow_array(bufs, |iovecs, bufs_len| {
-			let iovecs_ptr = iovecs.as_ptr() as *const libc::iovec;
-			loop {
-				let write_rc = unsafe {
-					libc::writev(self.fd, iovecs_ptr, N as i32)
-				};
-				if write_rc == -1 {
-					self.check_send_err()?;
-					continue;
-				}
+	fn send(&self, buf: SendBuf) -> Result<(), SendError<LibcError>> {
+		type UninitIoVec<'a> = mem::MaybeUninit<IoVec<'a>>;
 
-				if write_rc == bufs_len as isize {
-					return Ok(());
-				}
-				let err = LibcError::from_raw_os_error(libc::EIO);
-				return Err(SendError::Other(err));
+		let mut iovec_storage: [UninitIoVec; SendBuf::MAX_CHUNKS_LEN] = unsafe {
+			mem::MaybeUninit::uninit().assume_init()
+		};
+		let iovecs = buf.map_chunks_into_uninit(
+			&mut iovec_storage,
+			IoVec::borrow,
+		);
+		let iovecs_ptr = iovecs.as_ptr() as *const libc::iovec;
+		loop {
+			let write_rc = unsafe {
+				libc::writev(self.fd, iovecs_ptr, iovecs.len() as i32)
+			};
+			if write_rc == -1 {
+				self.check_send_err()?;
+				continue;
 			}
-		})
+
+			if write_rc == buf.len() as isize {
+				return Ok(());
+			}
+			let err = LibcError::from_raw_os_error(libc::EIO);
+			return Err(SendError::Other(err));
+		}
 	}
 }
 
@@ -190,15 +176,8 @@ impl server::io::Socket for CuseServerSocket {
 		self.socket.recv(buf)
 	}
 
-	fn send(&self, buf: &[u8]) -> Result<(), SendError<LibcError>> {
+	fn send(&self, buf: SendBuf) -> Result<(), SendError<LibcError>> {
 		self.socket.send(buf)
-	}
-
-	fn send_vectored<const N: usize>(
-		&self,
-		bufs: &[&[u8]; N],
-	) -> Result<(), SendError<LibcError>> {
-		self.socket.send_vectored(bufs)
 	}
 }
 
@@ -240,15 +219,8 @@ impl server::io::Socket for FuseServerSocket {
 		self.socket.recv(buf)
 	}
 
-	fn send(&self, buf: &[u8]) -> Result<(), SendError<LibcError>> {
+	fn send(&self, buf: SendBuf) -> Result<(), SendError<LibcError>> {
 		self.socket.send(buf)
-	}
-
-	fn send_vectored<const N: usize>(
-		&self,
-		bufs: &[&[u8]; N],
-	) -> Result<(), SendError<LibcError>> {
-		self.socket.send_vectored(bufs)
 	}
 }
 

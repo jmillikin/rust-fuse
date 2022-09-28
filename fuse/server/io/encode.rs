@@ -16,15 +16,14 @@
 
 use core::mem::size_of;
 
+use crate::io::SendBuf;
 use crate::internal::fuse_kernel;
 use crate::server::io;
 
 pub(crate) trait SendOnce {
 	type Result;
 
-	fn send(self, buf: &[u8]) -> Self::Result;
-
-	fn send_vectored<const N: usize>(self, bufs: &[&[u8]; N]) -> Self::Result;
+	fn send(self, slices: SendBuf) -> Self::Result;
 }
 
 pub(crate) struct SyncSendOnce<'a, S>(&'a S);
@@ -45,24 +44,16 @@ impl<'a, S: io::AsyncSocket> AsyncSendOnce<'a, S> {
 impl<S: io::Socket> SendOnce for SyncSendOnce<'_, S> {
 	type Result = Result<(), io::SendError<S::Error>>;
 
-	fn send(self, buf: &[u8]) -> Self::Result {
-		self.0.send(buf)
-	}
-
-	fn send_vectored<const N: usize>(self, bufs: &[&[u8]; N]) -> Self::Result {
-		self.0.send_vectored(bufs)
+	fn send(self, slices: SendBuf) -> Self::Result {
+		self.0.send(slices)
 	}
 }
 
 impl<S: io::AsyncSocket> SendOnce for AsyncSendOnce<'_, S> {
 	type Result = S::SendFuture;
 
-	fn send(self, buf: &[u8]) -> Self::Result {
-		self.0.send(buf)
-	}
-
-	fn send_vectored<const N: usize>(self, bufs: &[&[u8]; N]) -> Self::Result {
-		self.0.send_vectored(bufs)
+	fn send(self, slices: SendBuf) -> Self::Result {
+		self.0.send(slices)
 	}
 }
 
@@ -90,7 +81,7 @@ impl<S: SendOnce> ReplyEncoder<S> {
 			)
 		};
 
-		self.sender.send(out_hdr_buf)
+		self.sender.send(SendBuf::new_1(len, out_hdr_buf))
 	}
 
 	pub(crate) fn encode_unsolicited<T: core::fmt::Debug>(
@@ -135,17 +126,19 @@ impl<S: SendOnce> ReplyEncoder<S> {
 			)
 		};
 		if let Some(name_bytes) = name_bytes {
-			self.sender.send_vectored(&[
+			self.sender.send(SendBuf::new_4(
+				payload_len,
 				out_hdr_buf,
 				body_buf,
 				name_bytes,
 				b"\0",
-			])
+			))
 		} else {
-			self.sender.send_vectored(&[
+			self.sender.send(SendBuf::new_2(
+				payload_len,
 				out_hdr_buf,
 				body_buf,
-			])
+			))
 		}
 	}
 
@@ -207,7 +200,7 @@ impl<S: SendOnce> ReplyEncoder<S> {
 			)
 		};
 
-		self.sender.send(out_hdr_buf)
+		self.sender.send(SendBuf::new_1(len, out_hdr_buf))
 	}
 
 	pub(crate) fn encode_bytes(self, bytes: &[u8]) -> S::Result {
@@ -236,7 +229,7 @@ impl<S: SendOnce> ReplyEncoder<S> {
 			)
 		};
 
-		self.sender.send_vectored(&[out_hdr_buf, bytes])
+		self.sender.send(SendBuf::new_2(len, out_hdr_buf, bytes))
 	}
 
 	pub(crate) fn encode_bytes_2(
@@ -273,7 +266,7 @@ impl<S: SendOnce> ReplyEncoder<S> {
 			)
 		};
 
-		self.sender.send_vectored(&[out_hdr_buf, bytes_1, bytes_2])
+		self.sender.send(SendBuf::new_3(len, out_hdr_buf, bytes_1, bytes_2))
 	}
 
 	pub(crate) fn encode_bytes_4(
@@ -320,12 +313,6 @@ impl<S: SendOnce> ReplyEncoder<S> {
 			)
 		};
 
-		self.sender.send_vectored(&[
-			out_hdr_buf,
-			bytes_1,
-			bytes_2,
-			bytes_3,
-			bytes_4,
-		])
+		self.sender.send(SendBuf::new_5(len, out_hdr_buf, bytes_1, bytes_2, bytes_3, bytes_4))
 	}
 }

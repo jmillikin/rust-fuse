@@ -14,10 +14,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::mem::{self, MaybeUninit};
+use core::mem;
 // use core::ffi::CStr;
 use std::ffi::CStr;
 
+use fuse::io::SendBuf;
 use fuse::server;
 use fuse::server::io::{RecvError, SendError};
 use linux_errno::{self as errno, Error};
@@ -67,20 +68,6 @@ impl Socket {
 		}
 	}
 
-	fn send(&self, buf: &[u8]) -> Result<(), SendError<Error>> {
-		loop {
-			match unsafe { sys::write(self.fd, buf) } {
-				Ok(write_size) => {
-					if write_size == buf.len() {
-						return Ok(());
-					}
-					return Err(SendError::Other(errno::EIO));
-				},
-				Err(err) => self.check_send_err(err)?,
-			};
-		}
-	}
-
 	#[cold]
 	fn check_send_err(&self, err: Error) -> Result<(), SendError<Error>> {
 		match err {
@@ -90,23 +77,27 @@ impl Socket {
 		}
 	}
 
-	fn send_vectored<'a, const N: usize>(
-		&self,
-		bufs: &[&'a [u8]; N],
-	) -> Result<(), SendError<Error>> {
-		borrow_iovec_array(bufs, |iovecs, bufs_len| {
-			loop {
-				match unsafe { sys::writev(self.fd, iovecs) } {
-					Ok(write_size) => {
-						if write_size == bufs_len {
-							return Ok(());
-						}
-						return Err(SendError::Other(errno::EIO));
-					},
-					Err(err) => self.check_send_err(err)?,
-				}
+	fn send(&self, buf: SendBuf) -> Result<(), SendError<Error>> {
+		type UninitIoVec<'a> = mem::MaybeUninit<sys::IoVec<'a>>;
+
+		let mut iovec_storage: [UninitIoVec; SendBuf::MAX_CHUNKS_LEN] = unsafe {
+			mem::MaybeUninit::uninit().assume_init()
+		};
+		let iovecs = buf.map_chunks_into_uninit(
+			&mut iovec_storage,
+			sys::IoVec::borrow,
+		);
+		loop {
+			match unsafe { sys::writev(self.fd, iovecs) } {
+				Ok(write_size) => {
+					if write_size == buf.len() {
+						return Ok(());
+					}
+					return Err(SendError::Other(errno::EIO));
+				},
+				Err(err) => self.check_send_err(err)?,
 			}
-		})
+		}
 	}
 }
 
@@ -140,15 +131,8 @@ impl server::io::Socket for CuseServerSocket {
 		self.socket.recv(buf)
 	}
 
-	fn send(&self, buf: &[u8]) -> Result<(), SendError<Error>> {
+	fn send(&self, buf: SendBuf) -> Result<(), SendError<Error>> {
 		self.socket.send(buf)
-	}
-
-	fn send_vectored<const N: usize>(
-		&self,
-		bufs: &[&[u8]; N],
-	) -> Result<(), SendError<Error>> {
-		self.socket.send_vectored(bufs)
 	}
 }
 
@@ -186,33 +170,7 @@ impl server::io::Socket for FuseServerSocket {
 		self.socket.recv(buf)
 	}
 
-	fn send(&self, buf: &[u8]) -> Result<(), SendError<Error>> {
+	fn send(&self, buf: SendBuf) -> Result<(), SendError<Error>> {
 		self.socket.send(buf)
 	}
-
-	fn send_vectored<const N: usize>(
-		&self,
-		bufs: &[&[u8]; N],
-	) -> Result<(), SendError<Error>> {
-		self.socket.send_vectored(bufs)
-	}
-}
-
-fn borrow_iovec_array<'a, T, const N: usize>(
-	bufs: &[&'a [u8]; N],
-	f: impl FnOnce(&[sys::IoVec<'a>; N], usize) -> T,
-) -> T {
-	let mut bufs_len: usize = 0;
-	let mut uninit_bufs: [MaybeUninit<sys::IoVec<'a>>; N] = unsafe {
-		MaybeUninit::uninit().assume_init()
-	};
-	for ii in 0..N {
-		let buf = bufs[ii];
-		bufs_len += buf.len();
-		uninit_bufs[ii] = MaybeUninit::new(sys::IoVec::borrow(buf));
-	}
-	let iovecs = unsafe {
-		mem::transmute::<_, &[sys::IoVec<'a>; N]>(&uninit_bufs)
-	};
-	f(iovecs, bufs_len)
 }

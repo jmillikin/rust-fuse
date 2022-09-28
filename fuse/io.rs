@@ -14,5 +14,147 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::mem;
+
 mod buffer;
 pub(crate) use self::buffer::ArrayBuffer;
+
+pub struct SendBuf<'a> {
+	len: usize,
+	chunks: [&'a [u8]; SEND_BUF_MAX_CHUNKS_LEN],
+	chunks_len: usize,
+}
+
+impl SendBuf<'_> {
+	pub const MAX_CHUNKS_LEN: usize = SEND_BUF_MAX_CHUNKS_LEN;
+}
+
+const SEND_BUF_MAX_CHUNKS_LEN: usize = 5;
+
+impl<'a> SendBuf<'a> {
+	#[inline]
+	pub(crate) fn new_1(len: usize, chunk_1: &'a [u8]) -> Self {
+		Self {
+			len,
+			chunks: [chunk_1, b"", b"", b"", b""],
+			chunks_len: 1,
+		}
+	}
+
+	#[inline]
+	pub(crate) fn new_2(
+		len: usize,
+		chunk_1: &'a [u8],
+		chunk_2: &'a [u8],
+	) -> Self {
+		Self {
+			len,
+			chunks: [chunk_1, chunk_2, b"", b"", b""],
+			chunks_len: 2,
+		}
+	}
+
+	#[inline]
+	pub(crate) fn new_3(
+		len: usize,
+		chunk_1: &'a [u8],
+		chunk_2: &'a [u8],
+		chunk_3: &'a [u8],
+	) -> Self {
+		Self {
+			len,
+			chunks: [chunk_1, chunk_2, chunk_3, b"", b""],
+			chunks_len: 3,
+		}
+	}
+
+	#[inline]
+	pub(crate) fn new_4(
+		len: usize,
+		chunk_1: &'a [u8],
+		chunk_2: &'a [u8],
+		chunk_3: &'a [u8],
+		chunk_4: &'a [u8],
+	) -> Self {
+		Self {
+			len,
+			chunks: [chunk_1, chunk_2, chunk_3, chunk_4, b""],
+			chunks_len: 4,
+		}
+	}
+
+	#[inline]
+	pub(crate) fn new_5(
+		len: usize,
+		chunk_1: &'a [u8],
+		chunk_2: &'a [u8],
+		chunk_3: &'a [u8],
+		chunk_4: &'a [u8],
+		chunk_5: &'a [u8],
+	) -> Self {
+		Self {
+			len,
+			chunks: [chunk_1, chunk_2, chunk_3, chunk_4, chunk_5],
+			chunks_len: 5,
+		}
+	}
+}
+
+impl<'a> SendBuf<'a> {
+	#[inline]
+	pub fn chunks(&self) -> &[&'a [u8]] {
+		unsafe { self.chunks.get_unchecked(..self.chunks_len) }
+	}
+
+	#[inline]
+	pub fn chunks_len(&self) -> usize {
+		self.chunks_len
+	}
+
+	#[inline]
+	pub fn len(&self) -> usize {
+		self.len
+	}
+
+	#[cfg(any(doc, feature = "std"))]
+	pub fn to_vec(&self) -> Vec<u8> {
+		let mut vec = Vec::with_capacity(self.len);
+		for chunk in self.chunks() {
+			vec.extend_from_slice(chunk);
+		}
+		vec
+	}
+
+	#[inline]
+	pub fn map_chunks_into<'b, T>(
+		&self,
+		capacity: &'b mut [T; SendBuf::MAX_CHUNKS_LEN],
+		mut f: impl FnMut(&'a [u8]) -> T,
+	) -> &'b [T] {
+		unsafe {
+			#[allow(clippy::needless_range_loop)]
+			for ii in 0..self.chunks_len {
+				let buf = self.chunks.get_unchecked(ii);
+				capacity[ii] = f(buf);
+			}
+			capacity.get_unchecked(..self.chunks_len)
+		}
+	}
+
+	#[inline]
+	pub fn map_chunks_into_uninit<'b, T>(
+		&self,
+		capacity: &'b mut [mem::MaybeUninit<T>; SendBuf::MAX_CHUNKS_LEN],
+		mut f: impl FnMut(&'a [u8]) -> T,
+	) -> &'b [T] {
+		unsafe {
+			#[allow(clippy::needless_range_loop)]
+			for ii in 0..self.chunks_len {
+				let buf = self.chunks.get_unchecked(ii);
+				capacity[ii] = mem::MaybeUninit::new(f(buf));
+			}
+			let out = capacity.get_unchecked(..self.chunks_len);
+			&*(out as *const [mem::MaybeUninit<T>] as *const [T])
+		}
+	}
+}

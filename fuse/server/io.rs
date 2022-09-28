@@ -16,6 +16,8 @@
 
 use core::future::Future;
 
+use crate::io::SendBuf;
+
 pub(crate) mod decode;
 pub(crate) mod encode;
 
@@ -47,12 +49,7 @@ pub trait Socket {
 
 	fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<Self::Error>>;
 
-	fn send(&self, buf: &[u8]) -> Result<(), SendError<Self::Error>>;
-
-	fn send_vectored<const N: usize>(
-		&self,
-		bufs: &[&[u8]; N],
-	) -> Result<(), SendError<Self::Error>>;
+	fn send(&self, buf: SendBuf) -> Result<(), SendError<Self::Error>>;
 }
 
 impl<S: Socket> Socket for &S {
@@ -62,15 +59,8 @@ impl<S: Socket> Socket for &S {
 		(*self).recv(buf)
 	}
 
-	fn send(&self, buf: &[u8]) -> Result<(), SendError<Self::Error>> {
+	fn send(&self, buf: SendBuf) -> Result<(), SendError<Self::Error>> {
 		(*self).send(buf)
-	}
-
-	fn send_vectored<const N: usize>(
-		&self,
-		bufs: &[&[u8]; N],
-	) -> Result<(), SendError<Self::Error>> {
-		(*self).send_vectored(bufs)
 	}
 }
 
@@ -89,12 +79,7 @@ pub trait AsyncSocket {
 
 	fn recv(&self, buf: &mut [u8]) -> Self::RecvFuture;
 
-	fn send(&self, buf: &[u8]) -> Self::SendFuture;
-
-	fn send_vectored<const N: usize>(
-		&self,
-		bufs: &[&[u8]; N],
-	) -> Self::SendFuture;
+	fn send(&self, buf: SendBuf) -> Self::SendFuture;
 }
 
 impl<S: AsyncSocket> AsyncSocket for &S {
@@ -106,15 +91,8 @@ impl<S: AsyncSocket> AsyncSocket for &S {
 		(*self).recv(buf)
 	}
 
-	fn send(&self, buf: &[u8]) -> Self::SendFuture {
+	fn send(&self, buf: SendBuf) -> Self::SendFuture {
 		(*self).send(buf)
-	}
-
-	fn send_vectored<const N: usize>(
-		&self,
-		bufs: &[&[u8]; N],
-	) -> Self::SendFuture {
-		(*self).send_vectored(bufs)
 	}
 }
 
@@ -143,15 +121,8 @@ mod std_impls {
 			Arc::as_ref(self).recv(buf)
 		}
 
-		fn send(&self, buf: &[u8]) -> Result<(), SendError<Self::Error>> {
+		fn send(&self, buf: SendBuf) -> Result<(), SendError<Self::Error>> {
 			Arc::as_ref(self).send(buf)
-		}
-
-		fn send_vectored<const N: usize>(
-			&self,
-			bufs: &[&[u8]; N],
-		) -> Result<(), SendError<Self::Error>> {
-			Arc::as_ref(self).send_vectored(bufs)
 		}
 	}
 
@@ -164,15 +135,8 @@ mod std_impls {
 			Arc::as_ref(self).recv(buf)
 		}
 
-		fn send(&self, buf: &[u8]) -> Self::SendFuture {
+		fn send(&self, buf: SendBuf) -> Self::SendFuture {
 			Arc::as_ref(self).send(buf)
-		}
-
-		fn send_vectored<const N: usize>(
-			&self,
-			bufs: &[&[u8]; N],
-		) -> Self::SendFuture {
-			Arc::as_ref(self).send_vectored(bufs)
 		}
 	}
 
@@ -191,15 +155,8 @@ mod std_impls {
 			Box::as_ref(self).recv(buf)
 		}
 
-		fn send(&self, buf: &[u8]) -> Result<(), SendError<Self::Error>> {
+		fn send(&self, buf: SendBuf) -> Result<(), SendError<Self::Error>> {
 			Box::as_ref(self).send(buf)
-		}
-
-		fn send_vectored<const N: usize>(
-			&self,
-			bufs: &[&[u8]; N],
-		) -> Result<(), SendError<Self::Error>> {
-			Box::as_ref(self).send_vectored(bufs)
 		}
 	}
 
@@ -212,15 +169,8 @@ mod std_impls {
 			Box::as_ref(self).recv(buf)
 		}
 
-		fn send(&self, buf: &[u8]) -> Self::SendFuture {
+		fn send(&self, buf: SendBuf) -> Self::SendFuture {
 			Box::as_ref(self).send(buf)
-		}
-
-		fn send_vectored<const N: usize>(
-			&self,
-			bufs: &[&[u8]; N],
-		) -> Self::SendFuture {
-			Box::as_ref(self).send_vectored(bufs)
 		}
 	}
 
@@ -239,15 +189,8 @@ mod std_impls {
 			Rc::as_ref(self).recv(buf)
 		}
 
-		fn send(&self, buf: &[u8]) -> Result<(), SendError<Self::Error>> {
+		fn send(&self, buf: SendBuf) -> Result<(), SendError<Self::Error>> {
 			Rc::as_ref(self).send(buf)
-		}
-
-		fn send_vectored<const N: usize>(
-			&self,
-			bufs: &[&[u8]; N],
-		) -> Result<(), SendError<Self::Error>> {
-			Rc::as_ref(self).send_vectored(bufs)
 		}
 	}
 
@@ -260,15 +203,8 @@ mod std_impls {
 			Rc::as_ref(self).recv(buf)
 		}
 
-		fn send(&self, buf: &[u8]) -> Self::SendFuture {
+		fn send(&self, buf: SendBuf) -> Self::SendFuture {
 			Rc::as_ref(self).send(buf)
-		}
-
-		fn send_vectored<const N: usize>(
-			&self,
-			bufs: &[&[u8]; N],
-		) -> Self::SendFuture {
-			Rc::as_ref(self).send_vectored(bufs)
 		}
 	}
 

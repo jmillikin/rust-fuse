@@ -82,11 +82,6 @@ pub(crate) unsafe fn read(fd: i32, buf: &mut [u8]) -> Result<usize, Error> {
 	rc.try_usize()
 }
 
-pub(crate) unsafe fn write(fd: i32, buf: &[u8]) -> Result<usize, Error> {
-	let rc = syscall!(syscall::SYS_write, fd, buf.as_ptr(), buf.len());
-	rc.try_usize()
-}
-
 #[repr(C)]
 pub(crate) struct IoVec<'a> {
 	iov_base: *const core::ffi::c_void,

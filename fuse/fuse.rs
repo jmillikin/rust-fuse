@@ -56,7 +56,7 @@ pub mod os {
 	}
 }
 
-mod io;
+pub mod io;
 
 pub use crate::error::Error;
 

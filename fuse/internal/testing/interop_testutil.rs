@@ -14,8 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::mem::{self, MaybeUninit};
-
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::{env, ffi, fs, io, panic, path, sync, thread};
 
@@ -202,44 +200,17 @@ impl server::io::CuseSocket for DevCuse {}
 impl server::io::Socket for DevCuse {
 	type Error = io::Error;
 
-	fn send(&self, buf: &[u8]) -> Result<(), SendError<io::Error>> {
+	fn send(
+		&self,
+		buf: fuse::io::SendBuf,
+	) -> Result<(), SendError<io::Error>> {
 		use std::io::Write;
-
-		let write_size = match Write::write(&mut &self.dev_cuse, buf) {
+		let buf = buf.to_vec();
+		let write_size = match Write::write(&mut &self.dev_cuse, &buf) {
 			Err(err) => return Err(SendError::Other(err)),
 			Ok(x) => x,
 		};
 		if write_size < buf.len() {
-			return Err(SendError::Other(io::Error::new(
-				io::ErrorKind::Other,
-				"incomplete send",
-			)));
-		}
-		Ok(())
-	}
-
-	fn send_vectored<const N: usize>(
-		&self,
-		bufs: &[&[u8]; N],
-	) -> Result<(), SendError<io::Error>> {
-		use std::io::Write;
-
-		let mut bufs_len: usize = 0;
-		let mut uninit_bufs: [MaybeUninit<io::IoSlice>; N] =
-			unsafe { MaybeUninit::uninit().assume_init() };
-		for ii in 0..N {
-			bufs_len += bufs[ii].len();
-			uninit_bufs[ii] = MaybeUninit::new(io::IoSlice::new(bufs[ii]));
-		}
-		let io_slices: &[io::IoSlice] = unsafe {
-			mem::transmute::<_, &[io::IoSlice; N]>(&uninit_bufs)
-		};
-
-		let write_size = match Write::write_vectored(&mut &self.dev_cuse, io_slices) {
-			Err(err) => return Err(SendError::Other(err)),
-			Ok(x) => x,
-		};
-		if write_size < bufs_len {
 			return Err(SendError::Other(io::Error::new(
 				io::ErrorKind::Other,
 				"incomplete send",

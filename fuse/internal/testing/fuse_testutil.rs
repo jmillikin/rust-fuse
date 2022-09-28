@@ -160,24 +160,13 @@ impl fuse::server::io::Socket for FakeSocket {
 
 	fn send(
 		&self,
-		buf: &[u8],
+		buf: fuse::io::SendBuf,
 	) -> Result<(), fuse::server::io::SendError<Self::Error>> {
 		if self.write.borrow().is_some() {
 			panic!("expected exactly one write to FakeSocket");
 		}
-		self.write.replace(Some(buf.into()));
+		self.write.replace(Some(buf.to_vec()));
 		Ok(())
-	}
-
-	fn send_vectored<const N: usize>(
-		&self,
-		bufs: &[&[u8]; N],
-	) -> Result<(), fuse::server::io::SendError<Self::Error>> {
-		let mut vec = Vec::new();
-		for buf in bufs {
-			vec.extend(buf.to_vec());
-		}
-		self.send(&vec)
 	}
 }
 
