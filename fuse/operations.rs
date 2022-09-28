@@ -65,6 +65,10 @@ pub mod cuse_init;
 #[doc(inline)]
 pub use self::cuse_init::*;
 
+pub mod destroy;
+#[doc(inline)]
+pub use self::destroy::*;
+
 pub mod fallocate;
 #[doc(inline)]
 pub use self::fallocate::*;

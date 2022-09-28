@@ -200,6 +200,7 @@ impl_fuse_response! {
 	AccessResponse,
 	CopyFileRangeResponse,
 	CreateResponse,
+	DestroyResponse,
 	FallocateResponse,
 	FlushResponse,
 	FsyncdirResponse,
@@ -359,6 +360,7 @@ fn fuse_request_dispatch<S: FuseSocket>(
 			do_dispatch!(CopyFileRangeRequest, copy_file_range)
 		},
 		Op::FUSE_CREATE => do_dispatch!(CreateRequest, create),
+		Op::FUSE_DESTROY => do_dispatch!(DestroyRequest, destroy),
 		Op::FUSE_FALLOCATE => do_dispatch!(FallocateRequest, fallocate),
 		Op::FUSE_FLUSH => do_dispatch!(FlushRequest, flush),
 		Op::FUSE_FORGET | Op::FUSE_BATCH_FORGET => {
@@ -465,6 +467,14 @@ pub trait FuseHandlers<S: FuseSocket> {
 		call: FuseCall<S>,
 		request: &operations::CreateRequest,
 	) -> FuseResult<operations::CreateResponse, S::Error> {
+		call.unimplemented()
+	}
+
+	fn destroy(
+		&self,
+		call: FuseCall<S>,
+		request: &operations::DestroyRequest,
+	) -> FuseResult<operations::DestroyResponse, S::Error> {
 		call.unimplemented()
 	}
 
