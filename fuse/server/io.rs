@@ -55,9 +55,32 @@ pub trait Socket {
 	) -> Result<(), SendError<Self::Error>>;
 }
 
+impl<S: Socket> Socket for &S {
+	type Error = S::Error;
+
+	fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<Self::Error>> {
+		(*self).recv(buf)
+	}
+
+	fn send(&self, buf: &[u8]) -> Result<(), SendError<Self::Error>> {
+		(*self).send(buf)
+	}
+
+	fn send_vectored<const N: usize>(
+		&self,
+		bufs: &[&[u8]; N],
+	) -> Result<(), SendError<Self::Error>> {
+		(*self).send_vectored(bufs)
+	}
+}
+
 pub trait CuseSocket: Socket {}
 
+impl<S: CuseSocket> CuseSocket for &S {}
+
 pub trait FuseSocket: Socket {}
+
+impl<S: FuseSocket> FuseSocket for &S {}
 
 pub trait AsyncSocket {
 	type Error;
@@ -74,6 +97,183 @@ pub trait AsyncSocket {
 	) -> Self::SendFuture;
 }
 
+impl<S: AsyncSocket> AsyncSocket for &S {
+	type Error = S::Error;
+	type RecvFuture = S::RecvFuture;
+	type SendFuture = S::SendFuture;
+
+	fn recv(&self, buf: &mut [u8]) -> Self::RecvFuture {
+		(*self).recv(buf)
+	}
+
+	fn send(&self, buf: &[u8]) -> Self::SendFuture {
+		(*self).send(buf)
+	}
+
+	fn send_vectored<const N: usize>(
+		&self,
+		bufs: &[&[u8]; N],
+	) -> Self::SendFuture {
+		(*self).send_vectored(bufs)
+	}
+}
+
 pub trait AsyncCuseSocket: AsyncSocket {}
 
+impl<S: AsyncCuseSocket> AsyncCuseSocket for &S {}
+
 pub trait AsyncFuseSocket: AsyncSocket {}
+
+impl<S: AsyncFuseSocket> AsyncFuseSocket for &S {}
+
+#[cfg(feature = "std")]
+mod std_impls {
+	use std::rc::Rc;
+	use std::sync::Arc;
+
+	use super::*;
+
+	impl<S: Socket> Socket for Arc<S> {
+		type Error = S::Error;
+
+		fn recv(
+			&self,
+			buf: &mut [u8],
+		) -> Result<usize, RecvError<Self::Error>> {
+			Arc::as_ref(self).recv(buf)
+		}
+
+		fn send(&self, buf: &[u8]) -> Result<(), SendError<Self::Error>> {
+			Arc::as_ref(self).send(buf)
+		}
+
+		fn send_vectored<const N: usize>(
+			&self,
+			bufs: &[&[u8]; N],
+		) -> Result<(), SendError<Self::Error>> {
+			Arc::as_ref(self).send_vectored(bufs)
+		}
+	}
+
+	impl<S: AsyncSocket> AsyncSocket for Arc<S> {
+		type Error = S::Error;
+		type RecvFuture = S::RecvFuture;
+		type SendFuture = S::SendFuture;
+
+		fn recv(&self, buf: &mut [u8]) -> Self::RecvFuture {
+			Arc::as_ref(self).recv(buf)
+		}
+
+		fn send(&self, buf: &[u8]) -> Self::SendFuture {
+			Arc::as_ref(self).send(buf)
+		}
+
+		fn send_vectored<const N: usize>(
+			&self,
+			bufs: &[&[u8]; N],
+		) -> Self::SendFuture {
+			Arc::as_ref(self).send_vectored(bufs)
+		}
+	}
+
+	impl<S: CuseSocket> CuseSocket for Arc<S> {}
+	impl<S: FuseSocket> FuseSocket for Arc<S> {}
+	impl<S: AsyncCuseSocket> AsyncCuseSocket for Arc<S> {}
+	impl<S: AsyncFuseSocket> AsyncFuseSocket for Arc<S> {}
+
+	impl<S: Socket> Socket for Box<S> {
+		type Error = S::Error;
+
+		fn recv(
+			&self,
+			buf: &mut [u8],
+		) -> Result<usize, RecvError<Self::Error>> {
+			Box::as_ref(self).recv(buf)
+		}
+
+		fn send(&self, buf: &[u8]) -> Result<(), SendError<Self::Error>> {
+			Box::as_ref(self).send(buf)
+		}
+
+		fn send_vectored<const N: usize>(
+			&self,
+			bufs: &[&[u8]; N],
+		) -> Result<(), SendError<Self::Error>> {
+			Box::as_ref(self).send_vectored(bufs)
+		}
+	}
+
+	impl<S: AsyncSocket> AsyncSocket for Box<S> {
+		type Error = S::Error;
+		type RecvFuture = S::RecvFuture;
+		type SendFuture = S::SendFuture;
+
+		fn recv(&self, buf: &mut [u8]) -> Self::RecvFuture {
+			Box::as_ref(self).recv(buf)
+		}
+
+		fn send(&self, buf: &[u8]) -> Self::SendFuture {
+			Box::as_ref(self).send(buf)
+		}
+
+		fn send_vectored<const N: usize>(
+			&self,
+			bufs: &[&[u8]; N],
+		) -> Self::SendFuture {
+			Box::as_ref(self).send_vectored(bufs)
+		}
+	}
+
+	impl<S: CuseSocket> CuseSocket for Box<S> {}
+	impl<S: FuseSocket> FuseSocket for Box<S> {}
+	impl<S: AsyncCuseSocket> AsyncCuseSocket for Box<S> {}
+	impl<S: AsyncFuseSocket> AsyncFuseSocket for Box<S> {}
+
+	impl<S: Socket> Socket for Rc<S> {
+		type Error = S::Error;
+
+		fn recv(
+			&self,
+			buf: &mut [u8],
+		) -> Result<usize, RecvError<Self::Error>> {
+			Rc::as_ref(self).recv(buf)
+		}
+
+		fn send(&self, buf: &[u8]) -> Result<(), SendError<Self::Error>> {
+			Rc::as_ref(self).send(buf)
+		}
+
+		fn send_vectored<const N: usize>(
+			&self,
+			bufs: &[&[u8]; N],
+		) -> Result<(), SendError<Self::Error>> {
+			Rc::as_ref(self).send_vectored(bufs)
+		}
+	}
+
+	impl<S: AsyncSocket> AsyncSocket for Rc<S> {
+		type Error = S::Error;
+		type RecvFuture = S::RecvFuture;
+		type SendFuture = S::SendFuture;
+
+		fn recv(&self, buf: &mut [u8]) -> Self::RecvFuture {
+			Rc::as_ref(self).recv(buf)
+		}
+
+		fn send(&self, buf: &[u8]) -> Self::SendFuture {
+			Rc::as_ref(self).send(buf)
+		}
+
+		fn send_vectored<const N: usize>(
+			&self,
+			bufs: &[&[u8]; N],
+		) -> Self::SendFuture {
+			Rc::as_ref(self).send_vectored(bufs)
+		}
+	}
+
+	impl<S: CuseSocket> CuseSocket for Rc<S> {}
+	impl<S: FuseSocket> FuseSocket for Rc<S> {}
+	impl<S: AsyncCuseSocket> AsyncCuseSocket for Rc<S> {}
+	impl<S: AsyncFuseSocket> AsyncFuseSocket for Rc<S> {}
+}
