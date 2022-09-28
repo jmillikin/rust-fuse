@@ -93,6 +93,62 @@ impl<S: SendOnce> ReplyEncoder<S> {
 		self.sender.send(out_hdr_buf)
 	}
 
+	pub(crate) fn encode_unsolicited<T: core::fmt::Debug>(
+		self,
+		notify_code: fuse_kernel::fuse_notify_code,
+		body: &T,
+		name_bytes: Option<&[u8]>,
+	) -> S::Result {
+		let mut payload_len = size_of::<T>();
+		if let Some(name_bytes) = name_bytes {
+			payload_len = payload_len.saturating_add(name_bytes.len());
+			payload_len = payload_len.saturating_add(1);
+		}
+
+		let mut len = size_of::<fuse_kernel::fuse_out_header>();
+		match len.checked_add(payload_len) {
+			Some(x) => len = x,
+			None => panic!("{} + {} overflows usize", len, payload_len),
+		}
+
+		if size_of::<usize>() > size_of::<u32>() {
+			if len > u32::MAX as usize {
+				panic!("{} overflows u32", len);
+			}
+		}
+
+		let out_hdr = fuse_kernel::fuse_out_header {
+			len: len as u32,
+			error: notify_code.0 as i32,
+			unique: 0,
+		};
+		let out_hdr_buf: &[u8] = unsafe {
+			core::slice::from_raw_parts(
+				(&out_hdr as *const fuse_kernel::fuse_out_header) as *const u8,
+				size_of::<fuse_kernel::fuse_out_header>(),
+			)
+		};
+		let body_buf: &[u8] = unsafe {
+			core::slice::from_raw_parts(
+				(body as *const T) as *const u8,
+				size_of::<T>(),
+			)
+		};
+		if let Some(name_bytes) = name_bytes {
+			self.sender.send_vectored(&[
+				out_hdr_buf,
+				body_buf,
+				name_bytes,
+				b"\0",
+			])
+		} else {
+			self.sender.send_vectored(&[
+				out_hdr_buf,
+				body_buf,
+			])
+		}
+	}
+
 	pub(crate) fn encode_sized<T: Sized>(self, t: &T) -> S::Result {
 		let bytes: &[u8] = unsafe {
 			core::slice::from_raw_parts(

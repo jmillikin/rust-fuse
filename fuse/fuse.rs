@@ -66,6 +66,8 @@ mod protocol {
 	pub(crate) mod common;
 }
 
+pub mod notify;
+
 pub mod operations;
 
 pub use self::operations::types_only::*;
