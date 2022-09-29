@@ -19,7 +19,6 @@
 use core::fmt;
 use core::marker::PhantomData;
 
-use crate::NodeId;
 use crate::internal::fuse_kernel;
 use crate::server;
 use crate::server::io;
@@ -34,7 +33,7 @@ use crate::server::io::encode;
 /// `FUSE_BMAP` operation.
 pub struct BmapRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
-	raw: &'a fuse_kernel::fuse_bmap_in,
+	body: &'a fuse_kernel::fuse_bmap_in,
 }
 
 impl<'a> BmapRequest<'a> {
@@ -45,20 +44,31 @@ impl<'a> BmapRequest<'a> {
 		dec.expect_opcode(fuse_kernel::FUSE_BMAP)?;
 
 		let header = dec.header();
-		let raw = dec.next_sized()?;
-		Ok(Self { header, raw })
+		let body = dec.next_sized()?;
+		decode::node_id(header.nodeid)?;
+		Ok(Self { header, body })
 	}
 
-	pub fn node_id(&self) -> u64 {
-		self.header.nodeid
+	pub fn node_id(&self) -> crate::NodeId {
+		unsafe { crate::NodeId::new_unchecked(self.header.nodeid) }
 	}
 
 	pub fn block(&self) -> u64 {
-		self.raw.block
+		self.body.block
 	}
 
-	pub fn blocksize(&self) -> u32 {
-		self.raw.blocksize
+	pub fn block_size(&self) -> u32 {
+		self.body.blocksize
+	}
+}
+
+impl fmt::Debug for BmapRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("BmapRequest")
+			.field("node_id", &self.node_id())
+			.field("block", &self.block())
+			.field("block_size", &self.block_size())
+			.finish()
 	}
 }
 
@@ -79,7 +89,7 @@ impl<'a> BmapResponse<'a> {
 	pub fn new() -> BmapResponse<'a> {
 		Self {
 			phantom: PhantomData,
-			raw: Default::default(),
+			raw: fuse_kernel::fuse_bmap_out::zeroed(),
 		}
 	}
 

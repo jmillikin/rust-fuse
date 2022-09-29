@@ -198,6 +198,7 @@ macro_rules! impl_fuse_response {
 
 impl_fuse_response! {
 	AccessResponse,
+	BmapResponse,
 	CopyFileRangeResponse,
 	CreateResponse,
 	DestroyResponse,
@@ -235,9 +236,6 @@ impl_fuse_response! {
 	UnlinkResponse,
 	WriteResponse,
 }
-
-#[cfg(any(doc, feature = "unstable_bmap"))]
-impl_fuse_response! { BmapResponse }
 
 pub struct FuseCall<'a, S> {
 	socket: &'a S,
@@ -354,7 +352,6 @@ fn fuse_request_dispatch<S: FuseSocket>(
 	use crate::operations::*;
 	match request.header().opcode() {
 		Op::FUSE_ACCESS => do_dispatch!(AccessRequest, access),
-		#[cfg(feature = "unstable_bmap")]
 		Op::FUSE_BMAP => do_dispatch!(BmapRequest, bmap),
 		Op::FUSE_COPY_FILE_RANGE => {
 			do_dispatch!(CopyFileRangeRequest, copy_file_range)
@@ -445,7 +442,6 @@ pub trait FuseHandlers<S: FuseSocket> {
 		call.unimplemented()
 	}
 
-	#[cfg(any(doc, feature = "unstable_bmap"))]
 	fn bmap(
 		&self,
 		call: FuseCall<S>,

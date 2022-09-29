@@ -47,9 +47,7 @@ pub mod access;
 #[doc(inline)]
 pub use self::access::*;
 
-#[cfg(any(doc, feature = "unstable_bmap"))]
 pub mod bmap;
-#[cfg(any(doc, feature = "unstable_bmap"))]
 #[doc(inline)]
 pub use self::bmap::*;
 

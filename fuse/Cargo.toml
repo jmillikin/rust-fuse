@@ -18,5 +18,3 @@ linux-errno = { version = "1.0" }
 [features]
 default = ["std"]
 std = []
-
-unstable_bmap = []
