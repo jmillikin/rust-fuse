@@ -71,6 +71,34 @@ pub trait TestFS: fuse_rpc::FuseHandlers<DevFuse> {
 		init_response: &mut fuse::FuseInitResponse,
 	) {
 	}
+
+	fn mount_fs_type(&self) -> ffi::CString {
+		ffi::CString::new("fuse").unwrap()
+	}
+
+	fn mount_fs_subtype(&self) -> ffi::CString {
+		ffi::CString::new("rust_fuse_test").unwrap()
+	}
+
+	fn mount_source(&self) -> ffi::CString {
+		ffi::CString::new("rust_fuse_test").unwrap()
+	}
+
+	#[cfg(target_os = "freebsd")]
+	#[allow(unused)]
+	fn freebsd_mount_options(
+		&self,
+		freebsd_options: &mut fuse::os::freebsd::MountOptions,
+	) {
+	}
+
+	#[cfg(target_os = "linux")]
+	#[allow(unused)]
+	fn linux_mount_options(
+		&self,
+		mount_options: &mut fuse::os::linux::MountOptions,
+	) {
+	}
 }
 
 pub fn fuse_interop_test<H: TestFS + Send + 'static>(
@@ -98,9 +126,15 @@ pub fn fuse_interop_test<H: TestFS + Send + 'static>(
 	#[cfg(target_os = "linux")]
 	{
 		let mut mount_options = fuse::os::linux::MountOptions::new();
-		let rust_fuse_test = ffi::CString::new("rust_fuse_test").unwrap();
-		mount_options.set_source(Some(&rust_fuse_test));
-		mount_options.set_fs_subtype(Some(&rust_fuse_test));
+
+		let mount_source = handlers.mount_source();
+		let mount_fs_type = handlers.mount_fs_type();
+		let mount_fs_subtype = handlers.mount_fs_subtype();
+		mount_options.set_source(Some(&mount_source));
+		mount_options.set_fs_type(Some(&mount_fs_type));
+		mount_options.set_fs_subtype(Some(&mount_fs_subtype));
+
+		handlers.linux_mount_options(&mut mount_options);
 
 		dev_fuse = fuse_linux::mount(&mount_cstr, mount_options).unwrap();
 	}
@@ -108,8 +142,11 @@ pub fn fuse_interop_test<H: TestFS + Send + 'static>(
 	#[cfg(target_os = "freebsd")]
 	{
 		let mut mount_options = fuse::os::freebsd::MountOptions::new();
-		let rust_fuse_test = ffi::CString::new("rust_fuse_test").unwrap();
-		mount_options.set_fs_subtype(Some(&rust_fuse_test));
+
+		let mount_fs_subtype = handlers.mount_fs_subtype();
+		mount_options.set_fs_subtype(Some(&mount_fs_subtype));
+
+		handlers.freebsd_mount_options(&mut mount_options);
 
 		dev_fuse = fuse_libc::os::freebsd::mount(&mount_cstr, mount_options)
 			.unwrap();
