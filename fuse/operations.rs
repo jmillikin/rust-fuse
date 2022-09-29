@@ -103,6 +103,10 @@ pub mod getxattr;
 #[doc(inline)]
 pub use self::getxattr::*;
 
+pub mod interrupt;
+#[doc(inline)]
+pub use self::interrupt::*;
+
 pub mod ioctl;
 #[doc(inline)]
 pub use self::ioctl::*;

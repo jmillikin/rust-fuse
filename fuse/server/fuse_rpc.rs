@@ -378,6 +378,19 @@ fn fuse_request_dispatch<S: FuseSocket>(
 		Op::FUSE_GETATTR => do_dispatch!(GetattrRequest, getattr),
 		Op::FUSE_GETLK => do_dispatch!(GetlkRequest, getlk),
 		Op::FUSE_GETXATTR => do_dispatch!(GetxattrRequest, getxattr),
+		Op::FUSE_INTERRUPT => {
+			match InterruptRequest::from_fuse_request(&request) {
+				Ok(request) => handlers.interrupt(call, &request),
+				Err(err) => {
+					#[cfg(feature = "std")]
+					if let Some(hooks) = hooks {
+						hooks.request_error(header, err);
+					}
+					let _ = err;
+				},
+			};
+			Ok(())
+		},
 		Op::FUSE_IOCTL => do_dispatch!(IoctlRequest, ioctl),
 		Op::FUSE_LINK => do_dispatch!(LinkRequest, link),
 		Op::FUSE_LISTXATTR => do_dispatch!(ListxattrRequest, listxattr),
@@ -535,6 +548,17 @@ pub trait FuseHandlers<S: FuseSocket> {
 		request: &operations::GetxattrRequest,
 	) -> FuseResult<operations::GetxattrResponse, S::Error> {
 		call.unimplemented()
+	}
+
+	fn interrupt(
+		&self,
+		call: FuseCall<S>,
+		request: &operations::InterruptRequest,
+	) {
+		#[cfg(feature = "std")]
+		if let Some(hooks) = call.hooks {
+			hooks.unhandled_request(call.header);
+		}
 	}
 
 	fn ioctl(
