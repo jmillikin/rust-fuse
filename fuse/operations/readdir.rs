@@ -26,8 +26,8 @@ use core::ptr;
 use crate::FileType;
 use crate::NodeId;
 use crate::NodeName;
+use crate::internal::compat;
 use crate::internal::fuse_kernel;
-use crate::operations::read::fuse_read_in_v7p1;
 use crate::server;
 use crate::server::io;
 use crate::server::io::decode;
@@ -44,12 +44,8 @@ use crate::protocol::common::DebugHexU32;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_READDIR` operation.
 pub struct ReaddirRequest<'a> {
-	phantom: PhantomData<&'a ()>,
-	node_id: NodeId,
-	size: u32,
-	cursor: Option<num::NonZeroU64>,
-	handle: u64,
-	open_flags: u32,
+	header: &'a fuse_kernel::fuse_in_header,
+	body: compat::Versioned<compat::fuse_read_in<'a>>,
 }
 
 impl<'a> ReaddirRequest<'a> {
@@ -59,64 +55,57 @@ impl<'a> ReaddirRequest<'a> {
 		let version_minor = request.version_minor;
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_READDIR)?;
-		let node_id = decode::node_id(dec.header().nodeid)?;
 
-		// FUSE v7.9 added new fields to `fuse_read_in`.
-		if version_minor < 9 {
-			let raw: &'a fuse_read_in_v7p1 = dec.next_sized()?;
-			return Ok(Self {
-				phantom: PhantomData,
-				node_id,
-				size: raw.size,
-				cursor: num::NonZeroU64::new(raw.offset),
-				handle: raw.fh,
-				open_flags: 0,
-			});
+		let header = dec.header();
+		decode::node_id(header.nodeid)?;
+
+		let body;
+		if version_minor >= 9 {
+			let body_v7p9 = dec.next_sized()?;
+			body = compat::Versioned::new_v7p9(version_minor, body_v7p9);
+		} else {
+			let body_v7p1 = dec.next_sized()?;
+			body = compat::Versioned::new_v7p1(version_minor, body_v7p1);
 		}
 
-		let raw: &'a fuse_kernel::fuse_read_in = dec.next_sized()?;
-		Ok(Self {
-			phantom: PhantomData,
-			node_id,
-			size: raw.size,
-			cursor: num::NonZeroU64::new(raw.offset),
-			handle: raw.fh,
-			open_flags: raw.flags,
-		})
+		Ok(Self { header, body })
 	}
 
 	pub fn node_id(&self) -> NodeId {
-		self.node_id
+		unsafe { NodeId::new_unchecked(self.header.nodeid) }
 	}
 
 	pub fn size(&self) -> u32 {
-		self.size
+		self.body.as_v7p1().size
 	}
 
 	pub fn cursor(&self) -> Option<num::NonZeroU64> {
-		self.cursor
+		num::NonZeroU64::new(self.body.as_v7p1().offset)
 	}
 
 	/// The value passed to [`OpendirResponse::set_handle`], or zero if not set.
 	///
 	/// [`OpendirResponse::set_handle`]: crate::operations::opendir::OpendirResponse::set_handle
 	pub fn handle(&self) -> u64 {
-		self.handle
+		self.body.as_v7p1().fh
 	}
 
 	pub fn open_flags(&self) -> crate::OpenFlags {
-		self.open_flags
+		if let Some(body_v7p1) = self.body.as_v7p9() {
+			return body_v7p1.flags;
+		}
+		0
 	}
 }
 
 impl fmt::Debug for ReaddirRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("ReaddirRequest")
-			.field("node_id", &self.node_id)
-			.field("size", &self.size)
-			.field("cursor", &format_args!("{:?}", self.cursor))
-			.field("handle", &self.handle)
-			.field("open_flags", &DebugHexU32(self.open_flags))
+			.field("node_id", &self.node_id())
+			.field("size", &self.size())
+			.field("cursor", &format_args!("{:?}", self.cursor()))
+			.field("handle", &self.handle())
+			.field("open_flags", &DebugHexU32(self.open_flags()))
 			.finish()
 	}
 }

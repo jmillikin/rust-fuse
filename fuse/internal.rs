@@ -17,6 +17,8 @@
 #[macro_use]
 mod bitflags;
 
+pub(crate) mod compat;
+
 #[macro_use]
 mod fuse_kernel_util;
 

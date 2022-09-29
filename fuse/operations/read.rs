@@ -17,9 +17,8 @@
 //! Implements the `FUSE_READ` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 
-use crate::NodeId;
+use crate::internal::compat;
 use crate::internal::fuse_kernel;
 use crate::server;
 use crate::server::io;
@@ -36,21 +35,8 @@ use crate::protocol::common::DebugHexU32;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_READ` operation.
 pub struct ReadRequest<'a> {
-	phantom: PhantomData<&'a ()>,
-	node_id: NodeId,
-	size: u32,
-	offset: u64,
-	handle: u64,
-	lock_owner: Option<u64>,
-	open_flags: u32,
-}
-
-#[repr(C)]
-pub(crate) struct fuse_read_in_v7p1 {
-	pub(crate) fh: u64,
-	pub(crate) offset: u64,
-	pub(crate) size: u32,
-	pub(crate) padding: u32,
+	header: &'a fuse_kernel::fuse_in_header,
+	body: compat::Versioned<compat::fuse_read_in<'a>>,
 }
 
 impl<'a> ReadRequest<'a> {
@@ -66,43 +52,50 @@ impl<'a> ReadRequest<'a> {
 		decode_request(request.buf, request.version_minor, true)
 	}
 
-	pub fn node_id(&self) -> NodeId {
-		self.node_id
+	pub fn node_id(&self) -> crate::NodeId {
+		crate::NodeId::new(self.header.nodeid).unwrap_or(crate::ROOT_ID)
 	}
 
 	pub fn size(&self) -> u32 {
-		self.size
+		self.body.as_v7p1().size
 	}
 
 	pub fn offset(&self) -> u64 {
-		self.offset
+		self.body.as_v7p1().offset
 	}
 
 	/// The value passed to [`OpenResponse::set_handle`], or zero if not set.
 	///
 	/// [`OpenResponse::set_handle`]: crate::operations::open::OpenResponse::set_handle
 	pub fn handle(&self) -> u64 {
-		self.handle
+		self.body.as_v7p1().fh
 	}
 
 	pub fn lock_owner(&self) -> Option<u64> {
-		self.lock_owner
+		let body_v7p1 = self.body.as_v7p9()?;
+		if body_v7p1.read_flags & fuse_kernel::FUSE_READ_LOCKOWNER == 0 {
+			return None;
+		}
+		Some(body_v7p1.lock_owner)
 	}
 
 	pub fn open_flags(&self) -> crate::OpenFlags {
-		self.open_flags
+		if let Some(body_v7p1) = self.body.as_v7p9() {
+			return body_v7p1.flags;
+		}
+		0
 	}
 }
 
 impl fmt::Debug for ReadRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("ReadRequest")
-			.field("node_id", &self.node_id)
-			.field("size", &self.size)
-			.field("offset", &self.offset)
-			.field("handle", &self.handle)
-			.field("lock_owner", &format_args!("{:?}", &self.lock_owner))
-			.field("open_flags", &DebugHexU32(self.open_flags))
+			.field("node_id", &self.node_id())
+			.field("size", &self.size())
+			.field("offset", &self.offset())
+			.field("handle", &self.handle())
+			.field("lock_owner", &format_args!("{:?}", &self.lock_owner()))
+			.field("open_flags", &DebugHexU32(self.open_flags()))
 			.finish()
 	}
 }
@@ -112,45 +105,24 @@ fn decode_request<'a>(
 	version_minor: u32,
 	is_cuse: bool,
 ) -> Result<ReadRequest<'a>, io::RequestError> {
-	buf.expect_opcode(fuse_kernel::FUSE_READ)?;
-
-	let node_id = if is_cuse {
-		crate::ROOT_ID
-	} else {
-		decode::node_id(buf.header().nodeid)?
-	};
 	let mut dec = decode::RequestDecoder::new(buf);
+	dec.expect_opcode(fuse_kernel::FUSE_READ)?;
+	let header = dec.header();
 
-	// FUSE v7.9 added new fields to `fuse_read_in`.
-	if version_minor < 9 {
-		let raw: &'a fuse_read_in_v7p1 = dec.next_sized()?;
-		return Ok(ReadRequest {
-			phantom: PhantomData,
-			node_id,
-			size: raw.size,
-			offset: raw.offset,
-			handle: raw.fh,
-			lock_owner: None,
-			open_flags: 0,
-		});
+	if !is_cuse {
+		decode::node_id(header.nodeid)?;
 	}
 
-	let raw: &'a fuse_kernel::fuse_read_in = dec.next_sized()?;
-
-	let mut lock_owner = None;
-	if raw.read_flags & fuse_kernel::FUSE_READ_LOCKOWNER != 0 {
-		lock_owner = Some(raw.lock_owner);
+	let body;
+	if version_minor >= 9 {
+		let body_v7p9 = dec.next_sized()?;
+		body = compat::Versioned::new_v7p9(version_minor, body_v7p9);
+	} else {
+		let body_v7p1 = dec.next_sized()?;
+		body = compat::Versioned::new_v7p1(version_minor, body_v7p1);
 	}
 
-	Ok(ReadRequest {
-		phantom: PhantomData,
-		node_id,
-		size: raw.size,
-		offset: raw.offset,
-		handle: raw.fh,
-		lock_owner,
-		open_flags: raw.flags,
-	})
+	Ok(ReadRequest { header, body })
 }
 
 // }}}
