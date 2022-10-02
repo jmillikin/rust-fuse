@@ -65,7 +65,7 @@ impl Drop for Socket {
 
 impl Socket {
 	fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<LibcError>> {
-		let buf_ptr = buf.as_mut_ptr() as *mut libc::c_void;
+		let buf_ptr = buf.as_mut_ptr().cast::<libc::c_void>();
 		let buf_len = buf.len();
 		loop {
 			let rc = unsafe { libc::read(self.fd, buf_ptr, buf_len) };
@@ -120,7 +120,7 @@ impl Socket {
 			&mut iovec_storage,
 			IoVec::borrow,
 		);
-		let iovecs_ptr = iovecs.as_ptr() as *const libc::iovec;
+		let iovecs_ptr = iovecs.as_ptr().cast::<libc::iovec>();
 		loop {
 			let write_rc = unsafe {
 				libc::writev(self.fd, iovecs_ptr, iovecs.len() as i32)
@@ -151,7 +151,7 @@ impl CuseServerSocket {
 	}
 
 	pub fn open(dev_cuse: &CStr) -> Result<CuseServerSocket, LibcError> {
-		let path_ptr = dev_cuse.as_ptr() as *const libc::c_char;
+		let path_ptr = dev_cuse.as_ptr().cast::<libc::c_char>();
 		let open_rc = unsafe {
 			libc::open(path_ptr, libc::O_RDWR | libc::O_CLOEXEC)
 		};
@@ -192,7 +192,7 @@ impl FuseServerSocket {
 	}
 
 	pub fn open(dev_fuse: &CStr) -> Result<FuseServerSocket, LibcError> {
-		let path_ptr = dev_fuse.as_ptr() as *const libc::c_char;
+		let path_ptr = dev_fuse.as_ptr().cast::<libc::c_char>();
 		let open_rc = unsafe {
 			libc::open(path_ptr, libc::O_RDWR | libc::O_CLOEXEC)
 		};

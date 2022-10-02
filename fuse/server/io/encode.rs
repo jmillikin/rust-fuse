@@ -74,12 +74,7 @@ impl<S: SendOnce> ReplyEncoder<S> {
 			error: err.raw_fuse_error_code(),
 			unique: self.request_id,
 		};
-		let out_hdr_buf: &[u8] = unsafe {
-			core::slice::from_raw_parts(
-				(&out_hdr as *const fuse_kernel::fuse_out_header) as *const u8,
-				size_of::<fuse_kernel::fuse_out_header>(),
-			)
-		};
+		let out_hdr_buf = sized_to_slice(&out_hdr);
 
 		self.sender.send(SendBuf::new_1(len, out_hdr_buf))
 	}
@@ -113,18 +108,8 @@ impl<S: SendOnce> ReplyEncoder<S> {
 			error: notify_code.0 as i32,
 			unique: 0,
 		};
-		let out_hdr_buf: &[u8] = unsafe {
-			core::slice::from_raw_parts(
-				(&out_hdr as *const fuse_kernel::fuse_out_header) as *const u8,
-				size_of::<fuse_kernel::fuse_out_header>(),
-			)
-		};
-		let body_buf: &[u8] = unsafe {
-			core::slice::from_raw_parts(
-				(body as *const T) as *const u8,
-				size_of::<T>(),
-			)
-		};
+		let out_hdr_buf = sized_to_slice(&out_hdr);
+		let body_buf = sized_to_slice(body);
 		if let Some(name_bytes) = name_bytes {
 			self.sender.send(SendBuf::new_4(
 				payload_len,
@@ -143,13 +128,7 @@ impl<S: SendOnce> ReplyEncoder<S> {
 	}
 
 	pub(crate) fn encode_sized<T: Sized>(self, t: &T) -> S::Result {
-		let bytes: &[u8] = unsafe {
-			core::slice::from_raw_parts(
-				(t as *const T) as *const u8,
-				size_of::<T>(),
-			)
-		};
-		self.encode_bytes(bytes)
+		self.encode_bytes(sized_to_slice(t))
 	}
 
 	pub(crate) fn encode_sized_bytes<T: Sized>(
@@ -157,13 +136,7 @@ impl<S: SendOnce> ReplyEncoder<S> {
 		bytes_1: &[u8],
 		t: &T,
 	) -> S::Result {
-		let bytes_2: &[u8] = unsafe {
-			core::slice::from_raw_parts(
-				(t as *const T) as *const u8,
-				size_of::<T>(),
-			)
-		};
-		self.encode_bytes_2(bytes_1, bytes_2)
+		self.encode_bytes_2(bytes_1, sized_to_slice(t))
 	}
 
 	pub(crate) fn encode_sized_sized<T1: Sized, T2: Sized>(
@@ -171,19 +144,7 @@ impl<S: SendOnce> ReplyEncoder<S> {
 		t_1: &T1,
 		t_2: &T2,
 	) -> S::Result {
-		let bytes_1: &[u8] = unsafe {
-			core::slice::from_raw_parts(
-				(t_1 as *const T1) as *const u8,
-				size_of::<T1>(),
-			)
-		};
-		let bytes_2: &[u8] = unsafe {
-			core::slice::from_raw_parts(
-				(t_2 as *const T2) as *const u8,
-				size_of::<T2>(),
-			)
-		};
-		self.encode_bytes_2(bytes_1, bytes_2)
+		self.encode_bytes_2(sized_to_slice(t_1), sized_to_slice(t_2))
 	}
 
 	pub(crate) fn encode_header_only(self) -> S::Result {
@@ -193,12 +154,7 @@ impl<S: SendOnce> ReplyEncoder<S> {
 			error: 0,
 			unique: self.request_id,
 		};
-		let out_hdr_buf: &[u8] = unsafe {
-			core::slice::from_raw_parts(
-				(&out_hdr as *const fuse_kernel::fuse_out_header) as *const u8,
-				size_of::<fuse_kernel::fuse_out_header>(),
-			)
-		};
+		let out_hdr_buf = sized_to_slice(&out_hdr);
 
 		self.sender.send(SendBuf::new_1(len, out_hdr_buf))
 	}
@@ -222,12 +178,7 @@ impl<S: SendOnce> ReplyEncoder<S> {
 			error: 0,
 			unique: self.request_id,
 		};
-		let out_hdr_buf: &[u8] = unsafe {
-			core::slice::from_raw_parts(
-				(&out_hdr as *const fuse_kernel::fuse_out_header) as *const u8,
-				size_of::<fuse_kernel::fuse_out_header>(),
-			)
-		};
+		let out_hdr_buf = sized_to_slice(&out_hdr);
 
 		self.sender.send(SendBuf::new_2(len, out_hdr_buf, bytes))
 	}
@@ -259,12 +210,7 @@ impl<S: SendOnce> ReplyEncoder<S> {
 			error: 0,
 			unique: self.request_id,
 		};
-		let out_hdr_buf: &[u8] = unsafe {
-			core::slice::from_raw_parts(
-				(&out_hdr as *const fuse_kernel::fuse_out_header) as *const u8,
-				size_of::<fuse_kernel::fuse_out_header>(),
-			)
-		};
+		let out_hdr_buf = sized_to_slice(&out_hdr);
 
 		self.sender.send(SendBuf::new_3(len, out_hdr_buf, bytes_1, bytes_2))
 	}
@@ -306,13 +252,14 @@ impl<S: SendOnce> ReplyEncoder<S> {
 			error: 0,
 			unique: self.request_id,
 		};
-		let out_hdr_buf: &[u8] = unsafe {
-			core::slice::from_raw_parts(
-				(&out_hdr as *const fuse_kernel::fuse_out_header) as *const u8,
-				size_of::<fuse_kernel::fuse_out_header>(),
-			)
-		};
+		let out_hdr_buf = sized_to_slice(&out_hdr);
 
 		self.sender.send(SendBuf::new_5(len, out_hdr_buf, bytes_1, bytes_2, bytes_3, bytes_4))
 	}
+}
+
+#[inline]
+fn sized_to_slice<T>(t: &T) -> &[u8] {
+	let t_ptr = (t as *const T).cast::<u8>();
+	unsafe { core::slice::from_raw_parts(t_ptr, size_of::<T>()) }
 }

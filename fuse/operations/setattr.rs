@@ -231,9 +231,9 @@ impl SetattrResponse<'_> {
 		// The `fuse_attr::blksize` field was added in FUSE v7.9.
 		if ctx.version_minor < 9 {
 			let buf: &[u8] = unsafe {
+				let raw_ptr = &self.raw as *const fuse_kernel::fuse_attr_out;
 				slice::from_raw_parts(
-					(&self.raw as *const fuse_kernel::fuse_attr_out)
-						as *const u8,
+					raw_ptr.cast::<u8>(),
 					fuse_kernel::FUSE_COMPAT_ATTR_OUT_SIZE,
 				)
 			};

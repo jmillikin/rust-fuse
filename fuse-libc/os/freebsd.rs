@@ -102,7 +102,7 @@ pub fn mount<'a>(
 
 	let nmount_rc = unsafe {
 		libc::nmount(
-			iovecs.as_mut_ptr() as *mut libc::iovec,
+			iovecs.as_mut_ptr().cast::<libc::iovec>(),
 			iovecs_len as libc::c_uint,
 			options.flags,
 		)
@@ -115,8 +115,8 @@ pub fn mount<'a>(
 }
 
 fn fmt_raw_fd(buf: &mut [u8; 32], fd: u32) {
-	let buf_ptr = buf.as_mut_ptr() as *mut libc::c_char;
-	let format_ptr = b"%u\0".as_ptr() as *const libc::c_char;
+	let buf_ptr = buf.as_mut_ptr().cast::<libc::c_char>();
+	let format_ptr = b"%u\0".as_ptr().cast::<libc::c_char>();
 	unsafe {
 		libc::snprintf(buf_ptr, 32, format_ptr, fd);
 	}

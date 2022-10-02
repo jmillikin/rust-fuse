@@ -116,12 +116,12 @@ impl NodeAttr {
 	}
 
 	pub(crate) fn new_ref(raw: &fuse_kernel::fuse_attr) -> &Self {
-		let p = raw as *const fuse_kernel::fuse_attr as *const Self;
+		let p = (raw as *const fuse_kernel::fuse_attr).cast::<Self>();
 		unsafe { &*p }
 	}
 
 	pub(crate) fn new_ref_mut(raw: &mut fuse_kernel::fuse_attr) -> &mut Self {
-		let p = raw as *mut fuse_kernel::fuse_attr as *mut Self;
+		let p = (raw as *mut fuse_kernel::fuse_attr).cast::<Self>();
 		unsafe { &mut *p }
 	}
 }

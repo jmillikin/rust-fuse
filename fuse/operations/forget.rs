@@ -68,7 +68,7 @@ impl<'a> ForgetRequest<'a> {
 			let batch_bytes = dec.next_bytes(batch_size)?;
 			let batch_forgets: &'a [fuse_kernel::fuse_forget_one] = unsafe {
 				slice::from_raw_parts(
-					batch_bytes.as_ptr() as *const fuse_kernel::fuse_forget_one,
+					batch_bytes.as_ptr().cast::<fuse_kernel::fuse_forget_one>(),
 					raw.count as usize,
 				)
 			};

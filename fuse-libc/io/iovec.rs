@@ -36,7 +36,7 @@ impl IoVec<'static> {
 	#[allow(dead_code)]
 	pub(crate) fn global(buf: &'static [u8]) -> Self {
 		IoVec {
-			iov_base: buf.as_ptr() as *const core::ffi::c_void,
+			iov_base: buf.as_ptr().cast::<core::ffi::c_void>(),
 			iov_len: buf.len(),
 			_phantom: PhantomData,
 		}
@@ -46,7 +46,7 @@ impl IoVec<'static> {
 impl<'a> IoVec<'a> {
 	pub(crate) fn borrow(buf: &'a [u8]) -> Self {
 		IoVec {
-			iov_base: buf.as_ptr() as *const core::ffi::c_void,
+			iov_base: buf.as_ptr().cast::<core::ffi::c_void>(),
 			iov_len: buf.len(),
 			_phantom: PhantomData,
 		}

@@ -55,7 +55,7 @@ pub(crate) unsafe fn read_unchecked<T: Dirent>(
 	let mut dirent_uninit: mem::MaybeUninit<T> = mem::MaybeUninit::uninit();
 	ptr::copy_nonoverlapping(
 		buf_ptr,
-		dirent_uninit.as_mut_ptr() as *mut u8,
+		dirent_uninit.as_mut_ptr().cast::<u8>(),
 		mem::size_of::<T>(),
 	);
 	let dirent = dirent_uninit.assume_init();
@@ -72,7 +72,7 @@ pub(crate) unsafe fn write_unchecked<T: Dirent>(
 	buf: &mut [u8],
 ) {
 	let buf_ptr = buf.as_mut_ptr();
-	let dirent_dst = buf_ptr as *mut T;
+	let dirent_dst = buf_ptr.cast::<T>();
 	let name_dst = buf_ptr.add(mem::size_of::<T>());
 
 	let name = name.as_bytes();

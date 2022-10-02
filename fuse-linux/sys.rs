@@ -92,7 +92,7 @@ pub(crate) struct IoVec<'a> {
 impl<'a> IoVec<'a> {
 	pub(crate) fn borrow(buf: &'a [u8]) -> Self {
 		IoVec {
-			iov_base: buf.as_ptr() as *const core::ffi::c_void,
+			iov_base: buf.as_ptr().cast::<core::ffi::c_void>(),
 			iov_len: buf.len(),
 			_phantom: PhantomData,
 		}

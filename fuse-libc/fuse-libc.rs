@@ -18,6 +18,7 @@
 
 #![warn(
 	clippy::must_use_candidate,
+	clippy::ptr_as_ptr,
 	clippy::trivially_copy_pass_by_ref,
 )]
 

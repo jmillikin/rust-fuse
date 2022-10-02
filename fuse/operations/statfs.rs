@@ -146,9 +146,9 @@ impl StatfsResponse<'_> {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		if ctx.version_minor < 4 {
 			let buf: &[u8] = unsafe {
+				let raw_ptr = &self.raw as *const fuse_kernel::fuse_statfs_out;
 				slice::from_raw_parts(
-					(&self.raw as *const fuse_kernel::fuse_statfs_out)
-						as *const u8,
+					raw_ptr.cast::<u8>(),
 					fuse_kernel::FUSE_COMPAT_STATFS_SIZE,
 				)
 			};

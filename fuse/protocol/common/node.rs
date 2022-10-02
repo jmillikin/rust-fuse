@@ -72,13 +72,15 @@ impl Node {
 	}
 
 	pub(crate) fn new_ref(raw: &fuse_kernel::fuse_entry_out) -> &Node {
-		unsafe { &*(raw as *const fuse_kernel::fuse_entry_out as *const Node) }
+		let p = (raw as *const fuse_kernel::fuse_entry_out).cast::<Node>();
+		unsafe { &*p }
 	}
 
 	pub(crate) fn new_ref_mut(
 		raw: &mut fuse_kernel::fuse_entry_out,
 	) -> &mut Node {
-		unsafe { &mut *(raw as *mut fuse_kernel::fuse_entry_out as *mut Node) }
+		let p = (raw as *mut fuse_kernel::fuse_entry_out).cast::<Node>();
+		unsafe { &mut *p }
 	}
 }
 
@@ -103,9 +105,9 @@ impl Node {
 		// The `fuse_attr::blksize` field was added in FUSE v7.9.
 		if version_minor < 9 {
 			let buf: &'a [u8] = unsafe {
+				let raw_ptr = &self.0 as *const fuse_kernel::fuse_entry_out;
 				slice::from_raw_parts(
-					(&self.0 as *const fuse_kernel::fuse_entry_out)
-						as *const u8,
+					raw_ptr.cast::<u8>(),
 					fuse_kernel::FUSE_COMPAT_ENTRY_OUT_SIZE,
 				)
 			};
@@ -124,9 +126,9 @@ impl Node {
 		// The `fuse_attr::blksize` field was added in FUSE v7.9.
 		if version_minor < 9 {
 			let buf: &'a [u8] = unsafe {
+				let raw_ptr = &self.0 as *const fuse_kernel::fuse_entry_out;
 				slice::from_raw_parts(
-					(&self.0 as *const fuse_kernel::fuse_entry_out)
-						as *const u8,
+					raw_ptr.cast::<u8>(),
 					fuse_kernel::FUSE_COMPAT_ENTRY_OUT_SIZE,
 				)
 			};

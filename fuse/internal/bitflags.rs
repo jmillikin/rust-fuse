@@ -109,7 +109,7 @@ macro_rules! bitflags {
 			#[inline(always)]
 			#[must_use]
 			pub(crate) fn reborrow_mut<'a>(r: &'a mut $bits) -> &'a mut Self {
-				let ptr = r as *mut $bits as *mut Self;
+				let ptr = (r as *mut $bits).cast::<Self>();
 				unsafe { &mut *ptr }
 			}
 

@@ -259,7 +259,7 @@ impl CuseInitResponse<'_> {
 		out.flags = self.flags.bits;
 		let out_buf: &[u8] = unsafe {
 			slice::from_raw_parts(
-				(&out as *const fuse_kernel::cuse_init_out) as *const u8,
+				(&out as *const fuse_kernel::cuse_init_out).cast::<u8>(),
 				size_of::<fuse_kernel::cuse_init_out>(),
 			)
 		};

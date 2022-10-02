@@ -49,8 +49,8 @@ impl<'a> RequestBuf<'a> {
 			return Err(RequestError::UnexpectedEof);
 		}
 
-		let header: &'a fuse_kernel::fuse_in_header =
-			unsafe { &*(buf.as_ptr() as *const fuse_kernel::fuse_in_header) };
+		let header_ptr = buf.as_ptr().cast::<fuse_kernel::fuse_in_header>();
+		let header = unsafe { &*header_ptr };
 
 		let buf_len: u32;
 		if size_of::<usize>() > size_of::<u32>() {
@@ -149,7 +149,7 @@ impl<'a> RequestDecoder<'a> {
 		self.consume(size_of::<T>() as u32)?;
 		let out: &'a T = unsafe {
 			let out_p = self.buf.as_ptr().add(self.consumed as usize);
-			&*(out_p as *const T)
+			&*(out_p.cast::<T>())
 		};
 		Ok(out)
 	}

@@ -280,7 +280,7 @@ impl<'a> IoctlInputReader<'a> {
 		&mut self,
 	) -> Result<&'a [u8; N], IoctlInputError> {
 		let bytes = self.read(N)?;
-		Ok(unsafe { &*(bytes.as_ptr() as *const [u8; N]) })
+		Ok(unsafe { &*(bytes.as_ptr().cast::<[u8; N]>()) })
 	}
 
 	#[allow(clippy::missing_safety_doc)] // TODO
@@ -288,7 +288,7 @@ impl<'a> IoctlInputReader<'a> {
 		&mut self,
 	) -> Result<&'a T, IoctlInputError> {
 		let bytes = self.read(size_of::<T>())?;
-		Ok(&*(bytes.as_ptr() as *const T))
+		Ok(&*(bytes.as_ptr().cast::<T>()))
 	}
 }
 
@@ -382,7 +382,7 @@ impl IoctlResponse<'_> {
 		fn raw_bytes<'a>(raw: &'a fuse_kernel::fuse_ioctl_out) -> &'a [u8] {
 			unsafe {
 				core::slice::from_raw_parts(
-					(raw as *const fuse_kernel::fuse_ioctl_out) as *const u8,
+					(raw as *const fuse_kernel::fuse_ioctl_out).cast::<u8>(),
 					size_of::<fuse_kernel::fuse_ioctl_out>(),
 				)
 			}
@@ -400,13 +400,13 @@ impl IoctlResponse<'_> {
 
 				let bytes_2: &[u8] = unsafe {
 					core::slice::from_raw_parts(
-						input_slices.as_ptr() as *const u8,
+						input_slices.as_ptr().cast::<u8>(),
 						size_of::<IoctlSlice>() * input_slices.len(),
 					)
 				};
 				let bytes_3: &[u8] = unsafe {
 					core::slice::from_raw_parts(
-						output_slices.as_ptr() as *const u8,
+						output_slices.as_ptr().cast::<u8>(),
 						size_of::<IoctlSlice>() * output_slices.len(),
 					)
 				};

@@ -100,7 +100,7 @@ pub fn mount<'a>(
 			target.as_ptr(),
 			opts.fs_type().as_ptr(),
 			options.flags as libc::c_ulong,
-			mount_data.as_bytes_with_nul().as_ptr() as *const libc::c_void,
+			mount_data.as_bytes_with_nul().as_ptr().cast::<libc::c_void>(),
 		)
 	};
 	if rc != 0 {
