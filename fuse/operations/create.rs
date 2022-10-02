@@ -23,6 +23,7 @@ use crate::FileMode;
 use crate::Node;
 use crate::NodeId;
 use crate::NodeName;
+use crate::internal::compat;
 use crate::internal::fuse_kernel;
 use crate::server;
 use crate::server::io;
@@ -38,18 +39,9 @@ use crate::protocol::common::DebugHexU32;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_CREATE` operation.
 pub struct CreateRequest<'a> {
-	node_id: NodeId,
+	header: &'a fuse_kernel::fuse_in_header,
+	body: compat::Versioned<compat::fuse_create_in<'a>>,
 	name: &'a NodeName,
-	flags: CreateRequestFlags,
-	open_flags: u32,
-	mode: u32,
-	umask: u32,
-}
-
-#[repr(C)]
-struct fuse_create_in_v7p1 {
-	pub flags: u32,
-	pub unused: u32,
 }
 
 impl<'a> CreateRequest<'a> {
@@ -61,38 +53,24 @@ impl<'a> CreateRequest<'a> {
 		dec.expect_opcode(fuse_kernel::FUSE_CREATE)?;
 
 		let header = dec.header();
-		let node_id = decode::node_id(header.nodeid)?;
+		decode::node_id(header.nodeid)?;
 
-		if version_minor < 12 {
-			let raw: &'a fuse_create_in_v7p1 = dec.next_sized()?;
-			let name = NodeName::new(dec.next_nul_terminated_bytes()?);
-			return Ok(Self {
-				node_id,
-				name,
-				flags: CreateRequestFlags::new(),
-				open_flags: raw.flags,
-				mode: 0,
-				umask: 0,
-			});
-		}
+		let body = if version_minor >= 12 {
+			let body_v7p12 = dec.next_sized()?;
+			compat::Versioned::new_create_v7p12(version_minor, body_v7p12)
+		} else {
+			let body_v7p1 = dec.next_sized()?;
+			compat::Versioned::new_create_v7p1(version_minor, body_v7p1)
+		};
 
-		let raw: &'a fuse_kernel::fuse_create_in = dec.next_sized()?;
 		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
-		Ok(Self {
-			node_id,
-			name,
-			flags: CreateRequestFlags {
-				bits: raw.open_flags,
-			},
-			open_flags: raw.flags,
-			mode: raw.mode,
-			umask: raw.umask,
-		})
+
+		Ok(Self { header, body, name })
 	}
 
 	#[must_use]
 	pub fn node_id(&self) -> NodeId {
-		self.node_id
+		unsafe { NodeId::new_unchecked(self.header.nodeid) }
 	}
 
 	#[must_use]
@@ -102,34 +80,45 @@ impl<'a> CreateRequest<'a> {
 
 	#[must_use]
 	pub fn flags(&self) -> CreateRequestFlags {
-		self.flags
+		if let Some(body) = self.body.as_v7p12() {
+			return CreateRequestFlags {
+				bits: body.open_flags,
+			};
+		}
+		CreateRequestFlags::new()
 	}
 
 	#[must_use]
 	pub fn open_flags(&self) -> crate::OpenFlags {
-		self.open_flags
+		self.body.as_v7p1().flags
 	}
 
 	#[must_use]
 	pub fn mode(&self) -> FileMode {
-		FileMode(self.mode)
+		if let Some(body) = self.body.as_v7p12() {
+			return FileMode(body.mode);
+		}
+		FileMode(0)
 	}
 
 	#[must_use]
 	pub fn umask(&self) -> u32 {
-		self.umask
+		if let Some(body) = self.body.as_v7p12() {
+			return body.umask;
+		}
+		0
 	}
 }
 
 impl fmt::Debug for CreateRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("CreateRequest")
-			.field("node_id", &self.node_id)
-			.field("name", &self.name)
-			.field("flags", &self.flags)
-			.field("open_flags", &DebugHexU32(self.open_flags))
-			.field("mode", &FileMode(self.mode))
-			.field("umask", &self.umask)
+			.field("node_id", &self.node_id())
+			.field("name", &self.name())
+			.field("flags", &self.flags())
+			.field("open_flags", &DebugHexU32(self.open_flags()))
+			.field("mode", &self.mode())
+			.field("umask", &self.umask())
 			.finish()
 	}
 }

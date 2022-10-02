@@ -20,8 +20,8 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::NodeId;
+use crate::internal::compat;
 use crate::internal::fuse_kernel;
-use crate::operations::release::fuse_release_in_v7p1;
 use crate::server;
 use crate::server::io;
 use crate::server::io::decode;
@@ -36,11 +36,8 @@ use crate::protocol::common::DebugHexU32;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_RELEASEDIR` operation.
 pub struct ReleasedirRequest<'a> {
-	phantom: PhantomData<&'a ()>,
-	node_id: NodeId,
-	handle: u64,
-	lock_owner: Option<u64>,
-	open_flags: u32,
+	header: &'a fuse_kernel::fuse_in_header,
+	body: compat::Versioned<compat::fuse_release_in<'a>>,
 }
 
 impl<'a> ReleasedirRequest<'a> {
@@ -51,39 +48,23 @@ impl<'a> ReleasedirRequest<'a> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_RELEASEDIR)?;
 
-		let node_id = decode::node_id(dec.header().nodeid)?;
+		let header = dec.header();
+		decode::node_id(header.nodeid)?;
 
-		// FUSE v7.8 added new fields to `fuse_release_in`.
-		if version_minor < 8 {
-			let raw: &'a fuse_release_in_v7p1 = dec.next_sized()?;
-			return Ok(Self {
-				phantom: PhantomData,
-				node_id,
-				handle: raw.fh,
-				lock_owner: None,
-				open_flags: raw.flags,
-			});
-		}
+		let body = if version_minor >= 8 {
+			let body_v7p8 = dec.next_sized()?;
+			compat::Versioned::new_release_v7p8(version_minor, body_v7p8)
+		} else {
+			let body_v7p1 = dec.next_sized()?;
+			compat::Versioned::new_release_v7p1(version_minor, body_v7p1)
+		};
 
-		let raw: &'a fuse_kernel::fuse_release_in = dec.next_sized()?;
-
-		let mut lock_owner = None;
-		if raw.release_flags & fuse_kernel::FUSE_RELEASE_FLOCK_UNLOCK != 0 {
-			lock_owner = Some(raw.lock_owner);
-		}
-
-		Ok(Self {
-			phantom: PhantomData,
-			node_id,
-			handle: raw.fh,
-			lock_owner,
-			open_flags: raw.flags,
-		})
+		Ok(Self { header, body })
 	}
 
 	#[must_use]
 	pub fn node_id(&self) -> NodeId {
-		self.node_id
+		unsafe { NodeId::new_unchecked(self.header.nodeid) }
 	}
 
 	/// The value passed to [`OpendirResponse::set_handle`], or zero if not set.
@@ -91,27 +72,31 @@ impl<'a> ReleasedirRequest<'a> {
 	/// [`OpendirResponse::set_handle`]: crate::operations::opendir::OpendirResponse::set_handle
 	#[must_use]
 	pub fn handle(&self) -> u64 {
-		self.handle
+		self.body.as_v7p1().fh
 	}
 
 	#[must_use]
 	pub fn lock_owner(&self) -> Option<u64> {
-		self.lock_owner
+		let body = self.body.as_v7p8()?;
+		if body.release_flags & fuse_kernel::FUSE_RELEASE_FLOCK_UNLOCK == 0 {
+			return None;
+		}
+		Some(body.lock_owner)
 	}
 
 	#[must_use]
 	pub fn open_flags(&self) -> crate::OpenFlags {
-		self.open_flags
+		self.body.as_v7p1().flags
 	}
 }
 
 impl fmt::Debug for ReleasedirRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("ReleasedirRequest")
-			.field("node_id", &self.node_id)
-			.field("handle", &self.handle)
-			.field("lock_owner", &self.lock_owner)
-			.field("open_flags", &DebugHexU32(self.open_flags))
+			.field("node_id", &self.node_id())
+			.field("handle", &self.handle())
+			.field("lock_owner", &format_args!("{:?}", self.lock_owner()))
+			.field("open_flags", &DebugHexU32(self.open_flags()))
 			.finish()
 	}
 }

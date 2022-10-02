@@ -24,6 +24,7 @@ use crate::FileType;
 use crate::Node;
 use crate::NodeId;
 use crate::NodeName;
+use crate::internal::compat;
 use crate::internal::fuse_kernel;
 use crate::server;
 use crate::server::io;
@@ -37,15 +38,9 @@ use crate::server::io::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_MKNOD` operation.
 pub struct MknodRequest<'a> {
-	parent_id: NodeId,
+	header: &'a fuse_kernel::fuse_in_header,
+	body: compat::Versioned<compat::fuse_mknod_in<'a>>,
 	name: &'a NodeName,
-	raw: fuse_kernel::fuse_mknod_in,
-}
-
-#[repr(C)]
-pub(crate) struct fuse_mknod_in_v7p1 {
-	pub mode: u32,
-	pub rdev: u32,
 }
 
 impl<'a> MknodRequest<'a> {
@@ -56,35 +51,25 @@ impl<'a> MknodRequest<'a> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_MKNOD)?;
 
-		let parent_id = decode::node_id(dec.header().nodeid)?;
+		let header = dec.header();
+		decode::node_id(dec.header().nodeid)?;
 
-		if version_minor < 12 {
-			let raw: &fuse_mknod_in_v7p1 = dec.next_sized()?;
-			let name = NodeName::new(dec.next_nul_terminated_bytes()?);
-			return Ok(Self {
-				parent_id,
-				name,
-				raw: fuse_kernel::fuse_mknod_in {
-					mode: raw.mode,
-					rdev: raw.rdev,
-					umask: 0,
-					padding: 0,
-				},
-			});
-		}
+		let body = if version_minor >= 12 {
+			let body_v7p12 = dec.next_sized()?;
+			compat::Versioned::new_mknod_v7p12(version_minor, body_v7p12)
+		} else {
+			let body_v7p1 = dec.next_sized()?;
+			compat::Versioned::new_mknod_v7p1(version_minor, body_v7p1)
+		};
 
-		let raw: &fuse_kernel::fuse_mknod_in = dec.next_sized()?;
 		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
-		Ok(Self {
-			parent_id,
-			name,
-			raw: *raw,
-		})
+
+		Ok(Self { header, body, name })
 	}
 
 	#[must_use]
 	pub fn parent_id(&self) -> NodeId {
-		self.parent_id
+		unsafe { NodeId::new_unchecked(self.header.nodeid) }
 	}
 
 	#[must_use]
@@ -94,19 +79,23 @@ impl<'a> MknodRequest<'a> {
 
 	#[must_use]
 	pub fn mode(&self) -> FileMode {
-		FileMode(self.raw.mode)
+		FileMode(self.body.as_v7p1().mode)
 	}
 
 	#[must_use]
 	pub fn umask(&self) -> u32 {
-		self.raw.umask
+		if let Some(body) = self.body.as_v7p12() {
+			return body.umask;
+		}
+		0
 	}
 
 	#[must_use]
 	pub fn device_number(&self) -> Option<u32> {
-		match self.mode().file_type() {
-			Some(FileType::CharDevice) | Some(FileType::BlockDevice) => {
-				Some(self.raw.rdev)
+		let body = self.body.as_v7p1();
+		match FileType::from_mode(FileMode(body.mode)) {
+			Some(FileType::CharDevice | FileType::BlockDevice) => {
+				Some(body.rdev)
 			},
 			_ => None,
 		}
@@ -119,7 +108,7 @@ impl fmt::Debug for MknodRequest<'_> {
 			.field("parent_id", &self.parent_id())
 			.field("name", &self.name())
 			.field("mode", &self.mode())
-			.field("umask", &format_args!("{:#o}", &self.raw.umask))
+			.field("umask", &format_args!("{:#o}", &self.umask()))
 			.field("device_number", &format_args!("{:?}", self.device_number()))
 			.finish()
 	}

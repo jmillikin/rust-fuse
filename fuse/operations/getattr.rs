@@ -23,6 +23,7 @@ use core::time::Duration;
 
 use crate::NodeAttr;
 use crate::NodeId;
+use crate::internal::compat;
 use crate::internal::fuse_kernel;
 use crate::server;
 use crate::server::io;
@@ -36,9 +37,8 @@ use crate::server::io::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_GETATTR` operation.
 pub struct GetattrRequest<'a> {
-	phantom: PhantomData<&'a ()>,
-	node_id: NodeId,
-	handle: Option<u64>,
+	header: &'a fuse_kernel::fuse_in_header,
+	body: compat::Versioned<compat::fuse_getattr_in<'a>>,
 }
 
 impl<'a> GetattrRequest<'a> {
@@ -49,45 +49,39 @@ impl<'a> GetattrRequest<'a> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_GETATTR)?;
 
-		let node_id = decode::node_id(dec.header().nodeid)?;
+		let header = dec.header();
+		decode::node_id(header.nodeid)?;
 
-		// FUSE versions before v7.9 had no request type for `getattr()`.
-		if version_minor < 9 {
-			return Ok(Self {
-				phantom: PhantomData,
-				node_id,
-				handle: None,
-			});
-		}
+		let body = if version_minor >= 9 {
+			let body_v7p9 = dec.next_sized()?;
+			compat::Versioned::new_getattr_v7p9(version_minor, body_v7p9)
+		} else {
+			compat::Versioned::new_getattr_v7p1(version_minor)
+		};
 
-		let raw: &'a fuse_kernel::fuse_getattr_in = dec.next_sized()?;
-		let mut handle = None;
-		if (raw.getattr_flags & fuse_kernel::FUSE_GETATTR_FH) > 0 {
-			handle = Some(raw.fh);
-		}
-		Ok(Self {
-			phantom: PhantomData,
-			node_id,
-			handle,
-		})
+		Ok(Self { header, body })
 	}
 
 	#[must_use]
 	pub fn node_id(&self) -> NodeId {
-		self.node_id
+		unsafe { NodeId::new_unchecked(self.header.nodeid) }
 	}
 
 	#[must_use]
 	pub fn handle(&self) -> Option<u64> {
-		self.handle
+		let body = self.body.as_v7p9()?;
+		if (body.getattr_flags & fuse_kernel::FUSE_GETATTR_FH) > 0 {
+			return Some(body.fh);
+		}
+		None
 	}
 }
 
 impl fmt::Debug for GetattrRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("GetattrRequest")
-			.field("node_id", &self.node_id)
-			.field("handle", &format_args!("{:?}", &self.handle))
+			.field("node_id", &self.node_id())
+			.field("handle", &format_args!("{:?}", &self.handle()))
 			.finish()
 	}
 }

@@ -54,14 +54,13 @@ impl<'a> ReaddirRequest<'a> {
 		let header = dec.header();
 		decode::node_id(header.nodeid)?;
 
-		let body;
-		if version_minor >= 9 {
+		let body = if version_minor >= 9 {
 			let body_v7p9 = dec.next_sized()?;
-			body = compat::Versioned::new_v7p9(version_minor, body_v7p9);
+			compat::Versioned::new_read_v7p9(version_minor, body_v7p9)
 		} else {
 			let body_v7p1 = dec.next_sized()?;
-			body = compat::Versioned::new_v7p1(version_minor, body_v7p1);
-		}
+			compat::Versioned::new_read_v7p1(version_minor, body_v7p1)
+		};
 
 		Ok(Self { header, body })
 	}
@@ -91,8 +90,8 @@ impl<'a> ReaddirRequest<'a> {
 
 	#[must_use]
 	pub fn open_flags(&self) -> crate::OpenFlags {
-		if let Some(body_v7p1) = self.body.as_v7p9() {
-			return body_v7p1.flags;
+		if let Some(body) = self.body.as_v7p9() {
+			return body.flags;
 		}
 		0
 	}

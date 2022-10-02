@@ -20,6 +20,7 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::NodeId;
+use crate::internal::compat;
 use crate::internal::fuse_kernel;
 use crate::server;
 use crate::server::io;
@@ -35,18 +36,8 @@ use crate::protocol::common::DebugHexU32;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_RELEASE` operation.
 pub struct ReleaseRequest<'a> {
-	phantom: PhantomData<&'a ()>,
-	node_id: NodeId,
-	handle: u64,
-	lock_owner: Option<u64>,
-	open_flags: u32,
-}
-
-#[repr(C)]
-pub(crate) struct fuse_release_in_v7p1 {
-	pub(crate) fh: u64,
-	pub(crate) flags: u32,
-	pub(crate) padding: u32,
+	header: &'a fuse_kernel::fuse_in_header,
+	body: compat::Versioned<compat::fuse_release_in<'a>>,
 }
 
 impl<'a> ReleaseRequest<'a> {
@@ -64,7 +55,7 @@ impl<'a> ReleaseRequest<'a> {
 
 	#[must_use]
 	pub fn node_id(&self) -> NodeId {
-		self.node_id
+		crate::NodeId::new(self.header.nodeid).unwrap_or(crate::ROOT_ID)
 	}
 
 	/// The value passed to [`OpenResponse::set_handle`], or zero if not set.
@@ -72,27 +63,31 @@ impl<'a> ReleaseRequest<'a> {
 	/// [`OpenResponse::set_handle`]: crate::operations::open::OpenResponse::set_handle
 	#[must_use]
 	pub fn handle(&self) -> u64 {
-		self.handle
+		self.body.as_v7p1().fh
 	}
 
 	#[must_use]
 	pub fn lock_owner(&self) -> Option<u64> {
-		self.lock_owner
+		let body = self.body.as_v7p8()?;
+		if body.release_flags & fuse_kernel::FUSE_RELEASE_FLOCK_UNLOCK == 0 {
+			return None;
+		}
+		Some(body.lock_owner)
 	}
 
 	#[must_use]
 	pub fn open_flags(&self) -> crate::OpenFlags {
-		self.open_flags
+		self.body.as_v7p1().flags
 	}
 }
 
 impl fmt::Debug for ReleaseRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("ReleaseRequest")
-			.field("node_id", &self.node_id)
-			.field("handle", &self.handle)
-			.field("lock_owner", &self.lock_owner)
-			.field("open_flags", &DebugHexU32(self.open_flags))
+			.field("node_id", &self.node_id())
+			.field("handle", &self.handle())
+			.field("lock_owner", &format_args!("{:?}", self.lock_owner()))
+			.field("open_flags", &DebugHexU32(self.open_flags()))
 			.finish()
 	}
 }
@@ -102,41 +97,23 @@ fn decode_request<'a>(
 	version_minor: u32,
 	is_cuse: bool,
 ) -> Result<ReleaseRequest<'a>, io::RequestError> {
-	buf.expect_opcode(fuse_kernel::FUSE_RELEASE)?;
-
-	let node_id = if is_cuse {
-		crate::ROOT_ID
-	} else {
-		decode::node_id(buf.header().nodeid)?
-	};
 	let mut dec = decode::RequestDecoder::new(buf);
+	dec.expect_opcode(fuse_kernel::FUSE_RELEASE)?;
 
-	// FUSE v7.8 added new fields to `fuse_release_in`.
-	if version_minor < 8 {
-		let raw: &'a fuse_release_in_v7p1 = dec.next_sized()?;
-		return Ok(ReleaseRequest {
-			phantom: PhantomData,
-			node_id,
-			handle: raw.fh,
-			lock_owner: None,
-			open_flags: raw.flags,
-		});
+	let header = dec.header();
+	if !is_cuse {
+		decode::node_id(header.nodeid)?;
 	}
 
-	let raw: &'a fuse_kernel::fuse_release_in = dec.next_sized()?;
+	let body = if version_minor >= 8 {
+		let body_v7p8 = dec.next_sized()?;
+		compat::Versioned::new_release_v7p8(version_minor, body_v7p8)
+	} else {
+		let body_v7p1 = dec.next_sized()?;
+		compat::Versioned::new_release_v7p1(version_minor, body_v7p1)
+	};
 
-	let mut lock_owner = None;
-	if raw.release_flags & fuse_kernel::FUSE_RELEASE_FLOCK_UNLOCK != 0 {
-		lock_owner = Some(raw.lock_owner);
-	}
-
-	Ok(ReleaseRequest {
-		phantom: PhantomData,
-		node_id,
-		handle: raw.fh,
-		lock_owner,
-		open_flags: raw.flags,
-	})
+	Ok(ReleaseRequest { header, body })
 }
 
 // }}}

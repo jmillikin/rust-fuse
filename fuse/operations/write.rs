@@ -20,6 +20,7 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::NodeId;
+use crate::internal::compat;
 use crate::internal::fuse_kernel;
 use crate::server;
 use crate::server::io;
@@ -36,22 +37,9 @@ use crate::protocol::common::DebugHexU32;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_WRITE` operation.
 pub struct WriteRequest<'a> {
-	phantom: PhantomData<&'a ()>,
-	node_id: NodeId,
-	offset: u64,
-	handle: u64,
+	header: &'a fuse_kernel::fuse_in_header,
+	body: compat::Versioned<compat::fuse_write_in<'a>>,
 	value: &'a [u8],
-	flags: WriteRequestFlags,
-	lock_owner: Option<u64>,
-	open_flags: u32,
-}
-
-#[repr(C)]
-struct fuse_write_in_v7p1 {
-	fh: u64,
-	offset: u64,
-	size: u32,
-	write_flags: u32,
 }
 
 impl<'a> WriteRequest<'a> {
@@ -69,12 +57,12 @@ impl<'a> WriteRequest<'a> {
 
 	#[must_use]
 	pub fn node_id(&self) -> NodeId {
-		self.node_id
+		crate::NodeId::new(self.header.nodeid).unwrap_or(crate::ROOT_ID)
 	}
 
 	#[must_use]
 	pub fn offset(&self) -> u64 {
-		self.offset
+		self.body.as_v7p1().offset
 	}
 
 	/// The value passed to [`OpenResponse::set_handle`], or zero if not set.
@@ -82,7 +70,7 @@ impl<'a> WriteRequest<'a> {
 	/// [`OpenResponse::set_handle`]: crate::operations::open::OpenResponse::set_handle
 	#[must_use]
 	pub fn handle(&self) -> u64 {
-		self.handle
+		self.body.as_v7p1().fh
 	}
 
 	#[must_use]
@@ -92,30 +80,39 @@ impl<'a> WriteRequest<'a> {
 
 	#[must_use]
 	pub fn flags(&self) -> WriteRequestFlags {
-		self.flags
+		WriteRequestFlags {
+			bits: self.body.as_v7p1().write_flags,
+		}
 	}
 
 	#[must_use]
 	pub fn lock_owner(&self) -> Option<u64> {
-		self.lock_owner
+		let body = self.body.as_v7p9()?;
+		if body.write_flags & fuse_kernel::FUSE_WRITE_LOCKOWNER == 0 {
+			return None;
+		}
+		Some(body.lock_owner)
 	}
 
 	#[must_use]
 	pub fn open_flags(&self) -> crate::OpenFlags {
-		self.open_flags
+		if let Some(body) = self.body.as_v7p9() {
+			return body.flags;
+		}
+		0
 	}
 }
 
 impl fmt::Debug for WriteRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("WriteRequest")
-			.field("node_id", &self.node_id)
-			.field("offset", &self.offset)
-			.field("handle", &self.handle)
+			.field("node_id", &self.node_id())
+			.field("offset", &self.offset())
+			.field("handle", &self.handle())
 			.field("value", &DebugBytesAsString(self.value))
-			.field("flags", &self.flags)
-			.field("lock_owner", &format_args!("{:?}", &self.lock_owner))
-			.field("open_flags", &DebugHexU32(self.open_flags))
+			.field("flags", &self.flags())
+			.field("lock_owner", &format_args!("{:?}", &self.lock_owner()))
+			.field("open_flags", &DebugHexU32(self.open_flags()))
 			.finish()
 	}
 }
@@ -125,52 +122,25 @@ fn decode_request<'a>(
 	version_minor: u32,
 	is_cuse: bool,
 ) -> Result<WriteRequest<'a>, io::RequestError> {
-	buf.expect_opcode(fuse_kernel::FUSE_WRITE)?;
+	let mut dec = decode::RequestDecoder::new(buf);
+	dec.expect_opcode(fuse_kernel::FUSE_WRITE)?;
 
-	let node_id = if is_cuse {
-		crate::ROOT_ID
+	let header = dec.header();
+	if !is_cuse {
+		decode::node_id(header.nodeid)?;
+	}
+
+	let body = if version_minor >= 9 {
+		let body_v7p9 = dec.next_sized()?;
+		compat::Versioned::new_write_v7p9(version_minor, body_v7p9)
 	} else {
-		decode::node_id(buf.header().nodeid)?
+		let body_v7p1 = dec.next_sized()?;
+		compat::Versioned::new_write_v7p1(version_minor, body_v7p1)
 	};
 
-	let mut dec = decode::RequestDecoder::new(buf);
-	if version_minor < 9 {
-		let raw: &'a fuse_write_in_v7p1 = dec.next_sized()?;
-		let value = dec.next_bytes(raw.size)?;
-		return Ok(WriteRequest {
-			phantom: PhantomData,
-			node_id,
-			offset: raw.offset,
-			handle: raw.fh,
-			value,
-			flags: WriteRequestFlags {
-				bits: raw.write_flags,
-			},
-			lock_owner: None,
-			open_flags: 0,
-		});
-	}
+	let value = dec.next_bytes(body.as_v7p1().size)?;
 
-	let raw: &'a fuse_kernel::fuse_write_in = dec.next_sized()?;
-	let value = dec.next_bytes(raw.size)?;
-
-	let mut lock_owner = None;
-	if raw.write_flags & fuse_kernel::FUSE_WRITE_LOCKOWNER != 0 {
-		lock_owner = Some(raw.lock_owner)
-	}
-
-	Ok(WriteRequest {
-		phantom: PhantomData,
-		node_id,
-		offset: raw.offset,
-		handle: raw.fh,
-		value,
-		flags: WriteRequestFlags {
-			bits: raw.write_flags,
-		},
-		lock_owner,
-		open_flags: raw.flags,
-	})
+	Ok(WriteRequest { header, body, value })
 }
 
 // }}}
