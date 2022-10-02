@@ -67,6 +67,7 @@ pub struct SyncfsResponse<'a> {
 }
 
 impl<'a> SyncfsResponse<'a> {
+	#[must_use]
 	pub fn new() -> SyncfsResponse<'a> {
 		Self {
 			phantom: PhantomData,

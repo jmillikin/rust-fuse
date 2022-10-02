@@ -51,6 +51,7 @@ impl<'a> StatfsRequest<'a> {
 		})
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -78,6 +79,7 @@ pub struct StatfsResponse<'a> {
 }
 
 impl<'a> StatfsResponse<'a> {
+	#[must_use]
 	pub fn new() -> StatfsResponse<'a> {
 		Self {
 			phantom: PhantomData,

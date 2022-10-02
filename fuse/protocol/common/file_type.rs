@@ -80,8 +80,8 @@ impl FileType {
 		}
 	}
 
-	pub(crate) fn as_bits(&self) -> u32 {
-		match *self {
+	pub(crate) fn as_bits(self) -> u32 {
+		match self {
 			FileType::Unknown     => DT_UNKNOWN,
 			FileType::NamedPipe   => DT_FIFO,
 			FileType::CharDevice  => DT_CHR,
@@ -94,7 +94,7 @@ impl FileType {
 		}
 	}
 
-	pub(crate) fn mode_bits(&self) -> u32 {
+	pub(crate) fn mode_bits(self) -> u32 {
 		self.as_bits() << 12
 	}
 }

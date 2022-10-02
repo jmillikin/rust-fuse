@@ -50,6 +50,7 @@ impl Error {
 	/// No validation is performed on the error number. The user should
 	/// ensure it will be accpted by the client.
 	#[inline]
+	#[must_use]
 	pub const fn new(errno: NonZeroU16) -> Error {
 		let raw_neg = (errno.get() as i32).saturating_neg();
 		let fuse_error_code = unsafe { NonZeroI32::new_unchecked(raw_neg) };
@@ -57,18 +58,21 @@ impl Error {
 	}
 
 	#[inline]
-	pub(crate) const fn raw_fuse_error_code(&self) -> i32 {
+	#[must_use]
+	pub(crate) const fn raw_fuse_error_code(self) -> i32 {
 		self.fuse_error_code.get()
 	}
 
 	#[cfg(target_os = "linux")]
 	#[inline]
+	#[must_use]
 	const fn from_errno(errno: os_errno::Error) -> Error {
 		Error::new(errno.get_nonzero())
 	}
 
 	#[cfg(target_os = "freebsd")]
 	#[inline]
+	#[must_use]
 	const fn from_errno(errno: os_errno::Error) -> Error {
 		let raw: NonZeroI32 = errno.get_nonzero();
 		let raw_i32 = raw.get();

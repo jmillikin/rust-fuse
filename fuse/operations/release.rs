@@ -62,6 +62,7 @@ impl<'a> ReleaseRequest<'a> {
 		decode_request(request.buf, request.version_minor, true)
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -69,14 +70,17 @@ impl<'a> ReleaseRequest<'a> {
 	/// The value passed to [`OpenResponse::set_handle`], or zero if not set.
 	///
 	/// [`OpenResponse::set_handle`]: crate::operations::open::OpenResponse::set_handle
+	#[must_use]
 	pub fn handle(&self) -> u64 {
 		self.handle
 	}
 
+	#[must_use]
 	pub fn lock_owner(&self) -> Option<u64> {
 		self.lock_owner
 	}
 
+	#[must_use]
 	pub fn open_flags(&self) -> crate::OpenFlags {
 		self.open_flags
 	}
@@ -148,6 +152,7 @@ pub struct ReleaseResponse<'a> {
 }
 
 impl<'a> ReleaseResponse<'a> {
+	#[must_use]
 	pub fn new() -> ReleaseResponse<'a> {
 		Self {
 			phantom: PhantomData,

@@ -35,6 +35,7 @@ use crate::protocol::common::DebugBytesAsString;
 pub struct CuseDeviceName([u8]);
 
 impl CuseDeviceName {
+	#[must_use]
 	pub fn from_bytes<'a>(bytes: &'a [u8]) -> Option<&'a CuseDeviceName> {
 		if bytes.is_empty() || bytes.contains(&0) {
 			return None;
@@ -42,6 +43,7 @@ impl CuseDeviceName {
 		Some(unsafe { &*(bytes as *const [u8] as *const CuseDeviceName) })
 	}
 
+	#[must_use]
 	pub fn as_bytes(&self) -> &[u8] {
 		&self.0
 	}
@@ -101,14 +103,17 @@ impl<'a> CuseInitRequest<'a> {
 		})
 	}
 
+	#[must_use]
 	pub fn version(&self) -> Version {
 		self.version
 	}
 
+	#[must_use]
 	pub fn flags(&self) -> CuseInitFlags {
 		self.flags
 	}
 
+	#[must_use]
 	pub fn mut_flags(&mut self) -> &mut CuseInitFlags {
 		&mut self.flags
 	}
@@ -142,6 +147,7 @@ pub struct CuseInitResponse<'a> {
 }
 
 impl<'a> CuseInitResponse<'a> {
+	#[must_use]
 	pub fn new(device_name: &'a CuseDeviceName) -> CuseInitResponse<'a> {
 		CuseInitResponse {
 			raw: fuse_kernel::cuse_init_out::zeroed(),
@@ -150,6 +156,7 @@ impl<'a> CuseInitResponse<'a> {
 		}
 	}
 
+	#[must_use]
 	pub(crate) fn new_nameless() -> CuseInitResponse<'static> {
 		CuseInitResponse {
 			raw: fuse_kernel::cuse_init_out::zeroed(),
@@ -158,6 +165,7 @@ impl<'a> CuseInitResponse<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn version(&self) -> Version {
 		Version::new(self.raw.major, self.raw.minor)
 	}
@@ -167,10 +175,12 @@ impl<'a> CuseInitResponse<'a> {
 		self.raw.minor = v.minor();
 	}
 
+	#[must_use]
 	pub fn flags(&self) -> CuseInitFlags {
 		self.flags
 	}
 
+	#[must_use]
 	pub fn mut_flags(&mut self) -> &mut CuseInitFlags {
 		&mut self.flags
 	}
@@ -179,6 +189,7 @@ impl<'a> CuseInitResponse<'a> {
 		self.flags = flags;
 	}
 
+	#[must_use]
 	pub fn max_read(&self) -> u32 {
 		self.raw.max_read
 	}
@@ -187,6 +198,7 @@ impl<'a> CuseInitResponse<'a> {
 		self.raw.max_read = max_read;
 	}
 
+	#[must_use]
 	pub fn max_write(&self) -> u32 {
 		self.raw.max_write
 	}
@@ -195,6 +207,7 @@ impl<'a> CuseInitResponse<'a> {
 		self.raw.max_write = max_write;
 	}
 
+	#[must_use]
 	pub fn dev_major(&self) -> u32 {
 		self.raw.dev_major
 	}
@@ -203,6 +216,7 @@ impl<'a> CuseInitResponse<'a> {
 		self.raw.dev_major = dev_major;
 	}
 
+	#[must_use]
 	pub fn dev_minor(&self) -> u32 {
 		self.raw.dev_minor
 	}

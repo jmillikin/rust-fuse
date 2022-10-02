@@ -193,6 +193,7 @@ impl<'a> RequestDecoder<'a> {
 pub(crate) struct NulTerminatedBytes<'a>(&'a [u8]);
 
 impl<'a> NulTerminatedBytes<'a> {
+	#[allow(clippy::wrong_self_convention)] // TODO
 	pub(crate) fn to_bytes_without_nul(self) -> &'a [u8] {
 		&self.0[0..self.0.len() - 1]
 	}

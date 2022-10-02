@@ -57,14 +57,17 @@ impl<'a> LinkRequest<'a> {
 		})
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 
+	#[must_use]
 	pub fn new_parent_id(&self) -> NodeId {
 		self.new_parent_id
 	}
 
+	#[must_use]
 	pub fn new_name(&self) -> &NodeName {
 		self.new_name
 	}
@@ -84,6 +87,7 @@ pub struct LinkResponse<'a> {
 }
 
 impl<'a> LinkResponse<'a> {
+	#[must_use]
 	pub fn new() -> LinkResponse<'a> {
 		Self {
 			phantom: PhantomData,
@@ -91,10 +95,12 @@ impl<'a> LinkResponse<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn node(&self) -> &Node {
 		Node::new_ref(&self.raw)
 	}
 
+	#[must_use]
 	pub fn node_mut(&mut self) -> &mut Node {
 		Node::new_ref_mut(&mut self.raw)
 	}

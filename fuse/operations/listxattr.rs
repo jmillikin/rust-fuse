@@ -58,10 +58,12 @@ impl<'a> ListxattrRequest<'a> {
 		})
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 
+	#[must_use]
 	pub fn size(&self) -> Option<num::NonZeroU32> {
 		self.size
 	}
@@ -89,6 +91,7 @@ pub struct ListxattrResponse<'a> {
 }
 
 impl<'a> ListxattrResponse<'a> {
+	#[must_use]
 	pub fn without_capacity() -> ListxattrResponse<'a> {
 		Self {
 			buf: ListxattrBuf::SizeOnly { size: 0 },
@@ -96,6 +99,7 @@ impl<'a> ListxattrResponse<'a> {
 	}
 
 	#[cfg(feature = "std")]
+	#[must_use]
 	pub fn with_max_size(max_size: u32) -> ListxattrResponse<'a> {
 		Self {
 			buf: ListxattrBuf::Owned {
@@ -105,6 +109,7 @@ impl<'a> ListxattrResponse<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn with_capacity(capacity: &'a mut [u8]) -> ListxattrResponse<'a> {
 		Self {
 			buf: ListxattrBuf::Borrowed {

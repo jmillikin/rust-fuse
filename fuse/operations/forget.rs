@@ -34,10 +34,12 @@ pub struct ForgetRequestItem {
 }
 
 impl ForgetRequestItem {
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 
+	#[must_use]
 	pub fn lookup_count(&self) -> u64 {
 		self.lookup_count
 	}

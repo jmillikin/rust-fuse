@@ -71,6 +71,7 @@ pub struct LockRange {
 }
 
 impl LockRange {
+	#[must_use]
 	pub fn new(start: u64, length: Option<NonZeroU64>) -> Self {
 		Self {
 			start,
@@ -107,10 +108,12 @@ impl LockRange {
 		}
 	}
 
+	#[must_use]
 	pub fn start(&self) -> u64 {
 		self.start
 	}
 
+	#[must_use]
 	pub fn end(&self) -> Option<u64> {
 		if self.end == OFFSET_MAX {
 			return None;
@@ -118,6 +121,7 @@ impl LockRange {
 		Some(self.end)
 	}
 
+	#[must_use]
 	pub fn length(&self) -> Option<NonZeroU64> {
 		if self.end == OFFSET_MAX {
 			return None;
@@ -145,6 +149,7 @@ pub enum Lock {
 }
 
 impl Lock {
+	#[must_use]
 	pub fn new_shared(range: LockRange) -> Self {
 		Self::Shared {
 			range,
@@ -152,6 +157,7 @@ impl Lock {
 		}
 	}
 
+	#[must_use]
 	pub fn new_exclusive(range: LockRange) -> Self {
 		Self::Exclusive {
 			range,
@@ -159,6 +165,7 @@ impl Lock {
 		}
 	}
 
+	#[must_use]
 	pub fn range(&self) -> LockRange {
 		match self {
 			Self::Shared { range, .. } => *range,
@@ -174,6 +181,7 @@ impl Lock {
 		}
 	}
 
+	#[must_use]
 	pub fn process_id(&self) -> u32 {
 		match self {
 			Self::Shared { process_id, .. } => *process_id,

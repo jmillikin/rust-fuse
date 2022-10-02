@@ -40,18 +40,22 @@ pub struct PollRequest<'a> {
 }
 
 impl<'a> PollRequest<'a> {
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		unsafe { NodeId::new_unchecked(self.header.nodeid) }
 	}
 
+	#[must_use]
 	pub fn poll_events(&self) -> crate::PollEvents {
 		self.body.events
 	}
 
+	#[must_use]
 	pub fn poll_handle(&self) -> crate::PollHandle {
 		crate::PollHandle { bits: self.body.kh }
 	}
 
+	#[must_use]
 	pub fn flags(&self) -> PollRequestFlags {
 		PollRequestFlags {
 			bits: self.body.flags,
@@ -96,6 +100,7 @@ pub struct PollResponse<'a> {
 }
 
 impl<'a> PollResponse<'a> {
+	#[must_use]
 	pub fn new() -> PollResponse<'a> {
 		Self {
 			phantom: PhantomData,
@@ -103,6 +108,7 @@ impl<'a> PollResponse<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn poll_events(&self) -> crate::PollEvents {
 		self.raw.revents
 	}

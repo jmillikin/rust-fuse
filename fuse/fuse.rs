@@ -16,14 +16,19 @@
 
 #![cfg_attr(not(any(doc, feature = "std")), no_std)]
 
-#![allow(clippy::collapsible_if)] // TODO
-#![allow(clippy::len_without_is_empty)]
-#![allow(clippy::missing_safety_doc)] // TODO
-#![allow(clippy::needless_late_init)] // TODO
-#![allow(clippy::needless_lifetimes)] // TODO
-#![allow(clippy::new_without_default)]
-#![allow(clippy::tabs_in_doc_comments)]
-#![allow(clippy::wrong_self_convention)] // TODO
+#![allow(
+	clippy::collapsible_if,
+	clippy::len_without_is_empty,
+	clippy::needless_late_init,
+	clippy::needless_lifetimes,
+	clippy::new_without_default,
+	clippy::tabs_in_doc_comments,
+)]
+
+#![warn(
+	clippy::must_use_candidate,
+	clippy::trivially_copy_pass_by_ref,
+)]
 
 #[macro_use]
 mod internal;
@@ -149,16 +154,19 @@ impl Version {
 	};
 
 	#[inline]
+	#[must_use]
 	pub const fn new(major: u32, minor: u32) -> Version {
 		Version { major, minor }
 	}
 
 	#[inline]
+	#[must_use]
 	pub const fn major(&self) -> u32 {
 		self.major
 	}
 
 	#[inline]
+	#[must_use]
 	pub const fn minor(&self) -> u32 {
 		self.minor
 	}

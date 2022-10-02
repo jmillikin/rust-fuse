@@ -52,6 +52,7 @@ impl<'a> OpenRequest<'a> {
 		decode_request(request.buf, true)
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		match NodeId::new(self.header.nodeid) {
 			Some(id) => id,
@@ -59,12 +60,14 @@ impl<'a> OpenRequest<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn flags(&self) -> OpenRequestFlags {
 		OpenRequestFlags {
 			bits: self.body.open_flags,
 		}
 	}
 
+	#[must_use]
 	pub fn open_flags(&self) -> crate::OpenFlags {
 		self.body.flags
 	}
@@ -109,6 +112,7 @@ pub struct OpenResponse<'a> {
 }
 
 impl<'a> OpenResponse<'a> {
+	#[must_use]
 	pub fn new() -> OpenResponse<'a> {
 		Self {
 			phantom: PhantomData,
@@ -116,6 +120,7 @@ impl<'a> OpenResponse<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn handle(&self) -> u64 {
 		self.raw.fh
 	}
@@ -124,12 +129,14 @@ impl<'a> OpenResponse<'a> {
 		self.raw.fh = handle;
 	}
 
+	#[must_use]
 	pub fn flags(&self) -> OpenResponseFlags {
 		OpenResponseFlags {
 			bits: self.raw.open_flags,
 		}
 	}
 
+	#[must_use]
 	pub fn mut_flags(&mut self) -> &mut OpenResponseFlags {
 		OpenResponseFlags::reborrow_mut(&mut self.raw.open_flags)
 	}

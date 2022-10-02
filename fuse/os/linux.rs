@@ -45,6 +45,7 @@ pub struct MountOptions<'a> {
 }
 
 impl<'a> MountOptions<'a> {
+	#[must_use]
 	pub fn new() -> Self {
 		MountOptions {
 			allow_other: false,
@@ -65,6 +66,7 @@ impl<'a> MountOptions<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn allow_other(&self) -> bool {
 		self.allow_other
 	}
@@ -73,6 +75,7 @@ impl<'a> MountOptions<'a> {
 		self.allow_other = allow_other;
 	}
 
+	#[must_use]
 	pub fn block_size(&self) -> Option<u32> {
 		self.block_size
 	}
@@ -81,6 +84,7 @@ impl<'a> MountOptions<'a> {
 		self.block_size = block_size;
 	}
 
+	#[must_use]
 	pub fn default_permissions(&self) -> bool {
 		self.default_permissions
 	}
@@ -90,6 +94,7 @@ impl<'a> MountOptions<'a> {
 	}
 
 	#[cfg(any(doc, feature = "std"))]
+	#[must_use]
 	pub fn fs_type(&self) -> &'a CStr {
 		self.fs_type.unwrap_or(CSTR_FUSE)
 	}
@@ -100,6 +105,7 @@ impl<'a> MountOptions<'a> {
 	}
 
 	#[cfg(any(doc, feature = "std"))]
+	#[must_use]
 	pub fn fs_subtype(&self) -> Option<&'a CStr> {
 		self.fs_subtype
 	}
@@ -109,6 +115,7 @@ impl<'a> MountOptions<'a> {
 		self.fs_subtype = fs_subtype;
 	}
 
+	#[must_use]
 	pub fn fuse_device_fd(&self) -> Option<u32> {
 		self.fuse_device_fd
 	}
@@ -117,6 +124,7 @@ impl<'a> MountOptions<'a> {
 		self.fuse_device_fd = fuse_device_fd;
 	}
 
+	#[must_use]
 	pub fn group_id(&self) -> Option<u32> {
 		self.group_id
 	}
@@ -125,6 +133,7 @@ impl<'a> MountOptions<'a> {
 		self.group_id = group_id;
 	}
 
+	#[must_use]
 	pub fn max_read(&self) -> Option<u32> {
 		self.max_read
 	}
@@ -133,6 +142,7 @@ impl<'a> MountOptions<'a> {
 		self.max_read = max_read;
 	}
 
+	#[must_use]
 	pub fn root_mode(&self) -> Option<u32> {
 		self.root_mode
 	}
@@ -142,6 +152,7 @@ impl<'a> MountOptions<'a> {
 	}
 
 	#[cfg(any(doc, feature = "std"))]
+	#[must_use]
 	pub fn source(&self) -> &'a CStr {
 		self.source.unwrap_or(CSTR_FUSE)
 	}
@@ -151,6 +162,7 @@ impl<'a> MountOptions<'a> {
 		self.source = source;
 	}
 
+	#[must_use]
 	pub fn user_id(&self) -> Option<u32> {
 		self.user_id
 	}
@@ -166,6 +178,7 @@ pub struct MountData<'a> {
 }
 
 impl<'a> MountData<'a> {
+	#[must_use]
 	pub fn new(buf: &'a mut [u8], options: &MountOptions) -> Option<Self> {
 		let mut w = BufWriter { buf, count: 0 };
 		if write_mount_data(&mut w, options).is_err() {
@@ -175,11 +188,13 @@ impl<'a> MountData<'a> {
 		Some(Self { buf: &buf[..count] })
 	}
 
+	#[must_use]
 	pub fn as_bytes_with_nul(&self) -> &'a [u8] {
 		self.buf
 	}
 
 	#[cfg(any(doc, feature = "std"))]
+	#[must_use]
 	pub fn as_cstr(&self) -> &'a CStr {
 		unsafe { CStr::from_bytes_with_nul_unchecked(self.buf) }
 	}

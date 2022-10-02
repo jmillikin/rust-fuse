@@ -31,6 +31,7 @@ pub struct MountOptions<'a> {
 }
 
 impl<'a> MountOptions<'a> {
+	#[must_use]
 	pub fn flags(&self) -> i32 {
 		self.flags
 	}

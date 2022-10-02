@@ -45,6 +45,7 @@ struct FuseOptions {
 }
 
 impl<S, H> FuseServerBuilder<S, H> {
+	#[must_use]
 	pub fn new(socket: S, handlers: H) -> Self {
 		Self {
 			socket,
@@ -58,17 +59,20 @@ impl<S, H> FuseServerBuilder<S, H> {
 		}
 	}
 
+	#[must_use]
 	pub fn max_write(mut self, max_write: u32) -> Self {
 		self.opts.max_write = max_write;
 		self
 	}
 
+	#[must_use]
 	pub fn fuse_init_flags(mut self, flags: FuseInitFlags) -> Self {
 		self.opts.flags = flags;
 		self
 	}
 
 	#[cfg(feature = "std")]
+	#[must_use]
 	pub fn server_hooks(mut self, hooks: Box<dyn ServerHooks>) -> Self {
 		self.hooks = Some(hooks);
 		self
@@ -249,10 +253,12 @@ pub struct FuseCall<'a, S> {
 }
 
 impl<S> FuseCall<'_, S> {
+	#[must_use]
 	pub fn header(&self) -> &server::RequestHeader {
 		self.header
 	}
 
+	#[must_use]
 	pub fn response_context(&self) -> server::ResponseContext {
 		self.response_ctx
 	}

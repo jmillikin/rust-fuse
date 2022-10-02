@@ -56,6 +56,7 @@ impl<'a> ReadlinkRequest<'a> {
 		})
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -83,10 +84,12 @@ pub struct ReadlinkResponse<'a> {
 
 impl<'a> ReadlinkResponse<'a> {
 	#[cfg(feature = "std")]
+	#[must_use]
 	pub fn new(target: &'a CStr) -> ReadlinkResponse<'a> {
 		Self { target: target.to_bytes() }
 	}
 
+	#[must_use]
 	pub fn from_name(target: &'a NodeName) -> ReadlinkResponse<'a> {
 		Self { target: target.as_bytes() }
 	}

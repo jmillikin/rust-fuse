@@ -82,22 +82,27 @@ impl<'a> MknodRequest<'a> {
 		})
 	}
 
+	#[must_use]
 	pub fn parent_id(&self) -> NodeId {
 		self.parent_id
 	}
 
+	#[must_use]
 	pub fn name(&self) -> &NodeName {
 		self.name
 	}
 
+	#[must_use]
 	pub fn mode(&self) -> FileMode {
 		FileMode(self.raw.mode)
 	}
 
+	#[must_use]
 	pub fn umask(&self) -> u32 {
 		self.raw.umask
 	}
 
+	#[must_use]
 	pub fn device_number(&self) -> Option<u32> {
 		match self.mode().file_type() {
 			Some(FileType::CharDevice) | Some(FileType::BlockDevice) => {
@@ -134,6 +139,7 @@ pub struct MknodResponse<'a> {
 }
 
 impl<'a> MknodResponse<'a> {
+	#[must_use]
 	pub fn new() -> MknodResponse<'a> {
 		Self {
 			phantom: PhantomData,
@@ -141,10 +147,12 @@ impl<'a> MknodResponse<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn node(&self) -> &Node {
 		Node::new_ref(&self.raw)
 	}
 
+	#[must_use]
 	pub fn node_mut(&mut self) -> &mut Node {
 		Node::new_ref_mut(&mut self.raw)
 	}

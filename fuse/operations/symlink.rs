@@ -57,14 +57,17 @@ impl<'a> SymlinkRequest<'a> {
 		})
 	}
 
+	#[must_use]
 	pub fn parent_id(&self) -> NodeId {
 		self.parent_id
 	}
 
+	#[must_use]
 	pub fn name(&self) -> &NodeName {
 		self.name
 	}
 
+	#[must_use]
 	pub fn content(&self) -> &[u8] {
 		self.content
 	}
@@ -94,6 +97,7 @@ pub struct SymlinkResponse<'a> {
 }
 
 impl<'a> SymlinkResponse<'a> {
+	#[must_use]
 	pub fn new() -> SymlinkResponse<'a> {
 		Self {
 			phantom: PhantomData,
@@ -101,10 +105,12 @@ impl<'a> SymlinkResponse<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn node(&self) -> &Node {
 		Node::new_ref(&self.raw)
 	}
 
+	#[must_use]
 	pub fn node_mut(&mut self) -> &mut Node {
 		Node::new_ref_mut(&mut self.raw)
 	}

@@ -102,21 +102,25 @@ impl<'a> SendBuf<'a> {
 
 impl<'a> SendBuf<'a> {
 	#[inline]
+	#[must_use]
 	pub fn chunks(&self) -> &[&'a [u8]] {
 		unsafe { self.chunks.get_unchecked(..self.chunks_len) }
 	}
 
 	#[inline]
+	#[must_use]
 	pub fn chunks_len(&self) -> usize {
 		self.chunks_len
 	}
 
 	#[inline]
+	#[must_use]
 	pub fn len(&self) -> usize {
 		self.len
 	}
 
 	#[cfg(any(doc, feature = "std"))]
+	#[must_use]
 	pub fn to_vec(&self) -> Vec<u8> {
 		let mut vec = Vec::with_capacity(self.len);
 		for chunk in self.chunks() {
@@ -126,6 +130,7 @@ impl<'a> SendBuf<'a> {
 	}
 
 	#[inline]
+	#[must_use]
 	pub fn map_chunks_into<'b, T>(
 		&self,
 		capacity: &'b mut [T; SendBuf::MAX_CHUNKS_LEN],
@@ -142,6 +147,7 @@ impl<'a> SendBuf<'a> {
 	}
 
 	#[inline]
+	#[must_use]
 	pub fn map_chunks_into_uninit<'b, T>(
 		&self,
 		capacity: &'b mut [mem::MaybeUninit<T>; SendBuf::MAX_CHUNKS_LEN],

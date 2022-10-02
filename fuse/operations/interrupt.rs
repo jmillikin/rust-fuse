@@ -42,6 +42,7 @@ impl<'a> InterruptRequest<'a> {
 		Ok(Self { body })
 	}
 
+	#[must_use]
 	pub fn request_id(&self) -> u64 {
 		self.body.unique
 	}

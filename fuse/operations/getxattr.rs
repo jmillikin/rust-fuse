@@ -57,14 +57,17 @@ impl<'a> GetxattrRequest<'a> {
 		})
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 
+	#[must_use]
 	pub fn size(&self) -> Option<num::NonZeroU32> {
 		self.size
 	}
 
+	#[must_use]
 	pub fn name(&self) -> &XattrName {
 		self.name
 	}
@@ -95,6 +98,7 @@ pub struct GetxattrResponse<'a> {
 }
 
 impl<'a> GetxattrResponse<'a> {
+	#[must_use]
 	pub fn new(request_size: Option<num::NonZeroU32>) -> GetxattrResponse<'a> {
 		Self {
 			request_size,
@@ -103,10 +107,12 @@ impl<'a> GetxattrResponse<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn request_size(&self) -> Option<num::NonZeroU32> {
 		self.request_size
 	}
 
+	#[must_use]
 	pub fn value(&self) -> &[u8] {
 		self.value
 	}

@@ -14,6 +14,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#![warn(
+	clippy::must_use_candidate,
+	clippy::trivially_copy_pass_by_ref,
+)]
+
 // use core::ffi::CStr;
 use std::ffi::CStr;
 
@@ -50,6 +55,7 @@ pub struct MountOptions<'a> {
 }
 
 impl<'a> MountOptions<'a> {
+	#[must_use]
 	pub fn dev_fuse(&self) -> &'a CStr {
 		self.dev_fuse.unwrap_or(DEV_FUSE)
 	}
@@ -58,6 +64,7 @@ impl<'a> MountOptions<'a> {
 		self.dev_fuse = dev_fuse;
 	}
 
+	#[must_use]
 	pub fn flags(&self) -> u32 {
 		self.flags
 	}

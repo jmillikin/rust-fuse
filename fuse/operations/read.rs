@@ -52,14 +52,17 @@ impl<'a> ReadRequest<'a> {
 		decode_request(request.buf, request.version_minor, true)
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> crate::NodeId {
 		crate::NodeId::new(self.header.nodeid).unwrap_or(crate::ROOT_ID)
 	}
 
+	#[must_use]
 	pub fn size(&self) -> u32 {
 		self.body.as_v7p1().size
 	}
 
+	#[must_use]
 	pub fn offset(&self) -> u64 {
 		self.body.as_v7p1().offset
 	}
@@ -67,10 +70,12 @@ impl<'a> ReadRequest<'a> {
 	/// The value passed to [`OpenResponse::set_handle`], or zero if not set.
 	///
 	/// [`OpenResponse::set_handle`]: crate::operations::open::OpenResponse::set_handle
+	#[must_use]
 	pub fn handle(&self) -> u64 {
 		self.body.as_v7p1().fh
 	}
 
+	#[must_use]
 	pub fn lock_owner(&self) -> Option<u64> {
 		let body_v7p1 = self.body.as_v7p9()?;
 		if body_v7p1.read_flags & fuse_kernel::FUSE_READ_LOCKOWNER == 0 {
@@ -79,6 +84,7 @@ impl<'a> ReadRequest<'a> {
 		Some(body_v7p1.lock_owner)
 	}
 
+	#[must_use]
 	pub fn open_flags(&self) -> crate::OpenFlags {
 		if let Some(body_v7p1) = self.body.as_v7p9() {
 			return body_v7p1.flags;
@@ -138,6 +144,7 @@ pub struct ReadResponse<'a> {
 }
 
 impl<'a> ReadResponse<'a> {
+	#[must_use]
 	pub fn from_bytes(bytes: &'a [u8]) -> ReadResponse<'a> {
 		Self { bytes }
 	}

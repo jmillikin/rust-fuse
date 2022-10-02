@@ -67,10 +67,12 @@ impl<'a> WriteRequest<'a> {
 		decode_request(request.buf, request.version_minor, true)
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 
+	#[must_use]
 	pub fn offset(&self) -> u64 {
 		self.offset
 	}
@@ -78,22 +80,27 @@ impl<'a> WriteRequest<'a> {
 	/// The value passed to [`OpenResponse::set_handle`], or zero if not set.
 	///
 	/// [`OpenResponse::set_handle`]: crate::operations::open::OpenResponse::set_handle
+	#[must_use]
 	pub fn handle(&self) -> u64 {
 		self.handle
 	}
 
+	#[must_use]
 	pub fn value(&self) -> &[u8] {
 		self.value
 	}
 
+	#[must_use]
 	pub fn flags(&self) -> WriteRequestFlags {
 		self.flags
 	}
 
+	#[must_use]
 	pub fn lock_owner(&self) -> Option<u64> {
 		self.lock_owner
 	}
 
+	#[must_use]
 	pub fn open_flags(&self) -> crate::OpenFlags {
 		self.open_flags
 	}
@@ -180,6 +187,7 @@ pub struct WriteResponse<'a> {
 }
 
 impl<'a> WriteResponse<'a> {
+	#[must_use]
 	pub fn new() -> WriteResponse<'a> {
 		Self {
 			phantom: PhantomData,

@@ -57,18 +57,22 @@ impl<'a> GetlkRequest<'a> {
 		Ok(Self { raw, node_id, lock })
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 
+	#[must_use]
 	pub fn handle(&self) -> u64 {
 		self.raw.fh
 	}
 
+	#[must_use]
 	pub fn owner(&self) -> u64 {
 		self.raw.owner
 	}
 
+	#[must_use]
 	pub fn lock(&self) -> &Lock {
 		&self.lock
 	}
@@ -99,6 +103,7 @@ pub struct GetlkResponse<'a> {
 }
 
 impl<'a> GetlkResponse<'a> {
+	#[must_use]
 	pub fn new() -> GetlkResponse<'a> {
 		Self {
 			phantom: PhantomData,
@@ -106,6 +111,7 @@ impl<'a> GetlkResponse<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn lock(&self) -> &Option<Lock> {
 		&self.lock
 	}

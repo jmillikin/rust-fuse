@@ -50,6 +50,7 @@ impl<'a> FsyncRequest<'a> {
 		decode_request(request.buf, true)
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		match NodeId::new(self.header.nodeid) {
 			Some(id) => id,
@@ -57,10 +58,12 @@ impl<'a> FsyncRequest<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn handle(&self) -> u64 {
 		self.body.fh
 	}
 
+	#[must_use]
 	pub fn flags(&self) -> FsyncRequestFlags {
 		FsyncRequestFlags {
 			bits: self.body.fsync_flags,
@@ -106,6 +109,7 @@ pub struct FsyncResponse<'a> {
 }
 
 impl<'a> FsyncResponse<'a> {
+	#[must_use]
 	pub fn new() -> FsyncResponse<'a> {
 		Self {
 			phantom: PhantomData,

@@ -95,6 +95,7 @@ pub struct Delete<'a> {
 }
 
 impl<'a> Delete<'a> {
+	#[must_use]
 	pub fn new(
 		parent_id: crate::NodeId,
 		node_id: crate::NodeId,
@@ -111,14 +112,17 @@ impl<'a> Delete<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn parent_id(&self) -> crate::NodeId {
 		unsafe { crate::NodeId::new_unchecked(self.raw.parent) }
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> crate::NodeId {
 		unsafe { crate::NodeId::new_unchecked(self.raw.child) }
 	}
 
+	#[must_use]
 	pub fn name(&self) -> &crate::NodeName {
 		self.name
 	}
@@ -145,6 +149,7 @@ pub struct InvalidateEntry<'a> {
 }
 
 impl<'a> InvalidateEntry<'a> {
+	#[must_use]
 	pub fn new(
 		parent_id: crate::NodeId,
 		name: &'a crate::NodeName,
@@ -159,10 +164,12 @@ impl<'a> InvalidateEntry<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn parent_id(&self) -> crate::NodeId {
 		unsafe { crate::NodeId::new_unchecked(self.raw.parent) }
 	}
 
+	#[must_use]
 	pub fn name(&self) -> &crate::NodeName {
 		self.name
 	}
@@ -187,6 +194,7 @@ pub struct InvalidateInode {
 }
 
 impl InvalidateInode {
+	#[must_use]
 	pub fn new(node_id: crate::NodeId) -> InvalidateInode {
 		Self {
 			raw: fuse_kernel::fuse_notify_inval_inode_out {
@@ -197,10 +205,12 @@ impl InvalidateInode {
 		}
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> crate::NodeId {
 		unsafe { crate::NodeId::new_unchecked(self.raw.ino) }
 	}
 
+	#[must_use]
 	pub fn offset(&self) -> i64 {
 		self.raw.off
 	}
@@ -215,6 +225,7 @@ impl InvalidateInode {
 		};
 	}
 
+	#[must_use]
 	pub fn size(&self) -> i64 {
 		self.raw.len
 	}
@@ -250,6 +261,7 @@ pub struct Poll {
 }
 
 impl Poll {
+	#[must_use]
 	pub fn new(poll_handle: crate::PollHandle) -> Poll {
 		Self {
 			raw: fuse_kernel::fuse_notify_poll_wakeup_out {
@@ -258,6 +270,7 @@ impl Poll {
 		}
 	}
 
+	#[must_use]
 	pub fn poll_handle(&self) -> crate::PollHandle {
 		crate::PollHandle { bits: self.raw.kh }
 	}

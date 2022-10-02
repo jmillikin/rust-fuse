@@ -51,10 +51,12 @@ impl<'a> UnlinkRequest<'a> {
 		})
 	}
 
+	#[must_use]
 	pub fn parent_id(&self) -> NodeId {
 		self.parent_id
 	}
 
+	#[must_use]
 	pub fn name(&self) -> &NodeName {
 		self.name
 	}
@@ -73,6 +75,7 @@ pub struct UnlinkResponse<'a> {
 }
 
 impl<'a> UnlinkResponse<'a> {
+	#[must_use]
 	pub fn new() -> UnlinkResponse<'a> {
 		Self {
 			phantom: PhantomData,

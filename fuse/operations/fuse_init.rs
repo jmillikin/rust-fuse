@@ -104,10 +104,12 @@ impl<'a> FuseInitRequest<'a> {
 		})
 	}
 
+	#[must_use]
 	pub fn version(&self) -> Version {
 		self.version
 	}
 
+	#[must_use]
 	pub fn max_readahead(&self) -> u32 {
 		self.max_readahead
 	}
@@ -116,10 +118,12 @@ impl<'a> FuseInitRequest<'a> {
 		self.max_readahead = max_readahead;
 	}
 
+	#[must_use]
 	pub fn flags(&self) -> FuseInitFlags {
 		self.flags
 	}
 
+	#[must_use]
 	pub fn mut_flags(&mut self) -> &mut FuseInitFlags {
 		&mut self.flags
 	}
@@ -153,6 +157,7 @@ pub struct FuseInitResponse {
 }
 
 impl FuseInitResponse {
+	#[must_use]
 	pub fn new() -> FuseInitResponse {
 		Self {
 			raw: fuse_kernel::fuse_init_out {
@@ -173,6 +178,7 @@ impl FuseInitResponse {
 		}
 	}
 
+	#[must_use]
 	pub fn version(&self) -> Version {
 		Version::new(self.raw.major, self.raw.minor)
 	}
@@ -182,10 +188,12 @@ impl FuseInitResponse {
 		self.raw.minor = v.minor();
 	}
 
+	#[must_use]
 	pub fn flags(&self) -> FuseInitFlags {
 		self.flags
 	}
 
+	#[must_use]
 	pub fn mut_flags(&mut self) -> &mut FuseInitFlags {
 		&mut self.flags
 	}
@@ -194,6 +202,7 @@ impl FuseInitResponse {
 		self.flags = flags;
 	}
 
+	#[must_use]
 	pub fn max_readahead(&self) -> u32 {
 		self.raw.max_readahead
 	}
@@ -202,6 +211,7 @@ impl FuseInitResponse {
 		self.raw.max_readahead = max_readahead;
 	}
 
+	#[must_use]
 	pub fn max_background(&self) -> u16 {
 		self.raw.max_background
 	}
@@ -210,6 +220,7 @@ impl FuseInitResponse {
 		self.raw.max_background = max_background;
 	}
 
+	#[must_use]
 	pub fn congestion_threshold(&self) -> u16 {
 		self.raw.congestion_threshold
 	}
@@ -218,6 +229,7 @@ impl FuseInitResponse {
 		self.raw.congestion_threshold = congestion_threshold;
 	}
 
+	#[must_use]
 	pub fn max_write(&self) -> u32 {
 		self.raw.max_write
 	}
@@ -226,6 +238,7 @@ impl FuseInitResponse {
 		self.raw.max_write = max_write;
 	}
 
+	#[must_use]
 	pub fn time_granularity(&self) -> u32 {
 		self.raw.time_gran
 	}

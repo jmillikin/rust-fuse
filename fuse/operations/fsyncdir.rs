@@ -50,14 +50,17 @@ impl<'a> FsyncdirRequest<'a> {
 		Ok(Self { header, body })
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		unsafe { NodeId::new_unchecked(self.header.nodeid) }
 	}
 
+	#[must_use]
 	pub fn handle(&self) -> u64 {
 		self.body.fh
 	}
 
+	#[must_use]
 	pub fn flags(&self) -> FsyncdirRequestFlags {
 		FsyncdirRequestFlags {
 			bits: self.body.fsync_flags,
@@ -88,6 +91,7 @@ pub struct FsyncdirResponse<'a> {
 }
 
 impl<'a> FsyncdirResponse<'a> {
+	#[must_use]
 	pub fn new() -> FsyncdirResponse<'a> {
 		Self {
 			phantom: PhantomData,

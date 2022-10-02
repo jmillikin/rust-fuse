@@ -49,14 +49,17 @@ impl<'a> BmapRequest<'a> {
 		Ok(Self { header, body })
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> crate::NodeId {
 		unsafe { crate::NodeId::new_unchecked(self.header.nodeid) }
 	}
 
+	#[must_use]
 	pub fn block(&self) -> u64 {
 		self.body.block
 	}
 
+	#[must_use]
 	pub fn block_size(&self) -> u32 {
 		self.body.blocksize
 	}
@@ -86,6 +89,7 @@ pub struct BmapResponse<'a> {
 }
 
 impl<'a> BmapResponse<'a> {
+	#[must_use]
 	pub fn new() -> BmapResponse<'a> {
 		Self {
 			phantom: PhantomData,
@@ -93,6 +97,7 @@ impl<'a> BmapResponse<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn block(self) -> u64 {
 		self.raw.block
 	}

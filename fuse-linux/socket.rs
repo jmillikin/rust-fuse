@@ -156,6 +156,7 @@ impl FuseServerSocket {
 		Ok(FuseServerSocket { socket })
 	}
 
+	#[must_use]
 	pub fn fuse_device_fd(&self) -> u32 {
 		self.socket.fd as u32
 	}

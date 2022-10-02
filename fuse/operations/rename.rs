@@ -72,22 +72,27 @@ impl<'a> RenameRequest<'a> {
 		})
 	}
 
+	#[must_use]
 	pub fn old_directory_id(&self) -> NodeId {
 		self.old_directory_id
 	}
 
+	#[must_use]
 	pub fn old_name(&self) -> &NodeName {
 		self.old_name
 	}
 
+	#[must_use]
 	pub fn new_directory_id(&self) -> NodeId {
 		self.new_directory_id
 	}
 
+	#[must_use]
 	pub fn new_name(&self) -> &NodeName {
 		self.new_name
 	}
 
+	#[must_use]
 	pub fn rename_flags(&self) -> crate::RenameFlags {
 		self.rename_flags
 	}
@@ -118,6 +123,7 @@ pub struct RenameResponse<'a> {
 }
 
 impl<'a> RenameResponse<'a> {
+	#[must_use]
 	pub fn new() -> RenameResponse<'a> {
 		Self {
 			phantom: PhantomData,

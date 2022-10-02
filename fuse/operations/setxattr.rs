@@ -72,24 +72,29 @@ impl<'a> SetxattrRequest<'a> {
 		Ok(Self { header, raw, name, value })
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		unsafe { NodeId::new_unchecked(self.header.nodeid) }
 	}
 
+	#[must_use]
 	pub fn name(&self) -> &XattrName {
 		self.name
 	}
 
+	#[must_use]
 	pub fn flags(&self) -> SetxattrRequestFlags {
 		SetxattrRequestFlags {
 			bits: self.raw.setxattr_flags,
 		}
 	}
 
+	#[must_use]
 	pub fn setxattr_flags(&self) -> crate::SetxattrFlags {
 		self.raw.flags
 	}
 
+	#[must_use]
 	pub fn value(&self) -> &[u8] {
 		self.value
 	}
@@ -120,6 +125,7 @@ pub struct SetxattrResponse<'a> {
 }
 
 impl<'a> SetxattrResponse<'a> {
+	#[must_use]
 	pub fn new() -> SetxattrResponse<'a> {
 		Self {
 			phantom: PhantomData,

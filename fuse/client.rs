@@ -31,14 +31,17 @@ impl ResponseHeader {
 		unsafe { transmute(raw) }
 	}
 
+	#[must_use]
 	pub fn request_id(&self) -> Option<NonZeroU64> {
 		NonZeroU64::new(self.0.unique)
 	}
 
+	#[must_use]
 	pub fn error(&self) -> Option<NonZeroI32> {
 		NonZeroI32::new(self.0.error)
 	}
 
+	#[must_use]
 	pub fn len(&self) -> u32 {
 		self.0.len
 	}

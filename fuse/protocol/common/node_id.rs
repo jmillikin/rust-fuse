@@ -27,6 +27,7 @@ pub const ROOT_ID: NodeId = NodeId(unsafe {
 });
 
 impl NodeId {
+	#[must_use]
 	pub const fn new(id: u64) -> Option<NodeId> {
 		match num::NonZeroU64::new(id) {
 			Some(id) => Some(NodeId(id)),
@@ -38,6 +39,7 @@ impl NodeId {
 		NodeId(num::NonZeroU64::new_unchecked(id))
 	}
 
+	#[must_use]
 	pub fn get(&self) -> u64 {
 		self.0.get()
 	}

@@ -52,22 +52,27 @@ impl<'a> FallocateRequest<'a> {
 		Ok(Self { header, body })
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		unsafe { NodeId::new_unchecked(self.header.nodeid) }
 	}
 
+	#[must_use]
 	pub fn handle(&self) -> u64 {
 		self.body.fh
 	}
 
+	#[must_use]
 	pub fn offset(&self) -> u64 {
 		self.body.offset
 	}
 
+	#[must_use]
 	pub fn length(&self) -> u64 {
 		self.body.length
 	}
 
+	#[must_use]
 	pub fn fallocate_flags(&self) -> crate::FallocateFlags {
 		self.body.mode
 	}
@@ -98,6 +103,7 @@ pub struct FallocateResponse<'a> {
 }
 
 impl<'a> FallocateResponse<'a> {
+	#[must_use]
 	pub fn new() -> FallocateResponse<'a> {
 		Self {
 			phantom: PhantomData,

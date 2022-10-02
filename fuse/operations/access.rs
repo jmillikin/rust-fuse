@@ -52,10 +52,12 @@ impl<'a> AccessRequest<'a> {
 		})
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 
+	#[must_use]
 	pub fn mask(&self) -> u32 {
 		self.mask
 	}
@@ -83,6 +85,7 @@ pub struct AccessResponse<'a> {
 }
 
 impl<'a> AccessResponse<'a> {
+	#[must_use]
 	pub fn new() -> AccessResponse<'a> {
 		Self {
 			phantom: PhantomData,

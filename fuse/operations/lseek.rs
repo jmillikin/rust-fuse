@@ -50,18 +50,22 @@ impl<'a> LseekRequest<'a> {
 		})
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 
+	#[must_use]
 	pub fn handle(&self) -> u64 {
 		self.raw.fh
 	}
 
+	#[must_use]
 	pub fn offset(&self) -> u64 {
 		self.raw.offset
 	}
 
+	#[must_use]
 	pub fn whence(&self) -> LseekWhence {
 		LseekWhence(self.raw.whence)
 	}
@@ -110,6 +114,7 @@ pub struct LseekResponse<'a> {
 }
 
 impl<'a> LseekResponse<'a> {
+	#[must_use]
 	pub fn new() -> LseekResponse<'a> {
 		Self {
 			phantom: PhantomData,

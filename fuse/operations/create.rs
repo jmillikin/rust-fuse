@@ -90,26 +90,32 @@ impl<'a> CreateRequest<'a> {
 		})
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 
+	#[must_use]
 	pub fn name(&self) -> &NodeName {
 		self.name
 	}
 
+	#[must_use]
 	pub fn flags(&self) -> CreateRequestFlags {
 		self.flags
 	}
 
+	#[must_use]
 	pub fn open_flags(&self) -> crate::OpenFlags {
 		self.open_flags
 	}
 
+	#[must_use]
 	pub fn mode(&self) -> FileMode {
 		FileMode(self.mode)
 	}
 
+	#[must_use]
 	pub fn umask(&self) -> u32 {
 		self.umask
 	}
@@ -144,6 +150,7 @@ pub struct CreateResponse<'a> {
 }
 
 impl<'a> CreateResponse<'a> {
+	#[must_use]
 	pub fn new() -> CreateResponse<'a> {
 		Self {
 			phantom: PhantomData,
@@ -153,10 +160,12 @@ impl<'a> CreateResponse<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn node(&self) -> &Node {
 		Node::new_ref(&self.entry_out)
 	}
 
+	#[must_use]
 	pub fn node_mut(&mut self) -> &mut Node {
 		Node::new_ref_mut(&mut self.entry_out)
 	}
@@ -165,10 +174,12 @@ impl<'a> CreateResponse<'a> {
 		self.handle = handle;
 	}
 
+	#[must_use]
 	pub fn flags(&self) -> CreateResponseFlags {
 		self.flags
 	}
 
+	#[must_use]
 	pub fn mut_flags(&mut self) -> &mut CreateResponseFlags {
 		&mut self.flags
 	}

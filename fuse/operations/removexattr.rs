@@ -51,10 +51,12 @@ impl<'a> RemovexattrRequest<'a> {
 		})
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 
+	#[must_use]
 	pub fn name(&self) -> &XattrName {
 		self.name
 	}
@@ -82,6 +84,7 @@ pub struct RemovexattrResponse<'a> {
 }
 
 impl<'a> RemovexattrResponse<'a> {
+	#[must_use]
 	pub fn new() -> RemovexattrResponse<'a> {
 		Self {
 			phantom: PhantomData,

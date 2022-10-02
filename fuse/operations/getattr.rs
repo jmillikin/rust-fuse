@@ -72,10 +72,12 @@ impl<'a> GetattrRequest<'a> {
 		})
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 
+	#[must_use]
 	pub fn handle(&self) -> Option<u64> {
 		self.handle
 	}
@@ -104,6 +106,7 @@ pub struct GetattrResponse<'a> {
 }
 
 impl<'a> GetattrResponse<'a> {
+	#[must_use]
 	pub fn new() -> GetattrResponse<'a> {
 		Self {
 			phantom: PhantomData,
@@ -111,6 +114,7 @@ impl<'a> GetattrResponse<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn attr_timeout(&self) -> Duration {
 		Duration::new(self.raw.attr_valid, self.raw.attr_valid_nsec)
 	}
@@ -120,10 +124,12 @@ impl<'a> GetattrResponse<'a> {
 		self.raw.attr_valid_nsec = attr_timeout.subsec_nanos();
 	}
 
+	#[must_use]
 	pub fn attr(&self) -> &NodeAttr {
 		NodeAttr::new_ref(&self.raw.attr)
 	}
 
+	#[must_use]
 	pub fn attr_mut(&mut self) -> &mut NodeAttr {
 		NodeAttr::new_ref_mut(&mut self.raw.attr)
 	}

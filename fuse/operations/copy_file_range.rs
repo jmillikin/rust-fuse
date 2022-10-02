@@ -38,34 +38,42 @@ pub struct CopyFileRangeRequest<'a> {
 }
 
 impl<'a> CopyFileRangeRequest<'a> {
+	#[must_use]
 	pub fn input_node_id(&self) -> NodeId {
 		unsafe { NodeId::new_unchecked(self.header.nodeid) }
 	}
 
+	#[must_use]
 	pub fn input_handle(&self) -> u64 {
 		self.body.fh_in
 	}
 
+	#[must_use]
 	pub fn input_offset(&self) -> u64 {
 		self.body.off_in
 	}
 
+	#[must_use]
 	pub fn output_node_id(&self) -> NodeId {
 		unsafe { NodeId::new_unchecked(self.body.nodeid_out) }
 	}
 
+	#[must_use]
 	pub fn output_handle(&self) -> u64 {
 		self.body.fh_out
 	}
 
+	#[must_use]
 	pub fn output_offset(&self) -> u64 {
 		self.body.off_out
 	}
 
+	#[must_use]
 	pub fn len(&self) -> u64 {
 		self.body.len
 	}
 
+	#[must_use]
 	pub fn flags(&self) -> CopyFileRangeRequestFlags {
 		CopyFileRangeRequestFlags {
 			bits: self.body.flags,
@@ -118,6 +126,7 @@ pub struct CopyFileRangeResponse<'a> {
 }
 
 impl<'a> CopyFileRangeResponse<'a> {
+	#[must_use]
 	pub fn new() -> CopyFileRangeResponse<'a> {
 		Self {
 			phantom: PhantomData,

@@ -52,16 +52,19 @@ impl<'a> OpendirRequest<'a> {
 		Ok(Self { header, body })
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		unsafe { NodeId::new_unchecked(self.header.nodeid) }
 	}
 
+	#[must_use]
 	pub fn flags(&self) -> OpendirRequestFlags {
 		OpendirRequestFlags {
 			bits: self.body.open_flags,
 		}
 	}
 
+	#[must_use]
 	pub fn open_flags(&self) -> crate::OpenFlags {
 		self.body.flags
 	}
@@ -91,6 +94,7 @@ pub struct OpendirResponse<'a> {
 }
 
 impl<'a> OpendirResponse<'a> {
+	#[must_use]
 	pub fn new() -> OpendirResponse<'a> {
 		Self {
 			phantom: PhantomData,
@@ -98,6 +102,7 @@ impl<'a> OpendirResponse<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn handle(&self) -> u64 {
 		self.raw.fh
 	}
@@ -106,12 +111,14 @@ impl<'a> OpendirResponse<'a> {
 		self.raw.fh = handle;
 	}
 
+	#[must_use]
 	pub fn flags(&self) -> OpendirResponseFlags {
 		OpendirResponseFlags {
 			bits: self.raw.open_flags,
 		}
 	}
 
+	#[must_use]
 	pub fn mut_flags(&mut self) -> &mut OpendirResponseFlags {
 		OpendirResponseFlags::reborrow_mut(&mut self.raw.open_flags)
 	}

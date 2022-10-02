@@ -23,6 +23,7 @@ use crate::server::io::encode;
 pub struct Node(fuse_kernel::fuse_entry_out);
 
 impl Node {
+	#[must_use]
 	pub fn id(&self) -> Option<NodeId> {
 		NodeId::new(self.0.nodeid)
 	}
@@ -31,6 +32,7 @@ impl Node {
 		self.0.nodeid = id.get();
 	}
 
+	#[must_use]
 	pub fn generation(&self) -> u64 {
 		self.0.generation
 	}
@@ -39,6 +41,7 @@ impl Node {
 		self.0.generation = generation;
 	}
 
+	#[must_use]
 	pub fn cache_timeout(&self) -> time::Duration {
 		time::Duration::new(self.0.entry_valid, self.0.entry_valid_nsec)
 	}
@@ -48,6 +51,7 @@ impl Node {
 		self.0.entry_valid_nsec = d.subsec_nanos();
 	}
 
+	#[must_use]
 	pub fn attr_cache_timeout(&self) -> time::Duration {
 		time::Duration::new(self.0.attr_valid, self.0.attr_valid_nsec)
 	}
@@ -57,10 +61,12 @@ impl Node {
 		self.0.attr_valid_nsec = d.subsec_nanos();
 	}
 
+	#[must_use]
 	pub fn attr(&self) -> &NodeAttr {
 		NodeAttr::new_ref(&self.0.attr)
 	}
 
+	#[must_use]
 	pub fn attr_mut(&mut self) -> &mut NodeAttr {
 		NodeAttr::new_ref_mut(&mut self.0.attr)
 	}

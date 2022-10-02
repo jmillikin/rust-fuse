@@ -53,10 +53,12 @@ impl<'a> SetattrRequest<'a> {
 		Ok(Self { header, raw })
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		unsafe { NodeId::new_unchecked(self.header.nodeid) }
 	}
 
+	#[must_use]
 	fn get<T>(&self, bitmask: u32, value: T) -> Option<T> {
 		if self.raw.valid & bitmask == 0 {
 			return None;
@@ -64,6 +66,7 @@ impl<'a> SetattrRequest<'a> {
 		Some(value)
 	}
 
+	#[must_use]
 	fn get_timestamp(
 		&self,
 		bitmask: u32,
@@ -76,18 +79,22 @@ impl<'a> SetattrRequest<'a> {
 		Some(time::Duration::new(seconds, nanos))
 	}
 
+	#[must_use]
 	pub fn handle(&self) -> Option<u64> {
 		self.get(fuse_kernel::FATTR_FH, self.raw.fh)
 	}
 
+	#[must_use]
 	pub fn size(&self) -> Option<u64> {
 		self.get(fuse_kernel::FATTR_SIZE, self.raw.size)
 	}
 
+	#[must_use]
 	pub fn lock_owner(&self) -> Option<u64> {
 		self.get(fuse_kernel::FATTR_LOCKOWNER, self.raw.lock_owner)
 	}
 
+	#[must_use]
 	pub fn atime(&self) -> Option<time::Duration> {
 		self.get_timestamp(
 			fuse_kernel::FATTR_ATIME,
@@ -96,10 +103,12 @@ impl<'a> SetattrRequest<'a> {
 		)
 	}
 
+	#[must_use]
 	pub fn atime_now(&self) -> bool {
 		self.raw.valid & fuse_kernel::FATTR_ATIME_NOW > 0
 	}
 
+	#[must_use]
 	pub fn mtime(&self) -> Option<time::Duration> {
 		self.get_timestamp(
 			fuse_kernel::FATTR_MTIME,
@@ -108,10 +117,12 @@ impl<'a> SetattrRequest<'a> {
 		)
 	}
 
+	#[must_use]
 	pub fn mtime_now(&self) -> bool {
 		self.raw.valid & fuse_kernel::FATTR_MTIME_NOW > 0
 	}
 
+	#[must_use]
 	pub fn ctime(&self) -> Option<time::Duration> {
 		self.get_timestamp(
 			fuse_kernel::FATTR_CTIME,
@@ -120,14 +131,17 @@ impl<'a> SetattrRequest<'a> {
 		)
 	}
 
+	#[must_use]
 	pub fn mode(&self) -> Option<FileMode> {
 		self.get(fuse_kernel::FATTR_MODE, FileMode(self.raw.mode))
 	}
 
+	#[must_use]
 	pub fn user_id(&self) -> Option<u32> {
 		self.get(fuse_kernel::FATTR_UID, self.raw.uid)
 	}
 
+	#[must_use]
 	pub fn group_id(&self) -> Option<u32> {
 		self.get(fuse_kernel::FATTR_GID, self.raw.gid)
 	}
@@ -166,6 +180,7 @@ pub struct SetattrResponse<'a> {
 }
 
 impl<'a> SetattrResponse<'a> {
+	#[must_use]
 	pub fn new() -> SetattrResponse<'a> {
 		Self {
 			phantom: PhantomData,
@@ -173,14 +188,17 @@ impl<'a> SetattrResponse<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn attr(&self) -> &NodeAttr {
 		NodeAttr::new_ref(&self.raw.attr)
 	}
 
+	#[must_use]
 	pub fn attr_mut(&mut self) -> &mut NodeAttr {
 		NodeAttr::new_ref_mut(&mut self.raw.attr)
 	}
 
+	#[must_use]
 	pub fn cache_duration(&self) -> time::Duration {
 		time::Duration::new(self.raw.attr_valid, self.raw.attr_valid_nsec)
 	}

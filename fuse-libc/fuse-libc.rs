@@ -16,6 +16,11 @@
 
 //#![cfg_attr(not(any(doc, feature = "std")), no_std)]
 
+#![warn(
+	clippy::must_use_candidate,
+	clippy::trivially_copy_pass_by_ref,
+)]
+
 // use core::ffi::CStr;
 use std::ffi::CStr;
 

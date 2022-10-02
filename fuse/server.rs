@@ -86,30 +86,37 @@ impl RequestHeader {
 		unsafe { transmute(raw) }
 	}
 
+	#[must_use]
 	pub const fn opcode(&self) -> crate::Opcode {
 		crate::Opcode(self.raw.opcode.0)
 	}
 
+	#[must_use]
 	pub const fn request_id(&self) -> u64 {
 		self.raw.unique
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> Option<crate::NodeId> {
 		crate::NodeId::new(self.raw.nodeid)
 	}
 
+	#[must_use]
 	pub const fn user_id(&self) -> u32 {
 		self.raw.uid
 	}
 
+	#[must_use]
 	pub const fn group_id(&self) -> u32 {
 		self.raw.gid
 	}
 
+	#[must_use]
 	pub const fn process_id(&self) -> u32 {
 		self.raw.pid
 	}
 
+	#[must_use]
 	pub const fn len(&self) -> u32 {
 		self.raw.len
 	}
@@ -142,6 +149,7 @@ pub struct CuseRequestBuilder {
 }
 
 impl CuseRequestBuilder {
+	#[must_use]
 	pub fn new() -> CuseRequestBuilder {
 		CuseRequestBuilder {
 			init_flags: CuseInitFlags::new(),
@@ -150,6 +158,7 @@ impl CuseRequestBuilder {
 		}
 	}
 
+	#[must_use]
 	pub fn from_init_response(
 		init_response: &CuseInitResponse,
 	) -> CuseRequestBuilder {
@@ -193,10 +202,12 @@ impl<'a> CuseRequest<'a> {
 		RequestDecoder::new(self.buf)
 	}
 
+	#[must_use]
 	pub fn header(&self) -> &'a RequestHeader {
 		RequestHeader::new_ref(self.buf.header())
 	}
 
+	#[must_use]
 	pub fn response_context(&self) -> ResponseContext {
 		ResponseContext {
 			request_id: self.header().request_id(),
@@ -212,6 +223,7 @@ pub struct FuseRequestBuilder {
 }
 
 impl FuseRequestBuilder {
+	#[must_use]
 	pub fn new() -> FuseRequestBuilder {
 		FuseRequestBuilder {
 			init_flags: FuseInitFlags::new(),
@@ -220,6 +232,7 @@ impl FuseRequestBuilder {
 		}
 	}
 
+	#[must_use]
 	pub fn from_init_response(
 		init_response: &FuseInitResponse,
 	) -> FuseRequestBuilder {
@@ -271,10 +284,12 @@ impl<'a> FuseRequest<'a> {
 		RequestDecoder::new(self.buf)
 	}
 
+	#[must_use]
 	pub fn header(&self) -> &'a RequestHeader {
 		RequestHeader::new_ref(self.buf.header())
 	}
 
+	#[must_use]
 	pub fn response_context(&self) -> ResponseContext {
 		ResponseContext {
 			request_id: self.header().request_id(),
@@ -298,6 +313,7 @@ enum UnknownBody<'a> {
 }
 
 impl<'a> UnknownRequest<'a> {
+	#[must_use]
 	pub fn from_fuse_request(request: &FuseRequest<'a>) -> Self {
 		Self {
 			header: request.buf.header(),
@@ -305,6 +321,7 @@ impl<'a> UnknownRequest<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn from_cuse_request(request: &CuseRequest<'a>) -> Self {
 		Self {
 			header: request.buf.header(),
@@ -312,6 +329,7 @@ impl<'a> UnknownRequest<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn header(&self) -> &RequestHeader {
 		RequestHeader::new_ref(self.header)
 	}
@@ -349,6 +367,7 @@ pub struct ErrorResponse {
 }
 
 impl ErrorResponse {
+	#[must_use]
 	pub fn new(error: crate::Error) -> ErrorResponse {
 		ErrorResponse { error }
 	}
@@ -513,6 +532,7 @@ pub struct CuseRequests<'a, S> {
 }
 
 impl<'a, S> CuseRequests<'a, S> {
+	#[must_use]
 	pub fn new(
 		socket: &'a S,
 		init_response: &CuseInitResponse,
@@ -540,6 +560,7 @@ pub struct AsyncCuseRequests<'a, S> {
 }
 
 impl<'a, S> AsyncCuseRequests<'a, S> {
+	#[must_use]
 	pub fn new(
 		socket: &'a S,
 		init_response: &CuseInitResponse,
@@ -567,6 +588,7 @@ pub struct FuseRequests<'a, S> {
 }
 
 impl<'a, S> FuseRequests<'a, S> {
+	#[must_use]
 	pub fn new(
 		socket: &'a S,
 		init_response: &FuseInitResponse,
@@ -598,6 +620,7 @@ pub struct AsyncFuseRequests<'a, S> {
 }
 
 impl<'a, S> AsyncFuseRequests<'a, S> {
+	#[must_use]
 	pub fn new(
 		socket: &'a S,
 		init_response: &FuseInitResponse,

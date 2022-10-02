@@ -65,6 +65,7 @@ pub struct DestroyResponse<'a> {
 }
 
 impl<'a> DestroyResponse<'a> {
+	#[must_use]
 	pub fn new() -> DestroyResponse<'a> {
 		Self {
 			phantom: PhantomData,

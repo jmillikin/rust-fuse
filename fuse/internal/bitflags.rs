@@ -36,10 +36,12 @@ macro_rules! bitflags {
 
 			#[allow(dead_code)]
 			#[inline(always)]
+			#[must_use]
 			const fn new(mask: $bits) -> Self {
 				Self { mask }
 			}
 
+			#[must_use]
 			const fn flag_name(mask: $bits) -> Option<&'static str> {
 				match ($flag { mask }) {
 				$(
@@ -79,11 +81,13 @@ macro_rules! bitflags {
 
 		impl crate::Flags<$flag> for $flags {
 			#[inline(always)]
+			#[must_use]
 			fn new() -> Self {
 				$flags::new()
 			}
 
 			#[inline(always)]
+			#[must_use]
 			fn get(&self, flag: $flag) -> bool {
 				$flags::get(self, flag)
 			}
@@ -96,18 +100,21 @@ macro_rules! bitflags {
 
 		impl $flags {
 			#[inline(always)]
+			#[must_use]
 			pub const fn new() -> Self {
 				Self { bits: 0 }
 			}
 
 			#[allow(dead_code)]
 			#[inline(always)]
+			#[must_use]
 			pub(crate) fn reborrow_mut<'a>(r: &'a mut $bits) -> &'a mut Self {
 				let ptr = r as *mut $bits as *mut Self;
 				unsafe { &mut *ptr }
 			}
 
 			#[inline(always)]
+			#[must_use]
 			pub const fn get(&self, flag: $flag) -> bool {
 				self.bits & flag.mask == flag.mask
 			}

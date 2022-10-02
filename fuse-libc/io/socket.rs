@@ -29,7 +29,8 @@ pub struct LibcError {
 }
 
 impl LibcError {
-	pub fn raw_os_error(&self) -> i32 {
+	#[must_use]
+	pub fn raw_os_error(self) -> i32 {
 		self.code
 	}
 
@@ -205,6 +206,7 @@ impl FuseServerSocket {
 		Ok(FuseServerSocket { socket })
 	}
 
+	#[must_use]
 	pub fn fuse_device_fd(&self) -> u32 {
 		self.socket.fd as u32
 	}

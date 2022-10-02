@@ -23,6 +23,7 @@ use crate::protocol::common::FileType;
 pub struct FileMode(pub u32);
 
 impl FileMode {
+	#[must_use]
 	pub fn file_type(&self) -> Option<FileType> {
 		FileType::from_mode(*self)
 	}

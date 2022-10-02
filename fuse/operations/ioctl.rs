@@ -55,6 +55,7 @@ impl<'a> IoctlRequest<'a> {
 		Self::decode(request.decoder(), true)
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		match NodeId::new(self.header.nodeid) {
 			Some(id) => id,
@@ -62,30 +63,37 @@ impl<'a> IoctlRequest<'a> {
 		}
 	}
 
+	#[must_use]
 	pub const fn handle(&self) -> u64 {
 		self.body.fh
 	}
 
+	#[must_use]
 	pub const fn command(&self) -> IoctlCmd {
 		IoctlCmd { cmd: self.body.cmd }
 	}
 
+	#[must_use]
 	pub const fn arg(&self) -> IoctlArg {
 		IoctlArg { arg: self.body.arg }
 	}
 
+	#[must_use]
 	pub const fn input(&self) -> IoctlInput<'a> {
 		IoctlInput { bytes: self.input }
 	}
 
+	#[must_use]
 	pub const fn input_len(&self) -> u32 {
 		self.body.in_size
 	}
 
+	#[must_use]
 	pub const fn output_len(&self) -> u32 {
 		self.body.out_size
 	}
 
+	#[must_use]
 	pub fn flags(&self) -> IoctlRequestFlags {
 		IoctlRequestFlags {
 			bits: self.body.flags,
@@ -136,10 +144,12 @@ pub struct IoctlCmd {
 }
 
 impl IoctlCmd {
+	#[must_use]
 	pub const fn new(cmd: u32) -> Self {
 		IoctlCmd { cmd }
 	}
 
+	#[must_use]
 	pub const fn get(self) -> u32 {
 		self.cmd
 	}
@@ -159,14 +169,17 @@ pub struct IoctlArg {
 }
 
 impl IoctlArg {
+	#[must_use]
 	pub const fn new(arg: u64) -> Self {
 		Self { arg }
 	}
 
+	#[must_use]
 	pub const fn get(self) -> u64 {
 		self.arg
 	}
 
+	#[must_use]
 	pub const fn as_ptr<T>(self) -> IoctlPtr<T> {
 		IoctlPtr::new(self.arg)
 	}
@@ -187,6 +200,7 @@ pub struct IoctlPtr<T> {
 }
 
 impl<T> IoctlPtr<T> {
+	#[must_use]
 	pub const fn new(addr: u64) -> IoctlPtr<T> {
 		IoctlPtr {
 			addr,
@@ -194,6 +208,7 @@ impl<T> IoctlPtr<T> {
 		}
 	}
 
+	#[must_use]
 	pub const fn addr(&self) -> u64 {
 		self.addr
 	}
@@ -220,14 +235,17 @@ impl fmt::Debug for IoctlInput<'_> {
 }
 
 impl<'a> IoctlInput<'a> {
+	#[must_use]
 	pub const fn new(bytes: &'a [u8]) -> Self {
 		Self { bytes }
 	}
 
+	#[must_use]
 	pub const fn as_bytes(&self) -> &'a [u8] {
 		self.bytes
 	}
 
+	#[must_use]
 	pub const fn reader(&self) -> IoctlInputReader<'a> {
 		IoctlInputReader { bytes: self.bytes }
 	}
@@ -265,6 +283,7 @@ impl<'a> IoctlInputReader<'a> {
 		Ok(unsafe { &*(bytes.as_ptr() as *const [u8; N]) })
 	}
 
+	#[allow(clippy::missing_safety_doc)] // TODO
 	pub unsafe fn read_transmute<T>(
 		&mut self,
 	) -> Result<&'a T, IoctlInputError> {
@@ -293,6 +312,7 @@ enum IoctlResponseOutput<'a> {
 }
 
 impl<'a> IoctlResponse<'a> {
+	#[must_use]
 	pub fn new(output: &'a [u8]) -> IoctlResponse<'a> {
 		Self {
 			raw: fuse_kernel::fuse_ioctl_out::zeroed(),
@@ -301,6 +321,7 @@ impl<'a> IoctlResponse<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn new_retry(retry: IoctlRetry<'a>) -> IoctlResponse<'a> {
 		Self {
 			raw: fuse_kernel::fuse_ioctl_out::zeroed(),
@@ -312,6 +333,7 @@ impl<'a> IoctlResponse<'a> {
 		}
 	}
 
+	#[must_use]
 	pub const fn result(&self) -> i32 {
 		self.raw.result
 	}
@@ -402,6 +424,7 @@ pub struct IoctlSlice {
 }
 
 impl IoctlSlice {
+	#[must_use]
 	pub const fn new(base: u64, len: u64) -> IoctlSlice {
 		Self { base, len }
 	}
@@ -451,10 +474,12 @@ impl<'a> IoctlRetry<'a> {
 		})
 	}
 
+	#[must_use]
 	pub const fn input_slices(&self) -> &'a [IoctlSlice] {
 		self.input_slices
 	}
 
+	#[must_use]
 	pub const fn output_slices(&self) -> &'a [IoctlSlice] {
 		self.output_slices
 	}
@@ -468,6 +493,7 @@ pub struct IoctlRetryBuf {
 }
 
 impl IoctlRetryBuf {
+	#[must_use]
 	pub const fn new() -> IoctlRetryBuf {
 		let zero = IoctlSlice::new(0, 0);
 		Self {
@@ -478,14 +504,17 @@ impl IoctlRetryBuf {
 		}
 	}
 
+	#[must_use]
 	pub fn input_slices(&self) -> &[IoctlSlice] {
 		&self.input_slices[..self.input_slices_len]
 	}
 
+	#[must_use]
 	pub fn output_slices(&self) -> &[IoctlSlice] {
 		&self.output_slices[..self.output_slices_len]
 	}
 
+	#[must_use]
 	pub fn borrow(&self) -> IoctlRetry {
 		IoctlRetry {
 			input_slices: self.input_slices(),

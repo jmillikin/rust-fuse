@@ -24,10 +24,12 @@ use crate::protocol::common::{FileMode, NodeId};
 pub struct NodeAttr(fuse_kernel::fuse_attr);
 
 impl NodeAttr {
+	#[must_use]
 	pub fn new() -> Self {
 		NodeAttr(unsafe { core::mem::zeroed() })
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> Option<NodeId> {
 		NodeId::new(self.0.ino)
 	}
@@ -36,6 +38,7 @@ impl NodeAttr {
 		self.0.ino = node_id.get();
 	}
 
+	#[must_use]
 	pub fn size(&self) -> u64 {
 		self.0.size
 	}
@@ -44,6 +47,7 @@ impl NodeAttr {
 		self.0.size = size;
 	}
 
+	#[must_use]
 	pub fn blocks(&self) -> u64 {
 		self.0.blocks
 	}
@@ -52,6 +56,7 @@ impl NodeAttr {
 		self.0.blocks = blocks;
 	}
 
+	#[must_use]
 	pub fn atime(&self) -> time::Duration {
 		time::Duration::new(self.0.atime, self.0.atimensec)
 	}
@@ -61,6 +66,7 @@ impl NodeAttr {
 		self.0.atimensec = atime.subsec_nanos();
 	}
 
+	#[must_use]
 	pub fn mtime(&self) -> time::Duration {
 		time::Duration::new(self.0.mtime, self.0.mtimensec)
 	}
@@ -70,6 +76,7 @@ impl NodeAttr {
 		self.0.mtimensec = mtime.subsec_nanos();
 	}
 
+	#[must_use]
 	pub fn ctime(&self) -> time::Duration {
 		time::Duration::new(self.0.ctime, self.0.ctimensec)
 	}
@@ -79,6 +86,7 @@ impl NodeAttr {
 		self.0.ctimensec = ctime.subsec_nanos();
 	}
 
+	#[must_use]
 	pub fn mode(&self) -> FileMode {
 		FileMode(self.0.mode)
 	}

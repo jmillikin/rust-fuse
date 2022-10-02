@@ -49,6 +49,7 @@ struct CuseOptions {
 }
 
 impl<S, H> CuseServerBuilder<S, H> {
+	#[must_use]
 	pub fn new(socket: S, handlers: H) -> Self {
 		Self {
 			socket,
@@ -65,28 +66,33 @@ impl<S, H> CuseServerBuilder<S, H> {
 		}
 	}
 
+	#[must_use]
 	pub fn device_number(mut self, major: u32, minor: u32) -> Self {
 		self.opts.dev_major = major;
 		self.opts.dev_minor = minor;
 		self
 	}
 
+	#[must_use]
 	pub fn max_read(mut self, max_read: u32) -> Self {
 		self.opts.max_read = max_read;
 		self
 	}
 
+	#[must_use]
 	pub fn max_write(mut self, max_write: u32) -> Self {
 		self.opts.max_write = max_write;
 		self
 	}
 
+	#[must_use]
 	pub fn cuse_init_flags(mut self, flags: CuseInitFlags) -> Self {
 		self.opts.flags = flags;
 		self
 	}
 
 	#[cfg(feature = "std")]
+	#[must_use]
 	pub fn server_hooks(mut self, hooks: Box<dyn ServerHooks>) -> Self {
 		self.hooks = Some(hooks);
 		self
@@ -238,10 +244,12 @@ pub struct CuseCall<'a, S> {
 }
 
 impl<S> CuseCall<'_, S> {
+	#[must_use]
 	pub fn header(&self) -> &server::RequestHeader {
 		self.header
 	}
 
+	#[must_use]
 	pub fn response_context(&self) -> server::ResponseContext {
 		self.response_ctx
 	}

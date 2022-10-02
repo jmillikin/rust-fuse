@@ -81,6 +81,7 @@ impl<'a> ReleasedirRequest<'a> {
 		})
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
@@ -88,14 +89,17 @@ impl<'a> ReleasedirRequest<'a> {
 	/// The value passed to [`OpendirResponse::set_handle`], or zero if not set.
 	///
 	/// [`OpendirResponse::set_handle`]: crate::operations::opendir::OpendirResponse::set_handle
+	#[must_use]
 	pub fn handle(&self) -> u64 {
 		self.handle
 	}
 
+	#[must_use]
 	pub fn lock_owner(&self) -> Option<u64> {
 		self.lock_owner
 	}
 
+	#[must_use]
 	pub fn open_flags(&self) -> crate::OpenFlags {
 		self.open_flags
 	}
@@ -125,6 +129,7 @@ pub struct ReleasedirResponse<'a> {
 }
 
 impl<'a> ReleasedirResponse<'a> {
+	#[must_use]
 	pub fn new() -> ReleasedirResponse<'a> {
 		Self {
 			phantom: PhantomData,

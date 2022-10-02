@@ -66,22 +66,27 @@ impl<'a> SetlkRequest<'a> {
 		})
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 
+	#[must_use]
 	pub fn handle(&self) -> u64 {
 		self.raw.fh
 	}
 
+	#[must_use]
 	pub fn owner(&self) -> u64 {
 		self.raw.owner
 	}
 
+	#[must_use]
 	pub fn command(&self) -> &SetlkCommand {
 		&self.command
 	}
 
+	#[must_use]
 	pub fn flags(&self) -> SetlkRequestFlags {
 		SetlkRequestFlags {
 			bits: self.raw.lk_flags,
@@ -165,6 +170,7 @@ pub struct SetlkResponse<'a> {
 }
 
 impl<'a> SetlkResponse<'a> {
+	#[must_use]
 	pub fn new() -> SetlkResponse<'a> {
 		Self {
 			phantom: PhantomData,

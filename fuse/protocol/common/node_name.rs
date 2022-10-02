@@ -35,6 +35,7 @@ impl NodeName {
 		unsafe { &*(bytes as *const [u8] as *const NodeName) }
 	}
 
+	#[must_use]
 	pub fn from_bytes<'a>(bytes: &'a [u8]) -> Option<&'a NodeName> {
 		let len = bytes.len();
 		if len == 0 || len > NODE_NAME_MAX {
@@ -50,6 +51,7 @@ impl NodeName {
 		&*(bytes as *const [u8] as *const NodeName)
 	}
 
+	#[must_use]
 	pub fn as_bytes(&self) -> &[u8] {
 		&self.0
 	}

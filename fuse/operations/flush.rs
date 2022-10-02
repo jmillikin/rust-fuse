@@ -52,14 +52,17 @@ impl<'a> FlushRequest<'a> {
 		decode_request(request.buf, true)
 	}
 
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
 	}
 
+	#[must_use]
 	pub fn handle(&self) -> u64 {
 		self.handle
 	}
 
+	#[must_use]
 	pub fn lock_owner(&self) -> u64 {
 		self.lock_owner
 	}
@@ -110,6 +113,7 @@ pub struct FlushResponse<'a> {
 }
 
 impl<'a> FlushResponse<'a> {
+	#[must_use]
 	pub fn new() -> FlushResponse<'a> {
 		Self {
 			phantom: PhantomData,

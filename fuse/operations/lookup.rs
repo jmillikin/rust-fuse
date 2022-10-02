@@ -52,10 +52,12 @@ impl<'a> LookupRequest<'a> {
 		})
 	}
 
+	#[must_use]
 	pub fn parent_id(&self) -> NodeId {
 		self.parent_id
 	}
 
+	#[must_use]
 	pub fn name(&self) -> &NodeName {
 		self.name
 	}
@@ -75,6 +77,7 @@ pub struct LookupResponse<'a> {
 }
 
 impl<'a> LookupResponse<'a> {
+	#[must_use]
 	pub fn new() -> LookupResponse<'a> {
 		Self {
 			phantom: PhantomData,
@@ -82,10 +85,12 @@ impl<'a> LookupResponse<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn node(&self) -> &Node {
 		Node::new_ref(&self.entry_out)
 	}
 
+	#[must_use]
 	pub fn node_mut(&mut self) -> &mut Node {
 		Node::new_ref_mut(&mut self.entry_out)
 	}

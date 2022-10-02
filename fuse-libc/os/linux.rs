@@ -40,6 +40,7 @@ pub struct MountOptions<'a> {
 }
 
 impl<'a> MountOptions<'a> {
+	#[must_use]
 	pub fn dev_fuse(&self) -> &'a CStr {
 		self.dev_fuse.unwrap_or(crate::DEV_FUSE)
 	}
@@ -48,6 +49,7 @@ impl<'a> MountOptions<'a> {
 		self.dev_fuse = dev_fuse;
 	}
 
+	#[must_use]
 	pub fn flags(&self) -> u32 {
 		self.flags
 	}

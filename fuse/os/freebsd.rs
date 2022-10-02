@@ -27,6 +27,7 @@ pub struct MountOptions<'a> {
 }
 
 impl<'a> MountOptions<'a> {
+	#[must_use]
 	pub fn new() -> Self {
 		MountOptions {
 			default_permissions: false,
@@ -35,6 +36,7 @@ impl<'a> MountOptions<'a> {
 		}
 	}
 
+	#[must_use]
 	pub fn default_permissions(&self) -> bool {
 		self.default_permissions
 	}
@@ -44,6 +46,7 @@ impl<'a> MountOptions<'a> {
 	}
 
 	#[cfg(any(doc, feature = "std"))]
+	#[must_use]
 	pub fn fs_subtype(&self) -> Option<&'a CStr> {
 		self.fs_subtype
 	}

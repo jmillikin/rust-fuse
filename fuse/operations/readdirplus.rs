@@ -44,14 +44,17 @@ pub struct ReaddirplusRequest<'a> {
 }
 
 impl ReaddirplusRequest<'_> {
+	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		unsafe { NodeId::new_unchecked(self.header.nodeid) }
 	}
 
+	#[must_use]
 	pub fn size(&self) -> usize {
 		usize::try_from(self.body.as_v7p1().size).unwrap_or(usize::MAX)
 	}
 
+	#[must_use]
 	pub fn offset(&self) -> Option<num::NonZeroU64> {
 		num::NonZeroU64::new(self.body.as_v7p1().offset)
 	}
@@ -59,10 +62,12 @@ impl ReaddirplusRequest<'_> {
 	/// The value passed to [`OpendirResponse::set_handle`], or zero if not set.
 	///
 	/// [`OpendirResponse::set_handle`]: crate::operations::opendir::OpendirResponse::set_handle
+	#[must_use]
 	pub fn handle(&self) -> u64 {
 		self.body.as_v7p1().fh
 	}
 
+	#[must_use]
 	pub fn open_flags(&self) -> crate::OpenFlags {
 		if let Some(body_v7p1) = self.body.as_v7p9() {
 			return body_v7p1.flags;
@@ -130,6 +135,7 @@ impl ReaddirplusResponse<'_> {
 
 impl<'a> ReaddirplusResponse<'a> {
 	#[inline]
+	#[must_use]
 	pub fn new(entries: ReaddirplusEntries<'a>) -> ReaddirplusResponse<'a> {
 		Self { entries }
 	}
@@ -177,6 +183,7 @@ pub struct ReaddirplusEntry<'a> {
 
 impl<'a> ReaddirplusEntry<'a> {
 	#[inline]
+	#[must_use]
 	pub fn new(
 		node_id: crate::NodeId,
 		name: &'a crate::NodeName,
@@ -200,21 +207,25 @@ impl<'a> ReaddirplusEntry<'a> {
 	}
 
 	#[inline]
+	#[must_use]
 	pub fn node_id(&self) -> crate::NodeId {
 		unsafe { crate::NodeId::new_unchecked(self.dirent.dirent.ino) }
 	}
 
 	#[inline]
+	#[must_use]
 	pub fn name(&self) -> &crate::NodeName {
 		self.name
 	}
 
 	#[inline]
+	#[must_use]
 	pub fn offset(&self) -> num::NonZeroU64 {
 		unsafe { num::NonZeroU64::new_unchecked(self.dirent.dirent.off) }
 	}
 
 	#[inline]
+	#[must_use]
 	pub fn file_type(&self) -> crate::FileType {
 		match FileType::from_bits(self.dirent.dirent.r#type) {
 			Some(t) => t,
@@ -230,11 +241,13 @@ impl<'a> ReaddirplusEntry<'a> {
 	}
 
 	#[inline]
+	#[must_use]
 	pub fn node_attr(&self) -> &crate::NodeAttr {
 		crate::NodeAttr::new_ref(&self.dirent.entry_out.attr)
 	}
 
 	#[inline]
+	#[must_use]
 	pub fn mut_node_attr(&mut self) -> &mut crate::NodeAttr {
 		crate::NodeAttr::new_ref_mut(&mut self.dirent.entry_out.attr)
 	}
@@ -263,6 +276,7 @@ pub struct ReaddirplusEntries<'a> {
 
 impl<'a> ReaddirplusEntries<'a> {
 	#[inline]
+	#[must_use]
 	pub fn is_empty(&self) -> bool {
 		self.buf.is_empty()
 	}
@@ -291,6 +305,7 @@ pub struct ReaddirplusEntriesWriter<'a> {
 
 impl<'a> ReaddirplusEntriesWriter<'a> {
 	#[inline]
+	#[must_use]
 	pub fn new(mut buf: &'a mut [u8]) -> ReaddirplusEntriesWriter<'a> {
 		let max_len = usize::from(u16::MAX);
 		if buf.len() > max_len {
@@ -300,16 +315,19 @@ impl<'a> ReaddirplusEntriesWriter<'a> {
 	}
 
 	#[inline]
+	#[must_use]
 	pub fn capacity(&self) -> usize {
 		self.buf.len()
 	}
 
 	#[inline]
+	#[must_use]
 	pub fn position(&self) -> usize {
 		self.position
 	}
 
 	#[inline]
+	#[must_use]
 	pub fn into_entries(self) -> ReaddirplusEntries<'a> {
 		ReaddirplusEntries {
 			buf: unsafe { self.buf.get_unchecked(..self.position) },
@@ -317,6 +335,7 @@ impl<'a> ReaddirplusEntriesWriter<'a> {
 	}
 
 	#[inline]
+	#[must_use]
 	pub fn entry_size(entry: &ReaddirplusEntry) -> usize {
 		dirent::entry_size::<fuse_kernel::fuse_direntplus>(entry.name)
 	}
@@ -352,6 +371,7 @@ struct ReaddirplusEntriesIter<'a> {
 
 impl<'a> ReaddirplusEntriesIter<'a> {
 	#[inline]
+	#[must_use]
 	fn new(entries: &ReaddirplusEntries<'a>) -> ReaddirplusEntriesIter<'a> {
 		Self { buf: entries.buf }
 	}
