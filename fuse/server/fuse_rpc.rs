@@ -220,6 +220,7 @@ impl_fuse_response! {
 	OpenResponse,
 	PollResponse,
 	ReaddirResponse,
+	ReaddirplusResponse,
 	ReadlinkResponse,
 	ReadResponse,
 	ReleasedirResponse,
@@ -403,6 +404,7 @@ fn fuse_request_dispatch<S: FuseSocket>(
 		Op::FUSE_POLL => do_dispatch!(PollRequest, poll),
 		Op::FUSE_READ => do_dispatch!(ReadRequest, read),
 		Op::FUSE_READDIR => do_dispatch!(ReaddirRequest, readdir),
+		Op::FUSE_READDIRPLUS => do_dispatch!(ReaddirplusRequest, readdirplus),
 		Op::FUSE_READLINK => do_dispatch!(ReadlinkRequest, readlink),
 		Op::FUSE_RELEASE => do_dispatch!(ReleaseRequest, release),
 		Op::FUSE_RELEASEDIR => do_dispatch!(ReleasedirRequest, releasedir),
@@ -654,6 +656,14 @@ pub trait FuseHandlers<S: FuseSocket> {
 		call: FuseCall<S>,
 		request: &operations::ReaddirRequest,
 	) -> FuseResult<operations::ReaddirResponse, S::Error> {
+		call.unimplemented()
+	}
+
+	fn readdirplus(
+		&self,
+		call: FuseCall<S>,
+		request: &operations::ReaddirplusRequest,
+	) -> FuseResult<operations::ReaddirplusResponse, S::Error> {
 		call.unimplemented()
 	}
 

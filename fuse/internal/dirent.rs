@@ -31,6 +31,13 @@ impl Dirent for fuse_kernel::fuse_dirent {
 	}
 }
 
+impl Dirent for fuse_kernel::fuse_direntplus {
+	#[inline]
+	fn namelen(&self) -> u32 {
+		self.dirent.namelen
+	}
+}
+
 #[inline]
 pub(crate) fn entry_size<T: Dirent>(name: &crate::NodeName) -> usize {
 	let name_len = name.as_bytes().len();

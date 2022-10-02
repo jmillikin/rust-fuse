@@ -155,6 +155,10 @@ pub mod readdir;
 #[doc(inline)]
 pub use self::readdir::*;
 
+pub mod readdirplus;
+#[doc(inline)]
+pub use self::readdirplus::*;
+
 pub mod readlink;
 #[doc(inline)]
 pub use self::readlink::*;
