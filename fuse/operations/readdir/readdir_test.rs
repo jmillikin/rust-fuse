@@ -14,14 +14,18 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::mem;
 use core::mem::size_of;
 use core::num;
 
 use fuse::FileType;
 use fuse::NodeId;
 use fuse::NodeName;
-use fuse::operations::readdir::{ReaddirRequest, ReaddirResponse};
+use fuse::operations::readdir::{
+	ReaddirEntriesWriter,
+	ReaddirEntry,
+	ReaddirRequest,
+	ReaddirResponse,
+};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
@@ -43,7 +47,7 @@ fn readdir_request_v7p1() {
 	});
 
 	assert_eq!(req.handle(), 123);
-	assert_eq!(req.cursor(), num::NonZeroU64::new(45));
+	assert_eq!(req.offset(), num::NonZeroU64::new(45));
 	assert_eq!(req.size(), 4096);
 }
 
@@ -70,7 +74,7 @@ fn readdir_request_v7p9() {
 	});
 
 	assert_eq!(req.handle(), 123);
-	assert_eq!(req.cursor(), num::NonZeroU64::new(45));
+	assert_eq!(req.offset(), num::NonZeroU64::new(45));
 	assert_eq!(req.open_flags(), 67);
 	assert_eq!(req.size(), 4096);
 }
@@ -100,7 +104,7 @@ fn request_impl_debug() {
 			"ReaddirRequest {\n",
 			"    node_id: 1,\n",
 			"    size: 1,\n",
-			"    cursor: Some(2),\n",
+			"    offset: Some(2),\n",
 			"    handle: 3,\n",
 			"    open_flags: 0x00000004,\n",
 			"}",
@@ -109,61 +113,41 @@ fn request_impl_debug() {
 }
 
 #[test]
-fn readdir_response_heap() {
+fn readdir_response() {
 	let max_size = size_of::<fuse_kernel::fuse_dirent>() + 12;
-	let mut resp = ReaddirResponse::with_max_size(max_size as u32);
-	readdir_response_test_impl(&mut resp);
-}
+	let mut buf = vec![0u8; max_size];
+	let mut writer = ReaddirEntriesWriter::new(&mut buf);
 
-#[test]
-fn readdir_response_stack() {
-	let mut buf = [0u8; 1024];
-	let aligned = match buf.as_ptr().align_offset(mem::align_of::<u64>()) {
-		0 => &mut buf,
-		offset => {
-			let (_, aligned) = buf.split_at_mut(offset);
-			aligned
-		},
-	};
-
-	let max_size = size_of::<fuse_kernel::fuse_dirent>() + 12;
-	let (sized_buf, _) = aligned.split_at_mut(max_size);
-	let mut resp = ReaddirResponse::with_capacity(sized_buf);
-	readdir_response_test_impl(&mut resp);
-}
-
-fn readdir_response_test_impl(resp: &mut ReaddirResponse) {
 	// Adding a dirent fails if there's not enough capacity.
 	{
 		let node_id = NodeId::new(100).unwrap();
 		let name = NodeName::from_bytes(b"123456789ABCDEF").unwrap();
-		let cursor = num::NonZeroU64::new(1).unwrap();
-		let opt_dirent = resp.try_add_entry(node_id, name, cursor);
-		assert!(opt_dirent.is_err());
+		let offset = num::NonZeroU64::new(1).unwrap();
+		let entry = ReaddirEntry::new(node_id, name, offset);
+		assert!(writer.try_push(&entry).is_err());
 	}
 
 	// Dirent capacity takes 8-byte name padding into account.
 	{
 		let node_id = NodeId::new(100).unwrap();
 		let name = NodeName::from_bytes(b"123456789").unwrap();
-		let cursor = num::NonZeroU64::new(1).unwrap();
-		let opt_dirent = resp.try_add_entry(node_id, name, cursor);
-		assert!(opt_dirent.is_err());
+		let offset = num::NonZeroU64::new(1).unwrap();
+		let entry = ReaddirEntry::new(node_id, name, offset);
+		assert!(writer.try_push(&entry).is_err());
 	}
 
 	// Adding a dirent works if there's enough capacity.
 	{
 		let node_id = NodeId::new(100).unwrap();
 		let name = NodeName::from_bytes(b"foobar").unwrap();
-		let cursor = num::NonZeroU64::new(1).unwrap();
-		let dirent = resp.try_add_entry(node_id, name, cursor).unwrap();
+		let offset = num::NonZeroU64::new(1).unwrap();
 
-		assert_eq!(dirent.cursor(), cursor);
-		assert_eq!(dirent.file_type(), FileType::Unknown);
-
-		dirent.set_file_type(FileType::Regular);
+		let mut entry = ReaddirEntry::new(node_id, name, offset);
+		entry.set_file_type(FileType::Regular);
+		assert!(writer.try_push(&entry).is_ok());
 	}
 
+	let resp = ReaddirResponse::new(writer.into_entries());
 	let encoded = encode_response!(resp);
 
 	assert_eq!(
@@ -190,26 +174,30 @@ fn readdir_response_test_impl(resp: &mut ReaddirResponse) {
 
 #[test]
 fn response_impl_debug() {
-	let mut response = ReaddirResponse::with_max_size(1024);
+	let mut buf = vec![0u8; 1024];
+	let mut writer = ReaddirEntriesWriter::new(&mut buf);
 
 	{
 		let node_id = NodeId::new(100).unwrap();
 		let name = NodeName::from_bytes(b"hello.txt").unwrap();
-		let cursor = num::NonZeroU64::new(1).unwrap();
-		response
-			.add_entry(node_id, name, cursor)
-			.set_file_type(FileType::Regular);
+		let offset = num::NonZeroU64::new(1).unwrap();
+
+		let mut entry = ReaddirEntry::new(node_id, name, offset);
+		entry.set_file_type(FileType::Regular);
+		assert!(writer.try_push(&entry).is_ok());
 	}
 
 	{
 		let node_id = NodeId::new(101).unwrap();
 		let name = NodeName::from_bytes(b"world.txt").unwrap();
-		let cursor = num::NonZeroU64::new(2).unwrap();
-		response
-			.add_entry(node_id, name, cursor)
-			.set_file_type(FileType::Regular);
+		let offset = num::NonZeroU64::new(2).unwrap();
+
+		let mut entry = ReaddirEntry::new(node_id, name, offset);
+		entry.set_file_type(FileType::Regular);
+		assert!(writer.try_push(&entry).is_ok());
 	}
 
+	let response = ReaddirResponse::new(writer.into_entries());
 	assert_eq!(
 		format!("{:#?}", response),
 		concat!(
@@ -217,13 +205,13 @@ fn response_impl_debug() {
 			"    entries: [\n",
 			"        ReaddirEntry {\n",
 			"            node_id: 100,\n",
-			"            cursor: 1,\n",
+			"            offset: 1,\n",
 			"            file_type: Regular,\n",
 			"            name: \"hello.txt\",\n",
 			"        },\n",
 			"        ReaddirEntry {\n",
 			"            node_id: 101,\n",
-			"            cursor: 2,\n",
+			"            offset: 2,\n",
 			"            file_type: Regular,\n",
 			"            name: \"world.txt\",\n",
 			"        },\n",

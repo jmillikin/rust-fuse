@@ -76,43 +76,50 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 	) -> fuse_rpc::FuseResult<fuse::ReaddirResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
-		let mut cursor: u64 = match request.cursor() {
+		let mut offset: u64 = match request.offset() {
 			Some(x) => x.into(),
 			None => 0,
 		};
 
-		let mut resp = fuse::ReaddirResponse::with_max_size(request.size());
-		if cursor == 0 {
-			cursor += 1;
-			let entry = resp.add_entry(
+		let mut buf = vec![0u8; request.size()];
+		let mut entries = fuse::ReaddirEntriesWriter::new(&mut buf);
+
+		if offset == 0 {
+			offset += 1;
+			let mut entry = fuse::ReaddirEntry::new(
 				fuse::NodeId::new(10).unwrap(),
 				fuse::NodeName::from_bytes(b"entry_a").unwrap(),
-				NonZeroU64::new(cursor).unwrap(),
+				NonZeroU64::new(offset).unwrap(),
 			);
 			entry.set_file_type(fuse::FileType::Regular);
+			entries.try_push(&entry).unwrap();
 		}
-		if cursor == 1 {
-			cursor += 1;
-			let entry = resp.add_entry(
+		if offset == 1 {
+			offset += 1;
+			let mut entry = fuse::ReaddirEntry::new(
 				fuse::NodeId::new(11).unwrap(),
 				fuse::NodeName::from_bytes(b"entry_b").unwrap(),
-				NonZeroU64::new(cursor).unwrap(),
+				NonZeroU64::new(offset).unwrap(),
 			);
 			entry.set_file_type(fuse::FileType::Symlink);
+			entries.try_push(&entry).unwrap();
 
+			let resp = fuse::ReaddirResponse::new(entries.into_entries());
 			return call.respond_ok(&resp);
 		}
 
-		if cursor == 2 {
-			cursor += 1;
-			let entry = resp.add_entry(
+		if offset == 2 {
+			offset += 1;
+			let mut entry = fuse::ReaddirEntry::new(
 				fuse::NodeId::new(12).unwrap(),
 				fuse::NodeName::from_bytes(b"entry_c").unwrap(),
-				NonZeroU64::new(cursor).unwrap(),
+				NonZeroU64::new(offset).unwrap(),
 			);
 			entry.set_file_type(fuse::FileType::Directory);
+			entries.try_push(&entry).unwrap();
 		}
 
+		let resp = fuse::ReaddirResponse::new(entries.into_entries());
 		call.respond_ok(&resp)
 	}
 
@@ -207,7 +214,7 @@ fn readdir() {
 		let expect = r#"ReaddirRequest {
     node_id: 2,
     size: 4096,
-    cursor: None,
+    offset: None,
     handle: 12345,
     open_flags: 0x00018000,
 }"#;
@@ -219,7 +226,7 @@ fn readdir() {
 		let expect = r#"ReaddirRequest {
     node_id: 2,
     size: 4096,
-    cursor: Some(1),
+    offset: Some(1),
     handle: 12345,
     open_flags: 0x00018000,
 }"#;
@@ -231,7 +238,7 @@ fn readdir() {
 		let expect = r#"ReaddirRequest {
     node_id: 2,
     size: 4096,
-    cursor: Some(2),
+    offset: Some(2),
     handle: 12345,
     open_flags: 0x00018000,
 }"#;
@@ -248,7 +255,7 @@ fn readdir() {
 		let expect = r#"ReaddirRequest {
     node_id: 2,
     size: 4096,
-    cursor: None,
+    offset: None,
     handle: 12345,
     open_flags: 0x00000000,
 }"#;
@@ -260,7 +267,7 @@ fn readdir() {
 		let expect = r#"ReaddirRequest {
     node_id: 2,
     size: 4096,
-    cursor: Some(2),
+    offset: Some(2),
     handle: 12345,
     open_flags: 0x00000000,
 }"#;

@@ -139,16 +139,23 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for HelloWorldFS {
 			return call.respond_err(fuse::Error::INVALID_ARGUMENT);
 		}
 
-		if request.cursor().is_some() {
+		if request.offset().is_some() {
 			return call.respond_ok(fuse::ReaddirResponse::EMPTY);
 		}
 
-		let mut resp = fuse::ReaddirResponse::with_max_size(request.size());
+		let mut buf = vec![0u8; request.size()];
+		let mut entries = fuse::ReaddirEntriesWriter::new(&mut buf);
 
 		let node_offset = NonZeroU64::new(1).unwrap();
-		resp.add_entry(HELLO_TXT.node_id(), HELLO_TXT.name(), node_offset)
-			.set_file_type(fuse::FileType::Regular);
+		let mut entry = fuse::ReaddirEntry::new(
+			HELLO_TXT.node_id(),
+			HELLO_TXT.name(),
+			node_offset,
+		);
+		entry.set_file_type(fuse::FileType::Regular);
+		entries.try_push(&entry).unwrap();
 
+		let resp = fuse::ReaddirResponse::new(entries.into_entries());
 		call.respond_ok(&resp)
 	}
 

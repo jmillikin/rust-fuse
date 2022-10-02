@@ -16,25 +16,20 @@
 
 //! Implements the `FUSE_READDIR` operation.
 
+use core::convert::TryFrom;
 use core::fmt;
-use core::marker::PhantomData;
-use core::mem;
-use core::mem::size_of;
 use core::num;
-use core::ptr;
 
 use crate::FileType;
 use crate::NodeId;
-use crate::NodeName;
 use crate::internal::compat;
+use crate::internal::dirent;
 use crate::internal::fuse_kernel;
 use crate::server;
 use crate::server::io;
 use crate::server::io::decode;
 use crate::server::io::encode;
 
-use crate::protocol::common::DebugBytesAsString;
-use crate::protocol::common::DebugClosure;
 use crate::protocol::common::DebugHexU32;
 
 // ReaddirRequest {{{
@@ -75,11 +70,11 @@ impl<'a> ReaddirRequest<'a> {
 		unsafe { NodeId::new_unchecked(self.header.nodeid) }
 	}
 
-	pub fn size(&self) -> u32 {
-		self.body.as_v7p1().size
+	pub fn size(&self) -> usize {
+		usize::try_from(self.body.as_v7p1().size).unwrap_or(usize::MAX)
 	}
 
-	pub fn cursor(&self) -> Option<num::NonZeroU64> {
+	pub fn offset(&self) -> Option<num::NonZeroU64> {
 		num::NonZeroU64::new(self.body.as_v7p1().offset)
 	}
 
@@ -103,7 +98,7 @@ impl fmt::Debug for ReaddirRequest<'_> {
 		fmt.debug_struct("ReaddirRequest")
 			.field("node_id", &self.node_id())
 			.field("size", &self.size())
-			.field("cursor", &format_args!("{:?}", self.cursor()))
+			.field("offset", &format_args!("{:?}", self.offset()))
 			.field("handle", &self.handle())
 			.field("open_flags", &DebugHexU32(self.open_flags()))
 			.finish()
@@ -114,414 +109,44 @@ impl fmt::Debug for ReaddirRequest<'_> {
 
 // ReaddirResponse {{{
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct ReaddirError {
-	kind: ReaddirErrorKind,
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-enum ReaddirErrorKind {
-	ExceedsCapacity(usize, usize),
-	OverflowsUsize,
-}
-
-impl ReaddirError {
-	fn exceeds_capacity(response_size: usize, capacity: usize) -> ReaddirError {
-		ReaddirError {
-			kind: ReaddirErrorKind::ExceedsCapacity(response_size, capacity),
-		}
-	}
-
-	fn overflows_usize() -> ReaddirError {
-		ReaddirError {
-			kind: ReaddirErrorKind::OverflowsUsize,
-		}
-	}
-}
-
-impl fmt::Display for ReaddirError {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-		fmt::Debug::fmt(self, fmt)
-	}
-}
-
-#[cfg(feature = "std")]
-impl std::error::Error for ReaddirError {}
-
 /// Response type for `FUSE_READDIR`.
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_READDIR` operation.
 pub struct ReaddirResponse<'a> {
-	buf: ReaddirBuf<'a, fuse_kernel::fuse_dirent>,
+	entries: ReaddirEntries<'a>,
 }
 
 impl ReaddirResponse<'_> {
-	/// An empty `ReaddirResponse` that cannot have entries added to it.
+	/// An empty `ReaddirResponse`, containing no entries.
 	///
 	/// This is useful for returning end-of-stream responses.
 	pub const EMPTY: &'static ReaddirResponse<'static> = &ReaddirResponse {
-		buf: ReaddirBuf::None,
+		entries: ReaddirEntries { buf: b"" },
 	};
 }
 
 impl<'a> ReaddirResponse<'a> {
-	/// Constructs a new, empty `ReaddirResponse` that will grow up to the given
-	/// maximum size.
-	///
-	/// # Examples
-	///
-	/// ```
-	/// use fuse::server::fuse_rpc;
-	/// # struct Handlers {}
-	/// # impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for Handlers {
-	/// fn readdir(
-	/// 	&self,
-	/// 	call: fuse_rpc::FuseCall<S>,
-	/// 	request: &fuse::ReaddirRequest,
-	/// ) -> fuse_rpc::FuseResult<fuse::ReaddirResponse, S::Error> {
-	/// 	let mut response = fuse::ReaddirResponse::with_max_size(request.size());
-	/// 	/* fill in response */
-	/// 	call.respond_ok(&response)
-	/// }
-	/// # }
-	/// ```
-	#[cfg(any(doc, feature = "std"))]
-	pub fn with_max_size(max_size: u32) -> ReaddirResponse<'a> {
-		let max_size = max_size as usize;
-		Self {
-			buf: ReaddirBuf::Owned {
-				cap: Vec::new(),
-				max_size,
-			},
-		}
+	#[inline]
+	pub fn new(entries: ReaddirEntries<'a>) -> ReaddirResponse<'a> {
+		Self { entries }
 	}
 
-	/// Constructs a new, empty `ReaddirResponse` that will use the given buffer
-	/// as capacity. The caller is responsible for allocating a buffer of the
-	/// appropriate size and alignment.
-	///
-	/// # Panics
-	///
-	/// Panics if `buf` is not sufficiently aligned. The minimum alignment is
-	/// `align_of::<u64>()`.
-	///
-	/// # Examples
-	///
-	/// ```
-	/// use fuse::server::fuse_rpc;
-	/// # fn new_aligned_buf(_size: u32) -> Vec<u8> { Vec::new() }
-	/// # struct Handlers {}
-	/// # impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for Handlers {
-	/// fn readdir(
-	/// 	&self,
-	/// 	call: fuse_rpc::FuseCall<S>,
-	/// 	request: &fuse::ReaddirRequest,
-	/// ) -> fuse_rpc::FuseResult<fuse::ReaddirResponse, S::Error> {
-	/// 	let mut buf = new_aligned_buf(request.size());
-	/// 	let mut response = fuse::ReaddirResponse::with_capacity(&mut buf);
-	/// 	/* fill in response */
-	/// 	call.respond_ok(&response)
-	/// }
-	/// # }
-	/// ```
-	pub fn with_capacity(capacity: &'a mut [u8]) -> ReaddirResponse<'a> {
-		let offset = capacity.as_ptr().align_offset(mem::align_of::<u64>());
-		if offset != 0 {
-			panic!(
-				"ReaddirResponse::with_capacity() requires an 8-byte aligned buffer."
-			);
-		}
-		Self {
-			buf: ReaddirBuf::Borrowed {
-				cap: capacity,
-				size: 0,
-				phantom: PhantomData,
-			},
-		}
-	}
-
-	pub fn entries(&self) -> impl Iterator<Item = &ReaddirEntry> {
-		ReaddirEntriesIter::new(&self.buf)
-	}
-
-	pub fn add_entry(
-		&mut self,
-		node_id: NodeId,
-		name: &NodeName,
-		cursor: num::NonZeroU64,
-	) -> &mut ReaddirEntry {
-		self.try_add_entry(node_id, name, cursor).unwrap()
-	}
-
-	pub fn try_add_entry(
-		&mut self,
-		node_id: NodeId,
-		name: &NodeName,
-		cursor: num::NonZeroU64,
-	) -> Result<&mut ReaddirEntry, ReaddirError> {
-		let name = name.as_bytes();
-		let dirent_buf = self.buf.try_alloc_dirent(name)?;
-
-		// From here on `try_add_entry()` must not fail, or the response buffer
-		// would contain uninitialized bytes.
-
-		unsafe {
-			let dirent_ptr = dirent_buf as *mut fuse_kernel::fuse_dirent;
-			let name_ptr =
-				dirent_buf.add(size_of::<fuse_kernel::fuse_dirent>());
-			let padding_ptr = name_ptr.add(name.len());
-
-			dirent_ptr.write(fuse_kernel::fuse_dirent {
-				ino: node_id.get(),
-				off: cursor.get(),
-				namelen: name.len() as u32,
-				r#type: FileType::Unknown.as_bits(),
-				name: [],
-			});
-
-			ptr::copy_nonoverlapping(name.as_ptr(), name_ptr, name.len());
-			let padding_len = (8 - (name.len() % 8)) % 8;
-			if padding_len > 0 {
-				ptr::write_bytes(padding_ptr, 0, padding_len);
-			}
-
-			Ok(ReaddirEntry::new_ref_mut(&mut *dirent_ptr))
-		}
-	}
-}
-
-response_send_funcs!(ReaddirResponse<'_>);
-
-enum ReaddirBuf<'a, Dirent> {
-	None,
-	#[cfg(feature = "std")]
-	Owned {
-		cap: Vec<u8>,
-		max_size: usize,
-	},
-	Borrowed {
-		cap: &'a mut [u8],
-		size: usize,
-		phantom: PhantomData<&'a Dirent>,
-	},
-}
-
-trait DirentT {
-	fn namelen(&self) -> u32;
-}
-
-impl DirentT for fuse_kernel::fuse_dirent {
-	fn namelen(&self) -> u32 {
-		self.namelen
-	}
-}
-
-impl<Dirent: DirentT> ReaddirBuf<'_, Dirent> {
-	fn try_alloc_dirent(
-		&mut self,
-		name: &[u8],
-	) -> Result<*mut u8, ReaddirError> {
-		debug_assert!(!name.is_empty());
-
-		let padding_len = (8 - (name.len() % 8)) % 8;
-		let overhead = padding_len + size_of::<Dirent>();
-		let entry_size = overhead + name.len();
-
-		let entry_buf = match self {
-			ReaddirBuf::None => {
-				return Err(ReaddirError::exceeds_capacity(entry_size, 0));
-			},
-			ReaddirBuf::Borrowed {
-				cap,
-				size: size_ref,
-				..
-			} => {
-				let current_size: usize = *size_ref;
-				let new_size = match current_size.checked_add(entry_size) {
-					Some(x) => x,
-					None => return Err(ReaddirError::overflows_usize()),
-				};
-				if new_size > cap.len() {
-					return Err(ReaddirError::exceeds_capacity(
-						new_size,
-						cap.len(),
-					));
-				}
-				let (_, remaining_cap) = cap.split_at_mut(current_size);
-				let (entry_buf, _) = remaining_cap.split_at_mut(entry_size);
-				*size_ref = new_size;
-				entry_buf
-			},
-
-			#[cfg(feature = "std")]
-			Self::Owned { cap, max_size } => {
-				let current_size = cap.len();
-				let new_size = match current_size.checked_add(entry_size) {
-					Some(x) => x,
-					None => return Err(ReaddirError::overflows_usize()),
-				};
-				if new_size > *max_size {
-					return Err(ReaddirError::exceeds_capacity(
-						new_size, *max_size,
-					));
-				}
-				cap.resize(new_size, 0u8);
-				let (_, entry_buf) = cap.split_at_mut(current_size);
-				entry_buf
-			},
-		};
-
-		debug_assert!(
-			entry_buf.len() == entry_size,
-			"{} == {}",
-			entry_buf.len(),
-			entry_size,
-		);
-		Ok(entry_buf.as_mut_ptr())
-	}
-
-	fn next_dirent(&self, offset: usize) -> Option<(&Dirent, usize)> {
-		let mut buf = match &self {
-			Self::None => &[],
-			#[cfg(feature = "std")]
-			Self::Owned { cap, .. } => cap.as_slice(),
-			Self::Borrowed { cap, size, .. } => {
-				let (used, _) = cap.split_at(*size);
-				used
-			},
-		};
-		if offset == buf.len() {
-			return None;
-		}
-		if offset > 0 {
-			let (_, buf_offset) = buf.split_at(offset);
-			buf = buf_offset;
-		}
-
-		let dirent_size = mem::size_of::<Dirent>();
-		debug_assert!(buf.len() >= dirent_size);
-		let dirent = unsafe { &*(buf.as_ptr() as *const Dirent) };
-		let name_len = dirent.namelen() as usize;
-		let padding = (8 - (name_len % 8)) % 8;
-		let entry_span = dirent_size + name_len + padding;
-
-		Some((dirent, offset + entry_span))
-	}
-}
-
-#[repr(transparent)]
-pub struct ReaddirEntry(fuse_kernel::fuse_dirent);
-
-impl ReaddirEntry {
-	pub(crate) fn new_ref(raw: &fuse_kernel::fuse_dirent) -> &ReaddirEntry {
-		unsafe {
-			&*(raw as *const fuse_kernel::fuse_dirent as *const ReaddirEntry)
-		}
-	}
-
-	pub(crate) fn new_ref_mut(
-		raw: &mut fuse_kernel::fuse_dirent,
-	) -> &mut ReaddirEntry {
-		unsafe {
-			&mut *(raw as *mut fuse_kernel::fuse_dirent as *mut ReaddirEntry)
-		}
-	}
-
-	pub fn node_id(&self) -> NodeId {
-		unsafe { NodeId::new_unchecked(self.0.ino) }
-	}
-
-	pub fn name(&self) -> &[u8] {
-		dirent_name(&self.0)
-	}
-
-	pub fn cursor(&self) -> num::NonZeroU64 {
-		unsafe { num::NonZeroU64::new_unchecked(self.0.off) }
-	}
-
-	pub fn file_type(&self) -> FileType {
-		dirent_type(&self.0)
-	}
-
-	pub fn set_file_type(&mut self, file_type: FileType) {
-		self.0.r#type = file_type.as_bits();
-	}
-}
-
-fn dirent_type(dirent: &fuse_kernel::fuse_dirent) -> FileType {
-	match FileType::from_bits(dirent.r#type) {
-		Some(t) => t,
-		None => unsafe {
-			core::hint::unreachable_unchecked()
-		},
-	}
-}
-
-fn dirent_name(dirent: &fuse_kernel::fuse_dirent) -> &[u8] {
-	unsafe {
-		core::slice::from_raw_parts(
-			&dirent.name as *const u8,
-			dirent.namelen as usize,
-		)
-	}
-}
-
-fn dirent_fmt(
-	dirent: &fuse_kernel::fuse_dirent,
-	fmt: &mut fmt::Formatter,
-) -> fmt::Result {
-	fmt.debug_struct("ReaddirEntry")
-		.field("node_id", &dirent.ino)
-		.field("cursor", &dirent.off)
-		.field("file_type", &dirent_type(dirent))
-		.field("name", &DebugBytesAsString(dirent_name(dirent)))
-		.finish()
-}
-
-impl fmt::Debug for ReaddirEntry {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		dirent_fmt(&self.0, fmt)
-	}
-}
-
-struct ReaddirEntriesIter<'a> {
-	buf: &'a ReaddirBuf<'a, fuse_kernel::fuse_dirent>,
-	offset: usize,
-}
-
-impl<'a> ReaddirEntriesIter<'a> {
-	fn new(buf: &'a ReaddirBuf<'a, fuse_kernel::fuse_dirent>) -> Self {
-		Self { buf, offset: 0 }
-	}
-}
-
-impl<'a> core::iter::Iterator for ReaddirEntriesIter<'a> {
-	type Item = &'a ReaddirEntry;
-
-	fn next(&mut self) -> Option<&'a ReaddirEntry> {
-		match self.buf.next_dirent(self.offset) {
-			None => None,
-			Some((dirent, new_offset)) => {
-				self.offset = new_offset;
-				Some(ReaddirEntry::new_ref(dirent))
-			},
-		}
+	#[inline]
+	pub fn entries(&self) -> impl Iterator<Item = ReaddirEntry> {
+		ReaddirEntriesIter::new(&self.entries)
 	}
 }
 
 impl fmt::Debug for ReaddirResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		let entries = DebugClosure(|fmt| {
-			fmt.debug_list()
-				.entries(ReaddirEntriesIter::new(&self.buf))
-				.finish()
-		});
 		fmt.debug_struct("ReaddirResponse")
-			.field("entries", &entries)
+			.field("entries", &self.entries)
 			.finish()
 	}
 }
+
+response_send_funcs!(ReaddirResponse<'_>);
 
 impl ReaddirResponse<'_> {
 	fn encode<S: encode::SendOnce>(
@@ -530,14 +155,204 @@ impl ReaddirResponse<'_> {
 		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		match &self.buf {
-			ReaddirBuf::None => enc.encode_header_only(),
-			#[cfg(feature = "std")]
-			ReaddirBuf::Owned { cap, .. } => enc.encode_bytes(cap),
-			ReaddirBuf::Borrowed { cap, size, .. } => {
-				let (bytes, _) = cap.split_at(*size);
-				enc.encode_bytes(bytes)
+		if self.entries.is_empty() {
+			enc.encode_header_only()
+		} else {
+			enc.encode_bytes(self.entries.buf)
+		}
+	}
+}
+
+// }}}
+
+// ReaddirEntry {{{
+
+#[derive(Clone, Copy)]
+pub struct ReaddirEntry<'a> {
+	dirent: fuse_kernel::fuse_dirent,
+	name: &'a crate::NodeName,
+}
+
+impl<'a> ReaddirEntry<'a> {
+	#[inline]
+	pub fn new(
+		node_id: crate::NodeId,
+		name: &'a crate::NodeName,
+		offset: num::NonZeroU64,
+	) -> ReaddirEntry<'a> {
+		Self {
+			dirent: fuse_kernel::fuse_dirent {
+				ino: node_id.get(),
+				off: offset.get(),
+				namelen: name.as_bytes().len() as u32,
+				..fuse_kernel::fuse_dirent::zeroed()
 			},
+			name,
+		}
+	}
+
+	#[inline]
+	pub fn node_id(&self) -> crate::NodeId {
+		unsafe { crate::NodeId::new_unchecked(self.dirent.ino) }
+	}
+
+	#[inline]
+	pub fn name(&self) -> &crate::NodeName {
+		self.name
+	}
+
+	#[inline]
+	pub fn offset(&self) -> num::NonZeroU64 {
+		unsafe { num::NonZeroU64::new_unchecked(self.dirent.off) }
+	}
+
+	#[inline]
+	pub fn file_type(&self) -> crate::FileType {
+		match FileType::from_bits(self.dirent.r#type) {
+			Some(t) => t,
+			None => unsafe {
+				core::hint::unreachable_unchecked()
+			},
+		}
+	}
+
+	#[inline]
+	pub fn set_file_type(&mut self, file_type: crate::FileType) {
+		self.dirent.r#type = file_type.as_bits();
+	}
+}
+
+impl fmt::Debug for ReaddirEntry<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("ReaddirEntry")
+			.field("node_id", &self.node_id())
+			.field("offset", &self.offset())
+			.field("file_type", &self.file_type())
+			.field("name", &self.name())
+			.finish()
+	}
+}
+
+// }}}
+
+// ReaddirEntries {{{
+
+#[derive(Copy, Clone)]
+pub struct ReaddirEntries<'a> {
+	buf: &'a [u8],
+}
+
+impl<'a> ReaddirEntries<'a> {
+	#[inline]
+	pub fn is_empty(&self) -> bool {
+		self.buf.is_empty()
+	}
+}
+
+impl fmt::Debug for ReaddirEntries<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_list()
+			.entries(ReaddirEntriesIter::new(self))
+			.finish()
+	}
+}
+
+// }}}
+
+// ReaddirEntriesWriter {{{
+
+#[derive(Debug)]
+#[non_exhaustive]
+pub struct ReaddirCapacityError {}
+
+pub struct ReaddirEntriesWriter<'a> {
+	buf: &'a mut [u8],
+	position: usize,
+}
+
+impl<'a> ReaddirEntriesWriter<'a> {
+	#[inline]
+	pub fn new(mut buf: &'a mut [u8]) -> ReaddirEntriesWriter<'a> {
+		let max_len = usize::from(u16::MAX);
+		if buf.len() > max_len {
+			buf = &mut buf[..max_len];
+		}
+		Self { buf, position: 0 }
+	}
+
+	#[inline]
+	pub fn capacity(&self) -> usize {
+		self.buf.len()
+	}
+
+	#[inline]
+	pub fn position(&self) -> usize {
+		self.position
+	}
+
+	#[inline]
+	pub fn into_entries(self) -> ReaddirEntries<'a> {
+		ReaddirEntries {
+			buf: unsafe { self.buf.get_unchecked(..self.position) },
+		}
+	}
+
+	#[inline]
+	pub fn entry_size(entry: &ReaddirEntry) -> usize {
+		dirent::entry_size::<fuse_kernel::fuse_dirent>(entry.name)
+	}
+
+	pub fn try_push(
+		&mut self,
+		entry: &ReaddirEntry,
+	) -> Result<(), ReaddirCapacityError> {
+		let remaining_capacity = self.capacity() - self.position();
+		let entry_size = Self::entry_size(entry);
+		if entry_size > remaining_capacity {
+			return Err(ReaddirCapacityError {});
+		}
+
+		let entry_start = self.position;
+		self.position += entry_size;
+
+		unsafe {
+			let dst = self.buf.get_unchecked_mut(entry_start..self.position);
+			dirent::write_unchecked(entry.dirent, entry.name, dst);
+		};
+		Ok(())
+	}
+}
+
+// }}}
+
+// ReaddirEntriesIter {{{
+
+struct ReaddirEntriesIter<'a> {
+	buf: &'a [u8],
+}
+
+impl<'a> ReaddirEntriesIter<'a> {
+	#[inline]
+	fn new(entries: &ReaddirEntries<'a>) -> ReaddirEntriesIter<'a> {
+		Self { buf: entries.buf }
+	}
+}
+
+impl<'a> Iterator for ReaddirEntriesIter<'a> {
+	type Item = ReaddirEntry<'a>;
+
+	fn next(&mut self) -> Option<ReaddirEntry<'a>> {
+		if self.buf.is_empty() {
+			return None;
+		}
+
+		use fuse_kernel::fuse_dirent as T;
+		unsafe {
+			let (dirent, name) = dirent::read_unchecked::<T>(self.buf);
+			let entry_size = dirent::entry_size::<T>(name);
+			self.buf = self.buf.get_unchecked(entry_size..);
+
+			Some(ReaddirEntry { dirent, name })
 		}
 	}
 }

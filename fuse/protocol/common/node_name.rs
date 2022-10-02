@@ -43,7 +43,11 @@ impl NodeName {
 		if bytes.contains(&0) || bytes.contains(&b'/') {
 			return None;
 		}
-		Some(unsafe { &*(bytes as *const [u8] as *const NodeName) })
+		Some(unsafe { Self::new_unchecked(bytes) })
+	}
+
+	pub(crate) unsafe fn new_unchecked<'a>(bytes: &'a [u8]) -> &'a NodeName {
+		&*(bytes as *const [u8] as *const NodeName)
 	}
 
 	pub fn as_bytes(&self) -> &[u8] {
