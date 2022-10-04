@@ -172,6 +172,58 @@ impl<'a> Versioned<fuse_mknod_in<'a>> {
 
 // }}}
 
+// fuse_setxattr_in {{{
+
+#[derive(Clone, Copy)]
+#[repr(C)]
+pub(crate) union fuse_setxattr_in<'a> {
+	v7p1: &'a fuse_setxattr_in_v7p1,
+	v7p33: &'a fuse_kernel::fuse_setxattr_in,
+}
+
+#[repr(C)]
+pub(crate) struct fuse_setxattr_in_v7p1 {
+	pub(crate) size:  u32,
+	pub(crate) flags: u32,
+}
+
+impl<'a> Versioned<fuse_setxattr_in<'a>> {
+	#[inline]
+	pub(crate) fn new_setxattr_v7p1(
+		v7p1: &'a fuse_setxattr_in_v7p1,
+	) -> Self {
+		Self {
+			version_minor: 1,
+			u: fuse_setxattr_in { v7p1 },
+		}
+	}
+
+	#[inline]
+	pub(crate) fn new_setxattr_v7p33(
+		v7p33: &'a fuse_kernel::fuse_setxattr_in,
+	) -> Self {
+		Self {
+			version_minor: 33,
+			u: fuse_setxattr_in { v7p33 },
+		}
+	}
+
+	#[inline]
+	pub(crate) fn as_v7p1(self) -> &'a fuse_setxattr_in_v7p1 {
+		unsafe { self.u.v7p1 }
+	}
+
+	#[inline]
+	pub(crate) fn as_v7p33(self) -> Option<&'a fuse_kernel::fuse_setxattr_in> {
+		if self.version_minor >= 33 {
+			return Some(unsafe { self.u.v7p33 });
+		}
+		None
+	}
+}
+
+// }}}
+
 // fuse_read_in {{{
 
 #[derive(Clone, Copy)]

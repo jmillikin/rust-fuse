@@ -75,26 +75,34 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 	) -> fuse_rpc::FuseResult<fuse::ListxattrResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
-		let xattr_small = xattr::Name::new("user.xattr_small").unwrap();
-		let xattr_toobig = xattr::Name::new("user.xattr_toobig").unwrap();
-
-		let mut resp = match request.size() {
-			None => fuse::ListxattrResponse::without_capacity(),
-			Some(max_size) => {
-				fuse::ListxattrResponse::with_max_size(max_size.into())
-			},
-		};
-
 		if request.node_id() == fuse::NodeId::new(3).unwrap() {
 			return call.respond_err(ErrorCode::E2BIG);
 		}
 
-		if let Err(_) = resp.try_add_name(xattr_small) {
+		let xattr_small = xattr::Name::new("user.xattr_small").unwrap();
+		let xattr_toobig = xattr::Name::new("user.xattr_toobig").unwrap();
+
+		let buf_size = match request.size() {
+			None => {
+				let mut need_size = xattr_small.size();
+				need_size += xattr_toobig.size();
+				let resp = fuse::ListxattrResponse::with_names_size(need_size);
+				return call.respond_ok(&resp);
+			},
+			Some(request_size) => request_size,
+		};
+
+		let mut buf = vec![0u8; buf_size.get()];
+		let mut names = fuse::ListxattrNamesWriter::new(&mut buf);
+
+		if names.try_push(xattr_small).is_err() {
 			return call.respond_err(ErrorCode::ERANGE);
 		}
-		if let Err(_) = resp.try_add_name(xattr_toobig) {
+		if names.try_push(xattr_toobig).is_err() {
 			return call.respond_err(ErrorCode::ERANGE);
 		}
+
+		let resp = fuse::ListxattrResponse::with_names(names);
 		call.respond_ok(&resp)
 	}
 }

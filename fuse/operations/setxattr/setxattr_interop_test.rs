@@ -123,7 +123,18 @@ fn setxattr() {
     name: "user.xattr_name",
     flags: SetxattrRequestFlags {},
     setxattr_flags: 0x00000000,
-    value: "some\x00value",
+    value: [
+        115,
+        111,
+        109,
+        101,
+        0,
+        118,
+        97,
+        108,
+        117,
+        101,
+    ],
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);
@@ -157,7 +168,18 @@ fn setxattr_flag_create() {
     name: "user.xattr_name",
     flags: SetxattrRequestFlags {},
     setxattr_flags: 0x00000001,
-    value: "some\x00value",
+    value: [
+        115,
+        111,
+        109,
+        101,
+        0,
+        118,
+        97,
+        108,
+        117,
+        101,
+    ],
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);
@@ -191,7 +213,18 @@ fn setxattr_flag_replace() {
     name: "user.xattr_name",
     flags: SetxattrRequestFlags {},
     setxattr_flags: 0x00000002,
-    value: "some\x00value",
+    value: [
+        115,
+        111,
+        109,
+        101,
+        0,
+        118,
+        97,
+        108,
+        117,
+        101,
+    ],
 }"#;
 	if let Some(diff) = diff_str(expect, &requests[0]) {
 		println!("{}", diff);

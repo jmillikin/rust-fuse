@@ -87,7 +87,6 @@ pub use self::protocol::common::{
 	NodeAttr,
 	NodeId,
 	NodeName,
-	XattrError,
 	NODE_NAME_MAX,
 	ROOT_ID,
 };

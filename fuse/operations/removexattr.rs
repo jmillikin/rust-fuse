@@ -19,7 +19,6 @@
 use core::fmt;
 use core::marker::PhantomData;
 
-use crate::NodeId;
 use crate::internal::fuse_kernel;
 use crate::server;
 use crate::server::io;
@@ -34,7 +33,7 @@ use crate::xattr;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_REMOVEXATTR` operation.
 pub struct RemovexattrRequest<'a> {
-	node_id: NodeId,
+	header: &'a fuse_kernel::fuse_in_header,
 	name: &'a xattr::Name,
 }
 
@@ -44,19 +43,22 @@ impl<'a> RemovexattrRequest<'a> {
 	) -> Result<Self, io::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_REMOVEXATTR)?;
+
+		let header = dec.header();
+		decode::node_id(header.nodeid)?;
+
 		let name_bytes = dec.next_nul_terminated_bytes()?;
 		let name = xattr::Name::from_bytes(name_bytes.to_bytes_without_nul())?;
-		Ok(Self {
-			node_id: decode::node_id(dec.header().nodeid)?,
-			name,
-		})
+		Ok(Self { header, name })
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn node_id(&self) -> NodeId {
-		self.node_id
+	pub fn node_id(&self) -> crate::NodeId {
+		unsafe { crate::NodeId::new_unchecked(self.header.nodeid) }
 	}
 
+	#[inline]
 	#[must_use]
 	pub fn name(&self) -> &xattr::Name {
 		self.name
@@ -66,8 +68,8 @@ impl<'a> RemovexattrRequest<'a> {
 impl fmt::Debug for RemovexattrRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("RemovexattrRequest")
-			.field("node_id", &self.node_id)
-			.field("name", &self.name)
+			.field("node_id", &self.node_id())
+			.field("name", &self.name())
 			.finish()
 	}
 }
@@ -85,6 +87,7 @@ pub struct RemovexattrResponse<'a> {
 }
 
 impl<'a> RemovexattrResponse<'a> {
+	#[inline]
 	#[must_use]
 	pub fn new() -> RemovexattrResponse<'a> {
 		Self {

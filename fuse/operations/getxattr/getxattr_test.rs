@@ -39,7 +39,7 @@ fn request_sized() {
 	let req = decode_request!(GetxattrRequest, buf);
 
 	let expect = xattr::Name::new("hello.world!").unwrap();
-	assert_eq!(req.size(), Some(num::NonZeroU32::new(10).unwrap()));
+	assert_eq!(req.size(), Some(num::NonZeroUsize::new(10).unwrap()));
 	assert_eq!(req.name(), expect);
 }
 
@@ -92,16 +92,9 @@ fn request_impl_debug() {
 }
 
 #[test]
-fn response_sized() {
-	let request_size = num::NonZeroU32::new(10);
-	let mut resp = GetxattrResponse::new(request_size);
-	assert_eq!(resp.request_size(), request_size);
-
-	// value must fit in kernel buffer
-	assert!(resp.try_set_value(&[255; 11]).is_err());
-
-	resp.set_value(&[255, 0, 255]);
-
+fn response_with_value() {
+	let value = xattr::Value::new(&[255, 0, 255]).unwrap();
+	let resp = GetxattrResponse::with_value(value);
 	let encoded = encode_response!(resp);
 
 	assert_eq!(
@@ -118,24 +111,8 @@ fn response_sized() {
 }
 
 #[test]
-fn response_unsized() {
-	let mut resp = GetxattrResponse::new(None);
-	assert_eq!(resp.request_size(), None);
-
-	// set_value() doesn't allow value sizes larger than XATTR_SIZE_MAX
-	let mut val_toobig = Vec::new();
-	if let Some(max_len) = xattr::Value::MAX_LEN {
-		val_toobig.resize(max_len + 1, 0u8);
-		assert!(resp.try_set_value(&val_toobig).is_err());
-		assert!(resp.value().is_empty());
-		//assert_eq!(resp.raw.size, 0);
-	}
-
-	// set_value() doesn't store value bytes for unsized responses
-	resp.set_value(&[1, 2, 3, 4]);
-	assert!(resp.value().is_empty());
-	//assert_eq!(resp.raw.size, 4);
-
+fn response_with_value_size() {
+	let resp = GetxattrResponse::with_value_size(4);
 	let encoded = encode_response!(resp);
 
 	assert_eq!(
@@ -156,17 +133,32 @@ fn response_unsized() {
 }
 
 #[test]
-fn response_impl_debug() {
-	let request_size = num::NonZeroU32::new(10);
-	let mut response = GetxattrResponse::new(request_size);
-	response.set_value(b"some\x00bytes");
-
+fn response_with_value_debug() {
+	let value = xattr::Value::new(&[1, 2, 3, 4]).unwrap();
+	let response = GetxattrResponse::with_value(value);
 	assert_eq!(
 		format!("{:#?}", response),
 		concat!(
 			"GetxattrResponse {\n",
-			"    request_size: Some(10),\n",
-			"    value: \"some\\x00bytes\",\n",
+			"    value: [\n",
+			"        1,\n",
+			"        2,\n",
+			"        3,\n",
+			"        4,\n",
+			"    ],\n",
+			"}",
+		),
+	);
+}
+
+#[test]
+fn response_with_value_size_debug() {
+	let response = GetxattrResponse::with_value_size(10);
+	assert_eq!(
+		format!("{:#?}", response),
+		concat!(
+			"GetxattrResponse {\n",
+			"    size: 10,\n",
 			"}",
 		),
 	);

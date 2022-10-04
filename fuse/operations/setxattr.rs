@@ -19,7 +19,7 @@
 use core::fmt;
 use core::marker::PhantomData;
 
-use crate::NodeId;
+use crate::internal::compat;
 use crate::internal::fuse_kernel;
 use crate::server;
 use crate::server::io;
@@ -27,7 +27,6 @@ use crate::server::io::decode;
 use crate::server::io::encode;
 use crate::xattr;
 
-use crate::protocol::common::DebugBytesAsString;
 use crate::protocol::common::DebugHexU32;
 
 // SetxattrRequest {{{
@@ -38,15 +37,9 @@ use crate::protocol::common::DebugHexU32;
 /// `FUSE_SETXATTR` operation.
 pub struct SetxattrRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
-	raw: fuse_kernel::fuse_setxattr_in,
+	body: compat::Versioned<compat::fuse_setxattr_in<'a>>,
 	name: &'a xattr::Name,
-	value: &'a [u8],
-}
-
-#[repr(C)]
-pub(crate) struct fuse_setxattr_in_v7p1 {
-	pub size:  u32,
-	pub flags: u32,
+	value: &'a xattr::Value,
 }
 
 impl<'a> SetxattrRequest<'a> {
@@ -57,46 +50,56 @@ impl<'a> SetxattrRequest<'a> {
 		dec.expect_opcode(fuse_kernel::FUSE_SETXATTR)?;
 
 		let header = dec.header();
-		let mut raw = fuse_kernel::fuse_setxattr_in::zeroed();
-		if request.have_setxattr_ext() {
-			raw = *(dec.next_sized()?);
-		} else {
-			let old_raw: &fuse_setxattr_in_v7p1 = dec.next_sized()?;
-			raw.size = old_raw.size;
-			raw.flags = old_raw.flags;
-		}
-
 		decode::node_id(header.nodeid)?;
+
+		let body = if request.have_setxattr_ext() {
+			let body_v7p33 = dec.next_sized()?;
+			compat::Versioned::new_setxattr_v7p33(body_v7p33)
+		} else {
+			let body_v7p1 = dec.next_sized()?;
+			compat::Versioned::new_setxattr_v7p1(body_v7p1)
+		};
+
 		let name_bytes = dec.next_nul_terminated_bytes()?;
 		let name = xattr::Name::from_bytes(name_bytes.to_bytes_without_nul())?;
-		let value = dec.next_bytes(raw.size)?;
-		Ok(Self { header, raw, name, value })
+		let value_bytes = dec.next_bytes(body.as_v7p1().size)?;
+		let value = xattr::Value::new(value_bytes)?;
+
+		Ok(Self { header, body, name, value })
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn node_id(&self) -> NodeId {
-		unsafe { NodeId::new_unchecked(self.header.nodeid) }
+	pub fn node_id(&self) -> crate::NodeId {
+		unsafe { crate::NodeId::new_unchecked(self.header.nodeid) }
 	}
 
+	#[inline]
 	#[must_use]
 	pub fn name(&self) -> &xattr::Name {
 		self.name
 	}
 
+	#[inline]
 	#[must_use]
 	pub fn flags(&self) -> SetxattrRequestFlags {
-		SetxattrRequestFlags {
-			bits: self.raw.setxattr_flags,
+		if let Some(body) = self.body.as_v7p33() {
+			return SetxattrRequestFlags {
+				bits: body.setxattr_flags,
+			}
 		}
+		SetxattrRequestFlags::new()
 	}
 
+	#[inline]
 	#[must_use]
 	pub fn setxattr_flags(&self) -> crate::SetxattrFlags {
-		self.raw.flags
+		self.body.as_v7p1().flags
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn value(&self) -> &[u8] {
+	pub fn value(&self) -> &xattr::Value {
 		self.value
 	}
 }
@@ -108,7 +111,7 @@ impl fmt::Debug for SetxattrRequest<'_> {
 			.field("name", &self.name())
 			.field("flags", &self.flags())
 			.field("setxattr_flags", &DebugHexU32(self.setxattr_flags()))
-			.field("value", &DebugBytesAsString(self.value))
+			.field("value", &self.value().as_bytes())
 			.finish()
 	}
 }
@@ -126,6 +129,7 @@ pub struct SetxattrResponse<'a> {
 }
 
 impl<'a> SetxattrResponse<'a> {
+	#[inline]
 	#[must_use]
 	pub fn new() -> SetxattrResponse<'a> {
 		Self {

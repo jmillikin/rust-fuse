@@ -107,6 +107,7 @@ impl From<os_errno::Error> for Error {
 mod errno {
 	use super::{os_errno, Error};
 
+	pub(super) const E2BIG: Error = Error::from_errno(os_errno::E2BIG);
 	pub(super) const EINVAL: Error = Error::from_errno(os_errno::EINVAL);
 	pub(super) const EIO: Error = Error::from_errno(os_errno::EIO);
 	pub(super) const ENOENT: Error = Error::from_errno(os_errno::ENOENT);
@@ -130,6 +131,7 @@ macro_rules! enodata_or_enoattr {
 }
 
 impl Error {
+	pub(crate) const E2BIG: Error = errno::E2BIG;
 	pub(crate) const EIO: Error = errno::EIO;
 
 	/// The client specified an invalid argument.

@@ -71,16 +71,22 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 		let xattr_toobig = xattr::Name::new("user.xattr_toobig").unwrap();
 
 		if request.name() == xattr_small {
-			let mut resp = fuse::GetxattrResponse::new(request.size());
-			return match resp.try_set_value(b"small xattr value") {
-				Ok(_) => call.respond_ok(&resp),
-				Err(_) => {
-					// TODO: error should either have enough public info to let the caller
-					// return an appropriate error code, or ERANGE should be handled by
-					// the response dispatcher.
-					call.respond_err(ErrorCode::ERANGE)
+			let value = xattr::Value::new(b"small xattr value").unwrap();
+
+			match request.size() {
+				None => {
+					let resp = fuse::GetxattrResponse::with_value_size(value.size());
+					return call.respond_ok(&resp);
+				}
+				Some(request_size) => {
+					if value.size() > request_size.get() {
+						return call.respond_err(ErrorCode::ERANGE);
+					}
 				},
 			};
+
+			let resp = fuse::GetxattrResponse::with_value(value);
+			return call.respond_ok(&resp);
 		}
 
 		if request.name() == xattr_toobig {

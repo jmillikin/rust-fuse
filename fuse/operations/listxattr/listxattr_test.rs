@@ -17,7 +17,11 @@
 use core::mem::size_of;
 use core::num;
 
-use fuse::operations::listxattr::{ListxattrRequest, ListxattrResponse};
+use fuse::operations::listxattr::{
+	ListxattrNamesWriter,
+	ListxattrRequest,
+	ListxattrResponse,
+};
 use fuse::xattr;
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
@@ -37,7 +41,7 @@ fn request_sized() {
 
 	let req = decode_request!(ListxattrRequest, buf);
 
-	assert_eq!(req.size(), Some(num::NonZeroU32::new(10).unwrap()));
+	assert_eq!(req.size(), Some(num::NonZeroUsize::new(10).unwrap()));
 }
 
 #[test]
@@ -84,29 +88,24 @@ fn request_impl_debug() {
 }
 
 #[test]
-fn response_sized_heap() {
-	let mut resp = ListxattrResponse::with_max_size(10);
-	response_sized_test_impl(&mut resp);
-}
-
-#[test]
-fn response_sized_stack() {
+fn response_with_names() {
 	let mut buf = [0u8; 10];
-	let mut resp = ListxattrResponse::with_capacity(&mut buf);
-	response_sized_test_impl(&mut resp);
-}
+	let mut names = ListxattrNamesWriter::new(&mut buf);
+	assert_eq!(names.capacity(), 10);
 
-fn response_sized_test_impl(resp: &mut ListxattrResponse) {
-	// response must fit in kernel buffer
+	// response must fit in provided buffer
 	{
 		let name = xattr::Name::new("12345678901").unwrap();
-		assert!(resp.try_add_name(name).is_err());
+		assert!(names.try_push(name).is_err());
 	}
 
-	// xattr names are NUL-terminated
-	resp.add_name(xattr::Name::new("123").unwrap());
-	resp.add_name(xattr::Name::new("456").unwrap());
+	// xattr names are NUL-terminated, so two 3-byte names requires 8 bytes
+	// of buffer space.
+	names.try_push(xattr::Name::new("123").unwrap()).unwrap();
+	names.try_push(xattr::Name::new("456").unwrap()).unwrap();
+	assert_eq!(names.position(), 8);
 
+	let resp = ListxattrResponse::with_names(names);
 	let encoded = encode_response!(resp);
 
 	assert_eq!(
@@ -123,13 +122,8 @@ fn response_sized_test_impl(resp: &mut ListxattrResponse) {
 }
 
 #[test]
-fn response_without_capacity() {
-	let mut resp = ListxattrResponse::without_capacity();
-
-	// set_value() doesn't store value bytes for responses without capacity
-	resp.add_name(xattr::Name::new("123").unwrap());
-	resp.add_name(xattr::Name::new("456").unwrap());
-
+fn response_with_names_size() {
+	let resp = ListxattrResponse::with_names_size(8);
 	let encoded = encode_response!(resp);
 
 	assert_eq!(
@@ -149,24 +143,24 @@ fn response_without_capacity() {
 	);
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn response_size_limit() {
 	// listxattr response size can't exceed XATTR_LIST_MAX
-	let mut resp = ListxattrResponse::without_capacity();
-	let name = xattr::Name::from_bytes(&[b'a'; 250]).unwrap();
-	for _ in 0..261 {
-		resp.add_name(name);
-	}
-	assert!(resp.try_add_name(name).is_err());
+	let mut buf = [0u8; 65536 + 1];
+	let names = ListxattrNamesWriter::new(&mut buf);
+	assert_eq!(names.capacity(), 65536);
 }
 
 #[test]
-fn response_sized_impl_debug() {
-	let mut response = ListxattrResponse::with_max_size(10);
+fn response_with_names_debug() {
+	let mut buf = [0u8; 10];
+	let mut names = ListxattrNamesWriter::new(&mut buf);
 
-	response.add_name(xattr::Name::new("123").unwrap());
-	response.add_name(xattr::Name::new("456").unwrap());
+	names.try_push(xattr::Name::new("123").unwrap()).unwrap();
+	names.try_push(xattr::Name::new("456").unwrap()).unwrap();
 
+	let response = ListxattrResponse::with_names(names);
 	assert_eq!(
 		format!("{:#?}", response),
 		concat!(
@@ -181,14 +175,14 @@ fn response_sized_impl_debug() {
 }
 
 #[test]
-fn response_without_capacity_impl_debug() {
-	let mut response = ListxattrResponse::without_capacity();
-
-	response.add_name(xattr::Name::new("123").unwrap());
-	response.add_name(xattr::Name::new("456").unwrap());
-
+fn response_with_names_size_debug() {
+	let response = ListxattrResponse::with_names_size(8);
 	assert_eq!(
 		format!("{:#?}", response),
-		concat!("ListxattrResponse {\n", "    size: 8,\n", "}",),
+		concat!(
+			"ListxattrResponse {\n",
+			"    size: 8,\n",
+			"}",
+		),
 	);
 }
