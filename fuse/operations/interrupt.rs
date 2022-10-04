@@ -39,15 +39,30 @@ impl InterruptRequest<'_> {
 	}
 }
 
-request_try_from! { InterruptRequest : fuse }
+request_try_from! { InterruptRequest : cuse fuse }
 
 impl decode::Sealed for InterruptRequest<'_> {}
+
+impl<'a> decode::CuseRequest<'a> for InterruptRequest<'a> {
+	fn from_cuse_request(
+		request: &server::CuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		Self::decode(request.decoder())
+	}
+}
 
 impl<'a> decode::FuseRequest<'a> for InterruptRequest<'a> {
 	fn from_fuse_request(
 		request: &server::FuseRequest<'a>,
 	) -> Result<Self, server::RequestError> {
-		let mut dec = request.decoder();
+		Self::decode(request.decoder())
+	}
+}
+
+impl<'a> InterruptRequest<'a> {
+	fn decode(
+		mut dec: decode::RequestDecoder<'a>,
+	) -> Result<Self, server::RequestError> {
 		dec.expect_opcode(fuse_kernel::FUSE_INTERRUPT)?;
 		let body = dec.next_sized()?;
 		Ok(Self { body })

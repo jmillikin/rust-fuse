@@ -353,8 +353,22 @@ fn cuse_request_dispatch<S: CuseSocket>(
 	match request.header().opcode() {
 		Op::FUSE_FLUSH => do_dispatch!(FlushRequest, flush),
 		Op::FUSE_FSYNC => do_dispatch!(FsyncRequest, fsync),
+		Op::FUSE_INTERRUPT => {
+			match InterruptRequest::from_cuse_request(&request) {
+				Ok(request) => handlers.interrupt(call, &request),
+				Err(err) => {
+					#[cfg(feature = "std")]
+					if let Some(hooks) = hooks {
+						hooks.request_error(header, err);
+					}
+					let _ = err;
+				},
+			};
+			Ok(())
+		},
 		Op::FUSE_IOCTL => do_dispatch!(IoctlRequest, ioctl),
 		Op::FUSE_OPEN => do_dispatch!(OpenRequest, open),
+		Op::FUSE_POLL => do_dispatch!(PollRequest, poll),
 		Op::FUSE_READ => do_dispatch!(ReadRequest, read),
 		Op::FUSE_RELEASE => do_dispatch!(ReleaseRequest, release),
 		Op::FUSE_WRITE => do_dispatch!(WriteRequest, write),
@@ -389,6 +403,17 @@ pub trait CuseHandlers<S: CuseSocket> {
 		call.unimplemented()
 	}
 
+	fn interrupt(
+		&self,
+		call: CuseCall<S>,
+		request: &operations::InterruptRequest,
+	) {
+		#[cfg(feature = "std")]
+		if let Some(hooks) = call.hooks {
+			hooks.unhandled_request(call.header);
+		}
+	}
+
 	fn ioctl(
 		&self,
 		call: CuseCall<S>,
@@ -402,6 +427,14 @@ pub trait CuseHandlers<S: CuseSocket> {
 		call: CuseCall<S>,
 		request: &operations::OpenRequest,
 	) -> CuseResult<operations::OpenResponse, S::Error> {
+		call.unimplemented()
+	}
+
+	fn poll(
+		&self,
+		call: CuseCall<S>,
+		request: &operations::PollRequest,
+	) -> CuseResult<operations::PollResponse, S::Error> {
 		call.unimplemented()
 	}
 

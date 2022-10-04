@@ -62,15 +62,30 @@ impl PollRequest<'_> {
 	}
 }
 
-request_try_from! { PollRequest : fuse }
+request_try_from! { PollRequest : cuse fuse }
 
 impl decode::Sealed for PollRequest<'_> {}
+
+impl<'a> decode::CuseRequest<'a> for PollRequest<'a> {
+	fn from_cuse_request(
+		request: &server::CuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		Self::decode(request.decoder())
+	}
+}
 
 impl<'a> decode::FuseRequest<'a> for PollRequest<'a> {
 	fn from_fuse_request(
 		request: &server::FuseRequest<'a>,
 	) -> Result<Self, server::RequestError> {
-		let mut dec = request.decoder();
+		Self::decode(request.decoder())
+	}
+}
+
+impl<'a> PollRequest<'a> {
+	fn decode(
+		mut dec: decode::RequestDecoder<'a>,
+	) -> Result<Self, server::RequestError> {
 		dec.expect_opcode(fuse_kernel::FUSE_POLL)?;
 
 		let header = dec.header();
