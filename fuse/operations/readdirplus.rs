@@ -26,9 +26,8 @@ use crate::internal::compat;
 use crate::internal::dirent;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 use crate::protocol::common::DebugHexU32;
 
@@ -76,10 +75,14 @@ impl ReaddirplusRequest<'_> {
 	}
 }
 
-impl<'a> ReaddirplusRequest<'a> {
-	pub fn from_fuse_request(
+request_try_from! { ReaddirplusRequest : fuse }
+
+impl decode::Sealed for ReaddirplusRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for ReaddirplusRequest<'a> {
+	fn from_fuse_request(
 		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
+	) -> Result<Self, server::RequestError> {
 		let version_minor = request.version_minor;
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_READDIRPLUS)?;

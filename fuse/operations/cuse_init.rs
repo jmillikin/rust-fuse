@@ -24,8 +24,8 @@ use core::slice;
 use crate::Version;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 use crate::protocol::common::DebugBytesAsString;
 
@@ -88,21 +88,7 @@ pub struct CuseInitRequest<'a> {
 	flags: CuseInitFlags,
 }
 
-impl<'a> CuseInitRequest<'a> {
-	pub fn from_cuse_request(
-		request: &server::CuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::CUSE_INIT)?;
-
-		let raw: &'a fuse_kernel::cuse_init_in = dec.next_sized()?;
-		Ok(CuseInitRequest {
-			phantom: PhantomData,
-			version: Version::new(raw.major, raw.minor),
-			flags: CuseInitFlags { bits: raw.flags },
-		})
-	}
-
+impl CuseInitRequest<'_> {
 	#[must_use]
 	pub fn version(&self) -> Version {
 		self.version
@@ -120,6 +106,26 @@ impl<'a> CuseInitRequest<'a> {
 
 	pub fn set_flags(&mut self, flags: CuseInitFlags) {
 		self.flags = flags;
+	}
+}
+
+request_try_from! { CuseInitRequest : cuse }
+
+impl decode::Sealed for CuseInitRequest<'_> {}
+
+impl<'a> decode::CuseRequest<'a> for CuseInitRequest<'a> {
+	fn from_cuse_request(
+		request: &server::CuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::CUSE_INIT)?;
+
+		let raw: &'a fuse_kernel::cuse_init_in = dec.next_sized()?;
+		Ok(CuseInitRequest {
+			phantom: PhantomData,
+			version: Version::new(raw.major, raw.minor),
+			flags: CuseInitFlags { bits: raw.flags },
+		})
 	}
 }
 

@@ -309,6 +309,8 @@ fn fuse_request_dispatch<S: FuseSocket>(
 	hooks: Option<&dyn ServerHooks>,
 	request: server::FuseRequest,
 ) -> Result<(), io::SendError<S::Error>> {
+	use crate::server::decode::FuseRequest;
+
 	let header = request.header();
 	#[cfg(feature = "std")]
 	if let Some(hooks) = hooks {

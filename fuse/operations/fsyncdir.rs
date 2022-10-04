@@ -22,9 +22,8 @@ use core::marker::PhantomData;
 use crate::NodeId;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 // FsyncdirRequest {{{
 
@@ -37,19 +36,7 @@ pub struct FsyncdirRequest<'a> {
 	body: &'a fuse_kernel::fuse_fsync_in,
 }
 
-impl<'a> FsyncdirRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_FSYNCDIR)?;
-
-		let header = dec.header();
-		let body = dec.next_sized()?;
-		decode::node_id(header.nodeid)?;
-		Ok(Self { header, body })
-	}
-
+impl FsyncdirRequest<'_> {
 	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		unsafe { NodeId::new_unchecked(self.header.nodeid) }
@@ -65,6 +52,24 @@ impl<'a> FsyncdirRequest<'a> {
 		FsyncdirRequestFlags {
 			bits: self.body.fsync_flags,
 		}
+	}
+}
+
+request_try_from! { FsyncdirRequest : fuse }
+
+impl decode::Sealed for FsyncdirRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for FsyncdirRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_FSYNCDIR)?;
+
+		let header = dec.header();
+		let body = dec.next_sized()?;
+		decode::node_id(header.nodeid)?;
+		Ok(Self { header, body })
 	}
 }
 

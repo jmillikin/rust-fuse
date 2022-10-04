@@ -23,9 +23,8 @@ use core::slice;
 use crate::NodeId;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 // StatfsRequest {{{
 
@@ -38,10 +37,21 @@ pub struct StatfsRequest<'a> {
 	node_id: NodeId,
 }
 
-impl<'a> StatfsRequest<'a> {
-	pub fn from_fuse_request(
+impl StatfsRequest<'_> {
+	#[must_use]
+	pub fn node_id(&self) -> NodeId {
+		self.node_id
+	}
+}
+
+request_try_from! { StatfsRequest : fuse }
+
+impl decode::Sealed for StatfsRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for StatfsRequest<'a> {
+	fn from_fuse_request(
 		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
+	) -> Result<Self, server::RequestError> {
 		let dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_STATFS)?;
 
@@ -49,11 +59,6 @@ impl<'a> StatfsRequest<'a> {
 			phantom: PhantomData,
 			node_id: decode::node_id(dec.header().nodeid)?,
 		})
-	}
-
-	#[must_use]
-	pub fn node_id(&self) -> NodeId {
-		self.node_id
 	}
 }
 

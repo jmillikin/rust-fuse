@@ -181,6 +181,7 @@ macro_rules! decode_request {
 	($t:ty, $buf: ident, $opts:tt $(,)?) => {{
 		use $crate::DecodeRequestOpts;
 		use fuse::server::FuseRequestBuilder;
+		use fuse::server::decode::FuseRequest;
 
 		let opts = $crate::decode_request_opts!($opts);
 		let request_len = $buf.borrow().len();

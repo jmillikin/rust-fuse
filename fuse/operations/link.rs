@@ -24,9 +24,8 @@ use crate::NodeId;
 use crate::NodeName;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 // LinkRequest {{{
 
@@ -41,22 +40,7 @@ pub struct LinkRequest<'a> {
 	new_name: &'a NodeName,
 }
 
-impl<'a> LinkRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_LINK)?;
-
-		let raw: &fuse_kernel::fuse_link_in = dec.next_sized()?;
-		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
-		Ok(Self {
-			node_id: decode::node_id(raw.oldnodeid)?,
-			new_parent_id: decode::node_id(dec.header().nodeid)?,
-			new_name: name,
-		})
-	}
-
+impl LinkRequest<'_> {
 	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
@@ -70,6 +54,27 @@ impl<'a> LinkRequest<'a> {
 	#[must_use]
 	pub fn new_name(&self) -> &NodeName {
 		self.new_name
+	}
+}
+
+request_try_from! { LinkRequest : fuse }
+
+impl decode::Sealed for LinkRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for LinkRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_LINK)?;
+
+		let raw: &fuse_kernel::fuse_link_in = dec.next_sized()?;
+		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
+		Ok(Self {
+			node_id: decode::node_id(raw.oldnodeid)?,
+			new_parent_id: decode::node_id(dec.header().nodeid)?,
+			new_name: name,
+		})
 	}
 }
 

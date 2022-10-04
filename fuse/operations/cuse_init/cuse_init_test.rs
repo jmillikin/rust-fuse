@@ -24,6 +24,7 @@ use fuse::operations::cuse_init::{
 	CuseInitResponse,
 };
 use fuse::server::CuseRequestBuilder;
+use fuse::server::decode::CuseRequest;
 
 use fuse_testutil::{encode_response, MessageBuilder};
 

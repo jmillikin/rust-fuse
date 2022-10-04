@@ -22,9 +22,8 @@ use core::marker::PhantomData;
 use crate::internal::compat;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 use crate::xattr;
 
 use crate::protocol::common::DebugHexU32;
@@ -42,32 +41,7 @@ pub struct SetxattrRequest<'a> {
 	value: &'a xattr::Value,
 }
 
-impl<'a> SetxattrRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_SETXATTR)?;
-
-		let header = dec.header();
-		decode::node_id(header.nodeid)?;
-
-		let body = if request.have_setxattr_ext() {
-			let body_v7p33 = dec.next_sized()?;
-			compat::Versioned::new_setxattr_v7p33(body_v7p33)
-		} else {
-			let body_v7p1 = dec.next_sized()?;
-			compat::Versioned::new_setxattr_v7p1(body_v7p1)
-		};
-
-		let name_bytes = dec.next_nul_terminated_bytes()?;
-		let name = xattr::Name::from_bytes(name_bytes.to_bytes_without_nul())?;
-		let value_bytes = dec.next_bytes(body.as_v7p1().size)?;
-		let value = xattr::Value::new(value_bytes)?;
-
-		Ok(Self { header, body, name, value })
-	}
-
+impl SetxattrRequest<'_> {
 	#[inline]
 	#[must_use]
 	pub fn node_id(&self) -> crate::NodeId {
@@ -101,6 +75,37 @@ impl<'a> SetxattrRequest<'a> {
 	#[must_use]
 	pub fn value(&self) -> &xattr::Value {
 		self.value
+	}
+}
+
+request_try_from! { SetxattrRequest : fuse }
+
+impl decode::Sealed for SetxattrRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for SetxattrRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_SETXATTR)?;
+
+		let header = dec.header();
+		decode::node_id(header.nodeid)?;
+
+		let body = if request.have_setxattr_ext() {
+			let body_v7p33 = dec.next_sized()?;
+			compat::Versioned::new_setxattr_v7p33(body_v7p33)
+		} else {
+			let body_v7p1 = dec.next_sized()?;
+			compat::Versioned::new_setxattr_v7p1(body_v7p1)
+		};
+
+		let name_bytes = dec.next_nul_terminated_bytes()?;
+		let name = xattr::Name::from_bytes(name_bytes.to_bytes_without_nul())?;
+		let value_bytes = dec.next_bytes(body.as_v7p1().size)?;
+		let value = xattr::Value::new(value_bytes)?;
+
+		Ok(Self { header, body, name, value })
 	}
 }
 

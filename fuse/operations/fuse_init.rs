@@ -22,8 +22,8 @@ use core::marker::PhantomData;
 use crate::Version;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 // FuseInitRequest {{{
 
@@ -52,10 +52,44 @@ struct fuse_init_in_v7p6 {
 	pub flags:         u32,
 }
 
-impl<'a> FuseInitRequest<'a> {
-	pub fn from_fuse_request(
+impl FuseInitRequest<'_> {
+	#[must_use]
+	pub fn version(&self) -> Version {
+		self.version
+	}
+
+	#[must_use]
+	pub fn max_readahead(&self) -> u32 {
+		self.max_readahead
+	}
+
+	pub fn set_max_readahead(&mut self, max_readahead: u32) {
+		self.max_readahead = max_readahead;
+	}
+
+	#[must_use]
+	pub fn flags(&self) -> FuseInitFlags {
+		self.flags
+	}
+
+	#[must_use]
+	pub fn mut_flags(&mut self) -> &mut FuseInitFlags {
+		&mut self.flags
+	}
+
+	pub fn set_flags(&mut self, flags: FuseInitFlags) {
+		self.flags = flags;
+	}
+}
+
+request_try_from! { FuseInitRequest : fuse }
+
+impl decode::Sealed for FuseInitRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for FuseInitRequest<'a> {
+	fn from_fuse_request(
 		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
+	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_INIT)?;
 
@@ -102,34 +136,6 @@ impl<'a> FuseInitRequest<'a> {
 			max_readahead: raw.max_readahead,
 			flags: FuseInitFlags { bits: flags },
 		})
-	}
-
-	#[must_use]
-	pub fn version(&self) -> Version {
-		self.version
-	}
-
-	#[must_use]
-	pub fn max_readahead(&self) -> u32 {
-		self.max_readahead
-	}
-
-	pub fn set_max_readahead(&mut self, max_readahead: u32) {
-		self.max_readahead = max_readahead;
-	}
-
-	#[must_use]
-	pub fn flags(&self) -> FuseInitFlags {
-		self.flags
-	}
-
-	#[must_use]
-	pub fn mut_flags(&mut self) -> &mut FuseInitFlags {
-		&mut self.flags
-	}
-
-	pub fn set_flags(&mut self, flags: FuseInitFlags) {
-		self.flags = flags;
 	}
 }
 

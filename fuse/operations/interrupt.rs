@@ -20,7 +20,7 @@ use core::fmt;
 
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
+use crate::server::decode;
 
 // InterruptRequest {{{
 
@@ -32,19 +32,25 @@ pub struct InterruptRequest<'a> {
 	body: &'a fuse_kernel::fuse_interrupt_in,
 }
 
-impl<'a> InterruptRequest<'a> {
-	pub fn from_fuse_request(
+impl InterruptRequest<'_> {
+	#[must_use]
+	pub fn request_id(&self) -> u64 {
+		self.body.unique
+	}
+}
+
+request_try_from! { InterruptRequest : fuse }
+
+impl decode::Sealed for InterruptRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for InterruptRequest<'a> {
+	fn from_fuse_request(
 		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
+	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_INTERRUPT)?;
 		let body = dec.next_sized()?;
 		Ok(Self { body })
-	}
-
-	#[must_use]
-	pub fn request_id(&self) -> u64 {
-		self.body.unique
 	}
 }
 

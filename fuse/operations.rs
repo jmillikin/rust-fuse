@@ -14,6 +14,38 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+macro_rules! request_try_from {
+	( $t:ident : cuse) => {
+		impl<'a> core::convert::TryFrom<crate::server::CuseRequest<'a>> for $t<'a> {
+			type Error = crate::server::RequestError;
+
+			fn try_from(
+				request: crate::server::CuseRequest<'a>,
+			) -> Result<Self, crate::server::RequestError> {
+				use crate::server::decode::CuseRequest;
+				Self::from_cuse_request(&request)
+			}
+		}
+	};
+	( $t:ident : fuse) => {
+		impl<'a> core::convert::TryFrom<crate::server::FuseRequest<'a>> for $t<'a> {
+			type Error = crate::server::RequestError;
+
+			fn try_from(
+				request: crate::server::FuseRequest<'a>,
+			) -> Result<Self, crate::server::RequestError> {
+				use crate::server::decode::FuseRequest;
+				Self::from_fuse_request(&request)
+			}
+		}
+	};
+	( $t:ident : $( $p:ident )+ ) => {
+		$(
+			request_try_from! { $t : $p }
+		)+
+	};
+}
+
 macro_rules! response_send_funcs {
 	() => {
 		pub fn send<S: crate::server::io::Socket>(
@@ -21,7 +53,7 @@ macro_rules! response_send_funcs {
 			socket: &S,
 			response_ctx: &crate::server::ResponseContext,
 		) -> Result<(), crate::server::io::SendError<S::Error>> {
-			use crate::server::io::encode::SyncSendOnce;
+			use crate::server::encode::SyncSendOnce;
 			let send = SyncSendOnce::new(socket);
 			self.encode(send, response_ctx)
 		}
@@ -31,7 +63,7 @@ macro_rules! response_send_funcs {
 			socket: &S,
 			response_ctx: &crate::server::ResponseContext,
 		) -> Result<(), crate::server::io::SendError<S::Error>> {
-			use crate::server::io::encode::AsyncSendOnce;
+			use crate::server::encode::AsyncSendOnce;
 			let send = AsyncSendOnce::new(socket);
 			self.encode(send, response_ctx).await
 		}

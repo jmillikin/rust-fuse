@@ -21,9 +21,8 @@ use core::marker::PhantomData;
 
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 use crate::xattr;
 
 // RemovexattrRequest {{{
@@ -37,21 +36,7 @@ pub struct RemovexattrRequest<'a> {
 	name: &'a xattr::Name,
 }
 
-impl<'a> RemovexattrRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_REMOVEXATTR)?;
-
-		let header = dec.header();
-		decode::node_id(header.nodeid)?;
-
-		let name_bytes = dec.next_nul_terminated_bytes()?;
-		let name = xattr::Name::from_bytes(name_bytes.to_bytes_without_nul())?;
-		Ok(Self { header, name })
-	}
-
+impl RemovexattrRequest<'_> {
 	#[inline]
 	#[must_use]
 	pub fn node_id(&self) -> crate::NodeId {
@@ -62,6 +47,26 @@ impl<'a> RemovexattrRequest<'a> {
 	#[must_use]
 	pub fn name(&self) -> &xattr::Name {
 		self.name
+	}
+}
+
+request_try_from! { RemovexattrRequest : fuse }
+
+impl decode::Sealed for RemovexattrRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for RemovexattrRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_REMOVEXATTR)?;
+
+		let header = dec.header();
+		decode::node_id(header.nodeid)?;
+
+		let name_bytes = dec.next_nul_terminated_bytes()?;
+		let name = xattr::Name::from_bytes(name_bytes.to_bytes_without_nul())?;
+		Ok(Self { header, name })
 	}
 }
 

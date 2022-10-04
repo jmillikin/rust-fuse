@@ -26,9 +26,8 @@ use crate::NodeId;
 use crate::internal::compat;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 // GetattrRequest {{{
 
@@ -41,10 +40,30 @@ pub struct GetattrRequest<'a> {
 	body: compat::Versioned<compat::fuse_getattr_in<'a>>,
 }
 
-impl<'a> GetattrRequest<'a> {
-	pub fn from_fuse_request(
+impl GetattrRequest<'_> {
+	#[must_use]
+	pub fn node_id(&self) -> NodeId {
+		unsafe { NodeId::new_unchecked(self.header.nodeid) }
+	}
+
+	#[must_use]
+	pub fn handle(&self) -> Option<u64> {
+		let body = self.body.as_v7p9()?;
+		if (body.getattr_flags & fuse_kernel::FUSE_GETATTR_FH) > 0 {
+			return Some(body.fh);
+		}
+		None
+	}
+}
+
+request_try_from! { GetattrRequest : fuse }
+
+impl decode::Sealed for GetattrRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for GetattrRequest<'a> {
+	fn from_fuse_request(
 		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
+	) -> Result<Self, server::RequestError> {
 		let version_minor = request.version_minor;
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_GETATTR)?;
@@ -60,20 +79,6 @@ impl<'a> GetattrRequest<'a> {
 		};
 
 		Ok(Self { header, body })
-	}
-
-	#[must_use]
-	pub fn node_id(&self) -> NodeId {
-		unsafe { NodeId::new_unchecked(self.header.nodeid) }
-	}
-
-	#[must_use]
-	pub fn handle(&self) -> Option<u64> {
-		let body = self.body.as_v7p9()?;
-		if (body.getattr_flags & fuse_kernel::FUSE_GETATTR_FH) > 0 {
-			return Some(body.fh);
-		}
-		None
 	}
 }
 

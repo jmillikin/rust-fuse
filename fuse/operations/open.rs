@@ -22,9 +22,8 @@ use core::marker::PhantomData;
 use crate::NodeId;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 use crate::protocol::common::DebugHexU32;
 
@@ -39,19 +38,7 @@ pub struct OpenRequest<'a> {
 	body: &'a fuse_kernel::fuse_open_in,
 }
 
-impl<'a> OpenRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		decode_request(request.buf, false)
-	}
-
-	pub fn from_cuse_request(
-		request: &server::CuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		decode_request(request.buf, true)
-	}
-
+impl OpenRequest<'_> {
 	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		match NodeId::new(self.header.nodeid) {
@@ -73,6 +60,43 @@ impl<'a> OpenRequest<'a> {
 	}
 }
 
+request_try_from! { OpenRequest : cuse fuse }
+
+impl decode::Sealed for OpenRequest<'_> {}
+
+impl<'a> decode::CuseRequest<'a> for OpenRequest<'a> {
+	fn from_cuse_request(
+		request: &server::CuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		Self::decode_request(request.buf, true)
+	}
+}
+
+impl<'a> decode::FuseRequest<'a> for OpenRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		Self::decode_request(request.buf, false)
+	}
+}
+
+impl<'a> OpenRequest<'a> {
+	fn decode_request(
+		buf: decode::RequestBuf<'a>,
+		is_cuse: bool,
+	) -> Result<Self, server::RequestError> {
+		let mut dec = decode::RequestDecoder::new(buf);
+		dec.expect_opcode(fuse_kernel::FUSE_OPEN)?;
+
+		let header = dec.header();
+		let body = dec.next_sized()?;
+		if !is_cuse {
+			decode::node_id(header.nodeid)?;
+		}
+		Ok(Self { header, body })
+	}
+}
+
 impl fmt::Debug for OpenRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("OpenRequest")
@@ -81,21 +105,6 @@ impl fmt::Debug for OpenRequest<'_> {
 			.field("open_flags", &DebugHexU32(self.open_flags()))
 			.finish()
 	}
-}
-
-fn decode_request<'a>(
-	buf: decode::RequestBuf<'a>,
-	is_cuse: bool,
-) -> Result<OpenRequest<'a>, io::RequestError> {
-	let mut dec = decode::RequestDecoder::new(buf);
-	dec.expect_opcode(fuse_kernel::FUSE_OPEN)?;
-
-	let header = dec.header();
-	let body = dec.next_sized()?;
-	if !is_cuse {
-		decode::node_id(header.nodeid)?;
-	}
-	Ok(OpenRequest { header, body })
 }
 
 // }}}

@@ -23,9 +23,8 @@ use core::mem::size_of;
 use crate::NodeId;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 use crate::protocol::common::DebugHexU32;
 use crate::protocol::common::DebugHexU64;
@@ -43,18 +42,6 @@ pub struct IoctlRequest<'a> {
 }
 
 impl<'a> IoctlRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		Self::decode(request.decoder(), false)
-	}
-
-	pub fn from_cuse_request(
-		request: &server::CuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		Self::decode(request.decoder(), true)
-	}
-
 	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		match NodeId::new(self.header.nodeid) {
@@ -101,17 +88,23 @@ impl<'a> IoctlRequest<'a> {
 	}
 }
 
-impl fmt::Debug for IoctlRequest<'_> {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("IoctlRequest")
-			.field("node_id", &self.node_id())
-			.field("handle", &self.body.fh)
-			.field("command", &DebugHexU32(self.body.cmd))
-			.field("arg", &DebugHexU64(self.body.arg))
-			.field("output_len", &self.body.out_size)
-			.field("flags", &self.flags())
-			.field("input", &self.input)
-			.finish()
+request_try_from! { IoctlRequest : cuse fuse }
+
+impl decode::Sealed for IoctlRequest<'_> {}
+
+impl<'a> decode::CuseRequest<'a> for IoctlRequest<'a> {
+	fn from_cuse_request(
+		request: &server::CuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		Self::decode(request.decoder(), true)
+	}
+}
+
+impl<'a> decode::FuseRequest<'a> for IoctlRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		Self::decode(request.decoder(), false)
 	}
 }
 
@@ -119,7 +112,7 @@ impl<'a> IoctlRequest<'a> {
 	fn decode(
 		mut dec: decode::RequestDecoder<'a>,
 		is_cuse: bool,
-	) -> Result<Self, io::RequestError> {
+	) -> Result<Self, server::RequestError> {
 		dec.expect_opcode(fuse_kernel::FUSE_IOCTL)?;
 
 		let header = dec.header();
@@ -135,6 +128,20 @@ impl<'a> IoctlRequest<'a> {
 			body,
 			input,
 		})
+	}
+}
+
+impl fmt::Debug for IoctlRequest<'_> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		fmt.debug_struct("IoctlRequest")
+			.field("node_id", &self.node_id())
+			.field("handle", &self.body.fh)
+			.field("command", &DebugHexU32(self.body.cmd))
+			.field("arg", &DebugHexU64(self.body.arg))
+			.field("output_len", &self.body.out_size)
+			.field("flags", &self.flags())
+			.field("input", &self.input)
+			.finish()
 	}
 }
 

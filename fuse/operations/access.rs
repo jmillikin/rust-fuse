@@ -22,9 +22,8 @@ use core::marker::PhantomData;
 use crate::NodeId;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 // AccessRequest {{{
 
@@ -38,20 +37,7 @@ pub struct AccessRequest<'a> {
 	mask: u32,
 }
 
-impl<'a> AccessRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_ACCESS)?;
-		let raw: &'a fuse_kernel::fuse_access_in = dec.next_sized()?;
-		Ok(Self {
-			phantom: PhantomData,
-			node_id: decode::node_id(dec.header().nodeid)?,
-			mask: raw.mask,
-		})
-	}
-
+impl AccessRequest<'_> {
 	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
@@ -60,6 +46,25 @@ impl<'a> AccessRequest<'a> {
 	#[must_use]
 	pub fn mask(&self) -> u32 {
 		self.mask
+	}
+}
+
+request_try_from! { AccessRequest : fuse }
+
+impl decode::Sealed for AccessRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for AccessRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_ACCESS)?;
+		let raw: &'a fuse_kernel::fuse_access_in = dec.next_sized()?;
+		Ok(Self {
+			phantom: PhantomData,
+			node_id: decode::node_id(dec.header().nodeid)?,
+			mask: raw.mask,
+		})
 	}
 }
 

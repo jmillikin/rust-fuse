@@ -17,33 +17,6 @@
 use core::future::Future;
 
 use crate::io::SendBuf;
-use crate::xattr;
-
-pub(crate) mod decode;
-pub(crate) mod encode;
-
-#[non_exhaustive]
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum RequestError {
-	InvalidLockType,
-	MissingNodeId,
-	OpcodeMismatch,
-	UnexpectedEof,
-	XattrNameError(xattr::NameError),
-	XattrValueError(xattr::ValueError),
-}
-
-impl From<xattr::NameError> for RequestError {
-	fn from(err: xattr::NameError) -> RequestError {
-		RequestError::XattrNameError(err)
-	}
-}
-
-impl From<xattr::ValueError> for RequestError {
-	fn from(err: xattr::ValueError) -> RequestError {
-		RequestError::XattrValueError(err)
-	}
-}
 
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

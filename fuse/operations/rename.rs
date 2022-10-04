@@ -23,9 +23,8 @@ use crate::NodeId;
 use crate::NodeName;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 use crate::protocol::common::DebugHexU32;
 
@@ -43,35 +42,7 @@ pub struct RenameRequest<'a> {
 	rename_flags: u32,
 }
 
-impl<'a> RenameRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		let mut dec = request.decoder();
-		let header = dec.header();
-
-		let mut rename_flags = 0;
-		let new_dir: u64;
-		if header.opcode == fuse_kernel::FUSE_RENAME2 {
-			let parsed: &fuse_kernel::fuse_rename2_in = dec.next_sized()?;
-			rename_flags = parsed.flags;
-			new_dir = parsed.newdir;
-		} else {
-			dec.expect_opcode(fuse_kernel::FUSE_RENAME)?;
-			let parsed: &fuse_kernel::fuse_rename_in = dec.next_sized()?;
-			new_dir = parsed.newdir;
-		}
-		let old_name = NodeName::new(dec.next_nul_terminated_bytes()?);
-		let new_name = NodeName::new(dec.next_nul_terminated_bytes()?);
-		Ok(Self {
-			old_directory_id: decode::node_id(header.nodeid)?,
-			old_name,
-			new_directory_id: decode::node_id(new_dir)?,
-			new_name,
-			rename_flags,
-		})
-	}
-
+impl RenameRequest<'_> {
 	#[must_use]
 	pub fn old_directory_id(&self) -> NodeId {
 		self.old_directory_id
@@ -95,6 +66,40 @@ impl<'a> RenameRequest<'a> {
 	#[must_use]
 	pub fn rename_flags(&self) -> crate::RenameFlags {
 		self.rename_flags
+	}
+}
+
+request_try_from! { RenameRequest : fuse }
+
+impl decode::Sealed for RenameRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for RenameRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		let mut dec = request.decoder();
+		let header = dec.header();
+
+		let mut rename_flags = 0;
+		let new_dir: u64;
+		if header.opcode == fuse_kernel::FUSE_RENAME2 {
+			let parsed: &fuse_kernel::fuse_rename2_in = dec.next_sized()?;
+			rename_flags = parsed.flags;
+			new_dir = parsed.newdir;
+		} else {
+			dec.expect_opcode(fuse_kernel::FUSE_RENAME)?;
+			let parsed: &fuse_kernel::fuse_rename_in = dec.next_sized()?;
+			new_dir = parsed.newdir;
+		}
+		let old_name = NodeName::new(dec.next_nul_terminated_bytes()?);
+		let new_name = NodeName::new(dec.next_nul_terminated_bytes()?);
+		Ok(Self {
+			old_directory_id: decode::node_id(header.nodeid)?,
+			old_name,
+			new_directory_id: decode::node_id(new_dir)?,
+			new_name,
+			rename_flags,
+		})
 	}
 }
 

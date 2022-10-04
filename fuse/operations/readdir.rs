@@ -26,9 +26,8 @@ use crate::internal::compat;
 use crate::internal::dirent;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 use crate::protocol::common::DebugHexU32;
 
@@ -43,28 +42,7 @@ pub struct ReaddirRequest<'a> {
 	body: compat::Versioned<compat::fuse_read_in<'a>>,
 }
 
-impl<'a> ReaddirRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		let version_minor = request.version_minor;
-		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_READDIR)?;
-
-		let header = dec.header();
-		decode::node_id(header.nodeid)?;
-
-		let body = if version_minor >= 9 {
-			let body_v7p9 = dec.next_sized()?;
-			compat::Versioned::new_read_v7p9(version_minor, body_v7p9)
-		} else {
-			let body_v7p1 = dec.next_sized()?;
-			compat::Versioned::new_read_v7p1(version_minor, body_v7p1)
-		};
-
-		Ok(Self { header, body })
-	}
-
+impl ReaddirRequest<'_> {
 	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		unsafe { NodeId::new_unchecked(self.header.nodeid) }
@@ -94,6 +72,33 @@ impl<'a> ReaddirRequest<'a> {
 			return body.flags;
 		}
 		0
+	}
+}
+
+request_try_from! { ReaddirRequest : fuse }
+
+impl decode::Sealed for ReaddirRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for ReaddirRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		let version_minor = request.version_minor;
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_READDIR)?;
+
+		let header = dec.header();
+		decode::node_id(header.nodeid)?;
+
+		let body = if version_minor >= 9 {
+			let body_v7p9 = dec.next_sized()?;
+			compat::Versioned::new_read_v7p9(version_minor, body_v7p9)
+		} else {
+			let body_v7p1 = dec.next_sized()?;
+			compat::Versioned::new_read_v7p1(version_minor, body_v7p1)
+		};
+
+		Ok(Self { header, body })
 	}
 }
 

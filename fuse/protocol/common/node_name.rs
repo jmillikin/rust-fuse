@@ -16,7 +16,7 @@
 
 use core::fmt;
 
-use crate::server::io::decode;
+use crate::server::decode;
 
 #[derive(Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]

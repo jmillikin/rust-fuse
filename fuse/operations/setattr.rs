@@ -26,9 +26,8 @@ use crate::NodeAttr;
 use crate::NodeId;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 // SetattrRequest {{{
 
@@ -41,18 +40,7 @@ pub struct SetattrRequest<'a> {
 	raw: &'a fuse_kernel::fuse_setattr_in,
 }
 
-impl<'a> SetattrRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_SETATTR)?;
-		let header = dec.header();
-		decode::node_id(header.nodeid)?;
-		let raw = dec.next_sized()?;
-		Ok(Self { header, raw })
-	}
-
+impl SetattrRequest<'_> {
 	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		unsafe { NodeId::new_unchecked(self.header.nodeid) }
@@ -144,6 +132,23 @@ impl<'a> SetattrRequest<'a> {
 	#[must_use]
 	pub fn group_id(&self) -> Option<u32> {
 		self.get(fuse_kernel::FATTR_GID, self.raw.gid)
+	}
+}
+
+request_try_from! { SetattrRequest : fuse }
+
+impl decode::Sealed for SetattrRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for SetattrRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_SETATTR)?;
+		let header = dec.header();
+		decode::node_id(header.nodeid)?;
+		let raw = dec.next_sized()?;
+		Ok(Self { header, raw })
 	}
 }
 

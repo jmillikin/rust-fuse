@@ -14,16 +14,39 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Request parsing and validation.
+
 use core::marker::PhantomData;
 use core::mem::{align_of, size_of};
 use core::slice::from_raw_parts;
 
 use crate::internal::fuse_kernel;
-use crate::server::io::RequestError;
+use crate::server;
+use crate::server::RequestError;
 
 #[cfg(rust_fuse_test = "decode_test")]
 #[path = "decode_test.rs"]
 mod decode_test;
+
+mod sealed {
+	pub trait Sealed: Sized {}
+}
+
+pub(crate) use sealed::Sealed;
+
+/// A trait for request types that are valid for CUSE servers.
+pub trait CuseRequest<'a>: Sealed {
+	fn from_cuse_request(
+		request: &server::CuseRequest<'a>,
+	) -> Result<Self, RequestError>;
+}
+
+/// A trait for request types that are valid for FUSE servers.
+pub trait FuseRequest<'a>: Sealed {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, RequestError>;
+}
 
 #[derive(Copy, Clone)]
 pub(crate) union RequestBuf<'a> {

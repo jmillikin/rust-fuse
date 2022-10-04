@@ -23,9 +23,8 @@ use crate::NodeId;
 use crate::internal::compat;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 use crate::protocol::common::DebugHexU32;
 
@@ -40,28 +39,7 @@ pub struct ReleasedirRequest<'a> {
 	body: compat::Versioned<compat::fuse_release_in<'a>>,
 }
 
-impl<'a> ReleasedirRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		let version_minor = request.version_minor;
-		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_RELEASEDIR)?;
-
-		let header = dec.header();
-		decode::node_id(header.nodeid)?;
-
-		let body = if version_minor >= 8 {
-			let body_v7p8 = dec.next_sized()?;
-			compat::Versioned::new_release_v7p8(version_minor, body_v7p8)
-		} else {
-			let body_v7p1 = dec.next_sized()?;
-			compat::Versioned::new_release_v7p1(version_minor, body_v7p1)
-		};
-
-		Ok(Self { header, body })
-	}
-
+impl ReleasedirRequest<'_> {
 	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		unsafe { NodeId::new_unchecked(self.header.nodeid) }
@@ -87,6 +65,33 @@ impl<'a> ReleasedirRequest<'a> {
 	#[must_use]
 	pub fn open_flags(&self) -> crate::OpenFlags {
 		self.body.as_v7p1().flags
+	}
+}
+
+request_try_from! { ReleasedirRequest : fuse }
+
+impl decode::Sealed for ReleasedirRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for ReleasedirRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		let version_minor = request.version_minor;
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_RELEASEDIR)?;
+
+		let header = dec.header();
+		decode::node_id(header.nodeid)?;
+
+		let body = if version_minor >= 8 {
+			let body_v7p8 = dec.next_sized()?;
+			compat::Versioned::new_release_v7p8(version_minor, body_v7p8)
+		} else {
+			let body_v7p1 = dec.next_sized()?;
+			compat::Versioned::new_release_v7p1(version_minor, body_v7p1)
+		};
+
+		Ok(Self { header, body })
 	}
 }
 

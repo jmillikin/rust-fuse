@@ -22,9 +22,8 @@ use core::marker::PhantomData;
 use crate::NodeId;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 // FlushRequest {{{
 
@@ -39,19 +38,7 @@ pub struct FlushRequest<'a> {
 	lock_owner: u64,
 }
 
-impl<'a> FlushRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		decode_request(request.buf, false)
-	}
-
-	pub fn from_cuse_request(
-		request: &server::CuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		decode_request(request.buf, true)
-	}
-
+impl FlushRequest<'_> {
 	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
@@ -68,6 +55,50 @@ impl<'a> FlushRequest<'a> {
 	}
 }
 
+request_try_from! { FlushRequest : cuse fuse }
+
+impl decode::Sealed for FlushRequest<'_> {}
+
+impl<'a> decode::CuseRequest<'a> for FlushRequest<'a> {
+	fn from_cuse_request(
+		request: &server::CuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		Self::decode_request(request.buf, true)
+	}
+}
+
+impl<'a> decode::FuseRequest<'a> for FlushRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		Self::decode_request(request.buf, false)
+	}
+}
+
+impl<'a> FlushRequest<'a> {
+	fn decode_request(
+		buf: decode::RequestBuf<'a>,
+		is_cuse: bool,
+	) -> Result<Self, server::RequestError> {
+		buf.expect_opcode(fuse_kernel::FUSE_FLUSH)?;
+
+		let node_id = if is_cuse {
+			crate::ROOT_ID
+		} else {
+			decode::node_id(buf.header().nodeid)?
+		};
+		let mut dec = decode::RequestDecoder::new(buf);
+
+		let raw: &fuse_kernel::fuse_flush_in = dec.next_sized()?;
+		Ok(Self {
+			phantom: PhantomData,
+			node_id,
+			handle: raw.fh,
+			lock_owner: raw.lock_owner,
+		})
+	}
+}
+
 impl fmt::Debug for FlushRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("FlushRequest")
@@ -76,28 +107,6 @@ impl fmt::Debug for FlushRequest<'_> {
 			.field("lock_owner", &self.lock_owner)
 			.finish()
 	}
-}
-
-fn decode_request<'a>(
-	buf: decode::RequestBuf<'a>,
-	is_cuse: bool,
-) -> Result<FlushRequest<'a>, io::RequestError> {
-	buf.expect_opcode(fuse_kernel::FUSE_FLUSH)?;
-
-	let node_id = if is_cuse {
-		crate::ROOT_ID
-	} else {
-		decode::node_id(buf.header().nodeid)?
-	};
-	let mut dec = decode::RequestDecoder::new(buf);
-
-	let raw: &fuse_kernel::fuse_flush_in = dec.next_sized()?;
-	Ok(FlushRequest {
-		phantom: PhantomData,
-		node_id,
-		handle: raw.fh,
-		lock_owner: raw.lock_owner,
-	})
 }
 
 // }}}

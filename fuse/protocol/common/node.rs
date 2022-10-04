@@ -18,7 +18,7 @@ use core::{fmt, slice, time};
 
 use crate::internal::fuse_kernel;
 use crate::protocol::common::{NodeAttr, NodeId};
-use crate::server::io::encode;
+use crate::server::encode;
 
 pub struct Node(fuse_kernel::fuse_entry_out);
 

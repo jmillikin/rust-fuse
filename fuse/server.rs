@@ -19,10 +19,6 @@ use core::cmp::min;
 use core::fmt;
 use core::mem::{size_of, transmute};
 
-pub mod cuse_rpc;
-pub mod fuse_rpc;
-pub mod io;
-
 use crate::Version;
 use crate::internal::fuse_kernel::fuse_in_header;
 use crate::io::ArrayBuffer;
@@ -37,10 +33,14 @@ use crate::operations::fuse_init::{
 	FuseInitRequest,
 	FuseInitResponse,
 };
+use crate::xattr;
 
-use self::io::{RequestError, RecvError, SendError};
-use self::io::decode::{RequestDecoder, RequestBuf};
-use self::io::encode;
+pub mod cuse_rpc;
+pub mod fuse_rpc;
+pub mod io;
+
+pub mod decode;
+pub(crate) mod encode;
 
 const DEFAULT_MAX_WRITE: u32 = 4096;
 
@@ -58,21 +58,44 @@ impl<E> From<RequestError> for ServerError<E> {
 	}
 }
 
-impl<E> From<RecvError<E>> for ServerError<E> {
-	fn from(err: RecvError<E>) -> Self {
+impl<E> From<io::RecvError<E>> for ServerError<E> {
+	fn from(err: io::RecvError<E>) -> Self {
 		Self::RecvError(match err {
-			RecvError::ConnectionClosed(io_err) => io_err,
-			RecvError::Other(io_err) => io_err,
+			io::RecvError::ConnectionClosed(io_err) => io_err,
+			io::RecvError::Other(io_err) => io_err,
 		})
 	}
 }
 
-impl<E> From<SendError<E>> for ServerError<E> {
-	fn from(err: SendError<E>) -> Self {
-		Self::RecvError(match err {
-			SendError::NotFound(io_err) => io_err,
-			SendError::Other(io_err) => io_err,
+impl<E> From<io::SendError<E>> for ServerError<E> {
+	fn from(err: io::SendError<E>) -> Self {
+		Self::SendError(match err {
+			io::SendError::NotFound(io_err) => io_err,
+			io::SendError::Other(io_err) => io_err,
 		})
+	}
+}
+
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum RequestError {
+	InvalidLockType,
+	MissingNodeId,
+	OpcodeMismatch,
+	UnexpectedEof,
+	XattrNameError(xattr::NameError),
+	XattrValueError(xattr::ValueError),
+}
+
+impl From<xattr::NameError> for RequestError {
+	fn from(err: xattr::NameError) -> RequestError {
+		RequestError::XattrNameError(err)
+	}
+}
+
+impl From<xattr::ValueError> for RequestError {
+	fn from(err: xattr::ValueError) -> RequestError {
+		RequestError::XattrValueError(err)
 	}
 }
 
@@ -186,20 +209,20 @@ impl CuseRequestBuilder {
 
 	pub fn build<'a>(&self, buf: &'a [u8]) -> Result<CuseRequest<'a>, RequestError> {
 		Ok(CuseRequest {
-			buf: RequestBuf::new(buf)?,
+			buf: decode::RequestBuf::new(buf)?,
 			version_minor: self.version.minor(),
 		})
 	}
 }
 
 pub struct CuseRequest<'a> {
-	pub(crate) buf: RequestBuf<'a>,
+	pub(crate) buf: decode::RequestBuf<'a>,
 	pub(crate) version_minor: u32,
 }
 
 impl<'a> CuseRequest<'a> {
-	pub(crate) fn decoder(&self) -> RequestDecoder<'a> {
-		RequestDecoder::new(self.buf)
+	pub(crate) fn decoder(&self) -> decode::RequestDecoder<'a> {
+		decode::RequestDecoder::new(self.buf)
 	}
 
 	#[must_use]
@@ -264,7 +287,7 @@ impl FuseRequestBuilder {
 			toggles |= TOGGLE_SETXATTR_EXT;
 		}
 		Ok(FuseRequest {
-			buf: RequestBuf::new(buf)?,
+			buf: decode::RequestBuf::new(buf)?,
 			version_minor: self.version.minor(),
 			toggles,
 		})
@@ -272,7 +295,7 @@ impl FuseRequestBuilder {
 }
 
 pub struct FuseRequest<'a> {
-	pub(crate) buf: RequestBuf<'a>,
+	pub(crate) buf: decode::RequestBuf<'a>,
 	pub(crate) version_minor: u32,
 	toggles: u32,
 }
@@ -280,8 +303,8 @@ pub struct FuseRequest<'a> {
 const TOGGLE_SETXATTR_EXT: u32 = 1 << 0;
 
 impl<'a> FuseRequest<'a> {
-	pub(crate) fn decoder(&self) -> RequestDecoder<'a> {
-		RequestDecoder::new(self.buf)
+	pub(crate) fn decoder(&self) -> decode::RequestDecoder<'a> {
+		decode::RequestDecoder::new(self.buf)
 	}
 
 	#[must_use]
@@ -308,7 +331,7 @@ pub struct UnknownRequest<'a> {
 }
 
 enum UnknownBody<'a> {
-	Raw(RequestBuf<'a>),
+	Raw(decode::RequestBuf<'a>),
 	Parsed(Result<&'a [u8], RequestError>),
 }
 
@@ -339,7 +362,7 @@ impl<'a> UnknownRequest<'a> {
 		self.body.replace_with(|body| match body {
 			UnknownBody::Raw(buf) => {
 				let body_offset = size_of::<fuse_in_header>() as u32;
-				let mut dec = RequestDecoder::new(*buf);
+				let mut dec = decode::RequestDecoder::new(*buf);
 				result = dec.next_bytes(self.header.len - body_offset);
 				UnknownBody::Parsed(result)
 			},
@@ -376,7 +399,7 @@ impl ErrorResponse {
 		&self,
 		socket: &S,
 		response_ctx: &ResponseContext,
-	) -> Result<(), SendError<S::Error>> {
+	) -> Result<(), io::SendError<S::Error>> {
 		let send = encode::SyncSendOnce::new(socket);
 		let enc = encode::ReplyEncoder::new(send, response_ctx.request_id);
 		enc.encode_error(self.error)
@@ -386,7 +409,7 @@ impl ErrorResponse {
 		&self,
 		socket: &S,
 		response_ctx: &ResponseContext,
-	) -> Result<(), SendError<S::Error>> {
+	) -> Result<(), io::SendError<S::Error>> {
 		let send = encode::AsyncSendOnce::new(socket);
 		let enc = encode::ReplyEncoder::new(send, response_ctx.request_id);
 		enc.encode_error(self.error).await
@@ -397,6 +420,8 @@ pub fn cuse_init<'a, S: io::CuseSocket>(
 	socket: &mut S,
 	mut init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse<'a>,
 ) -> Result<CuseInitResponse<'a>, ServerError<S::Error>> {
+	use crate::server::decode::CuseRequest;
+
 	let mut buf = ArrayBuffer::new();
 	let buf = buf.borrow_mut();
 
@@ -418,6 +443,8 @@ pub async fn cuse_init_async<'a, S: io::AsyncCuseSocket>(
 	socket: &mut S,
 	mut init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse<'a>,
 ) -> Result<CuseInitResponse<'a>, ServerError<S::Error>> {
+	use crate::server::decode::CuseRequest;
+
 	let mut buf = ArrayBuffer::new();
 	let buf = buf.borrow_mut();
 
@@ -457,6 +484,8 @@ pub fn fuse_init<S: io::FuseSocket>(
 	socket: &mut S,
 	mut init_fn: impl FnMut(&FuseInitRequest) -> FuseInitResponse,
 ) -> Result<FuseInitResponse, ServerError<S::Error>> {
+	use crate::server::decode::FuseRequest;
+
 	let mut buf = ArrayBuffer::new();
 	let buf = buf.borrow_mut();
 
@@ -478,6 +507,8 @@ pub async fn fuse_init_async<S: io::AsyncFuseSocket>(
 	socket: &mut S,
 	mut init_fn: impl FnMut(&FuseInitRequest) -> FuseInitResponse,
 ) -> Result<FuseInitResponse, ServerError<S::Error>> {
+	use crate::server::decode::FuseRequest;
+
 	let mut buf = ArrayBuffer::new();
 	let buf = buf.borrow_mut();
 
@@ -607,7 +638,7 @@ impl<S: io::FuseSocket> FuseRequests<'_, S> {
 	) -> Result<Option<FuseRequest<'a>>, ServerError<S::Error>> {
 		let recv_len = match self.socket.recv(buf) {
 			Ok(x) => x,
-			Err(RecvError::ConnectionClosed(_)) => return Ok(None),
+			Err(io::RecvError::ConnectionClosed(_)) => return Ok(None),
 			Err(err) => return Err(err.into()),
 		};
 		Ok(Some(self.builder.build(&buf[..recv_len])?))
@@ -639,7 +670,7 @@ impl<S: io::AsyncFuseSocket> AsyncFuseRequests<'_, S> {
 	) -> Result<Option<FuseRequest<'a>>, ServerError<S::Error>> {
 		let recv_len = match self.socket.recv(buf).await {
 			Ok(x) => x,
-			Err(RecvError::ConnectionClosed(_)) => return Ok(None),
+			Err(io::RecvError::ConnectionClosed(_)) => return Ok(None),
 			Err(err) => return Err(err.into()),
 		};
 		Ok(Some(self.builder.build(&buf[..recv_len])?))

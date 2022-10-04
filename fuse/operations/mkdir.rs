@@ -25,9 +25,8 @@ use crate::NodeId;
 use crate::NodeName;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 // MkdirRequest {{{
 
@@ -41,22 +40,7 @@ pub struct MkdirRequest<'a> {
 	raw: fuse_kernel::fuse_mkdir_in,
 }
 
-impl<'a> MkdirRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_MKDIR)?;
-
-		let raw: &fuse_kernel::fuse_mkdir_in = dec.next_sized()?;
-		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
-		Ok(Self {
-			parent_id: decode::node_id(dec.header().nodeid)?,
-			name,
-			raw: *raw,
-		})
-	}
-
+impl MkdirRequest<'_> {
 	#[must_use]
 	pub fn parent_id(&self) -> NodeId {
 		self.parent_id
@@ -75,6 +59,27 @@ impl<'a> MkdirRequest<'a> {
 	#[must_use]
 	pub fn umask(&self) -> u32 {
 		self.raw.umask
+	}
+}
+
+request_try_from! { MkdirRequest : fuse }
+
+impl decode::Sealed for MkdirRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for MkdirRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_MKDIR)?;
+
+		let raw: &fuse_kernel::fuse_mkdir_in = dec.next_sized()?;
+		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
+		Ok(Self {
+			parent_id: decode::node_id(dec.header().nodeid)?,
+			name,
+			raw: *raw,
+		})
 	}
 }
 

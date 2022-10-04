@@ -42,7 +42,7 @@ impl server::ServerHooks for PrintHooks {
 	fn request_error(
 		&self,
 		header: &fuse::server::RequestHeader,
-		err: server::io::RequestError,
+		err: fuse::server::RequestError,
 	) {
 		println!("\n[request_error]\n{:#?}", header);
 		println!("{:#?}", err);

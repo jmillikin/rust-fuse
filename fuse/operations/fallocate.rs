@@ -22,9 +22,8 @@ use core::marker::PhantomData;
 use crate::NodeId;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 use crate::protocol::common::DebugHexU32;
 
@@ -39,19 +38,7 @@ pub struct FallocateRequest<'a> {
 	body: &'a fuse_kernel::fuse_fallocate_in,
 }
 
-impl<'a> FallocateRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_FALLOCATE)?;
-
-		let header = dec.header();
-		let body = dec.next_sized()?;
-		decode::node_id(header.nodeid)?;
-		Ok(Self { header, body })
-	}
-
+impl FallocateRequest<'_> {
 	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		unsafe { NodeId::new_unchecked(self.header.nodeid) }
@@ -75,6 +62,24 @@ impl<'a> FallocateRequest<'a> {
 	#[must_use]
 	pub fn fallocate_flags(&self) -> crate::FallocateFlags {
 		self.body.mode
+	}
+}
+
+request_try_from! { FallocateRequest : fuse }
+
+impl decode::Sealed for FallocateRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for FallocateRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_FALLOCATE)?;
+
+		let header = dec.header();
+		let body = dec.next_sized()?;
+		decode::node_id(header.nodeid)?;
+		Ok(Self { header, body })
 	}
 }
 

@@ -21,9 +21,8 @@ use core::marker::PhantomData;
 
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 // BmapRequest {{{
 
@@ -36,19 +35,7 @@ pub struct BmapRequest<'a> {
 	body: &'a fuse_kernel::fuse_bmap_in,
 }
 
-impl<'a> BmapRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_BMAP)?;
-
-		let header = dec.header();
-		let body = dec.next_sized()?;
-		decode::node_id(header.nodeid)?;
-		Ok(Self { header, body })
-	}
-
+impl BmapRequest<'_> {
 	#[must_use]
 	pub fn node_id(&self) -> crate::NodeId {
 		unsafe { crate::NodeId::new_unchecked(self.header.nodeid) }
@@ -62,6 +49,24 @@ impl<'a> BmapRequest<'a> {
 	#[must_use]
 	pub fn block_size(&self) -> u32 {
 		self.body.blocksize
+	}
+}
+
+request_try_from! { BmapRequest : fuse }
+
+impl decode::Sealed for BmapRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for BmapRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_BMAP)?;
+
+		let header = dec.header();
+		let body = dec.next_sized()?;
+		decode::node_id(header.nodeid)?;
+		Ok(Self { header, body })
 	}
 }
 

@@ -22,9 +22,8 @@ use core::marker::PhantomData;
 use crate::NodeId;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 use crate::protocol::common::file_lock::{Lock, F_RDLCK, F_UNLCK, F_WRLCK};
 
@@ -40,23 +39,7 @@ pub struct GetlkRequest<'a> {
 	lock: Lock,
 }
 
-impl<'a> GetlkRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_GETLK)?;
-
-		let raw: &fuse_kernel::fuse_lk_in = dec.next_sized()?;
-		let node_id = decode::node_id(dec.header().nodeid)?;
-
-		let lock = match Lock::parse(raw.lk) {
-			Some(l) => l,
-			_ => return Err(io::RequestError::InvalidLockType),
-		};
-		Ok(Self { raw, node_id, lock })
-	}
-
+impl GetlkRequest<'_> {
 	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
@@ -75,6 +58,28 @@ impl<'a> GetlkRequest<'a> {
 	#[must_use]
 	pub fn lock(&self) -> &Lock {
 		&self.lock
+	}
+}
+
+request_try_from! { GetlkRequest : fuse }
+
+impl decode::Sealed for GetlkRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for GetlkRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_GETLK)?;
+
+		let raw: &fuse_kernel::fuse_lk_in = dec.next_sized()?;
+		let node_id = decode::node_id(dec.header().nodeid)?;
+
+		let lock = match Lock::parse(raw.lk) {
+			Some(l) => l,
+			_ => return Err(server::RequestError::InvalidLockType),
+		};
+		Ok(Self { raw, node_id, lock })
 	}
 }
 

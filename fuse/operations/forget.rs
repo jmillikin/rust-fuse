@@ -23,7 +23,7 @@ use core::slice;
 use crate::NodeId;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
+use crate::server::decode;
 
 // ForgetRequest {{{
 
@@ -55,9 +55,26 @@ pub struct ForgetRequest<'a> {
 }
 
 impl<'a> ForgetRequest<'a> {
-	pub fn from_fuse_request(
+	pub fn items(&self) -> impl Iterator<Item = ForgetRequestItem> + 'a {
+		self.items_impl()
+	}
+
+	fn items_impl(&self) -> ForgetRequestIter<'a> {
+		match self.forget {
+			Some(item) => ForgetRequestIter::One(Some(item)),
+			None => ForgetRequestIter::Batch(self.batch_forgets),
+		}
+	}
+}
+
+request_try_from! { ForgetRequest : fuse }
+
+impl decode::Sealed for ForgetRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for ForgetRequest<'a> {
+	fn from_fuse_request(
 		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
+	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		let header = dec.header();
 		if header.opcode == fuse_kernel::FUSE_BATCH_FORGET {
@@ -87,17 +104,6 @@ impl<'a> ForgetRequest<'a> {
 			}),
 			batch_forgets: &[],
 		})
-	}
-
-	pub fn items(&self) -> impl Iterator<Item = ForgetRequestItem> + 'a {
-		self.items_impl()
-	}
-
-	fn items_impl(&self) -> ForgetRequestIter<'a> {
-		match self.forget {
-			Some(item) => ForgetRequestIter::One(Some(item)),
-			None => ForgetRequestIter::Batch(self.batch_forgets),
-		}
 	}
 }
 

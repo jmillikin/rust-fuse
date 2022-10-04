@@ -21,9 +21,8 @@ use core::fmt;
 use crate::internal::compat;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 use crate::protocol::common::DebugBytesAsString;
 use crate::protocol::common::DebugHexU32;
@@ -39,19 +38,7 @@ pub struct ReadRequest<'a> {
 	body: compat::Versioned<compat::fuse_read_in<'a>>,
 }
 
-impl<'a> ReadRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		decode_request(request.buf, request.version_minor, false)
-	}
-
-	pub fn from_cuse_request(
-		request: &server::CuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		decode_request(request.buf, request.version_minor, true)
-	}
-
+impl ReadRequest<'_> {
 	#[must_use]
 	pub fn node_id(&self) -> crate::NodeId {
 		crate::NodeId::new(self.header.nodeid).unwrap_or(crate::ROOT_ID)
@@ -93,6 +80,52 @@ impl<'a> ReadRequest<'a> {
 	}
 }
 
+request_try_from! { ReadRequest : cuse fuse }
+
+impl decode::Sealed for ReadRequest<'_> {}
+
+impl<'a> decode::CuseRequest<'a> for ReadRequest<'a> {
+	fn from_cuse_request(
+		request: &server::CuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		Self::decode_request(request.buf, request.version_minor, true)
+	}
+}
+
+impl<'a> decode::FuseRequest<'a> for ReadRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		Self::decode_request(request.buf, request.version_minor, false)
+	}
+}
+
+impl<'a> ReadRequest<'a> {
+	fn decode_request(
+		buf: decode::RequestBuf<'a>,
+		version_minor: u32,
+		is_cuse: bool,
+	) -> Result<ReadRequest<'a>, server::RequestError> {
+		let mut dec = decode::RequestDecoder::new(buf);
+		dec.expect_opcode(fuse_kernel::FUSE_READ)?;
+		let header = dec.header();
+
+		if !is_cuse {
+			decode::node_id(header.nodeid)?;
+		}
+
+		let body = if version_minor >= 9 {
+			let body_v7p9 = dec.next_sized()?;
+			compat::Versioned::new_read_v7p9(version_minor, body_v7p9)
+		} else {
+			let body_v7p1 = dec.next_sized()?;
+			compat::Versioned::new_read_v7p1(version_minor, body_v7p1)
+		};
+
+		Ok(ReadRequest { header, body })
+	}
+}
+
 impl fmt::Debug for ReadRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("ReadRequest")
@@ -104,30 +137,6 @@ impl fmt::Debug for ReadRequest<'_> {
 			.field("open_flags", &DebugHexU32(self.open_flags()))
 			.finish()
 	}
-}
-
-fn decode_request<'a>(
-	buf: decode::RequestBuf<'a>,
-	version_minor: u32,
-	is_cuse: bool,
-) -> Result<ReadRequest<'a>, io::RequestError> {
-	let mut dec = decode::RequestDecoder::new(buf);
-	dec.expect_opcode(fuse_kernel::FUSE_READ)?;
-	let header = dec.header();
-
-	if !is_cuse {
-		decode::node_id(header.nodeid)?;
-	}
-
-	let body = if version_minor >= 9 {
-		let body_v7p9 = dec.next_sized()?;
-		compat::Versioned::new_read_v7p9(version_minor, body_v7p9)
-	} else {
-		let body_v7p1 = dec.next_sized()?;
-		compat::Versioned::new_read_v7p1(version_minor, body_v7p1)
-	};
-
-	Ok(ReadRequest { header, body })
 }
 
 // }}}

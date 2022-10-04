@@ -24,9 +24,8 @@ use crate::NodeId;
 use crate::NodeName;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 use crate::protocol::common::DebugBytesAsString;
 
@@ -42,21 +41,7 @@ pub struct SymlinkRequest<'a> {
 	content: &'a [u8],
 }
 
-impl<'a> SymlinkRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_SYMLINK)?;
-		let content = dec.next_nul_terminated_bytes()?.to_bytes_without_nul();
-		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
-		Ok(Self {
-			parent_id: decode::node_id(dec.header().nodeid)?,
-			name,
-			content,
-		})
-	}
-
+impl SymlinkRequest<'_> {
 	#[must_use]
 	pub fn parent_id(&self) -> NodeId {
 		self.parent_id
@@ -70,6 +55,26 @@ impl<'a> SymlinkRequest<'a> {
 	#[must_use]
 	pub fn content(&self) -> &[u8] {
 		self.content
+	}
+}
+
+request_try_from! { SymlinkRequest : fuse }
+
+impl decode::Sealed for SymlinkRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for SymlinkRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_SYMLINK)?;
+		let content = dec.next_nul_terminated_bytes()?.to_bytes_without_nul();
+		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
+		Ok(Self {
+			parent_id: decode::node_id(dec.header().nodeid)?,
+			name,
+			content,
+		})
 	}
 }
 

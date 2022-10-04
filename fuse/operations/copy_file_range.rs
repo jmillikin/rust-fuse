@@ -22,9 +22,8 @@ use core::marker::PhantomData;
 use crate::NodeId;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 // CopyFileRangeRequest {{{
 
@@ -37,7 +36,7 @@ pub struct CopyFileRangeRequest<'a> {
 	body: &'a fuse_kernel::fuse_copy_file_range_in,
 }
 
-impl<'a> CopyFileRangeRequest<'a> {
+impl CopyFileRangeRequest<'_> {
 	#[must_use]
 	pub fn input_node_id(&self) -> NodeId {
 		unsafe { NodeId::new_unchecked(self.header.nodeid) }
@@ -79,10 +78,16 @@ impl<'a> CopyFileRangeRequest<'a> {
 			bits: self.body.flags,
 		}
 	}
+}
 
-	pub fn from_fuse_request(
+request_try_from! { CopyFileRangeRequest : fuse }
+
+impl decode::Sealed for CopyFileRangeRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for CopyFileRangeRequest<'a> {
+	fn from_fuse_request(
 		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
+	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_COPY_FILE_RANGE)?;
 

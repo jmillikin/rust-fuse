@@ -22,9 +22,8 @@ use core::marker::PhantomData;
 use crate::NodeId;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 // LseekRequest {{{
 
@@ -37,19 +36,7 @@ pub struct LseekRequest<'a> {
 	node_id: NodeId,
 }
 
-impl<'a> LseekRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_LSEEK)?;
-		let raw = dec.next_sized()?;
-		Ok(Self {
-			raw,
-			node_id: decode::node_id(dec.header().nodeid)?,
-		})
-	}
-
+impl LseekRequest<'_> {
 	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
@@ -68,6 +55,24 @@ impl<'a> LseekRequest<'a> {
 	#[must_use]
 	pub fn whence(&self) -> LseekWhence {
 		LseekWhence(self.raw.whence)
+	}
+}
+
+request_try_from! { LseekRequest : fuse }
+
+impl decode::Sealed for LseekRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for LseekRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_LSEEK)?;
+		let raw = dec.next_sized()?;
+		Ok(Self {
+			raw,
+			node_id: decode::node_id(dec.header().nodeid)?,
+		})
 	}
 }
 

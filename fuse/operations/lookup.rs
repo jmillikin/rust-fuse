@@ -24,9 +24,8 @@ use crate::NodeId;
 use crate::NodeName;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 // LookupRequest {{{
 
@@ -40,18 +39,7 @@ pub struct LookupRequest<'a> {
 	name: &'a NodeName,
 }
 
-impl<'a> LookupRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_LOOKUP)?;
-		Ok(Self {
-			parent_id: decode::node_id(dec.header().nodeid)?,
-			name: NodeName::new(dec.next_nul_terminated_bytes()?),
-		})
-	}
-
+impl LookupRequest<'_> {
 	#[must_use]
 	pub fn parent_id(&self) -> NodeId {
 		self.parent_id
@@ -60,6 +48,23 @@ impl<'a> LookupRequest<'a> {
 	#[must_use]
 	pub fn name(&self) -> &NodeName {
 		self.name
+	}
+}
+
+request_try_from! { LookupRequest : fuse }
+
+impl decode::Sealed for LookupRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for LookupRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_LOOKUP)?;
+		Ok(Self {
+			parent_id: decode::node_id(dec.header().nodeid)?,
+			name: NodeName::new(dec.next_nul_terminated_bytes()?),
+		})
 	}
 }
 

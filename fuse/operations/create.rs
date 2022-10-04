@@ -26,9 +26,8 @@ use crate::NodeName;
 use crate::internal::compat;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 use crate::protocol::common::DebugHexU32;
 
@@ -44,30 +43,7 @@ pub struct CreateRequest<'a> {
 	name: &'a NodeName,
 }
 
-impl<'a> CreateRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		let version_minor = request.version_minor;
-		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_CREATE)?;
-
-		let header = dec.header();
-		decode::node_id(header.nodeid)?;
-
-		let body = if version_minor >= 12 {
-			let body_v7p12 = dec.next_sized()?;
-			compat::Versioned::new_create_v7p12(version_minor, body_v7p12)
-		} else {
-			let body_v7p1 = dec.next_sized()?;
-			compat::Versioned::new_create_v7p1(version_minor, body_v7p1)
-		};
-
-		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
-
-		Ok(Self { header, body, name })
-	}
-
+impl CreateRequest<'_> {
 	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		unsafe { NodeId::new_unchecked(self.header.nodeid) }
@@ -109,6 +85,35 @@ impl<'a> CreateRequest<'a> {
 		0
 	}
 }
+
+impl decode::Sealed for CreateRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for CreateRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		let version_minor = request.version_minor;
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_CREATE)?;
+
+		let header = dec.header();
+		decode::node_id(header.nodeid)?;
+
+		let body = if version_minor >= 12 {
+			let body_v7p12 = dec.next_sized()?;
+			compat::Versioned::new_create_v7p12(version_minor, body_v7p12)
+		} else {
+			let body_v7p1 = dec.next_sized()?;
+			compat::Versioned::new_create_v7p1(version_minor, body_v7p1)
+		};
+
+		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
+
+		Ok(Self { header, body, name })
+	}
+}
+
+request_try_from! { CreateRequest : fuse }
 
 impl fmt::Debug for CreateRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

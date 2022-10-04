@@ -300,6 +300,8 @@ fn cuse_request_dispatch<S: CuseSocket>(
 	hooks: Option<&dyn ServerHooks>,
 	request: server::CuseRequest,
 ) -> Result<(), io::SendError<S::Error>> {
+	use crate::server::decode::CuseRequest;
+
 	let header = request.header();
 	#[cfg(feature = "std")]
 	if let Some(hooks) = hooks {

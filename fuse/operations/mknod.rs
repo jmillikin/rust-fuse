@@ -27,9 +27,8 @@ use crate::NodeName;
 use crate::internal::compat;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 // MknodRequest {{{
 
@@ -43,30 +42,7 @@ pub struct MknodRequest<'a> {
 	name: &'a NodeName,
 }
 
-impl<'a> MknodRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		let version_minor = request.version_minor;
-		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_MKNOD)?;
-
-		let header = dec.header();
-		decode::node_id(dec.header().nodeid)?;
-
-		let body = if version_minor >= 12 {
-			let body_v7p12 = dec.next_sized()?;
-			compat::Versioned::new_mknod_v7p12(version_minor, body_v7p12)
-		} else {
-			let body_v7p1 = dec.next_sized()?;
-			compat::Versioned::new_mknod_v7p1(version_minor, body_v7p1)
-		};
-
-		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
-
-		Ok(Self { header, body, name })
-	}
-
+impl MknodRequest<'_> {
 	#[must_use]
 	pub fn parent_id(&self) -> NodeId {
 		unsafe { NodeId::new_unchecked(self.header.nodeid) }
@@ -99,6 +75,35 @@ impl<'a> MknodRequest<'a> {
 			},
 			_ => None,
 		}
+	}
+}
+
+request_try_from! { MknodRequest : fuse }
+
+impl decode::Sealed for MknodRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for MknodRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		let version_minor = request.version_minor;
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_MKNOD)?;
+
+		let header = dec.header();
+		decode::node_id(dec.header().nodeid)?;
+
+		let body = if version_minor >= 12 {
+			let body_v7p12 = dec.next_sized()?;
+			compat::Versioned::new_mknod_v7p12(version_minor, body_v7p12)
+		} else {
+			let body_v7p1 = dec.next_sized()?;
+			compat::Versioned::new_mknod_v7p1(version_minor, body_v7p1)
+		};
+
+		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
+
+		Ok(Self { header, body, name })
 	}
 }
 

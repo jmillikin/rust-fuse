@@ -23,9 +23,8 @@ use crate::NodeId;
 use crate::internal::compat;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 use crate::protocol::common::DebugHexU32;
 
@@ -40,19 +39,7 @@ pub struct ReleaseRequest<'a> {
 	body: compat::Versioned<compat::fuse_release_in<'a>>,
 }
 
-impl<'a> ReleaseRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		decode_request(request.buf, request.version_minor, false)
-	}
-
-	pub fn from_cuse_request(
-		request: &server::CuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		decode_request(request.buf, request.version_minor, true)
-	}
-
+impl ReleaseRequest<'_> {
 	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		crate::NodeId::new(self.header.nodeid).unwrap_or(crate::ROOT_ID)
@@ -81,6 +68,52 @@ impl<'a> ReleaseRequest<'a> {
 	}
 }
 
+request_try_from! { ReleaseRequest : cuse fuse }
+
+impl decode::Sealed for ReleaseRequest<'_> {}
+
+impl<'a> decode::CuseRequest<'a> for ReleaseRequest<'a> {
+	fn from_cuse_request(
+		request: &server::CuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		Self::decode_request(request.buf, request.version_minor, true)
+	}
+}
+
+impl<'a> decode::FuseRequest<'a> for ReleaseRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		Self::decode_request(request.buf, request.version_minor, false)
+	}
+}
+
+impl<'a> ReleaseRequest<'a> {
+	fn decode_request(
+		buf: decode::RequestBuf<'a>,
+		version_minor: u32,
+		is_cuse: bool,
+	) -> Result<Self, server::RequestError> {
+		let mut dec = decode::RequestDecoder::new(buf);
+		dec.expect_opcode(fuse_kernel::FUSE_RELEASE)?;
+
+		let header = dec.header();
+		if !is_cuse {
+			decode::node_id(header.nodeid)?;
+		}
+
+		let body = if version_minor >= 8 {
+			let body_v7p8 = dec.next_sized()?;
+			compat::Versioned::new_release_v7p8(version_minor, body_v7p8)
+		} else {
+			let body_v7p1 = dec.next_sized()?;
+			compat::Versioned::new_release_v7p1(version_minor, body_v7p1)
+		};
+
+		Ok(Self { header, body })
+	}
+}
+
 impl fmt::Debug for ReleaseRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("ReleaseRequest")
@@ -90,30 +123,6 @@ impl fmt::Debug for ReleaseRequest<'_> {
 			.field("open_flags", &DebugHexU32(self.open_flags()))
 			.finish()
 	}
-}
-
-fn decode_request<'a>(
-	buf: decode::RequestBuf<'a>,
-	version_minor: u32,
-	is_cuse: bool,
-) -> Result<ReleaseRequest<'a>, io::RequestError> {
-	let mut dec = decode::RequestDecoder::new(buf);
-	dec.expect_opcode(fuse_kernel::FUSE_RELEASE)?;
-
-	let header = dec.header();
-	if !is_cuse {
-		decode::node_id(header.nodeid)?;
-	}
-
-	let body = if version_minor >= 8 {
-		let body_v7p8 = dec.next_sized()?;
-		compat::Versioned::new_release_v7p8(version_minor, body_v7p8)
-	} else {
-		let body_v7p1 = dec.next_sized()?;
-		compat::Versioned::new_release_v7p1(version_minor, body_v7p1)
-	};
-
-	Ok(ReleaseRequest { header, body })
 }
 
 // }}}

@@ -22,9 +22,8 @@ use core::marker::PhantomData;
 use crate::NodeId;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 use crate::protocol::common::file_lock::{Lock, LockRange, F_UNLCK};
 
@@ -40,32 +39,7 @@ pub struct SetlkRequest<'a> {
 	command: SetlkCommand,
 }
 
-impl<'a> SetlkRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		let mut dec = request.decoder();
-		let header = dec.header();
-
-		let is_setlkw: bool;
-		if header.opcode == fuse_kernel::FUSE_SETLKW {
-			is_setlkw = true;
-		} else {
-			dec.expect_opcode(fuse_kernel::FUSE_SETLK)?;
-			is_setlkw = false;
-		}
-
-		let raw: &fuse_kernel::fuse_lk_in = dec.next_sized()?;
-		let node_id = decode::node_id(header.nodeid)?;
-		let command = parse_setlk_cmd(is_setlkw, &raw.lk)?;
-
-		Ok(Self {
-			raw,
-			node_id,
-			command,
-		})
-	}
-
+impl SetlkRequest<'_> {
 	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		self.node_id
@@ -91,6 +65,37 @@ impl<'a> SetlkRequest<'a> {
 		SetlkRequestFlags {
 			bits: self.raw.lk_flags,
 		}
+	}
+}
+
+request_try_from! { SetlkRequest : fuse }
+
+impl decode::Sealed for SetlkRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for SetlkRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		let mut dec = request.decoder();
+		let header = dec.header();
+
+		let is_setlkw: bool;
+		if header.opcode == fuse_kernel::FUSE_SETLKW {
+			is_setlkw = true;
+		} else {
+			dec.expect_opcode(fuse_kernel::FUSE_SETLK)?;
+			is_setlkw = false;
+		}
+
+		let raw: &fuse_kernel::fuse_lk_in = dec.next_sized()?;
+		let node_id = decode::node_id(header.nodeid)?;
+		let command = parse_setlk_cmd(is_setlkw, &raw.lk)?;
+
+		Ok(Self {
+			raw,
+			node_id,
+			command,
+		})
 	}
 }
 
@@ -139,7 +144,7 @@ impl fmt::Debug for SetlkRequest<'_> {
 fn parse_setlk_cmd(
 	is_setlkw: bool,
 	raw: &fuse_kernel::fuse_file_lock,
-) -> Result<SetlkCommand, io::RequestError> {
+) -> Result<SetlkCommand, server::RequestError> {
 	if raw.r#type == F_UNLCK {
 		return Ok(SetlkCommand::ClearLocks {
 			range: LockRange::parse(*raw),
@@ -153,7 +158,7 @@ fn parse_setlk_cmd(
 		} else {
 			SetlkCommand::TrySetLock(lock)
 		}),
-		None => Err(io::RequestError::InvalidLockType),
+		None => Err(server::RequestError::InvalidLockType),
 	}
 }
 

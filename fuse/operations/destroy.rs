@@ -21,8 +21,8 @@ use core::marker::PhantomData;
 
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 // DestroyRequest {{{
 
@@ -34,10 +34,14 @@ pub struct DestroyRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 }
 
-impl<'a> DestroyRequest<'a> {
-	pub fn from_fuse_request(
+request_try_from! { DestroyRequest : fuse }
+
+impl decode::Sealed for DestroyRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for DestroyRequest<'a> {
+	fn from_fuse_request(
 		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
+	) -> Result<Self, server::RequestError> {
 		let dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_DESTROY)?;
 		Ok(Self {

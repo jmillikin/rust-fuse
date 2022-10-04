@@ -20,7 +20,7 @@ use core::num::NonZeroU64;
 
 use crate::internal::fuse_kernel;
 use crate::server::io;
-use crate::server::io::encode;
+use crate::server::encode;
 
 // FuseNotification {{{
 

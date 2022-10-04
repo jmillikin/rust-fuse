@@ -23,9 +23,8 @@ use crate::NodeId;
 use crate::internal::compat;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 use crate::protocol::common::DebugBytesAsString;
 use crate::protocol::common::DebugHexU32;
@@ -42,19 +41,7 @@ pub struct WriteRequest<'a> {
 	value: &'a [u8],
 }
 
-impl<'a> WriteRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		decode_request(request.buf, request.version_minor, false)
-	}
-
-	pub fn from_cuse_request(
-		request: &server::CuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		decode_request(request.buf, request.version_minor, true)
-	}
-
+impl WriteRequest<'_> {
 	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		crate::NodeId::new(self.header.nodeid).unwrap_or(crate::ROOT_ID)
@@ -103,6 +90,54 @@ impl<'a> WriteRequest<'a> {
 	}
 }
 
+request_try_from! { WriteRequest : cuse fuse }
+
+impl decode::Sealed for WriteRequest<'_> {}
+
+impl<'a> decode::CuseRequest<'a> for WriteRequest<'a> {
+	fn from_cuse_request(
+		request: &server::CuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		Self::decode_request(request.buf, request.version_minor, true)
+	}
+}
+
+impl<'a> decode::FuseRequest<'a> for WriteRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		Self::decode_request(request.buf, request.version_minor, false)
+	}
+}
+
+impl<'a> WriteRequest<'a> {
+	fn decode_request(
+		buf: decode::RequestBuf<'a>,
+		version_minor: u32,
+		is_cuse: bool,
+	) -> Result<Self, server::RequestError> {
+		let mut dec = decode::RequestDecoder::new(buf);
+		dec.expect_opcode(fuse_kernel::FUSE_WRITE)?;
+
+		let header = dec.header();
+		if !is_cuse {
+			decode::node_id(header.nodeid)?;
+		}
+
+		let body = if version_minor >= 9 {
+			let body_v7p9 = dec.next_sized()?;
+			compat::Versioned::new_write_v7p9(version_minor, body_v7p9)
+		} else {
+			let body_v7p1 = dec.next_sized()?;
+			compat::Versioned::new_write_v7p1(version_minor, body_v7p1)
+		};
+
+		let value = dec.next_bytes(body.as_v7p1().size)?;
+
+		Ok(Self { header, body, value })
+	}
+}
+
 impl fmt::Debug for WriteRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("WriteRequest")
@@ -115,32 +150,6 @@ impl fmt::Debug for WriteRequest<'_> {
 			.field("open_flags", &DebugHexU32(self.open_flags()))
 			.finish()
 	}
-}
-
-fn decode_request<'a>(
-	buf: decode::RequestBuf<'a>,
-	version_minor: u32,
-	is_cuse: bool,
-) -> Result<WriteRequest<'a>, io::RequestError> {
-	let mut dec = decode::RequestDecoder::new(buf);
-	dec.expect_opcode(fuse_kernel::FUSE_WRITE)?;
-
-	let header = dec.header();
-	if !is_cuse {
-		decode::node_id(header.nodeid)?;
-	}
-
-	let body = if version_minor >= 9 {
-		let body_v7p9 = dec.next_sized()?;
-		compat::Versioned::new_write_v7p9(version_minor, body_v7p9)
-	} else {
-		let body_v7p1 = dec.next_sized()?;
-		compat::Versioned::new_write_v7p1(version_minor, body_v7p1)
-	};
-
-	let value = dec.next_bytes(body.as_v7p1().size)?;
-
-	Ok(WriteRequest { header, body, value })
 }
 
 // }}}

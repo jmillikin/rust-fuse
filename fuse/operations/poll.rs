@@ -22,9 +22,8 @@ use core::marker::PhantomData;
 use crate::NodeId;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 use crate::protocol::common::DebugHexU32;
 
@@ -39,7 +38,7 @@ pub struct PollRequest<'a> {
 	body: &'a fuse_kernel::fuse_poll_in,
 }
 
-impl<'a> PollRequest<'a> {
+impl PollRequest<'_> {
 	#[must_use]
 	pub fn node_id(&self) -> NodeId {
 		unsafe { NodeId::new_unchecked(self.header.nodeid) }
@@ -61,10 +60,16 @@ impl<'a> PollRequest<'a> {
 			bits: self.body.flags,
 		}
 	}
+}
 
-	pub fn from_fuse_request(
+request_try_from! { PollRequest : fuse }
+
+impl decode::Sealed for PollRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for PollRequest<'a> {
+	fn from_fuse_request(
 		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
+	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_POLL)?;
 

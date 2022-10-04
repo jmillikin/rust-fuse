@@ -21,8 +21,8 @@ use core::marker::PhantomData;
 
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 
 // SyncfsRequest {{{
 
@@ -34,10 +34,14 @@ pub struct SyncfsRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 }
 
-impl<'a> SyncfsRequest<'a> {
-	pub fn from_fuse_request(
+request_try_from! { SyncfsRequest : fuse }
+
+impl decode::Sealed for SyncfsRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for SyncfsRequest<'a> {
+	fn from_fuse_request(
 		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
+	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_SYNCFS)?;
 

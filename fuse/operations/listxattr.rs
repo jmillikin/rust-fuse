@@ -23,9 +23,8 @@ use core::ptr;
 
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::io;
-use crate::server::io::decode;
-use crate::server::io::encode;
+use crate::server::decode;
+use crate::server::encode;
 use crate::xattr;
 
 #[cfg(target_os = "freebsd")]
@@ -51,20 +50,7 @@ pub struct ListxattrRequest<'a> {
 	body: &'a fuse_kernel::fuse_getxattr_in,
 }
 
-impl<'a> ListxattrRequest<'a> {
-	pub fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, io::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_LISTXATTR)?;
-
-		let header = dec.header();
-		decode::node_id(header.nodeid)?;
-
-		let body = dec.next_sized()?;
-		Ok(Self { header, body })
-	}
-
+impl ListxattrRequest<'_> {
 	#[inline]
 	#[must_use]
 	pub fn node_id(&self) -> crate::NodeId {
@@ -76,6 +62,25 @@ impl<'a> ListxattrRequest<'a> {
 	pub fn size(&self) -> Option<num::NonZeroUsize> {
 		let size = usize::try_from(self.body.size).unwrap_or(usize::MAX);
 		num::NonZeroUsize::new(size)
+	}
+}
+
+request_try_from! { ListxattrRequest : fuse }
+
+impl decode::Sealed for ListxattrRequest<'_> {}
+
+impl<'a> decode::FuseRequest<'a> for ListxattrRequest<'a> {
+	fn from_fuse_request(
+		request: &server::FuseRequest<'a>,
+	) -> Result<Self, server::RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_LISTXATTR)?;
+
+		let header = dec.header();
+		decode::node_id(header.nodeid)?;
+
+		let body = dec.next_sized()?;
+		Ok(Self { header, body })
 	}
 }
 
