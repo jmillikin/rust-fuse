@@ -63,22 +63,9 @@ impl FuseInitRequest<'_> {
 		self.max_readahead
 	}
 
-	pub fn set_max_readahead(&mut self, max_readahead: u32) {
-		self.max_readahead = max_readahead;
-	}
-
 	#[must_use]
 	pub fn flags(&self) -> FuseInitFlags {
 		self.flags
-	}
-
-	#[must_use]
-	pub fn mut_flags(&mut self) -> &mut FuseInitFlags {
-		&mut self.flags
-	}
-
-	pub fn set_flags(&mut self, flags: FuseInitFlags) {
-		self.flags = flags;
 	}
 }
 

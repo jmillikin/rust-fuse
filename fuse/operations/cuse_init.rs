@@ -50,15 +50,6 @@ impl CuseInitRequest<'_> {
 	pub fn flags(&self) -> CuseInitFlags {
 		self.flags
 	}
-
-	#[must_use]
-	pub fn mut_flags(&mut self) -> &mut CuseInitFlags {
-		&mut self.flags
-	}
-
-	pub fn set_flags(&mut self, flags: CuseInitFlags) {
-		self.flags = flags;
-	}
 }
 
 request_try_from! { CuseInitRequest : cuse }
