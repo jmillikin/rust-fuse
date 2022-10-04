@@ -16,8 +16,8 @@
 
 use core::mem::size_of;
 
-use fuse::XattrName;
 use fuse::operations::removexattr::{RemovexattrRequest, RemovexattrResponse};
+use fuse::xattr;
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
@@ -33,7 +33,7 @@ fn request() {
 
 	let req = decode_request!(RemovexattrRequest, buf);
 
-	let expect = XattrName::from_bytes(b"hello.world!").unwrap();
+	let expect = xattr::Name::new("hello.world!").unwrap();
 	assert_eq!(req.name(), expect);
 }
 

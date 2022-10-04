@@ -88,13 +88,11 @@ pub use self::protocol::common::{
 	NodeId,
 	NodeName,
 	XattrError,
-	XattrName,
 	NODE_NAME_MAX,
 	ROOT_ID,
-	XATTR_LIST_MAX,
-	XATTR_NAME_MAX,
-	XATTR_SIZE_MAX,
 };
+
+pub mod xattr;
 
 pub const MIN_READ_BUFFER: usize = internal::fuse_kernel::FUSE_MIN_READ_BUFFER;
 

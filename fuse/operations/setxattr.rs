@@ -20,12 +20,12 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::NodeId;
-use crate::XattrName;
 use crate::internal::fuse_kernel;
 use crate::server;
 use crate::server::io;
 use crate::server::io::decode;
 use crate::server::io::encode;
+use crate::xattr;
 
 use crate::protocol::common::DebugBytesAsString;
 use crate::protocol::common::DebugHexU32;
@@ -39,7 +39,7 @@ use crate::protocol::common::DebugHexU32;
 pub struct SetxattrRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	raw: fuse_kernel::fuse_setxattr_in,
-	name: &'a XattrName,
+	name: &'a xattr::Name,
 	value: &'a [u8],
 }
 
@@ -67,7 +67,8 @@ impl<'a> SetxattrRequest<'a> {
 		}
 
 		decode::node_id(header.nodeid)?;
-		let name = XattrName::new(dec.next_nul_terminated_bytes()?);
+		let name_bytes = dec.next_nul_terminated_bytes()?;
+		let name = xattr::Name::from_bytes(name_bytes.to_bytes_without_nul())?;
 		let value = dec.next_bytes(raw.size)?;
 		Ok(Self { header, raw, name, value })
 	}
@@ -78,7 +79,7 @@ impl<'a> SetxattrRequest<'a> {
 	}
 
 	#[must_use]
-	pub fn name(&self) -> &XattrName {
+	pub fn name(&self) -> &xattr::Name {
 		self.name
 	}
 

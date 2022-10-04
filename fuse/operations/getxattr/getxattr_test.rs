@@ -17,8 +17,8 @@
 use core::mem::size_of;
 use core::num;
 
-use fuse::XattrName;
 use fuse::operations::getxattr::{GetxattrRequest, GetxattrResponse};
+use fuse::xattr;
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
@@ -38,7 +38,7 @@ fn request_sized() {
 
 	let req = decode_request!(GetxattrRequest, buf);
 
-	let expect = XattrName::from_bytes(b"hello.world!").unwrap();
+	let expect = xattr::Name::new("hello.world!").unwrap();
 	assert_eq!(req.size(), Some(num::NonZeroU32::new(10).unwrap()));
 	assert_eq!(req.name(), expect);
 }
@@ -59,7 +59,7 @@ fn request_unsized() {
 
 	let req = decode_request!(GetxattrRequest, buf);
 
-	let expect = XattrName::from_bytes(b"hello.world!").unwrap();
+	let expect = xattr::Name::new("hello.world!").unwrap();
 	assert_eq!(req.size(), None);
 	assert_eq!(req.name(), expect);
 }
@@ -123,9 +123,13 @@ fn response_unsized() {
 	assert_eq!(resp.request_size(), None);
 
 	// set_value() doesn't allow value sizes larger than XATTR_SIZE_MAX
-	assert!(resp.try_set_value(&[0; fuse::XATTR_SIZE_MAX + 1]).is_err());
-	assert!(resp.value().is_empty());
-	//assert_eq!(resp.raw.size, 0);
+	let mut val_toobig = Vec::new();
+	if let Some(max_len) = xattr::Value::MAX_LEN {
+		val_toobig.resize(max_len + 1, 0u8);
+		assert!(resp.try_set_value(&val_toobig).is_err());
+		assert!(resp.value().is_empty());
+		//assert_eq!(resp.raw.size, 0);
+	}
 
 	// set_value() doesn't store value bytes for unsized responses
 	resp.set_value(&[1, 2, 3, 4]);

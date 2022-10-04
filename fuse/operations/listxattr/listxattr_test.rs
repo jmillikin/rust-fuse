@@ -17,8 +17,8 @@
 use core::mem::size_of;
 use core::num;
 
-use fuse::XattrName;
 use fuse::operations::listxattr::{ListxattrRequest, ListxattrResponse};
+use fuse::xattr;
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
@@ -99,13 +99,13 @@ fn response_sized_stack() {
 fn response_sized_test_impl(resp: &mut ListxattrResponse) {
 	// response must fit in kernel buffer
 	{
-		let name = XattrName::from_bytes(b"12345678901").unwrap();
+		let name = xattr::Name::new("12345678901").unwrap();
 		assert!(resp.try_add_name(name).is_err());
 	}
 
 	// xattr names are NUL-terminated
-	resp.add_name(XattrName::from_bytes(b"123").unwrap());
-	resp.add_name(XattrName::from_bytes(b"456").unwrap());
+	resp.add_name(xattr::Name::new("123").unwrap());
+	resp.add_name(xattr::Name::new("456").unwrap());
 
 	let encoded = encode_response!(resp);
 
@@ -127,8 +127,8 @@ fn response_without_capacity() {
 	let mut resp = ListxattrResponse::without_capacity();
 
 	// set_value() doesn't store value bytes for responses without capacity
-	resp.add_name(XattrName::from_bytes(b"123").unwrap());
-	resp.add_name(XattrName::from_bytes(b"456").unwrap());
+	resp.add_name(xattr::Name::new("123").unwrap());
+	resp.add_name(xattr::Name::new("456").unwrap());
 
 	let encoded = encode_response!(resp);
 
@@ -153,7 +153,7 @@ fn response_without_capacity() {
 fn response_size_limit() {
 	// listxattr response size can't exceed XATTR_LIST_MAX
 	let mut resp = ListxattrResponse::without_capacity();
-	let name = XattrName::from_bytes(&[b'a'; 250]).unwrap();
+	let name = xattr::Name::from_bytes(&[b'a'; 250]).unwrap();
 	for _ in 0..261 {
 		resp.add_name(name);
 	}
@@ -164,8 +164,8 @@ fn response_size_limit() {
 fn response_sized_impl_debug() {
 	let mut response = ListxattrResponse::with_max_size(10);
 
-	response.add_name(XattrName::from_bytes(b"123").unwrap());
-	response.add_name(XattrName::from_bytes(b"456").unwrap());
+	response.add_name(xattr::Name::new("123").unwrap());
+	response.add_name(xattr::Name::new("456").unwrap());
 
 	assert_eq!(
 		format!("{:#?}", response),
@@ -184,8 +184,8 @@ fn response_sized_impl_debug() {
 fn response_without_capacity_impl_debug() {
 	let mut response = ListxattrResponse::without_capacity();
 
-	response.add_name(XattrName::from_bytes(b"123").unwrap());
-	response.add_name(XattrName::from_bytes(b"456").unwrap());
+	response.add_name(xattr::Name::new("123").unwrap());
+	response.add_name(xattr::Name::new("456").unwrap());
 
 	assert_eq!(
 		format!("{:#?}", response),

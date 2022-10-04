@@ -16,8 +16,8 @@
 
 use core::mem::size_of;
 
-use fuse::XattrName;
 use fuse::operations::setxattr::{SetxattrRequest, SetxattrResponse};
+use fuse::xattr;
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
@@ -36,7 +36,7 @@ fn request() {
 
 	let req = decode_request!(SetxattrRequest, buf);
 
-	let expect_name = XattrName::from_bytes(b"hello.world!").unwrap();
+	let expect_name = xattr::Name::new("hello.world!").unwrap();
 	assert_eq!(req.name(), expect_name);
 	assert_eq!(req.value(), b"some\x00value");
 	assert_eq!(req.setxattr_flags(), 0b11);

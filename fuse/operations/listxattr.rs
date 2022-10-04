@@ -22,12 +22,12 @@ use core::num;
 
 use crate::NodeId;
 use crate::XattrError;
-use crate::XattrName;
 use crate::internal::fuse_kernel;
 use crate::server;
 use crate::server::io;
 use crate::server::io::decode;
 use crate::server::io::encode;
+use crate::xattr;
 
 use crate::protocol::common::DebugClosure;
 
@@ -119,16 +119,19 @@ impl<'a> ListxattrResponse<'a> {
 		}
 	}
 
-	pub fn names(&self) -> impl Iterator<Item = &XattrName> {
+	pub fn names(&self) -> impl Iterator<Item = &xattr::Name> {
 		XattrNamesIter::new(&self.buf)
 	}
 
-	pub fn add_name(&mut self, name: &XattrName) {
+	pub fn add_name(&mut self, name: &xattr::Name) {
 		self.try_add_name(name).unwrap()
 	}
 
-	pub fn try_add_name(&mut self, name: &XattrName) -> Result<(), XattrError> {
-		use crate::XATTR_LIST_MAX;
+	pub fn try_add_name(&mut self, name: &xattr::Name) -> Result<(), XattrError> {
+		#[cfg(target_os = "linux")]
+		use crate::xattr::XATTR_LIST_MAX;
+		#[cfg(target_os = "freebsd")]
+		const XATTR_LIST_MAX: usize = usize::MAX;
 
 		let name = name.as_bytes();
 		let name_len = name.len() as usize;
@@ -248,9 +251,9 @@ impl<'a> XattrNamesIter<'a> {
 }
 
 impl<'a> core::iter::Iterator for XattrNamesIter<'a> {
-	type Item = &'a XattrName;
+	type Item = &'a xattr::Name;
 
-	fn next(&mut self) -> Option<&'a XattrName> {
+	fn next(&mut self) -> Option<&'a xattr::Name> {
 		let len = self.0.len();
 		if len == 0 {
 			return None;
@@ -260,10 +263,10 @@ impl<'a> core::iter::Iterator for XattrNamesIter<'a> {
 				let (name, _) = self.0.split_at(ii);
 				let (_, next) = self.0.split_at(ii + 1);
 				self.0 = next;
-				return Some(XattrName::new_unchecked(name));
+				return Some(unsafe { xattr::Name::from_bytes_unchecked(name) });
 			}
 		}
-		let name = XattrName::new_unchecked(self.0);
+		let name = unsafe { xattr::Name::from_bytes_unchecked(self.0) };
 		self.0 = &[];
 		Some(name)
 	}

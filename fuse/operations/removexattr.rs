@@ -20,12 +20,12 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::NodeId;
-use crate::XattrName;
 use crate::internal::fuse_kernel;
 use crate::server;
 use crate::server::io;
 use crate::server::io::decode;
 use crate::server::io::encode;
+use crate::xattr;
 
 // RemovexattrRequest {{{
 
@@ -35,7 +35,7 @@ use crate::server::io::encode;
 /// `FUSE_REMOVEXATTR` operation.
 pub struct RemovexattrRequest<'a> {
 	node_id: NodeId,
-	name: &'a XattrName,
+	name: &'a xattr::Name,
 }
 
 impl<'a> RemovexattrRequest<'a> {
@@ -44,7 +44,8 @@ impl<'a> RemovexattrRequest<'a> {
 	) -> Result<Self, io::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_REMOVEXATTR)?;
-		let name = XattrName::new(dec.next_nul_terminated_bytes()?);
+		let name_bytes = dec.next_nul_terminated_bytes()?;
+		let name = xattr::Name::from_bytes(name_bytes.to_bytes_without_nul())?;
 		Ok(Self {
 			node_id: decode::node_id(dec.header().nodeid)?,
 			name,
@@ -57,7 +58,7 @@ impl<'a> RemovexattrRequest<'a> {
 	}
 
 	#[must_use]
-	pub fn name(&self) -> &XattrName {
+	pub fn name(&self) -> &xattr::Name {
 		self.name
 	}
 }

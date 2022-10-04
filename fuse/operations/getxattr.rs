@@ -21,12 +21,12 @@ use core::num;
 
 use crate::NodeId;
 use crate::XattrError;
-use crate::XattrName;
 use crate::internal::fuse_kernel;
 use crate::server;
 use crate::server::io;
 use crate::server::io::decode;
 use crate::server::io::encode;
+use crate::xattr;
 
 use crate::protocol::common::DebugBytesAsString;
 
@@ -39,7 +39,7 @@ use crate::protocol::common::DebugBytesAsString;
 pub struct GetxattrRequest<'a> {
 	node_id: NodeId,
 	size: Option<num::NonZeroU32>,
-	name: &'a XattrName,
+	name: &'a xattr::Name,
 }
 
 impl<'a> GetxattrRequest<'a> {
@@ -50,10 +50,12 @@ impl<'a> GetxattrRequest<'a> {
 		dec.expect_opcode(fuse_kernel::FUSE_GETXATTR)?;
 
 		let raw: &'a fuse_kernel::fuse_getxattr_in = dec.next_sized()?;
+		let name_bytes = dec.next_nul_terminated_bytes()?;
+		let name = xattr::Name::from_bytes(name_bytes.to_bytes_without_nul())?;
 		Ok(Self {
 			node_id: decode::node_id(dec.header().nodeid)?,
 			size: num::NonZeroU32::new(raw.size),
-			name: XattrName::new(dec.next_nul_terminated_bytes()?),
+			name,
 		})
 	}
 
@@ -68,7 +70,7 @@ impl<'a> GetxattrRequest<'a> {
 	}
 
 	#[must_use]
-	pub fn name(&self) -> &XattrName {
+	pub fn name(&self) -> &xattr::Name {
 		self.name
 	}
 }
@@ -122,8 +124,10 @@ impl<'a> GetxattrResponse<'a> {
 	}
 
 	pub fn try_set_value(&mut self, value: &'a [u8]) -> Result<(), XattrError> {
-		if value.len() > crate::XATTR_SIZE_MAX {
-			return Err(XattrError::exceeds_size_max(value.len()));
+		if let Some(max_len) = xattr::Value::MAX_LEN {
+			if value.len() > max_len {
+				return Err(XattrError::exceeds_size_max(value.len()));
+			}
 		}
 		let value_len = value.len() as u32;
 

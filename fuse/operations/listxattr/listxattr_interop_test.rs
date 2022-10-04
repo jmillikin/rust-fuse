@@ -18,6 +18,7 @@ use std::panic;
 use std::sync::mpsc;
 
 use fuse::server::fuse_rpc;
+use fuse::xattr;
 
 use interop_testutil::{
 	diff_str,
@@ -74,10 +75,8 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 	) -> fuse_rpc::FuseResult<fuse::ListxattrResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
-		let xattr_small =
-			fuse::XattrName::from_bytes(b"user.xattr_small").unwrap();
-		let xattr_toobig =
-			fuse::XattrName::from_bytes(b"user.xattr_toobig").unwrap();
+		let xattr_small = xattr::Name::new("user.xattr_small").unwrap();
+		let xattr_toobig = xattr::Name::new("user.xattr_toobig").unwrap();
 
 		let mut resp = match request.size() {
 			None => fuse::ListxattrResponse::without_capacity(),
