@@ -17,6 +17,7 @@
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::{env, ffi, fs, io, panic, path, sync, thread};
 
+use fuse::cuse;
 use fuse::server;
 use fuse::server::cuse_rpc;
 use fuse::server::fuse_rpc;
@@ -358,10 +359,13 @@ pub fn cuse_interop_test<H: TestDev + Send + 'static>(
 		thread::spawn(move || {
 			use cuse_rpc::CuseServerBuilder;
 
-			let devname = fuse::CuseDeviceName::from_bytes(&mktemp_template)
+			let devname = cuse::DeviceName::from_bytes(&mktemp_template)
 				.unwrap();
 			let srv = CuseServerBuilder::new(dev_cuse, handlers)
-				.device_number(CUSE_DEV_MAJOR, CUSE_DEV_MINOR)
+				.device_number(cuse::DeviceNumber::new(
+					CUSE_DEV_MAJOR,
+					CUSE_DEV_MINOR,
+				))
 				.server_hooks(Box::new(PrintHooks {}))
 				.cuse_init_fn(devname, |req, resp| {
 					H::cuse_init(req, resp);

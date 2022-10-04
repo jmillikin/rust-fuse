@@ -17,8 +17,8 @@
 use core::mem::size_of;
 
 use fuse::Version;
+use fuse::cuse;
 use fuse::operations::cuse_init::{
-	CuseDeviceName,
 	CuseInitFlag,
 	CuseInitRequest,
 	CuseInitResponse,
@@ -86,7 +86,7 @@ fn request_impl_debug() {
 
 #[test]
 fn response() {
-	let device_name = CuseDeviceName::from_bytes(b"test-device").unwrap();
+	let device_name = cuse::DeviceName::new("test-device").unwrap();
 	let mut resp = CuseInitResponse::new(device_name);
 	resp.set_version(Version::new(7, 23));
 	resp.set_max_write(4096);
@@ -121,12 +121,11 @@ fn response() {
 
 #[test]
 fn response_impl_debug() {
-	let device_name = CuseDeviceName::from_bytes(b"test-device").unwrap();
+	let device_name = cuse::DeviceName::new("test-device").unwrap();
 	let mut response = CuseInitResponse::new(device_name);
 	response.set_max_read(4096);
 	response.set_max_write(8192);
-	response.set_dev_major(10);
-	response.set_dev_minor(11);
+	response.set_device_number(cuse::DeviceNumber::new(10, 11));
 	response.mut_flags().set(CuseInitFlag::UNRESTRICTED_IOCTL);
 
 	assert_eq!(
@@ -139,8 +138,10 @@ fn response_impl_debug() {
 			"    },\n",
 			"    max_read: 4096,\n",
 			"    max_write: 8192,\n",
-			"    dev_major: 10,\n",
-			"    dev_minor: 11,\n",
+			"    device_number: DeviceNumber {\n",
+			"        major: 10,\n",
+			"        minor: 11,\n",
+			"    },\n",
 			"}",
 		),
 	);

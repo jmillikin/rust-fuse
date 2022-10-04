@@ -37,7 +37,7 @@ mod internal;
 mod error;
 
 pub mod client;
-
+pub mod cuse;
 pub mod server;
 
 pub mod os {

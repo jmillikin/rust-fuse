@@ -22,59 +22,11 @@ use core::mem::size_of;
 use core::slice;
 
 use crate::Version;
+use crate::cuse;
 use crate::internal::fuse_kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
-
-use crate::protocol::common::DebugBytesAsString;
-
-// CuseDeviceName {{{
-
-#[derive(Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct CuseDeviceName([u8]);
-
-impl CuseDeviceName {
-	#[must_use]
-	pub fn from_bytes<'a>(bytes: &'a [u8]) -> Option<&'a CuseDeviceName> {
-		if bytes.is_empty() || bytes.contains(&0) {
-			return None;
-		}
-		Some(unsafe { &*(bytes as *const [u8] as *const CuseDeviceName) })
-	}
-
-	#[must_use]
-	pub fn as_bytes(&self) -> &[u8] {
-		&self.0
-	}
-}
-
-impl fmt::Debug for CuseDeviceName {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt::Display::fmt(self, fmt)
-	}
-}
-
-impl fmt::Display for CuseDeviceName {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		use core::fmt::Debug;
-		DebugBytesAsString(&self.0).fmt(fmt)
-	}
-}
-
-impl PartialEq<[u8]> for CuseDeviceName {
-	fn eq(&self, other: &[u8]) -> bool {
-		self.as_bytes().eq(other)
-	}
-}
-
-impl PartialEq<CuseDeviceName> for [u8] {
-	fn eq(&self, other: &CuseDeviceName) -> bool {
-		self.eq(other.as_bytes())
-	}
-}
-
-// }}}
 
 // CuseInitRequest {{{
 
@@ -149,12 +101,12 @@ impl fmt::Debug for CuseInitRequest<'_> {
 pub struct CuseInitResponse<'a> {
 	raw: fuse_kernel::cuse_init_out,
 	flags: CuseInitFlags,
-	device_name: Option<&'a CuseDeviceName>,
+	device_name: Option<&'a cuse::DeviceName>,
 }
 
 impl<'a> CuseInitResponse<'a> {
 	#[must_use]
-	pub fn new(device_name: &'a CuseDeviceName) -> CuseInitResponse<'a> {
+	pub fn new(device_name: &'a cuse::DeviceName) -> CuseInitResponse<'a> {
 		CuseInitResponse {
 			raw: fuse_kernel::cuse_init_out::zeroed(),
 			flags: CuseInitFlags::new(),
@@ -214,26 +166,16 @@ impl<'a> CuseInitResponse<'a> {
 	}
 
 	#[must_use]
-	pub fn dev_major(&self) -> u32 {
-		self.raw.dev_major
+	pub fn device_number(&self) -> cuse::DeviceNumber {
+		cuse::DeviceNumber::new(
+			self.raw.dev_major,
+			self.raw.dev_minor,
+		)
 	}
 
-	pub fn set_dev_major(&mut self, dev_major: u32) {
-		self.raw.dev_major = dev_major;
-	}
-
-	#[must_use]
-	pub fn dev_minor(&self) -> u32 {
-		self.raw.dev_minor
-	}
-
-	pub fn set_dev_minor(&mut self, dev_minor: u32) {
-		self.raw.dev_minor = dev_minor;
-	}
-
-	pub fn set_device_number(&mut self, major: u32, minor: u32) {
-		self.raw.dev_major = major;
-		self.raw.dev_minor = minor;
+	pub fn set_device_number(&mut self, device_number: cuse::DeviceNumber) {
+		self.raw.dev_major = device_number.major();
+		self.raw.dev_minor = device_number.minor();
 	}
 }
 
@@ -249,8 +191,7 @@ impl fmt::Debug for CuseInitResponse<'_> {
 			.field("flags", &self.flags())
 			.field("max_read", &self.max_read())
 			.field("max_write", &self.max_write())
-			.field("dev_major", &self.dev_major())
-			.field("dev_minor", &self.dev_minor())
+			.field("device_number", &self.device_number())
 			.finish()
 	}
 }

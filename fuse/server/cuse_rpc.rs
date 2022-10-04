@@ -14,10 +14,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::cuse;
 use crate::io::ArrayBuffer;
 use crate::operations;
 use crate::operations::cuse_init::{
-	CuseDeviceName,
 	CuseInitFlags,
 	CuseInitRequest,
 	CuseInitResponse,
@@ -41,8 +41,7 @@ pub struct CuseServerBuilder<S, H> {
 }
 
 struct CuseOptions {
-	dev_major: u32,
-	dev_minor: u32,
+	device_number: cuse::DeviceNumber,
 	max_read: u32,
 	max_write: u32,
 	flags: CuseInitFlags,
@@ -55,8 +54,7 @@ impl<S, H> CuseServerBuilder<S, H> {
 			socket,
 			handlers,
 			opts: CuseOptions {
-				dev_major: 0,
-				dev_minor: 0,
+				device_number: cuse::DeviceNumber::new(0, 0),
 				max_read: 0,
 				max_write: 0,
 				flags: CuseInitFlags::new(),
@@ -67,9 +65,8 @@ impl<S, H> CuseServerBuilder<S, H> {
 	}
 
 	#[must_use]
-	pub fn device_number(mut self, major: u32, minor: u32) -> Self {
-		self.opts.dev_major = major;
-		self.opts.dev_minor = minor;
+	pub fn device_number(mut self, device_number: cuse::DeviceNumber) -> Self {
+		self.opts.device_number = device_number;
 		self
 	}
 
@@ -102,14 +99,14 @@ impl<S, H> CuseServerBuilder<S, H> {
 impl<S: CuseSocket, H> CuseServerBuilder<S, H> {
 	pub fn cuse_init(
 		self,
-		device_name: &CuseDeviceName,
+		device_name: &cuse::DeviceName,
 	) -> Result<CuseServer<S, H>, ServerError<S::Error>> {
 		self.cuse_init_fn(device_name, |_init_request, _init_response| {})
 	}
 
 	pub fn cuse_init_fn(
 		self,
-		device_name: &CuseDeviceName,
+		device_name: &cuse::DeviceName,
 		mut init_fn: impl FnMut(&CuseInitRequest, &mut CuseInitResponse),
 	) -> Result<CuseServer<S, H>, ServerError<S::Error>> {
 		let opts = self.opts;
@@ -134,10 +131,10 @@ impl CuseOptions {
 	fn init_response<'a>(
 		&self,
 		_request: &CuseInitRequest,
-		device_name: &'a CuseDeviceName,
+		device_name: &'a cuse::DeviceName,
 	) -> CuseInitResponse<'a> {
 		let mut response = CuseInitResponse::new(device_name);
-		response.set_device_number(self.dev_major, self.dev_minor);
+		response.set_device_number(self.device_number);
 		response.set_max_read(self.max_read);
 		response.set_max_write(self.max_write);
 		response.set_flags(self.flags);
