@@ -17,6 +17,7 @@
 use std::panic;
 use std::sync::mpsc;
 
+use fuse::node;
 use fuse::server::fuse_rpc;
 
 use interop_testutil::{
@@ -39,16 +40,14 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::LookupRequest,
 	) -> fuse_rpc::FuseResult<fuse::LookupResponse, S::Error> {
-		if request.parent_id() != fuse::ROOT_ID {
+		if !request.parent_id().is_root() {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
 
 		let node_id: u64;
-		if request.name() == fuse::NodeName::from_bytes(b"flush.txt").unwrap() {
+		if request.name() == "flush.txt" {
 			node_id = 2;
-		} else if request.name()
-			== fuse::NodeName::from_bytes(b"flush_err.txt").unwrap()
-		{
+		} else if request.name() == "flush_err.txt" {
 			node_id = 3;
 		} else {
 			return call.respond_err(ErrorCode::ENOENT);
@@ -56,11 +55,12 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 
 		let mut resp = fuse::LookupResponse::new();
 		let node = resp.node_mut();
-		node.set_id(fuse::NodeId::new(node_id).unwrap());
+		node.set_id(node::Id::new(node_id).unwrap());
 		node.set_cache_timeout(std::time::Duration::from_secs(60));
 
 		let attr = node.attr_mut();
-		attr.set_mode(fuse::FileType::Regular | 0o644);
+		attr.set_file_type(node::Type::Regular);
+		attr.set_permissions(0o644);
 		attr.set_nlink(2);
 
 		call.respond_ok(&resp)
@@ -72,7 +72,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 		request: &fuse::OpenRequest,
 	) -> fuse_rpc::FuseResult<fuse::OpenResponse, S::Error> {
 		let mut resp = fuse::OpenResponse::new();
-		if request.node_id() == fuse::NodeId::new(2).unwrap() {
+		if request.node_id() == node::Id::new(2).unwrap() {
 			resp.set_handle(1002);
 		} else {
 			resp.set_handle(1003);

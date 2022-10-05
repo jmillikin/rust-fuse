@@ -16,19 +16,20 @@
 
 use core::{fmt, slice, time};
 
+use crate::node;
 use crate::internal::fuse_kernel;
-use crate::protocol::common::{NodeAttr, NodeId};
+use crate::protocol::common::NodeAttr;
 use crate::server::encode;
 
 pub struct Node(fuse_kernel::fuse_entry_out);
 
 impl Node {
 	#[must_use]
-	pub fn id(&self) -> Option<NodeId> {
-		NodeId::new(self.0.nodeid)
+	pub fn id(&self) -> Option<node::Id> {
+		node::Id::new(self.0.nodeid)
 	}
 
-	pub fn set_id(&mut self, id: NodeId) {
+	pub fn set_id(&mut self, id: node::Id) {
 		self.0.nodeid = id.get();
 	}
 

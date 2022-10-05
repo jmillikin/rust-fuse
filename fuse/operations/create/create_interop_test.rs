@@ -17,6 +17,7 @@
 use std::panic;
 use std::sync::mpsc;
 
+use fuse::node;
 use fuse::server::fuse_rpc;
 
 use interop_testutil::{
@@ -52,11 +53,12 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 		resp.set_handle(12345);
 
 		let node = resp.node_mut();
-		node.set_id(fuse::NodeId::new(2).unwrap());
+		node.set_id(node::Id::new(2).unwrap());
 		node.set_cache_timeout(std::time::Duration::from_secs(60));
 
 		let attr = node.attr_mut();
-		attr.set_mode(fuse::FileType::Regular | 0o644);
+		attr.set_file_type(node::Type::Regular);
+		attr.set_permissions(0o644);
 		attr.set_nlink(2);
 
 		call.respond_ok(&resp)

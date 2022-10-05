@@ -20,20 +20,8 @@ pub(crate) use self::debug::*;
 pub(crate) mod file_lock;
 pub use self::file_lock::{Lock, LockRange};
 
-mod file_mode;
-pub use self::file_mode::*;
-
-mod file_type;
-pub use self::file_type::*;
-
 mod node;
 pub use self::node::*;
 
 mod node_attr;
 pub use self::node_attr::*;
-
-mod node_id;
-pub use self::node_id::*;
-
-mod node_name;
-pub use self::node_name::*;

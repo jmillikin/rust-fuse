@@ -17,8 +17,7 @@
 use core::mem::size_of;
 use core::time;
 
-use fuse::FileType;
-use fuse::NodeId;
+use fuse::node;
 use fuse::operations::getattr::{GetattrRequest, GetattrResponse};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
@@ -109,7 +108,7 @@ fn request_impl_debug() {
 
 #[test]
 fn response_v7p1() {
-	let node_id = NodeId::new(0xABCD).unwrap();
+	let node_id = node::Id::new(0xABCD).unwrap();
 	let mut resp = GetattrResponse::new();
 	resp.attr_mut().set_node_id(node_id);
 	let encoded = encode_response!(resp, {
@@ -144,7 +143,7 @@ fn response_v7p1() {
 
 #[test]
 fn response_v7p9() {
-	let node_id = NodeId::new(0xABCD).unwrap();
+	let node_id = node::Id::new(0xABCD).unwrap();
 	let mut resp = GetattrResponse::new();
 	resp.attr_mut().set_node_id(node_id);
 	resp.attr_mut().set_size(999);
@@ -179,11 +178,12 @@ fn response_v7p9() {
 
 #[test]
 fn response_impl_debug() {
-	let node_id = NodeId::new(11).unwrap();
+	let node_id = node::Id::new(11).unwrap();
 	let mut response = GetattrResponse::new();
 	response.attr_mut().set_node_id(node_id);
 	response.attr_mut().set_size(999);
-	response.attr_mut().set_mode(FileType::Regular | 0o644);
+	response.attr_mut().set_file_type(node::Type::Regular);
+	response.attr_mut().set_permissions(0o644);
 	response.set_attr_timeout(time::Duration::new(123, 456));
 
 	assert_eq!(

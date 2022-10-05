@@ -19,8 +19,8 @@
 use core::fmt;
 use core::marker::PhantomData;
 
-use crate::NodeId;
 use crate::internal::fuse_kernel;
+use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -40,8 +40,8 @@ pub struct OpendirRequest<'a> {
 
 impl OpendirRequest<'_> {
 	#[must_use]
-	pub fn node_id(&self) -> NodeId {
-		unsafe { NodeId::new_unchecked(self.header.nodeid) }
+	pub fn node_id(&self) -> node::Id {
+		unsafe { node::Id::new_unchecked(self.header.nodeid) }
 	}
 
 	#[must_use]

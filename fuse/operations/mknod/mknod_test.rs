@@ -16,11 +16,12 @@
 
 use core::mem::size_of;
 
-use fuse::FileType;
-use fuse::NodeId;
+use fuse::node;
 use fuse::operations::mknod::{MknodRequest, MknodResponse};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
+
+const S_IFBLK: u32 = 0o60000;
 
 #[test]
 fn request_v7p1() {
@@ -39,9 +40,9 @@ fn request_v7p1() {
 	});
 
 	let expect: &[u8] = b"hello.world!";
-	assert_eq!(req.parent_id(), NodeId::new(100).unwrap());
+	assert_eq!(req.parent_id(), node::Id::new(100).unwrap());
 	assert_eq!(req.name(), expect);
-	assert_eq!(req.mode(), 0o644);
+	assert_eq!(req.mode(), node::Mode::new(0o644));
 	assert_eq!(req.umask(), 0);
 	assert_eq!(req.device_number(), None);
 }
@@ -67,9 +68,9 @@ fn request_v7p12() {
 	});
 
 	let expect: &[u8] = b"hello.world!";
-	assert_eq!(req.parent_id(), NodeId::new(100).unwrap());
+	assert_eq!(req.parent_id(), node::Id::new(100).unwrap());
 	assert_eq!(req.name(), expect);
-	assert_eq!(req.mode(), 0o644);
+	assert_eq!(req.mode(), node::Mode::new(0o644));
 	assert_eq!(req.umask(), 0o111);
 	assert_eq!(req.device_number(), None);
 }
@@ -82,7 +83,7 @@ fn request_device_number() {
 			h.nodeid = 100;
 		})
 		.push_sized(&fuse_kernel::fuse_mknod_in {
-			mode: u32::from(FileType::BlockDevice | 0o644),
+			mode: S_IFBLK | 0o644,
 			rdev: 123,
 			umask: 0o111,
 			padding: 0,
@@ -94,7 +95,8 @@ fn request_device_number() {
 		protocol_version: (7, 12),
 	});
 
-	assert_eq!(req.mode(), FileType::BlockDevice | 0o644);
+	assert_eq!(node::Type::from_mode(req.mode()), Some(node::Type::BlockDevice));
+	assert_eq!(req.mode().permissions(), 0o644);
 	assert_eq!(req.device_number(), Some(123));
 }
 
@@ -106,7 +108,7 @@ fn request_impl_debug() {
 			h.nodeid = 100;
 		})
 		.push_sized(&fuse_kernel::fuse_mknod_in {
-			mode: u32::from(FileType::BlockDevice | 0o644),
+			mode: S_IFBLK | 0o644,
 			rdev: 123,
 			umask: 0o111,
 			padding: 0,
@@ -132,11 +134,11 @@ fn request_impl_debug() {
 #[test]
 fn response_v7p1() {
 	let mut resp = MknodResponse::new();
-	resp.node_mut().set_id(NodeId::new(11).unwrap());
+	resp.node_mut().set_id(node::Id::new(11).unwrap());
 	resp.node_mut().set_generation(22);
 	resp.node_mut()
 		.attr_mut()
-		.set_node_id(NodeId::new(11).unwrap());
+		.set_node_id(node::Id::new(11).unwrap());
 
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 1),
@@ -174,11 +176,11 @@ fn response_v7p1() {
 #[test]
 fn response_v7p9() {
 	let mut resp = MknodResponse::new();
-	resp.node_mut().set_id(NodeId::new(11).unwrap());
+	resp.node_mut().set_id(node::Id::new(11).unwrap());
 	resp.node_mut().set_generation(22);
 	resp.node_mut()
 		.attr_mut()
-		.set_node_id(NodeId::new(11).unwrap());
+		.set_node_id(node::Id::new(11).unwrap());
 
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 9),
@@ -213,10 +215,11 @@ fn response_v7p9() {
 fn response_impl_debug() {
 	let mut response = MknodResponse::new();
 	let node = response.node_mut();
-	node.set_id(NodeId::new(11).unwrap());
+	node.set_id(node::Id::new(11).unwrap());
 	node.set_generation(22);
-	node.attr_mut().set_node_id(NodeId::new(11).unwrap());
-	node.attr_mut().set_mode(FileType::Regular | 0o644);
+	node.attr_mut().set_node_id(node::Id::new(11).unwrap());
+	node.attr_mut().set_file_type(node::Type::Regular);
+	node.attr_mut().set_permissions(0o644);
 
 	assert_eq!(
 		format!("{:#?}", response),

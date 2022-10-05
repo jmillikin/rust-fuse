@@ -19,8 +19,9 @@ use core::fmt;
 use core::num::NonZeroU64;
 
 use crate::internal::fuse_kernel;
-use crate::server::io;
+use crate::node;
 use crate::server::encode;
+use crate::server::io;
 
 // FuseNotification {{{
 
@@ -91,15 +92,15 @@ impl FuseNotification<'_> {
 /// Notification message for `FUSE_NOTIFY_DELETE`.
 pub struct Delete<'a> {
 	raw: fuse_kernel::fuse_notify_delete_out,
-	name: &'a crate::NodeName,
+	name: &'a node::Name,
 }
 
 impl<'a> Delete<'a> {
 	#[must_use]
 	pub fn new(
-		parent_id: crate::NodeId,
-		node_id: crate::NodeId,
-		name: &'a crate::NodeName,
+		parent_id: node::Id,
+		node_id: node::Id,
+		name: &'a node::Name,
 	) -> Delete<'a> {
 		Self {
 			raw: fuse_kernel::fuse_notify_delete_out {
@@ -113,17 +114,17 @@ impl<'a> Delete<'a> {
 	}
 
 	#[must_use]
-	pub fn parent_id(&self) -> crate::NodeId {
-		unsafe { crate::NodeId::new_unchecked(self.raw.parent) }
+	pub fn parent_id(&self) -> node::Id {
+		unsafe { node::Id::new_unchecked(self.raw.parent) }
 	}
 
 	#[must_use]
-	pub fn node_id(&self) -> crate::NodeId {
-		unsafe { crate::NodeId::new_unchecked(self.raw.child) }
+	pub fn node_id(&self) -> node::Id {
+		unsafe { node::Id::new_unchecked(self.raw.child) }
 	}
 
 	#[must_use]
-	pub fn name(&self) -> &crate::NodeName {
+	pub fn name(&self) -> &node::Name {
 		self.name
 	}
 }
@@ -145,14 +146,14 @@ impl fmt::Debug for Delete<'_> {
 /// Notification message for `FUSE_NOTIFY_INVAL_ENTRY`.
 pub struct InvalidateEntry<'a> {
 	raw: fuse_kernel::fuse_notify_inval_entry_out,
-	name: &'a crate::NodeName,
+	name: &'a node::Name,
 }
 
 impl<'a> InvalidateEntry<'a> {
 	#[must_use]
 	pub fn new(
-		parent_id: crate::NodeId,
-		name: &'a crate::NodeName,
+		parent_id: node::Id,
+		name: &'a node::Name,
 	) -> InvalidateEntry<'a> {
 		Self {
 			raw: fuse_kernel::fuse_notify_inval_entry_out {
@@ -165,12 +166,12 @@ impl<'a> InvalidateEntry<'a> {
 	}
 
 	#[must_use]
-	pub fn parent_id(&self) -> crate::NodeId {
-		unsafe { crate::NodeId::new_unchecked(self.raw.parent) }
+	pub fn parent_id(&self) -> node::Id {
+		unsafe { node::Id::new_unchecked(self.raw.parent) }
 	}
 
 	#[must_use]
-	pub fn name(&self) -> &crate::NodeName {
+	pub fn name(&self) -> &node::Name {
 		self.name
 	}
 }
@@ -195,7 +196,7 @@ pub struct InvalidateInode {
 
 impl InvalidateInode {
 	#[must_use]
-	pub fn new(node_id: crate::NodeId) -> InvalidateInode {
+	pub fn new(node_id: node::Id) -> InvalidateInode {
 		Self {
 			raw: fuse_kernel::fuse_notify_inval_inode_out {
 				ino: node_id.get(),
@@ -206,8 +207,8 @@ impl InvalidateInode {
 	}
 
 	#[must_use]
-	pub fn node_id(&self) -> crate::NodeId {
-		unsafe { crate::NodeId::new_unchecked(self.raw.ino) }
+	pub fn node_id(&self) -> node::Id {
+		unsafe { node::Id::new_unchecked(self.raw.ino) }
 	}
 
 	#[must_use]

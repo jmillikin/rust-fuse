@@ -16,8 +16,8 @@
 
 use core::{fmt, time};
 
+use crate::node;
 use crate::internal::fuse_kernel;
-use crate::protocol::common::{FileMode, NodeId};
 
 #[derive(Clone, Copy)]
 #[repr(transparent)]
@@ -30,11 +30,11 @@ impl NodeAttr {
 	}
 
 	#[must_use]
-	pub fn node_id(&self) -> Option<NodeId> {
-		NodeId::new(self.0.ino)
+	pub fn node_id(&self) -> Option<node::Id> {
+		node::Id::new(self.0.ino)
 	}
 
-	pub fn set_node_id(&mut self, node_id: NodeId) {
+	pub fn set_node_id(&mut self, node_id: node::Id) {
 		self.0.ino = node_id.get();
 	}
 
@@ -87,12 +87,23 @@ impl NodeAttr {
 	}
 
 	#[must_use]
-	pub fn mode(&self) -> FileMode {
-		FileMode(self.0.mode)
+	pub fn mode(&self) -> node::Mode {
+		node::Mode::new(self.0.mode)
 	}
 
-	pub fn set_mode(&mut self, mode: FileMode) {
-		self.0.mode = mode.0;
+	pub fn set_mode(&mut self, mode: node::Mode) {
+		self.0.mode = mode.get();
+	}
+
+	pub fn set_file_type(&mut self, file_type: node::Type) {
+		let type_bits = file_type.as_bits() << 12;
+		let mask = !(0xF << 12);
+		self.0.mode = (self.0.mode & mask) | type_bits
+	}
+
+	pub fn set_permissions(&mut self, permissions: u32) {
+		let mask = !0o777_u32;
+		self.0.mode = (self.0.mode & mask) | permissions
 	}
 
 	pub fn set_nlink(&mut self, nlink: u32) {

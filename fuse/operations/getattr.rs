@@ -22,9 +22,9 @@ use core::slice;
 use core::time::Duration;
 
 use crate::NodeAttr;
-use crate::NodeId;
 use crate::internal::compat;
 use crate::internal::fuse_kernel;
+use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -42,8 +42,8 @@ pub struct GetattrRequest<'a> {
 
 impl GetattrRequest<'_> {
 	#[must_use]
-	pub fn node_id(&self) -> NodeId {
-		unsafe { NodeId::new_unchecked(self.header.nodeid) }
+	pub fn node_id(&self) -> node::Id {
+		unsafe { node::Id::new_unchecked(self.header.nodeid) }
 	}
 
 	#[must_use]

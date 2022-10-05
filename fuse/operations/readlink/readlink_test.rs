@@ -16,7 +16,7 @@
 
 use core::mem::size_of;
 
-use fuse::NodeName;
+use fuse::node;
 use fuse::operations::readlink::{ReadlinkRequest, ReadlinkResponse};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
@@ -55,7 +55,7 @@ fn request_impl_debug() {
 
 #[test]
 fn response() {
-	let name = NodeName::from_bytes(b"hello.world!").unwrap();
+	let name = node::Name::new("hello.world!").unwrap();
 	let resp = ReadlinkResponse::from_name(name);
 	let encoded = encode_response!(resp);
 
@@ -74,7 +74,7 @@ fn response() {
 
 #[test]
 fn response_impl_debug() {
-	let name = NodeName::from_bytes(b"hello.world!").unwrap();
+	let name = node::Name::new("hello.world!").unwrap();
 	let response = ReadlinkResponse::from_name(name);
 
 	assert_eq!(

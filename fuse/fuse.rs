@@ -38,6 +38,7 @@ mod error;
 
 pub mod client;
 pub mod cuse;
+pub mod node;
 pub mod server;
 
 pub mod os {
@@ -79,16 +80,10 @@ pub mod operations;
 pub use self::operations::types_only::*;
 
 pub use self::protocol::common::{
-	FileMode,
-	FileType,
 	Lock,
 	LockRange,
 	Node,
 	NodeAttr,
-	NodeId,
-	NodeName,
-	NODE_NAME_MAX,
-	ROOT_ID,
 };
 
 pub mod xattr;

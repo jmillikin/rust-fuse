@@ -17,6 +17,7 @@
 use std::panic;
 use std::sync::mpsc;
 
+use fuse::node;
 use fuse::server::fuse_rpc;
 
 use interop_testutil::{
@@ -39,7 +40,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::LookupRequest,
 	) -> fuse_rpc::FuseResult<fuse::LookupResponse, S::Error> {
-		if request.parent_id() != fuse::ROOT_ID {
+		if !request.parent_id().is_root() {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
 
@@ -47,37 +48,34 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 		let node = resp.node_mut();
 		node.set_cache_timeout(std::time::Duration::from_secs(60));
 
-		if request.name()
-			== fuse::NodeName::from_bytes(b"rename_old.txt").unwrap()
-		{
-			node.set_id(fuse::NodeId::new(2).unwrap());
+		if request.name() == "rename_old.txt" {
+			node.set_id(node::Id::new(2).unwrap());
 
 			let attr = node.attr_mut();
-			attr.set_mode(fuse::FileType::Regular | 0o644);
+			attr.set_file_type(node::Type::Regular);
+			attr.set_permissions(0o644);
 			attr.set_nlink(1);
 
 			return call.respond_ok(&resp);
 		}
 
-		if request.name()
-			== fuse::NodeName::from_bytes(b"rename_new.txt").unwrap()
-		{
-			node.set_id(fuse::NodeId::new(3).unwrap());
+		if request.name() == "rename_new.txt" {
+			node.set_id(node::Id::new(3).unwrap());
 
 			let attr = node.attr_mut();
-			attr.set_mode(fuse::FileType::Regular | 0o644);
+			attr.set_file_type(node::Type::Regular);
+			attr.set_permissions(0o644);
 			attr.set_nlink(1);
 
 			return call.respond_ok(&resp);
 		}
 
-		if request.name()
-			== fuse::NodeName::from_bytes(b"rename_dir.d").unwrap()
-		{
-			node.set_id(fuse::NodeId::new(4).unwrap());
+		if request.name() == "rename_dir.d" {
+			node.set_id(node::Id::new(4).unwrap());
 
 			let attr = node.attr_mut();
-			attr.set_mode(fuse::FileType::Directory | 0o755);
+			attr.set_file_type(node::Type::Directory);
+			attr.set_permissions(0o755);
 			attr.set_nlink(2);
 
 			return call.respond_ok(&resp);

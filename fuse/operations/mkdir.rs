@@ -19,11 +19,9 @@
 use core::fmt;
 use core::marker::PhantomData;
 
-use crate::FileMode;
 use crate::Node;
-use crate::NodeId;
-use crate::NodeName;
 use crate::internal::fuse_kernel;
+use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -35,25 +33,25 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_MKDIR` operation.
 pub struct MkdirRequest<'a> {
-	parent_id: NodeId,
-	name: &'a NodeName,
+	parent_id: node::Id,
+	name: &'a node::Name,
 	raw: fuse_kernel::fuse_mkdir_in,
 }
 
 impl MkdirRequest<'_> {
 	#[must_use]
-	pub fn parent_id(&self) -> NodeId {
+	pub fn parent_id(&self) -> node::Id {
 		self.parent_id
 	}
 
 	#[must_use]
-	pub fn name(&self) -> &NodeName {
+	pub fn name(&self) -> &node::Name {
 		self.name
 	}
 
 	#[must_use]
-	pub fn mode(&self) -> FileMode {
-		FileMode(self.raw.mode)
+	pub fn mode(&self) -> node::Mode {
+		node::Mode::new(self.raw.mode)
 	}
 
 	#[must_use]
@@ -74,7 +72,7 @@ impl<'a> decode::FuseRequest<'a> for MkdirRequest<'a> {
 		dec.expect_opcode(fuse_kernel::FUSE_MKDIR)?;
 
 		let raw: &fuse_kernel::fuse_mkdir_in = dec.next_sized()?;
-		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
+		let name = dec.next_node_name()?;
 		Ok(Self {
 			parent_id: decode::node_id(dec.header().nodeid)?,
 			name,

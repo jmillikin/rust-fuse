@@ -20,8 +20,8 @@ use core::fmt;
 use core::marker::PhantomData;
 use core::slice;
 
-use crate::NodeId;
 use crate::internal::fuse_kernel;
+use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -34,12 +34,12 @@ use crate::server::encode;
 /// `FUSE_STATFS` operation.
 pub struct StatfsRequest<'a> {
 	phantom: PhantomData<&'a ()>,
-	node_id: NodeId,
+	node_id: node::Id,
 }
 
 impl StatfsRequest<'_> {
 	#[must_use]
-	pub fn node_id(&self) -> NodeId {
+	pub fn node_id(&self) -> node::Id {
 		self.node_id
 	}
 }

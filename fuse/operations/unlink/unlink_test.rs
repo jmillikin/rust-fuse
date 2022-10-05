@@ -16,7 +16,7 @@
 
 use core::mem::size_of;
 
-use fuse::NodeId;
+use fuse::node;
 use fuse::operations::unlink::{UnlinkRequest, UnlinkResponse};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
@@ -33,7 +33,7 @@ fn request() {
 	let request = decode_request!(UnlinkRequest, buf);
 
 	let expect: &[u8] = b"hello.world!";
-	assert_eq!(request.parent_id(), NodeId::new(100).unwrap());
+	assert_eq!(request.parent_id(), node::Id::new(100).unwrap());
 	assert_eq!(request.name(), expect);
 }
 

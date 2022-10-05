@@ -16,8 +16,7 @@
 
 use core::mem::size_of;
 
-use fuse::FileType;
-use fuse::NodeId;
+use fuse::node;
 use fuse::operations::symlink::{SymlinkRequest, SymlinkResponse};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
@@ -36,7 +35,7 @@ fn request() {
 
 	let expect_content: &[u8] = b"link content";
 	let expect_name: &[u8] = b"link name";
-	assert_eq!(request.parent_id(), NodeId::new(100).unwrap());
+	assert_eq!(request.parent_id(), node::Id::new(100).unwrap());
 	assert_eq!(request.name(), expect_name);
 	assert_eq!(request.content(), expect_content);
 }
@@ -68,11 +67,11 @@ fn request_impl_debug() {
 #[test]
 fn response_v7p1() {
 	let mut resp = SymlinkResponse::new();
-	resp.node_mut().set_id(NodeId::new(11).unwrap());
+	resp.node_mut().set_id(node::Id::new(11).unwrap());
 	resp.node_mut().set_generation(22);
 	resp.node_mut()
 		.attr_mut()
-		.set_node_id(NodeId::new(11).unwrap());
+		.set_node_id(node::Id::new(11).unwrap());
 
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 1),
@@ -110,11 +109,11 @@ fn response_v7p1() {
 #[test]
 fn response_v7p9() {
 	let mut resp = SymlinkResponse::new();
-	resp.node_mut().set_id(NodeId::new(11).unwrap());
+	resp.node_mut().set_id(node::Id::new(11).unwrap());
 	resp.node_mut().set_generation(22);
 	resp.node_mut()
 		.attr_mut()
-		.set_node_id(NodeId::new(11).unwrap());
+		.set_node_id(node::Id::new(11).unwrap());
 
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 9),
@@ -149,10 +148,11 @@ fn response_v7p9() {
 fn response_impl_debug() {
 	let mut response = SymlinkResponse::new();
 	let node = response.node_mut();
-	node.set_id(NodeId::new(11).unwrap());
+	node.set_id(node::Id::new(11).unwrap());
 	node.set_generation(22);
-	node.attr_mut().set_node_id(NodeId::new(11).unwrap());
-	node.attr_mut().set_mode(FileType::Regular | 0o644);
+	node.attr_mut().set_node_id(node::Id::new(11).unwrap());
+	node.attr_mut().set_file_type(node::Type::Regular);
+	node.attr_mut().set_permissions(0o644);
 
 	assert_eq!(
 		format!("{:#?}", response),

@@ -17,9 +17,10 @@
 use core::mem::size_of;
 use core::time;
 
-use fuse::FileType;
-use fuse::NodeId;
+use fuse::node;
 use fuse::operations::setattr::{SetattrRequest, SetattrResponse};
+
+const S_IFREG: u32 = 0o100000;
 
 #[test]
 fn request() {
@@ -41,7 +42,7 @@ fn request() {
 			atimensec: 7,
 			mtimensec: 8,
 			ctimensec: 9,
-			mode: u32::from(FileType::Regular | 0o644),
+			mode: S_IFREG | 0o644,
 			unused4: 11,
 			uid: 12,
 			gid: 13,
@@ -49,7 +50,7 @@ fn request() {
 		})
 	});
 
-	assert_eq!(request.node_id(), NodeId::new(1000).unwrap());
+	assert_eq!(request.node_id(), node::Id::new(1000).unwrap());
 	assert_eq!(request.handle(), Some(1));
 	assert_eq!(request.size(), Some(2));
 	assert_eq!(request.lock_owner(), Some(3));
@@ -58,9 +59,12 @@ fn request() {
 	assert_eq!(request.mtime(), Some(time::Duration::new(5, 8)));
 	assert_eq!(request.mtime_now(), true);
 	assert_eq!(request.ctime(), Some(time::Duration::new(6, 9)));
-	assert_eq!(request.mode(), Some(FileType::Regular | 0o644));
 	assert_eq!(request.user_id(), Some(12));
 	assert_eq!(request.group_id(), Some(13));
+
+	let mode = request.mode().unwrap();
+	assert_eq!(node::Type::from_mode(mode), Some(node::Type::Regular));
+	assert_eq!(mode.permissions(), 0o644);
 }
 
 #[test]
@@ -83,7 +87,7 @@ fn request_impl_debug() {
 			atimensec: 7,
 			mtimensec: 8,
 			ctimensec: 9,
-			mode: u32::from(FileType::Regular | 0o644),
+			mode: S_IFREG | 0o644,
 			unused4: 11,
 			uid: 12,
 			gid: 13,
@@ -116,8 +120,9 @@ fn request_impl_debug() {
 fn response_v7p1() {
 	let mut response = SetattrResponse::new();
 	let attr = response.attr_mut();
-	attr.set_node_id(NodeId::new(2).unwrap());
-	attr.set_mode(fuse::FileType::Regular | 0o644);
+	attr.set_node_id(node::Id::new(2).unwrap());
+	attr.set_file_type(node::Type::Regular);
+	attr.set_permissions(0o644);
 	attr.set_nlink(1);
 	attr.set_size(999);
 	response.set_cache_duration(time::Duration::new(123, 456));
@@ -142,7 +147,7 @@ fn response_v7p1() {
 				attr: fuse_kernel::fuse_attr {
 					ino: 2,
 					size: 999,
-					mode: 0o100644,
+					mode: S_IFREG | 0o644,
 					nlink: 1,
 					..fuse_kernel::fuse_attr::zeroed()
 				},
@@ -159,8 +164,9 @@ fn response_v7p1() {
 fn response_v7p9() {
 	let mut response = SetattrResponse::new();
 	let attr = response.attr_mut();
-	attr.set_node_id(NodeId::new(2).unwrap());
-	attr.set_mode(fuse::FileType::Regular | 0o644);
+	attr.set_node_id(node::Id::new(2).unwrap());
+	attr.set_file_type(node::Type::Regular);
+	attr.set_permissions(0o644);
 	attr.set_nlink(1);
 	attr.set_size(999);
 	response.set_cache_duration(time::Duration::new(123, 456));
@@ -185,7 +191,7 @@ fn response_v7p9() {
 				attr: fuse_kernel::fuse_attr {
 					ino: 2,
 					size: 999,
-					mode: 0o100644,
+					mode: S_IFREG | 0o644,
 					nlink: 1,
 					..fuse_kernel::fuse_attr::zeroed()
 				},
@@ -198,8 +204,9 @@ fn response_v7p9() {
 fn response_impl_debug() {
 	let mut response = SetattrResponse::new();
 	let attr = response.attr_mut();
-	attr.set_node_id(NodeId::new(2).unwrap());
-	attr.set_mode(fuse::FileType::Regular | 0o644);
+	attr.set_node_id(node::Id::new(2).unwrap());
+	attr.set_file_type(node::Type::Regular);
+	attr.set_permissions(0o644);
 	attr.set_nlink(1);
 	attr.set_size(999);
 	response.set_cache_duration(time::Duration::new(123, 456));

@@ -19,8 +19,8 @@
 use core::fmt;
 use core::marker::PhantomData;
 
-use crate::NodeId;
 use crate::internal::fuse_kernel;
+use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -35,13 +35,13 @@ use crate::protocol::common::file_lock::{Lock, LockRange, F_UNLCK};
 /// `FUSE_SETLK` and `FUSE_SETLKW` operations.
 pub struct SetlkRequest<'a> {
 	raw: &'a fuse_kernel::fuse_lk_in,
-	node_id: NodeId,
+	node_id: node::Id,
 	command: SetlkCommand,
 }
 
 impl SetlkRequest<'_> {
 	#[must_use]
-	pub fn node_id(&self) -> NodeId {
+	pub fn node_id(&self) -> node::Id {
 		self.node_id
 	}
 

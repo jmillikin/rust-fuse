@@ -19,12 +19,10 @@
 use core::fmt;
 use core::marker::PhantomData;
 
-use crate::FileMode;
 use crate::Node;
-use crate::NodeId;
-use crate::NodeName;
 use crate::internal::compat;
 use crate::internal::fuse_kernel;
+use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -40,17 +38,17 @@ use crate::protocol::common::DebugHexU32;
 pub struct CreateRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_create_in<'a>>,
-	name: &'a NodeName,
+	name: &'a node::Name,
 }
 
 impl CreateRequest<'_> {
 	#[must_use]
-	pub fn node_id(&self) -> NodeId {
-		unsafe { NodeId::new_unchecked(self.header.nodeid) }
+	pub fn node_id(&self) -> node::Id {
+		unsafe { node::Id::new_unchecked(self.header.nodeid) }
 	}
 
 	#[must_use]
-	pub fn name(&self) -> &NodeName {
+	pub fn name(&self) -> &node::Name {
 		self.name
 	}
 
@@ -70,11 +68,11 @@ impl CreateRequest<'_> {
 	}
 
 	#[must_use]
-	pub fn mode(&self) -> FileMode {
+	pub fn mode(&self) -> node::Mode {
 		if let Some(body) = self.body.as_v7p12() {
-			return FileMode(body.mode);
+			return node::Mode::new(body.mode);
 		}
-		FileMode(0)
+		node::Mode::new(0)
 	}
 
 	#[must_use]
@@ -107,7 +105,7 @@ impl<'a> decode::FuseRequest<'a> for CreateRequest<'a> {
 			compat::Versioned::new_create_v7p1(version_minor, body_v7p1)
 		};
 
-		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
+		let name = dec.next_node_name()?;
 
 		Ok(Self { header, body, name })
 	}

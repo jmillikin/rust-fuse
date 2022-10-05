@@ -16,8 +16,7 @@
 
 use core::mem::size_of;
 
-use fuse::FileType;
-use fuse::NodeId;
+use fuse::node;
 use fuse::operations::link::{LinkRequest, LinkResponse};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
@@ -36,8 +35,8 @@ fn request() {
 	let req = decode_request!(LinkRequest, buf);
 
 	let expect: &[u8] = b"hello.world!";
-	assert_eq!(req.node_id(), NodeId::new(123).unwrap());
-	assert_eq!(req.new_parent_id(), NodeId::new(100).unwrap());
+	assert_eq!(req.node_id(), node::Id::new(123).unwrap());
+	assert_eq!(req.new_parent_id(), node::Id::new(100).unwrap());
 	assert_eq!(req.new_name(), expect.as_ref());
 }
 
@@ -68,11 +67,11 @@ fn request_impl_debug() {
 #[test]
 fn response_v7p1() {
 	let mut resp = LinkResponse::new();
-	resp.node_mut().set_id(NodeId::new(11).unwrap());
+	resp.node_mut().set_id(node::Id::new(11).unwrap());
 	resp.node_mut().set_generation(22);
 	resp.node_mut()
 		.attr_mut()
-		.set_node_id(NodeId::new(11).unwrap());
+		.set_node_id(node::Id::new(11).unwrap());
 
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 1),
@@ -110,11 +109,11 @@ fn response_v7p1() {
 #[test]
 fn response_v7p9() {
 	let mut resp = LinkResponse::new();
-	resp.node_mut().set_id(NodeId::new(11).unwrap());
+	resp.node_mut().set_id(node::Id::new(11).unwrap());
 	resp.node_mut().set_generation(22);
 	resp.node_mut()
 		.attr_mut()
-		.set_node_id(NodeId::new(11).unwrap());
+		.set_node_id(node::Id::new(11).unwrap());
 
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 9),
@@ -149,10 +148,11 @@ fn response_v7p9() {
 fn response_impl_debug() {
 	let mut response = LinkResponse::new();
 	let node = response.node_mut();
-	node.set_id(NodeId::new(11).unwrap());
+	node.set_id(node::Id::new(11).unwrap());
 	node.set_generation(22);
-	node.attr_mut().set_node_id(NodeId::new(11).unwrap());
-	node.attr_mut().set_mode(FileType::Regular | 0o644);
+	node.attr_mut().set_node_id(node::Id::new(11).unwrap());
+	node.attr_mut().set_file_type(node::Type::Regular);
+	node.attr_mut().set_permissions(0o644);
 
 	assert_eq!(
 		format!("{:#?}", response),

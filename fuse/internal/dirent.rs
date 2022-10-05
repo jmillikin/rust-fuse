@@ -19,6 +19,7 @@ use core::ptr;
 use core::slice;
 
 use crate::internal::fuse_kernel;
+use crate::node;
 
 pub(crate) trait Dirent: Sized {
 	fn namelen(&self) -> u32;
@@ -39,7 +40,7 @@ impl Dirent for fuse_kernel::fuse_direntplus {
 }
 
 #[inline]
-pub(crate) fn entry_size<T: Dirent>(name: &crate::NodeName) -> usize {
+pub(crate) fn entry_size<T: Dirent>(name: &node::Name) -> usize {
 	let name_len = name.as_bytes().len();
 	let padding_len = (8 - (name_len % 8)) % 8;
 	mem::size_of::<T>() + name_len + padding_len
@@ -48,7 +49,7 @@ pub(crate) fn entry_size<T: Dirent>(name: &crate::NodeName) -> usize {
 #[inline]
 pub(crate) unsafe fn read_unchecked<T: Dirent>(
 	buf: &[u8],
-) -> (T, &crate::NodeName) {
+) -> (T, &node::Name) {
 	let buf_ptr = buf.as_ptr();
 	let name_ptr = buf_ptr.add(mem::size_of::<T>());
 
@@ -61,14 +62,14 @@ pub(crate) unsafe fn read_unchecked<T: Dirent>(
 	let dirent = dirent_uninit.assume_init();
 	let name_len = dirent.namelen() as usize;
 	let name_bytes = slice::from_raw_parts(name_ptr, name_len);
-	let name = crate::NodeName::new_unchecked(name_bytes);
+	let name = node::Name::from_bytes_unchecked(name_bytes);
 	(dirent, name)
 }
 
 #[inline]
 pub(crate) unsafe fn write_unchecked<T: Dirent>(
 	dirent: T,
-	name: &crate::NodeName,
+	name: &node::Name,
 	buf: &mut [u8],
 ) {
 	let buf_ptr = buf.as_mut_ptr();

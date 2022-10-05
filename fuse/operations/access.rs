@@ -19,8 +19,8 @@
 use core::fmt;
 use core::marker::PhantomData;
 
-use crate::NodeId;
 use crate::internal::fuse_kernel;
+use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -33,13 +33,13 @@ use crate::server::encode;
 /// `FUSE_ACCESS` operation.
 pub struct AccessRequest<'a> {
 	phantom: PhantomData<&'a ()>,
-	node_id: NodeId,
+	node_id: node::Id,
 	mask: u32,
 }
 
 impl AccessRequest<'_> {
 	#[must_use]
-	pub fn node_id(&self) -> NodeId {
+	pub fn node_id(&self) -> node::Id {
 		self.node_id
 	}
 

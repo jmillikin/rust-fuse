@@ -21,10 +21,9 @@ use core::marker::PhantomData;
 use core::slice;
 use core::time;
 
-use crate::FileMode;
 use crate::NodeAttr;
-use crate::NodeId;
 use crate::internal::fuse_kernel;
+use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -42,8 +41,8 @@ pub struct SetattrRequest<'a> {
 
 impl SetattrRequest<'_> {
 	#[must_use]
-	pub fn node_id(&self) -> NodeId {
-		unsafe { NodeId::new_unchecked(self.header.nodeid) }
+	pub fn node_id(&self) -> node::Id {
+		unsafe { node::Id::new_unchecked(self.header.nodeid) }
 	}
 
 	#[must_use]
@@ -120,8 +119,8 @@ impl SetattrRequest<'_> {
 	}
 
 	#[must_use]
-	pub fn mode(&self) -> Option<FileMode> {
-		self.get(fuse_kernel::FATTR_MODE, FileMode(self.raw.mode))
+	pub fn mode(&self) -> Option<node::Mode> {
+		self.get(fuse_kernel::FATTR_MODE, node::Mode::new(self.raw.mode))
 	}
 
 	#[must_use]

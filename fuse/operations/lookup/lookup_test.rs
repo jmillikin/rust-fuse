@@ -22,8 +22,7 @@ use linux_errno as os_errno;
 #[cfg(target_os = "freebsd")]
 use freebsd_errno as os_errno;
 
-use fuse::FileType;
-use fuse::NodeId;
+use fuse::node;
 use fuse::operations::lookup::{LookupRequest, LookupResponse};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
@@ -69,10 +68,11 @@ fn request_impl_debug() {
 fn response_v7p1() {
 	let mut response = LookupResponse::new();
 	let node = response.node_mut();
-	node.set_id(NodeId::new(11).unwrap());
+	node.set_id(node::Id::new(11).unwrap());
 	node.set_generation(22);
-	node.attr_mut().set_node_id(NodeId::new(11).unwrap());
-	node.attr_mut().set_mode(FileType::Regular | 0o644);
+	node.attr_mut().set_node_id(node::Id::new(11).unwrap());
+	node.attr_mut().set_file_type(node::Type::Regular);
+	node.attr_mut().set_permissions(0o644);
 
 	let encoded = encode_response!(response, {
 		protocol_version: (7, 1),
@@ -112,10 +112,11 @@ fn response_v7p1() {
 fn response_v7p9() {
 	let mut response = LookupResponse::new();
 	let node = response.node_mut();
-	node.set_id(NodeId::new(11).unwrap());
+	node.set_id(node::Id::new(11).unwrap());
 	node.set_generation(22);
-	node.attr_mut().set_node_id(NodeId::new(11).unwrap());
-	node.attr_mut().set_mode(FileType::Regular | 0o644);
+	node.attr_mut().set_node_id(node::Id::new(11).unwrap());
+	node.attr_mut().set_file_type(node::Type::Regular);
+	node.attr_mut().set_permissions(0o644);
 
 	let encoded = encode_response!(response, {
 		protocol_version: (7, 9),
@@ -203,10 +204,11 @@ fn response_noexist_v7p4() {
 fn response_impl_debug() {
 	let mut response = LookupResponse::new();
 	let node = response.node_mut();
-	node.set_id(NodeId::new(11).unwrap());
+	node.set_id(node::Id::new(11).unwrap());
 	node.set_generation(22);
-	node.attr_mut().set_node_id(NodeId::new(11).unwrap());
-	node.attr_mut().set_mode(FileType::Regular | 0o644);
+	node.attr_mut().set_node_id(node::Id::new(11).unwrap());
+	node.attr_mut().set_file_type(node::Type::Regular);
+	node.attr_mut().set_permissions(0o644);
 
 	assert_eq!(
 		format!("{:#?}", response),

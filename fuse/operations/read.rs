@@ -20,6 +20,7 @@ use core::fmt;
 
 use crate::internal::compat;
 use crate::internal::fuse_kernel;
+use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -40,8 +41,8 @@ pub struct ReadRequest<'a> {
 
 impl ReadRequest<'_> {
 	#[must_use]
-	pub fn node_id(&self) -> crate::NodeId {
-		crate::NodeId::new(self.header.nodeid).unwrap_or(crate::ROOT_ID)
+	pub fn node_id(&self) -> node::Id {
+		node::Id::new(self.header.nodeid).unwrap_or(node::Id::ROOT)
 	}
 
 	#[must_use]

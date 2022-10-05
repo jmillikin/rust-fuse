@@ -20,8 +20,8 @@ use core::fmt;
 use core::marker::PhantomData;
 use core::mem::size_of;
 
-use crate::NodeId;
 use crate::internal::fuse_kernel;
+use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -43,11 +43,8 @@ pub struct IoctlRequest<'a> {
 
 impl<'a> IoctlRequest<'a> {
 	#[must_use]
-	pub fn node_id(&self) -> NodeId {
-		match NodeId::new(self.header.nodeid) {
-			Some(id) => id,
-			None => crate::ROOT_ID,
-		}
+	pub fn node_id(&self) -> node::Id {
+		node::Id::new(self.header.nodeid).unwrap_or(node::Id::ROOT)
 	}
 
 	#[must_use]

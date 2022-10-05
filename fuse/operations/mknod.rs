@@ -19,13 +19,10 @@
 use core::fmt;
 use core::marker::PhantomData;
 
-use crate::FileMode;
-use crate::FileType;
 use crate::Node;
-use crate::NodeId;
-use crate::NodeName;
 use crate::internal::compat;
 use crate::internal::fuse_kernel;
+use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -39,23 +36,23 @@ use crate::server::encode;
 pub struct MknodRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_mknod_in<'a>>,
-	name: &'a NodeName,
+	name: &'a node::Name,
 }
 
 impl MknodRequest<'_> {
 	#[must_use]
-	pub fn parent_id(&self) -> NodeId {
-		unsafe { NodeId::new_unchecked(self.header.nodeid) }
+	pub fn parent_id(&self) -> node::Id {
+		unsafe { node::Id::new_unchecked(self.header.nodeid) }
 	}
 
 	#[must_use]
-	pub fn name(&self) -> &NodeName {
+	pub fn name(&self) -> &node::Name {
 		self.name
 	}
 
 	#[must_use]
-	pub fn mode(&self) -> FileMode {
-		FileMode(self.body.as_v7p1().mode)
+	pub fn mode(&self) -> node::Mode {
+		node::Mode::new(self.body.as_v7p1().mode)
 	}
 
 	#[must_use]
@@ -68,9 +65,10 @@ impl MknodRequest<'_> {
 
 	#[must_use]
 	pub fn device_number(&self) -> Option<u32> {
+		use node::Type as T;
 		let body = self.body.as_v7p1();
-		match FileType::from_mode(FileMode(body.mode)) {
-			Some(FileType::CharDevice | FileType::BlockDevice) => {
+		match node::Type::from_mode(self.mode()) {
+			Some(T::CharacterDevice | T::BlockDevice) => {
 				Some(body.rdev)
 			},
 			_ => None,
@@ -101,7 +99,7 @@ impl<'a> decode::FuseRequest<'a> for MknodRequest<'a> {
 			compat::Versioned::new_mknod_v7p1(version_minor, body_v7p1)
 		};
 
-		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
+		let name = dec.next_node_name()?;
 
 		Ok(Self { header, body, name })
 	}

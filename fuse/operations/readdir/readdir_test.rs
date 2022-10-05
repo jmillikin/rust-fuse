@@ -17,9 +17,7 @@
 use core::mem::size_of;
 use core::num;
 
-use fuse::FileType;
-use fuse::NodeId;
-use fuse::NodeName;
+use fuse::node;
 use fuse::operations::readdir::{
 	ReaddirEntriesWriter,
 	ReaddirEntry,
@@ -120,8 +118,8 @@ fn readdir_response() {
 
 	// Adding a dirent fails if there's not enough capacity.
 	{
-		let node_id = NodeId::new(100).unwrap();
-		let name = NodeName::from_bytes(b"123456789ABCDEF").unwrap();
+		let node_id = node::Id::new(100).unwrap();
+		let name = node::Name::new("123456789ABCDEF").unwrap();
 		let offset = num::NonZeroU64::new(1).unwrap();
 		let entry = ReaddirEntry::new(node_id, name, offset);
 		assert!(writer.try_push(&entry).is_err());
@@ -129,8 +127,8 @@ fn readdir_response() {
 
 	// Dirent capacity takes 8-byte name padding into account.
 	{
-		let node_id = NodeId::new(100).unwrap();
-		let name = NodeName::from_bytes(b"123456789").unwrap();
+		let node_id = node::Id::new(100).unwrap();
+		let name = node::Name::new("123456789").unwrap();
 		let offset = num::NonZeroU64::new(1).unwrap();
 		let entry = ReaddirEntry::new(node_id, name, offset);
 		assert!(writer.try_push(&entry).is_err());
@@ -138,12 +136,12 @@ fn readdir_response() {
 
 	// Adding a dirent works if there's enough capacity.
 	{
-		let node_id = NodeId::new(100).unwrap();
-		let name = NodeName::from_bytes(b"foobar").unwrap();
+		let node_id = node::Id::new(100).unwrap();
+		let name = node::Name::new("foobar").unwrap();
 		let offset = num::NonZeroU64::new(1).unwrap();
 
 		let mut entry = ReaddirEntry::new(node_id, name, offset);
-		entry.set_file_type(FileType::Regular);
+		entry.set_file_type(node::Type::Regular);
 		assert!(writer.try_push(&entry).is_ok());
 	}
 
@@ -178,22 +176,22 @@ fn response_impl_debug() {
 	let mut writer = ReaddirEntriesWriter::new(&mut buf);
 
 	{
-		let node_id = NodeId::new(100).unwrap();
-		let name = NodeName::from_bytes(b"hello.txt").unwrap();
+		let node_id = node::Id::new(100).unwrap();
+		let name = node::Name::new("hello.txt").unwrap();
 		let offset = num::NonZeroU64::new(1).unwrap();
 
 		let mut entry = ReaddirEntry::new(node_id, name, offset);
-		entry.set_file_type(FileType::Regular);
+		entry.set_file_type(node::Type::Regular);
 		assert!(writer.try_push(&entry).is_ok());
 	}
 
 	{
-		let node_id = NodeId::new(101).unwrap();
-		let name = NodeName::from_bytes(b"world.txt").unwrap();
+		let node_id = node::Id::new(101).unwrap();
+		let name = node::Name::new("world.txt").unwrap();
 		let offset = num::NonZeroU64::new(2).unwrap();
 
 		let mut entry = ReaddirEntry::new(node_id, name, offset);
-		entry.set_file_type(FileType::Regular);
+		entry.set_file_type(node::Type::Regular);
 		assert!(writer.try_push(&entry).is_ok());
 	}
 
@@ -206,13 +204,13 @@ fn response_impl_debug() {
 			"        ReaddirEntry {\n",
 			"            node_id: 100,\n",
 			"            offset: 1,\n",
-			"            file_type: Regular,\n",
+			"            file_type: Some(Regular),\n",
 			"            name: \"hello.txt\",\n",
 			"        },\n",
 			"        ReaddirEntry {\n",
 			"            node_id: 101,\n",
 			"            offset: 2,\n",
-			"            file_type: Regular,\n",
+			"            file_type: Some(Regular),\n",
 			"            name: \"world.txt\",\n",
 			"        },\n",
 			"    ],\n",

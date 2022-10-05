@@ -20,9 +20,8 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::Node;
-use crate::NodeId;
-use crate::NodeName;
 use crate::internal::fuse_kernel;
+use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -35,24 +34,24 @@ use crate::server::encode;
 /// `FUSE_LINK` operation.
 #[derive(Debug)]
 pub struct LinkRequest<'a> {
-	node_id: NodeId,
-	new_parent_id: NodeId,
-	new_name: &'a NodeName,
+	node_id: node::Id,
+	new_parent_id: node::Id,
+	new_name: &'a node::Name,
 }
 
 impl LinkRequest<'_> {
 	#[must_use]
-	pub fn node_id(&self) -> NodeId {
+	pub fn node_id(&self) -> node::Id {
 		self.node_id
 	}
 
 	#[must_use]
-	pub fn new_parent_id(&self) -> NodeId {
+	pub fn new_parent_id(&self) -> node::Id {
 		self.new_parent_id
 	}
 
 	#[must_use]
-	pub fn new_name(&self) -> &NodeName {
+	pub fn new_name(&self) -> &node::Name {
 		self.new_name
 	}
 }
@@ -69,7 +68,7 @@ impl<'a> decode::FuseRequest<'a> for LinkRequest<'a> {
 		dec.expect_opcode(fuse_kernel::FUSE_LINK)?;
 
 		let raw: &fuse_kernel::fuse_link_in = dec.next_sized()?;
-		let name = NodeName::new(dec.next_nul_terminated_bytes()?);
+		let name = dec.next_node_name()?;
 		Ok(Self {
 			node_id: decode::node_id(raw.oldnodeid)?,
 			new_parent_id: decode::node_id(dec.header().nodeid)?,

@@ -19,9 +19,8 @@
 use core::fmt;
 use core::marker::PhantomData;
 
-use crate::NodeId;
-use crate::NodeName;
 use crate::internal::fuse_kernel;
+use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -35,31 +34,31 @@ use crate::protocol::common::DebugHexU32;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_RENAME` and `FUSE_RENAME2` operations.
 pub struct RenameRequest<'a> {
-	old_directory_id: NodeId,
-	old_name: &'a NodeName,
-	new_directory_id: NodeId,
-	new_name: &'a NodeName,
+	old_directory_id: node::Id,
+	old_name: &'a node::Name,
+	new_directory_id: node::Id,
+	new_name: &'a node::Name,
 	rename_flags: u32,
 }
 
 impl RenameRequest<'_> {
 	#[must_use]
-	pub fn old_directory_id(&self) -> NodeId {
+	pub fn old_directory_id(&self) -> node::Id {
 		self.old_directory_id
 	}
 
 	#[must_use]
-	pub fn old_name(&self) -> &NodeName {
+	pub fn old_name(&self) -> &node::Name {
 		self.old_name
 	}
 
 	#[must_use]
-	pub fn new_directory_id(&self) -> NodeId {
+	pub fn new_directory_id(&self) -> node::Id {
 		self.new_directory_id
 	}
 
 	#[must_use]
-	pub fn new_name(&self) -> &NodeName {
+	pub fn new_name(&self) -> &node::Name {
 		self.new_name
 	}
 
@@ -91,8 +90,8 @@ impl<'a> decode::FuseRequest<'a> for RenameRequest<'a> {
 			let parsed: &fuse_kernel::fuse_rename_in = dec.next_sized()?;
 			new_dir = parsed.newdir;
 		}
-		let old_name = NodeName::new(dec.next_nul_terminated_bytes()?);
-		let new_name = NodeName::new(dec.next_nul_terminated_bytes()?);
+		let old_name = dec.next_node_name()?;
+		let new_name = dec.next_node_name()?;
 		Ok(Self {
 			old_directory_id: decode::node_id(header.nodeid)?,
 			old_name,

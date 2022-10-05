@@ -22,6 +22,7 @@ use core::mem::{size_of, transmute};
 use crate::Version;
 use crate::internal::fuse_kernel::fuse_in_header;
 use crate::io::ArrayBuffer;
+use crate::node;
 use crate::operations::cuse_init::{
 	CuseInitFlags,
 	CuseInitRequest,
@@ -81,10 +82,17 @@ impl<E> From<io::SendError<E>> for ServerError<E> {
 pub enum RequestError {
 	InvalidLockType,
 	MissingNodeId,
+	NodeNameError(node::NameError),
 	OpcodeMismatch,
 	UnexpectedEof,
 	XattrNameError(xattr::NameError),
 	XattrValueError(xattr::ValueError),
+}
+
+impl From<node::NameError> for RequestError {
+	fn from(err: node::NameError) -> RequestError {
+		RequestError::NodeNameError(err)
+	}
 }
 
 impl From<xattr::NameError> for RequestError {
@@ -120,8 +128,8 @@ impl RequestHeader {
 	}
 
 	#[must_use]
-	pub fn node_id(&self) -> Option<crate::NodeId> {
-		crate::NodeId::new(self.raw.nodeid)
+	pub fn node_id(&self) -> Option<node::Id> {
+		node::Id::new(self.raw.nodeid)
 	}
 
 	#[must_use]

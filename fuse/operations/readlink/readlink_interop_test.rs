@@ -17,6 +17,7 @@
 use std::panic;
 use std::sync::mpsc;
 
+use fuse::node;
 use fuse::server::fuse_rpc;
 
 use interop_testutil::{
@@ -39,21 +40,21 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::LookupRequest,
 	) -> fuse_rpc::FuseResult<fuse::LookupResponse, S::Error> {
-		if request.parent_id() != fuse::ROOT_ID {
+		if !request.parent_id().is_root() {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
-		if request.name() != fuse::NodeName::from_bytes(b"symlink.txt").unwrap()
-		{
+		if request.name() != "symlink.txt" {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
 
 		let mut resp = fuse::LookupResponse::new();
 		let node = resp.node_mut();
-		node.set_id(fuse::NodeId::new(2).unwrap());
+		node.set_id(node::Id::new(2).unwrap());
 		node.set_cache_timeout(std::time::Duration::from_secs(60));
 
 		let attr = node.attr_mut();
-		attr.set_mode(fuse::FileType::Symlink | 0o644);
+		attr.set_file_type(node::Type::Symlink);
+		attr.set_permissions(0o644);
 		attr.set_nlink(1);
 
 		call.respond_ok(&resp)
@@ -66,7 +67,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 	) -> fuse_rpc::FuseResult<fuse::ReadlinkResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
-		let name = fuse::NodeName::from_bytes(b"target.txt").unwrap();
+		let name = node::Name::new("target.txt").unwrap();
 		let resp = fuse::ReadlinkResponse::from_name(name);
 		call.respond_ok(&resp)
 	}

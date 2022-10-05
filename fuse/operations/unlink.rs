@@ -19,9 +19,8 @@
 use core::fmt;
 use core::marker::PhantomData;
 
-use crate::NodeId;
-use crate::NodeName;
 use crate::internal::fuse_kernel;
+use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -34,18 +33,18 @@ use crate::server::encode;
 /// `FUSE_UNLINK` operation.
 #[derive(Debug)]
 pub struct UnlinkRequest<'a> {
-	parent_id: NodeId,
-	name: &'a NodeName,
+	parent_id: node::Id,
+	name: &'a node::Name,
 }
 
 impl UnlinkRequest<'_> {
 	#[must_use]
-	pub fn parent_id(&self) -> NodeId {
+	pub fn parent_id(&self) -> node::Id {
 		self.parent_id
 	}
 
 	#[must_use]
-	pub fn name(&self) -> &NodeName {
+	pub fn name(&self) -> &node::Name {
 		self.name
 	}
 }
@@ -62,7 +61,7 @@ impl<'a> decode::FuseRequest<'a> for UnlinkRequest<'a> {
 		dec.expect_opcode(fuse_kernel::FUSE_UNLINK)?;
 		Ok(Self {
 			parent_id: decode::node_id(dec.header().nodeid)?,
-			name: NodeName::new(dec.next_nul_terminated_bytes()?),
+			name: dec.next_node_name()?,
 		})
 	}
 }

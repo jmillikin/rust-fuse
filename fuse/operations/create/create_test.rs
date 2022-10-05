@@ -16,8 +16,7 @@
 
 use core::mem::size_of;
 
-use fuse::FileType;
-use fuse::NodeId;
+use fuse::node;
 use fuse::operations::create::{
 	CreateRequest,
 	CreateRequestFlags,
@@ -47,7 +46,7 @@ fn request_v7p1() {
 	assert_eq!(req.name(), expect);
 	assert_eq!(req.flags(), CreateRequestFlags::new());
 	assert_eq!(req.open_flags(), 0xFF);
-	assert_eq!(req.mode(), 0);
+	assert_eq!(req.mode(), node::Mode::new(0));
 	assert_eq!(req.umask(), 0);
 }
 
@@ -75,7 +74,7 @@ fn request_v7p12() {
 	assert_eq!(req.name(), expect);
 	assert_eq!(req.flags(), CreateRequestFlags::new());
 	assert_eq!(req.open_flags(), 0xFF);
-	assert_eq!(req.mode(), 0xEE);
+	assert_eq!(req.mode(), node::Mode::new(0xEE));
 	assert_eq!(req.umask(), 0xDD);
 }
 
@@ -114,11 +113,11 @@ fn request_impl_debug() {
 #[test]
 fn response_v7p1() {
 	let mut resp = CreateResponse::new();
-	resp.node_mut().set_id(NodeId::new(11).unwrap());
+	resp.node_mut().set_id(node::Id::new(11).unwrap());
 	resp.node_mut().set_generation(22);
 	resp.node_mut()
 		.attr_mut()
-		.set_node_id(NodeId::new(11).unwrap());
+		.set_node_id(node::Id::new(11).unwrap());
 	resp.set_handle(123);
 	resp.mut_flags().set(CreateResponseFlag::DIRECT_IO);
 	resp.mut_flags().set(CreateResponseFlag::KEEP_CACHE);
@@ -165,11 +164,11 @@ fn response_v7p1() {
 #[test]
 fn response_v7p9() {
 	let mut resp = CreateResponse::new();
-	resp.node_mut().set_id(NodeId::new(11).unwrap());
+	resp.node_mut().set_id(node::Id::new(11).unwrap());
 	resp.node_mut().set_generation(22);
 	resp.node_mut()
 		.attr_mut()
-		.set_node_id(NodeId::new(11).unwrap());
+		.set_node_id(node::Id::new(11).unwrap());
 	resp.set_handle(123);
 	resp.mut_flags().set(CreateResponseFlag::DIRECT_IO);
 	resp.mut_flags().set(CreateResponseFlag::KEEP_CACHE);
@@ -214,10 +213,11 @@ fn response_impl_debug() {
 	let mut response = CreateResponse::new();
 
 	let node = response.node_mut();
-	node.set_id(NodeId::new(11).unwrap());
+	node.set_id(node::Id::new(11).unwrap());
 	node.set_generation(22);
-	node.attr_mut().set_node_id(NodeId::new(11).unwrap());
-	node.attr_mut().set_mode(FileType::Regular | 0o644);
+	node.attr_mut().set_node_id(node::Id::new(11).unwrap());
+	node.attr_mut().set_file_type(node::Type::Regular);
+	node.attr_mut().set_permissions(0o644);
 
 	response.set_handle(123);
 	response.mut_flags().set(CreateResponseFlag::DIRECT_IO);

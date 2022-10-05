@@ -19,6 +19,7 @@ use std::os::unix::ffi::OsStrExt;
 use std::sync::mpsc;
 use std::{ffi, panic};
 
+use fuse::node;
 use fuse::server::fuse_rpc;
 
 use interop_testutil::{
@@ -40,20 +41,21 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::LookupRequest,
 	) -> fuse_rpc::FuseResult<fuse::LookupResponse, S::Error> {
-		if request.parent_id() != fuse::ROOT_ID {
+		if !request.parent_id().is_root() {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
-		if request.name() != fuse::NodeName::from_bytes(b"readdir.d").unwrap() {
+		if request.name() != "readdir.d" {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
 
 		let mut resp = fuse::LookupResponse::new();
 		let node = resp.node_mut();
-		node.set_id(fuse::NodeId::new(2).unwrap());
+		node.set_id(node::Id::new(2).unwrap());
 		node.set_cache_timeout(std::time::Duration::from_secs(60));
 
 		let attr = node.attr_mut();
-		attr.set_mode(fuse::FileType::Directory | 0o755);
+		attr.set_file_type(node::Type::Directory);
+		attr.set_permissions(0o755);
 		attr.set_nlink(2);
 
 		call.respond_ok(&resp)
@@ -87,21 +89,21 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 		if offset == 0 {
 			offset += 1;
 			let mut entry = fuse::ReaddirEntry::new(
-				fuse::NodeId::new(10).unwrap(),
-				fuse::NodeName::from_bytes(b"entry_a").unwrap(),
+				node::Id::new(10).unwrap(),
+				node::Name::new("entry_a").unwrap(),
 				NonZeroU64::new(offset).unwrap(),
 			);
-			entry.set_file_type(fuse::FileType::Regular);
+			entry.set_file_type(node::Type::Regular);
 			entries.try_push(&entry).unwrap();
 		}
 		if offset == 1 {
 			offset += 1;
 			let mut entry = fuse::ReaddirEntry::new(
-				fuse::NodeId::new(11).unwrap(),
-				fuse::NodeName::from_bytes(b"entry_b").unwrap(),
+				node::Id::new(11).unwrap(),
+				node::Name::new("entry_b").unwrap(),
 				NonZeroU64::new(offset).unwrap(),
 			);
-			entry.set_file_type(fuse::FileType::Symlink);
+			entry.set_file_type(node::Type::Symlink);
 			entries.try_push(&entry).unwrap();
 
 			let resp = fuse::ReaddirResponse::new(entries.into_entries());
@@ -111,11 +113,11 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 		if offset == 2 {
 			offset += 1;
 			let mut entry = fuse::ReaddirEntry::new(
-				fuse::NodeId::new(12).unwrap(),
-				fuse::NodeName::from_bytes(b"entry_c").unwrap(),
+				node::Id::new(12).unwrap(),
+				node::Name::new("entry_c").unwrap(),
 				NonZeroU64::new(offset).unwrap(),
 			);
-			entry.set_file_type(fuse::FileType::Directory);
+			entry.set_file_type(node::Type::Directory);
 			entries.try_push(&entry).unwrap();
 		}
 

@@ -16,6 +16,7 @@
 
 use std::num::NonZeroU64;
 
+use fuse::node;
 use fuse::server::fuse_rpc;
 
 const HELLO_WORLD: &[u8] = b"Hello, world!\n";
@@ -23,18 +24,19 @@ const HELLO_WORLD: &[u8] = b"Hello, world!\n";
 struct HelloTxt {}
 
 impl HelloTxt {
-	fn name(&self) -> &fuse::NodeName {
-		fuse::NodeName::from_bytes(b"hello.txt").unwrap()
+	fn name(&self) -> &node::Name {
+		node::Name::new("hello.txt").unwrap()
 	}
 
-	fn node_id(&self) -> fuse::NodeId {
-		fuse::NodeId::new(100).unwrap()
+	fn node_id(&self) -> node::Id {
+		node::Id::new(100).unwrap()
 	}
 
 	fn set_attr(&self, attr: &mut fuse::NodeAttr) {
 		attr.set_user_id(getuid());
 		attr.set_group_id(getgid());
-		attr.set_mode(fuse::FileType::Regular | 0o644);
+		attr.set_file_type(node::Type::Regular);
+		attr.set_permissions(0o644);
 		attr.set_size(HELLO_WORLD.len() as u64);
 		attr.set_nlink(1);
 	}
@@ -50,7 +52,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for HelloWorldFS {
 		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::LookupRequest,
 	) -> fuse_rpc::FuseResult<fuse::LookupResponse, S::Error> {
-		if request.parent_id() != fuse::ROOT_ID {
+		if !request.parent_id().is_root() {
 			return call.respond_err(fuse::Error::NOT_FOUND);
 		}
 		if request.name() != HELLO_TXT.name() {
@@ -73,10 +75,11 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for HelloWorldFS {
 		let mut resp = fuse::GetattrResponse::new();
 		let attr = resp.attr_mut();
 
-		if request.node_id() == fuse::ROOT_ID {
+		if request.node_id().is_root() {
 			attr.set_user_id(getuid());
 			attr.set_group_id(getgid());
-			attr.set_mode(fuse::FileType::Directory | 0o755);
+			attr.set_file_type(node::Type::Directory);
+			attr.set_permissions(0o755);
 			attr.set_nlink(2);
 			return call.respond_ok(&resp);
 		}
@@ -121,7 +124,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for HelloWorldFS {
 		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::OpendirRequest,
 	) -> fuse_rpc::FuseResult<fuse::OpendirResponse, S::Error> {
-		if request.node_id() != fuse::ROOT_ID {
+		if !request.node_id().is_root() {
 			return call.respond_err(fuse::Error::NOT_FOUND);
 		}
 
@@ -152,7 +155,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for HelloWorldFS {
 			HELLO_TXT.name(),
 			node_offset,
 		);
-		entry.set_file_type(fuse::FileType::Regular);
+		entry.set_file_type(node::Type::Regular);
 		entries.try_push(&entry).unwrap();
 
 		let resp = fuse::ReaddirResponse::new(entries.into_entries());

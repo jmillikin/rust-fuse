@@ -21,6 +21,7 @@ use core::mem::{align_of, size_of};
 use core::slice::from_raw_parts;
 
 use crate::internal::fuse_kernel;
+use crate::node;
 use crate::server;
 use crate::server::RequestError;
 
@@ -196,6 +197,13 @@ impl<'a> RequestDecoder<'a> {
 		Ok(out)
 	}
 
+	pub(crate) fn next_node_name(
+		&mut self,
+	) -> Result<&'a node::Name, RequestError> {
+		let bytes = self.next_nul_terminated_bytes()?;
+		Ok(node::Name::from_bytes(bytes.to_bytes_without_nul())?)
+	}
+
 	pub(crate) fn next_nul_terminated_bytes(
 		&mut self,
 	) -> Result<NulTerminatedBytes<'a>, RequestError> {
@@ -222,8 +230,8 @@ impl<'a> NulTerminatedBytes<'a> {
 	}
 }
 
-pub(crate) fn node_id(raw: u64) -> Result<crate::NodeId, RequestError> {
-	match crate::NodeId::new(raw) {
+pub(crate) fn node_id(raw: u64) -> Result<node::Id, RequestError> {
+	match node::Id::new(raw) {
 		Some(x) => Ok(x),
 		None => Err(RequestError::MissingNodeId),
 	}

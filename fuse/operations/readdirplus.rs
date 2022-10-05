@@ -20,11 +20,10 @@ use core::convert::TryFrom;
 use core::fmt;
 use core::num;
 
-use crate::FileType;
-use crate::NodeId;
 use crate::internal::compat;
 use crate::internal::dirent;
 use crate::internal::fuse_kernel;
+use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -44,8 +43,8 @@ pub struct ReaddirplusRequest<'a> {
 
 impl ReaddirplusRequest<'_> {
 	#[must_use]
-	pub fn node_id(&self) -> NodeId {
-		unsafe { NodeId::new_unchecked(self.header.nodeid) }
+	pub fn node_id(&self) -> node::Id {
+		unsafe { node::Id::new_unchecked(self.header.nodeid) }
 	}
 
 	#[must_use]
@@ -180,15 +179,15 @@ impl ReaddirplusResponse<'_> {
 #[derive(Clone, Copy)]
 pub struct ReaddirplusEntry<'a> {
 	dirent: fuse_kernel::fuse_direntplus,
-	name: &'a crate::NodeName,
+	name: &'a node::Name,
 }
 
 impl<'a> ReaddirplusEntry<'a> {
 	#[inline]
 	#[must_use]
 	pub fn new(
-		node_id: crate::NodeId,
-		name: &'a crate::NodeName,
+		node_id: node::Id,
+		name: &'a node::Name,
 		offset: num::NonZeroU64,
 	) -> ReaddirplusEntry<'a> {
 		Self {
@@ -210,13 +209,13 @@ impl<'a> ReaddirplusEntry<'a> {
 
 	#[inline]
 	#[must_use]
-	pub fn node_id(&self) -> crate::NodeId {
-		unsafe { crate::NodeId::new_unchecked(self.dirent.dirent.ino) }
+	pub fn node_id(&self) -> node::Id {
+		unsafe { node::Id::new_unchecked(self.dirent.dirent.ino) }
 	}
 
 	#[inline]
 	#[must_use]
-	pub fn name(&self) -> &crate::NodeName {
+	pub fn name(&self) -> &node::Name {
 		self.name
 	}
 
@@ -228,17 +227,12 @@ impl<'a> ReaddirplusEntry<'a> {
 
 	#[inline]
 	#[must_use]
-	pub fn file_type(&self) -> crate::FileType {
-		match FileType::from_bits(self.dirent.dirent.r#type) {
-			Some(t) => t,
-			None => unsafe {
-				core::hint::unreachable_unchecked()
-			},
-		}
+	pub fn file_type(&self) -> Option<node::Type> {
+		node::Type::from_bits(self.dirent.dirent.r#type)
 	}
 
 	#[inline]
-	pub fn set_file_type(&mut self, file_type: crate::FileType) {
+	pub fn set_file_type(&mut self, file_type: node::Type) {
 		self.dirent.dirent.r#type = file_type.as_bits();
 	}
 
@@ -260,7 +254,7 @@ impl fmt::Debug for ReaddirplusEntry<'_> {
 		fmt.debug_struct("ReaddirEntry")
 			.field("node_id", &self.node_id())
 			.field("offset", &self.offset())
-			.field("file_type", &self.file_type())
+			.field("file_type", &format_args!("{:?}", self.file_type()))
 			.field("name", &self.name())
 			.field("node_attr", &self.node_attr())
 			.finish()
