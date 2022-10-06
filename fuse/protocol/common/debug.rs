@@ -20,6 +20,7 @@ pub(crate) struct DebugHexU32(pub(crate) u32);
 
 impl fmt::Debug for DebugHexU32 {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		// 8 hex digits + 2 for leading "0x".
 		write!(fmt, "{:#010X}", self.0)
 	}
 }
@@ -28,7 +29,8 @@ pub(crate) struct DebugHexU64(pub(crate) u64);
 
 impl fmt::Debug for DebugHexU64 {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		write!(fmt, "{:#020X}", self.0)
+		// 16 hex digits + 2 for leading "0x".
+		write!(fmt, "{:#018X}", self.0)
 	}
 }
 

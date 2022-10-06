@@ -212,7 +212,7 @@ fn init_flags() {
 			"    POSIX_LOCKS,\n",
 			"    SECURITY_CTX,\n",
 			"    HAS_INODE_DAX,\n",
-			"    0x008000000000000000,\n",
+			"    0x8000000000000000,\n",
 			"}",
 		),
 	);

@@ -199,5 +199,5 @@ macro_rules! bitflags_bits_range {
 
 macro_rules! bitflags_bits_fmt {
 	(u32) => { "{:#010X}" };
-	(u64) => { "{:#020X}" };
+	(u64) => { "{:#018X}" };
 }
