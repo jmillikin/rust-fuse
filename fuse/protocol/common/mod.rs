@@ -17,9 +17,6 @@
 mod debug;
 pub(crate) use self::debug::*;
 
-pub(crate) mod file_lock;
-pub use self::file_lock::{Lock, LockRange};
-
 mod node;
 pub use self::node::*;
 

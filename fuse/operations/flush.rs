@@ -20,6 +20,7 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::internal::fuse_kernel;
+use crate::lock;
 use crate::node;
 use crate::server;
 use crate::server::decode;
@@ -35,7 +36,7 @@ pub struct FlushRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: node::Id,
 	handle: u64,
-	lock_owner: u64,
+	lock_owner: lock::Owner,
 }
 
 impl FlushRequest<'_> {
@@ -50,7 +51,7 @@ impl FlushRequest<'_> {
 	}
 
 	#[must_use]
-	pub fn lock_owner(&self) -> u64 {
+	pub fn lock_owner(&self) -> lock::Owner {
 		self.lock_owner
 	}
 }
@@ -94,7 +95,7 @@ impl<'a> FlushRequest<'a> {
 			phantom: PhantomData,
 			node_id,
 			handle: raw.fh,
-			lock_owner: raw.lock_owner,
+			lock_owner: lock::Owner::new(raw.lock_owner),
 		})
 	}
 }

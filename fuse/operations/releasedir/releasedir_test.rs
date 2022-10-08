@@ -16,6 +16,7 @@
 
 use core::mem::size_of;
 
+use fuse::lock;
 use fuse::operations::releasedir::{ReleasedirRequest, ReleasedirResponse};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
@@ -87,7 +88,7 @@ fn request_lock_owner() {
 		protocol_version: (7, 8),
 	});
 
-	assert_eq!(req.lock_owner(), Some(123));
+	assert_eq!(req.lock_owner(), Some(lock::Owner::new(123)));
 }
 
 #[test]

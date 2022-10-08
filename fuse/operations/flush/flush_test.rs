@@ -16,6 +16,7 @@
 
 use core::mem::size_of;
 
+use fuse::lock;
 use fuse::operations::flush::{FlushRequest, FlushResponse};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
@@ -38,7 +39,7 @@ fn request() {
 	let req = decode_request!(FlushRequest, buf);
 
 	assert_eq!(req.handle(), 123);
-	assert_eq!(req.lock_owner(), 456);
+	assert_eq!(req.lock_owner(), lock::Owner::new(456));
 }
 
 #[test]
@@ -62,7 +63,7 @@ fn request_impl_debug() {
 			"FlushRequest {\n",
 			"    node_id: 1,\n",
 			"    handle: 12,\n",
-			"    lock_owner: 34,\n",
+			"    lock_owner: 0x0000000000000022,\n",
 			"}",
 		),
 	);

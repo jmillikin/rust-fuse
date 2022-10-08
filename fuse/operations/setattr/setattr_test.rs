@@ -17,6 +17,7 @@
 use core::mem::size_of;
 use core::time;
 
+use fuse::lock;
 use fuse::node;
 use fuse::operations::setattr::{SetattrRequest, SetattrResponse};
 
@@ -53,7 +54,7 @@ fn request() {
 	assert_eq!(request.node_id(), node::Id::new(1000).unwrap());
 	assert_eq!(request.handle(), Some(1));
 	assert_eq!(request.size(), Some(2));
-	assert_eq!(request.lock_owner(), Some(3));
+	assert_eq!(request.lock_owner(), Some(lock::Owner::new(3)));
 	assert_eq!(request.atime(), Some(time::Duration::new(4, 7)));
 	assert_eq!(request.atime_now(), true);
 	assert_eq!(request.mtime(), Some(time::Duration::new(5, 8)));
@@ -102,7 +103,7 @@ fn request_impl_debug() {
 			"    node_id: 1000,\n",
 			"    handle: Some(1),\n",
 			"    size: Some(2),\n",
-			"    lock_owner: Some(3),\n",
+			"    lock_owner: Some(0x0000000000000003),\n",
 			"    atime: Some(4.000000007s),\n",
 			"    atime_now: true,\n",
 			"    mtime: Some(5.000000008s),\n",

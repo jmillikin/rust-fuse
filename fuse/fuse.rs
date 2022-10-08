@@ -38,6 +38,7 @@ mod error;
 
 pub mod client;
 pub mod cuse;
+pub mod lock;
 pub mod node;
 pub mod server;
 
@@ -80,8 +81,6 @@ pub mod operations;
 pub use self::operations::types_only::*;
 
 pub use self::protocol::common::{
-	Lock,
-	LockRange,
 	Node,
 	NodeAttr,
 };

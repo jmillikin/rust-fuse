@@ -20,12 +20,11 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::internal::fuse_kernel;
+use crate::lock;
 use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
-
-use crate::protocol::common::file_lock::{Lock, LockRange, F_UNLCK};
 
 // SetlkRequest {{{
 
@@ -34,36 +33,54 @@ use crate::protocol::common::file_lock::{Lock, LockRange, F_UNLCK};
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_SETLK` and `FUSE_SETLKW` operations.
 pub struct SetlkRequest<'a> {
-	raw: &'a fuse_kernel::fuse_lk_in,
-	node_id: node::Id,
-	command: SetlkCommand,
+	header: &'a fuse_kernel::fuse_in_header,
+	body: &'a fuse_kernel::fuse_lk_in,
+	lock: Option<lock::Lock>,
+	lock_range: lock::Range,
 }
 
 impl SetlkRequest<'_> {
+	#[inline]
 	#[must_use]
 	pub fn node_id(&self) -> node::Id {
-		self.node_id
+		unsafe { node::Id::new_unchecked(self.header.nodeid) }
 	}
 
+	#[inline]
 	#[must_use]
 	pub fn handle(&self) -> u64 {
-		self.raw.fh
+		self.body.fh
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn owner(&self) -> u64 {
-		self.raw.owner
+	pub fn may_block(&self) -> bool {
+		self.header.opcode == fuse_kernel::FUSE_SETLKW
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn command(&self) -> &SetlkCommand {
-		&self.command
+	pub fn owner(&self) -> lock::Owner {
+		lock::Owner::new(self.body.owner)
 	}
 
+	#[inline]
+	#[must_use]
+	pub fn lock(&self) -> Option<lock::Lock> {
+		self.lock
+	}
+
+	#[inline]
+	#[must_use]
+	pub fn lock_range(&self) -> lock::Range {
+		self.lock_range
+	}
+
+	#[inline]
 	#[must_use]
 	pub fn flags(&self) -> SetlkRequestFlags {
 		SetlkRequestFlags {
-			bits: self.raw.lk_flags,
+			bits: self.body.lk_flags,
 		}
 	}
 }
@@ -77,38 +94,31 @@ impl<'a> decode::FuseRequest<'a> for SetlkRequest<'a> {
 		request: &server::FuseRequest<'a>,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		let header = dec.header();
 
-		let is_setlkw: bool;
-		if header.opcode == fuse_kernel::FUSE_SETLKW {
-			is_setlkw = true;
-		} else {
+		let header = dec.header();
+		if header.opcode != fuse_kernel::FUSE_SETLKW {
 			dec.expect_opcode(fuse_kernel::FUSE_SETLK)?;
-			is_setlkw = false;
 		}
 
-		let raw: &fuse_kernel::fuse_lk_in = dec.next_sized()?;
-		let node_id = decode::node_id(header.nodeid)?;
-		let command = parse_setlk_cmd(is_setlkw, &raw.lk)?;
+		decode::node_id(header.nodeid)?;
 
-		Ok(Self {
-			raw,
-			node_id,
-			command,
-		})
+		let body: &fuse_kernel::fuse_lk_in = dec.next_sized()?;
+
+		eprintln!("\n[SetlkRequest]\n{header:?}\n{body:?}");
+
+		let lock;
+		let lock_range;
+		if body.lk.r#type == lock::F_UNLCK {
+			lock = None;
+			lock_range = lock::decode_range(&body.lk)?;
+		} else {
+			let set_lock = lock::decode(&body.lk)?;
+			lock = Some(set_lock);
+			lock_range = set_lock.range();
+		};
+
+		Ok(Self { header, body, lock, lock_range })
 	}
-}
-
-#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub enum SetlkCommand {
-	SetLock(Lock),
-	TrySetLock(Lock),
-
-	#[non_exhaustive]
-	ClearLocks {
-		range: LockRange,
-		process_id: u32,
-	},
 }
 
 /// Optional flags set on [`SetlkRequest`].
@@ -132,33 +142,14 @@ mod flags {
 impl fmt::Debug for SetlkRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("SetlkRequest")
-			.field("node_id", &self.node_id)
-			.field("handle", &self.raw.fh)
-			.field("owner", &self.raw.owner)
-			.field("command", &self.command)
+			.field("node_id", &self.node_id())
+			.field("handle", &self.handle())
+			.field("may_block", &self.may_block())
+			.field("owner", &self.owner())
+			.field("lock", &self.lock())
+			.field("lock_range", &self.lock_range())
 			.field("flags", &self.flags())
 			.finish()
-	}
-}
-
-fn parse_setlk_cmd(
-	is_setlkw: bool,
-	raw: &fuse_kernel::fuse_file_lock,
-) -> Result<SetlkCommand, server::RequestError> {
-	if raw.r#type == F_UNLCK {
-		return Ok(SetlkCommand::ClearLocks {
-			range: LockRange::parse(*raw),
-			process_id: raw.pid,
-		});
-	}
-
-	match Lock::parse(*raw) {
-		Some(lock) => Ok(if is_setlkw {
-			SetlkCommand::SetLock(lock)
-		} else {
-			SetlkCommand::TrySetLock(lock)
-		}),
-		None => Err(server::RequestError::InvalidLockType),
 	}
 }
 

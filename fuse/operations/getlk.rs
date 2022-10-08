@@ -16,16 +16,16 @@
 
 //! Implements the `FUSE_GETLK` operation.
 
+use core::cmp;
 use core::fmt;
 use core::marker::PhantomData;
 
 use crate::internal::fuse_kernel;
+use crate::lock;
 use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
-
-use crate::protocol::common::file_lock::{Lock, F_RDLCK, F_UNLCK, F_WRLCK};
 
 // GetlkRequest {{{
 
@@ -34,30 +34,41 @@ use crate::protocol::common::file_lock::{Lock, F_RDLCK, F_UNLCK, F_WRLCK};
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_GETLK` operation.
 pub struct GetlkRequest<'a> {
-	raw: &'a fuse_kernel::fuse_lk_in,
-	node_id: node::Id,
-	lock: Lock,
+	header: &'a fuse_kernel::fuse_in_header,
+	body: &'a fuse_kernel::fuse_lk_in,
+	lock_mode: lock::Mode,
+	lock_range: lock::Range,
 }
 
 impl GetlkRequest<'_> {
+	#[inline]
 	#[must_use]
 	pub fn node_id(&self) -> node::Id {
-		self.node_id
+		unsafe { node::Id::new_unchecked(self.header.nodeid) }
 	}
 
+	#[inline]
 	#[must_use]
 	pub fn handle(&self) -> u64 {
-		self.raw.fh
+		self.body.fh
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn owner(&self) -> u64 {
-		self.raw.owner
+	pub fn owner(&self) -> lock::Owner {
+		lock::Owner::new(self.body.owner)
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn lock(&self) -> &Lock {
-		&self.lock
+	pub fn lock_mode(&self) -> lock::Mode {
+		self.lock_mode
+	}
+
+	#[inline]
+	#[must_use]
+	pub fn lock_range(&self) -> lock::Range {
+		self.lock_range
 	}
 }
 
@@ -72,24 +83,24 @@ impl<'a> decode::FuseRequest<'a> for GetlkRequest<'a> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_GETLK)?;
 
-		let raw: &fuse_kernel::fuse_lk_in = dec.next_sized()?;
-		let node_id = decode::node_id(dec.header().nodeid)?;
+		let header = dec.header();
+		decode::node_id(header.nodeid)?;
 
-		let lock = match Lock::parse(raw.lk) {
-			Some(l) => l,
-			_ => return Err(server::RequestError::InvalidLockType),
-		};
-		Ok(Self { raw, node_id, lock })
+		let body: &fuse_kernel::fuse_lk_in = dec.next_sized()?;
+		let lock_mode = lock::decode_mode(&body.lk)?;
+		let lock_range = lock::decode_range(&body.lk)?;
+		Ok(Self { header, body, lock_mode, lock_range })
 	}
 }
 
 impl fmt::Debug for GetlkRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("GetlkRequest")
-			.field("node_id", &self.node_id)
-			.field("handle", &self.raw.fh)
-			.field("owner", &self.raw.owner)
-			.field("lock", &self.lock)
+			.field("node_id", &self.node_id())
+			.field("handle", &self.handle())
+			.field("owner", &self.owner())
+			.field("lock_mode", &self.lock_mode())
+			.field("lock_range", &self.lock_range())
 			.finish()
 	}
 }
@@ -104,25 +115,23 @@ impl fmt::Debug for GetlkRequest<'_> {
 /// `FUSE_GETLK` operation.
 pub struct GetlkResponse<'a> {
 	phantom: PhantomData<&'a ()>,
-	lock: Option<Lock>,
+	lock: Option<lock::Lock>,
 }
 
 impl<'a> GetlkResponse<'a> {
+	#[inline]
 	#[must_use]
-	pub fn new() -> GetlkResponse<'a> {
+	pub fn new(lock: Option<lock::Lock>) -> GetlkResponse<'a> {
 		Self {
 			phantom: PhantomData,
-			lock: None,
+			lock,
 		}
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn lock(&self) -> &Option<Lock> {
-		&self.lock
-	}
-
-	pub fn set_lock(&mut self, lock: Option<Lock>) {
-		self.lock = lock;
+	pub fn lock(&self) -> Option<lock::Lock> {
+		self.lock
 	}
 }
 
@@ -131,7 +140,7 @@ response_send_funcs!(GetlkResponse<'_>);
 impl fmt::Debug for GetlkResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("GetlkResponse")
-			.field("lock", &self.lock)
+			.field("lock", &self.lock())
 			.finish()
 	}
 }
@@ -144,25 +153,26 @@ impl GetlkResponse<'_> {
 	) -> S::Result {
 		let lock = match self.lock {
 			None => fuse_kernel::fuse_file_lock {
+				r#type: lock::F_UNLCK,
 				start: 0,
 				end: 0,
-				r#type: F_UNLCK,
 				pid: 0,
 			},
-			Some(Lock::Shared { range, process_id }) => {
+			Some(lock) => {
 				fuse_kernel::fuse_file_lock {
-					start: range.start,
-					end: range.end,
-					r#type: F_RDLCK,
-					pid: process_id,
-				}
-			},
-			Some(Lock::Exclusive { range, process_id }) => {
-				fuse_kernel::fuse_file_lock {
-					start: range.start,
-					end: range.end,
-					r#type: F_WRLCK,
-					pid: process_id,
+					r#type: match lock.mode() {
+						lock::Mode::Exclusive => lock::F_WRLCK,
+						lock::Mode::Shared => lock::F_RDLCK,
+					},
+					start: cmp::min(
+						lock.range().start(),
+						lock::OFFSET_MAX,
+					),
+					end: cmp::min(
+						lock.range().end().unwrap_or(lock::OFFSET_MAX),
+						lock::OFFSET_MAX,
+					),
+					pid: lock.process_id().map(|x| x.get()).unwrap_or(0),
 				}
 			},
 		};
@@ -170,4 +180,5 @@ impl GetlkResponse<'_> {
 		enc.encode_sized(&fuse_kernel::fuse_lk_out { lk: lock })
 	}
 }
+
 // }}}

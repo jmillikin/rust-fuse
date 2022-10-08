@@ -23,6 +23,7 @@ use core::time;
 
 use crate::NodeAttr;
 use crate::internal::fuse_kernel;
+use crate::lock;
 use crate::node;
 use crate::server;
 use crate::server::decode;
@@ -77,8 +78,11 @@ impl SetattrRequest<'_> {
 	}
 
 	#[must_use]
-	pub fn lock_owner(&self) -> Option<u64> {
-		self.get(fuse_kernel::FATTR_LOCKOWNER, self.raw.lock_owner)
+	pub fn lock_owner(&self) -> Option<lock::Owner> {
+		self.get(
+			fuse_kernel::FATTR_LOCKOWNER,
+			lock::Owner::new(self.raw.lock_owner),
+		)
 	}
 
 	#[must_use]

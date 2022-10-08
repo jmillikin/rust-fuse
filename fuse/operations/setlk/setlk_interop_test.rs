@@ -85,7 +85,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the lock owner, which is non-deterministic.
-		let lock_owner = format!("owner: {},", request.owner());
+		let lock_owner = format!("owner: {:?},", request.owner());
 		let repl_start = request_str.find(&lock_owner).unwrap();
 		let repl_end = repl_start + lock_owner.len();
 		request_str.replace_range(
@@ -123,7 +123,6 @@ fn fcntl_setlk(path: std::path::PathBuf, mut lock: libc::flock) {
 	assert_eq!(rc, 0);
 }
 
-#[cfg(not(target_os = "freebsd"))] // https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=253500
 fn fcntl_setlkw(path: std::path::PathBuf, mut lock: libc::flock) {
 	let path_cstr = path_cstr(path);
 
@@ -136,7 +135,6 @@ fn fcntl_setlkw(path: std::path::PathBuf, mut lock: libc::flock) {
 	assert_eq!(rc, 0);
 }
 
-#[cfg(not(target_os = "freebsd"))]
 fn flock(path: std::path::PathBuf, operation: i32) {
 	let path_cstr = path_cstr(path);
 
@@ -150,8 +148,63 @@ fn flock(path: std::path::PathBuf, operation: i32) {
 }
 
 #[test]
-#[cfg(not(target_os = "freebsd"))] // https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=253500
 fn setlk_fcntl_read() {
+	let requests = setlk_test(|root| {
+		let path = root.join("setlk.txt");
+		fcntl_setlk(
+			path,
+			libc::flock {
+				l_type: libc::F_RDLCK as i16,
+				l_whence: libc::SEEK_SET as i16,
+				l_start: 100,
+				l_len: 50,
+				l_pid: 3000,
+				#[cfg(target_os = "freebsd")]
+				l_sysid: 0,
+			},
+		);
+	});
+	assert_eq!(requests.len(), 1);
+
+	#[cfg(target_os = "linux")]
+	let lock_pid = std::process::id();
+
+	#[cfg(target_os = "freebsd")]
+	let lock_pid = 3000;
+
+	let expect = format!(
+		r#"SetlkRequest {{
+    node_id: 2,
+    handle: 12345,
+    may_block: false,
+    owner: 123456789123456789,
+    lock: Some(
+        Lock {{
+            mode: Shared,
+            range: Range {{
+                start: 100,
+                length: Some(50),
+            }},
+            process_id: Some({pid}),
+        }},
+    ),
+    lock_range: Range {{
+        start: 100,
+        length: Some(50),
+    }},
+    flags: SetlkRequestFlags {{}},
+}}"#,
+		pid = lock_pid
+	);
+	if let Some(diff) = diff_str(&expect, &requests[0]) {
+		println!("{}", diff);
+		assert!(false);
+	}
+}
+
+#[test]
+#[cfg_attr(target_os = "freebsd", ignore)] // https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=253500
+fn setlkw_fcntl_read() {
 	let requests = setlk_test(|root| {
 		let path = root.join("setlk.txt");
 		fcntl_setlkw(
@@ -179,13 +232,22 @@ fn setlk_fcntl_read() {
 		r#"SetlkRequest {{
     node_id: 2,
     handle: 12345,
+    may_block: true,
     owner: 123456789123456789,
-    command: SetLock(
-        Shared {{
-            range: 100..150,
-            process_id: {pid},
+    lock: Some(
+        Lock {{
+            mode: Shared,
+            range: Range {{
+                start: 100,
+                length: Some(50),
+            }},
+            process_id: Some({pid}),
         }},
     ),
+    lock_range: Range {{
+        start: 100,
+        length: Some(50),
+    }},
     flags: SetlkRequestFlags {{}},
 }}"#,
 		pid = lock_pid
@@ -197,41 +259,53 @@ fn setlk_fcntl_read() {
 }
 
 #[test]
-fn setlk_fcntl_read_nonblocking() {
+fn setlk_fcntl_write() {
 	let requests = setlk_test(|root| {
 		let path = root.join("setlk.txt");
 		fcntl_setlk(
 			path,
 			libc::flock {
-				l_type: libc::F_RDLCK as i16,
-				l_whence: libc::SEEK_CUR as i16,
+				l_type: libc::F_WRLCK as i16,
+				l_whence: libc::SEEK_SET as i16,
 				l_start: 100,
 				l_len: 50,
-				l_pid: 3000,
+				l_pid: 9999,
 				#[cfg(target_os = "freebsd")]
-				l_sysid: 400,
+				l_sysid: 0,
 			},
 		);
 	});
 	assert_eq!(requests.len(), 1);
 
-	#[cfg(target_os = "linux")]
-	let lock_pid = std::process::id();
+	#[allow(unused_assignments, unused_mut)]
+	let mut lock_pid = std::process::id();
 
+	// https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=256005
 	#[cfg(target_os = "freebsd")]
-	let lock_pid = 3000;
+	{
+		lock_pid = 9999;
+	}
 
 	let expect = format!(
 		r#"SetlkRequest {{
     node_id: 2,
     handle: 12345,
+    may_block: false,
     owner: 123456789123456789,
-    command: TrySetLock(
-        Shared {{
-            range: 100..150,
-            process_id: {pid},
+    lock: Some(
+        Lock {{
+            mode: Exclusive,
+            range: Range {{
+                start: 100,
+                length: Some(50),
+            }},
+            process_id: Some({pid}),
         }},
     ),
+    lock_range: Range {{
+        start: 100,
+        length: Some(50),
+    }},
     flags: SetlkRequestFlags {{}},
 }}"#,
 		pid = lock_pid
@@ -243,42 +317,54 @@ fn setlk_fcntl_read_nonblocking() {
 }
 
 #[test]
-#[cfg(not(target_os = "freebsd"))] // https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=253500
-fn setlk_fcntl_write() {
+#[cfg_attr(target_os = "freebsd", ignore)] // https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=253500
+fn setlkw_fcntl_write() {
 	let requests = setlk_test(|root| {
 		let path = root.join("setlk.txt");
 		fcntl_setlkw(
 			path,
 			libc::flock {
 				l_type: libc::F_WRLCK as i16,
-				l_whence: libc::SEEK_CUR as i16,
+				l_whence: libc::SEEK_SET as i16,
 				l_start: 100,
 				l_len: 50,
-				l_pid: 3000,
+				l_pid: 9999,
 				#[cfg(target_os = "freebsd")]
-				l_sysid: 400,
+				l_sysid: 0,
 			},
 		);
 	});
 	assert_eq!(requests.len(), 1);
 
-	#[cfg(target_os = "linux")]
-	let lock_pid = std::process::id();
+	#[allow(unused_assignments, unused_mut)]
+	let mut lock_pid = std::process::id();
 
+	// https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=256005
 	#[cfg(target_os = "freebsd")]
-	let lock_pid = 3000;
+	{
+		lock_pid = 9999;
+	}
 
 	let expect = format!(
 		r#"SetlkRequest {{
     node_id: 2,
     handle: 12345,
+    may_block: true,
     owner: 123456789123456789,
-    command: SetLock(
-        Exclusive {{
-            range: 100..150,
-            process_id: {pid},
+    lock: Some(
+        Lock {{
+            mode: Exclusive,
+            range: Range {{
+                start: 100,
+                length: Some(50),
+            }},
+            process_id: Some({pid}),
         }},
     ),
+    lock_range: Range {{
+        start: 100,
+        length: Some(50),
+    }},
     flags: SetlkRequestFlags {{}},
 }}"#,
 		pid = lock_pid
@@ -290,44 +376,75 @@ fn setlk_fcntl_write() {
 }
 
 #[test]
-#[cfg(not(target_os = "freebsd"))] // https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=253500
+#[cfg_attr(target_os = "freebsd", ignore)] // https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=253500
 fn setlk_fcntl_unlock() {
+	let requests = setlk_test(|root| {
+		let path = root.join("setlk.txt");
+		fcntl_setlk(
+			path,
+			libc::flock {
+				l_type: libc::F_UNLCK as i16,
+				l_whence: libc::SEEK_SET as i16,
+				l_start: 100,
+				l_len: 50,
+				l_pid: 9999,
+				#[cfg(target_os = "freebsd")]
+				l_sysid: 0,
+			},
+		);
+	});
+	assert_eq!(requests.len(), 1);
+
+	let expect = r#"SetlkRequest {
+    node_id: 2,
+    handle: 12345,
+    may_block: false,
+    owner: 123456789123456789,
+    lock: None,
+    lock_range: Range {
+        start: 100,
+        length: Some(50),
+    },
+    flags: SetlkRequestFlags {},
+}"#;
+	if let Some(diff) = diff_str(&expect, &requests[0]) {
+		println!("{}", diff);
+		assert!(false);
+	}
+}
+
+#[test]
+#[cfg_attr(target_os = "freebsd", ignore)] // https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=253500
+fn setlkw_fcntl_unlock() {
 	let requests = setlk_test(|root| {
 		let path = root.join("setlk.txt");
 		fcntl_setlkw(
 			path,
 			libc::flock {
 				l_type: libc::F_UNLCK as i16,
-				l_whence: libc::SEEK_CUR as i16,
+				l_whence: libc::SEEK_SET as i16,
 				l_start: 100,
 				l_len: 50,
-				l_pid: 3000,
+				l_pid: 9999,
 				#[cfg(target_os = "freebsd")]
-				l_sysid: 400,
+				l_sysid: 0,
 			},
 		);
 	});
 	assert_eq!(requests.len(), 1);
 
-	#[cfg(target_os = "linux")]
-	let lock_pid = 0;
-
-	#[cfg(target_os = "freebsd")]
-	let lock_pid = 3000;
-
-	let expect = format!(
-		r#"SetlkRequest {{
+	let expect = r#"SetlkRequest {
     node_id: 2,
     handle: 12345,
+    may_block: true,
     owner: 123456789123456789,
-    command: ClearLocks {{
-        range: 100..150,
-        process_id: {pid},
-    }},
-    flags: SetlkRequestFlags {{}},
-}}"#,
-		pid = lock_pid
-	);
+    lock: None,
+    lock_range: Range {
+        start: 100,
+        length: Some(50),
+    },
+    flags: SetlkRequestFlags {},
+}"#;
 	if let Some(diff) = diff_str(&expect, &requests[0]) {
 		println!("{}", diff);
 		assert!(false);
@@ -335,98 +452,36 @@ fn setlk_fcntl_unlock() {
 }
 
 #[test]
-#[cfg(not(target_os = "freebsd"))]
+#[cfg_attr(target_os = "freebsd", ignore)] // FUSE_LK_FLOCK not supported by FreeBSD
 fn setlk_flock_shared() {
-	let requests = setlk_test(|root| {
-		let path = root.join("setlk.txt");
-		flock(path, libc::LOCK_SH);
-	});
-	assert_eq!(requests.len(), 1);
-
-	#[cfg(target_os = "linux")]
-	let lock_pid = std::process::id();
-
-	let expect = format!(
-		r#"SetlkRequest {{
-    node_id: 2,
-    handle: 12345,
-    owner: 123456789123456789,
-    command: SetLock(
-        Shared {{
-            range: 0..,
-            process_id: {pid},
-        }},
-    ),
-    flags: SetlkRequestFlags {{
-        LK_FLOCK,
-    }},
-}}"#,
-		pid = lock_pid
-	);
-	if let Some(diff) = diff_str(&expect, &requests[0]) {
-		println!("{}", diff);
-		assert!(false);
-	}
-}
-
-#[test]
-#[cfg(not(target_os = "freebsd"))]
-fn setlk_flock_exclusive() {
-	let requests = setlk_test(|root| {
-		let path = root.join("setlk.txt");
-		flock(path, libc::LOCK_EX);
-	});
-	assert_eq!(requests.len(), 1);
-
-	#[cfg(target_os = "linux")]
-	let lock_pid = std::process::id();
-
-	let expect = format!(
-		r#"SetlkRequest {{
-    node_id: 2,
-    handle: 12345,
-    owner: 123456789123456789,
-    command: SetLock(
-        Exclusive {{
-            range: 0..,
-            process_id: {pid},
-        }},
-    ),
-    flags: SetlkRequestFlags {{
-        LK_FLOCK,
-    }},
-}}"#,
-		pid = lock_pid
-	);
-	if let Some(diff) = diff_str(&expect, &requests[0]) {
-		println!("{}", diff);
-		assert!(false);
-	}
-}
-
-#[test]
-#[cfg(not(target_os = "freebsd"))]
-fn setlk_flock_shared_nonblocking() {
 	let requests = setlk_test(|root| {
 		let path = root.join("setlk.txt");
 		flock(path, libc::LOCK_SH | libc::LOCK_NB);
 	});
 	assert_eq!(requests.len(), 1);
 
-	#[cfg(target_os = "linux")]
 	let lock_pid = std::process::id();
 
 	let expect = format!(
 		r#"SetlkRequest {{
     node_id: 2,
     handle: 12345,
+    may_block: false,
     owner: 123456789123456789,
-    command: TrySetLock(
-        Shared {{
-            range: 0..,
-            process_id: {pid},
+    lock: Some(
+        Lock {{
+            mode: Shared,
+            range: Range {{
+                start: 0,
+                length: None,
+            }},
+            process_id: Some({pid}),
         }},
     ),
+    lock_range: Range {{
+        start: 0,
+        length: None,
+    }},
     flags: SetlkRequestFlags {{
         LK_FLOCK,
     }},
@@ -440,25 +495,35 @@ fn setlk_flock_shared_nonblocking() {
 }
 
 #[test]
-#[cfg(not(target_os = "freebsd"))]
-fn setlk_flock_unlock() {
+#[cfg_attr(target_os = "freebsd", ignore)] // FUSE_LK_FLOCK not supported by FreeBSD
+fn setlkw_flock_shared() {
 	let requests = setlk_test(|root| {
 		let path = root.join("setlk.txt");
-		flock(path, libc::LOCK_UN);
+		flock(path, libc::LOCK_SH);
 	});
 	assert_eq!(requests.len(), 1);
 
-	#[cfg(target_os = "linux")]
-	let lock_pid = 0;
+	let lock_pid = std::process::id();
 
 	let expect = format!(
 		r#"SetlkRequest {{
     node_id: 2,
     handle: 12345,
+    may_block: true,
     owner: 123456789123456789,
-    command: ClearLocks {{
-        range: 0..,
-        process_id: {pid},
+    lock: Some(
+        Lock {{
+            mode: Shared,
+            range: Range {{
+                start: 0,
+                length: None,
+            }},
+            process_id: Some({pid}),
+        }},
+    ),
+    lock_range: Range {{
+        start: 0,
+        length: None,
     }},
     flags: SetlkRequestFlags {{
         LK_FLOCK,
@@ -466,6 +531,150 @@ fn setlk_flock_unlock() {
 }}"#,
 		pid = lock_pid
 	);
+	if let Some(diff) = diff_str(&expect, &requests[0]) {
+		println!("{}", diff);
+		assert!(false);
+	}
+}
+
+#[test]
+#[cfg_attr(target_os = "freebsd", ignore)] // FUSE_LK_FLOCK not supported by FreeBSD
+fn setlk_flock_exclusive() {
+	let requests = setlk_test(|root| {
+		let path = root.join("setlk.txt");
+		flock(path, libc::LOCK_EX | libc::LOCK_NB);
+	});
+	assert_eq!(requests.len(), 1);
+
+	let lock_pid = std::process::id();
+
+	let expect = format!(
+		r#"SetlkRequest {{
+    node_id: 2,
+    handle: 12345,
+    may_block: false,
+    owner: 123456789123456789,
+    lock: Some(
+        Lock {{
+            mode: Exclusive,
+            range: Range {{
+                start: 0,
+                length: None,
+            }},
+            process_id: Some({pid}),
+        }},
+    ),
+    lock_range: Range {{
+        start: 0,
+        length: None,
+    }},
+    flags: SetlkRequestFlags {{
+        LK_FLOCK,
+    }},
+}}"#,
+		pid = lock_pid
+	);
+	if let Some(diff) = diff_str(&expect, &requests[0]) {
+		println!("{}", diff);
+		assert!(false);
+	}
+}
+
+#[test]
+#[cfg_attr(target_os = "freebsd", ignore)] // FUSE_LK_FLOCK not supported by FreeBSD
+fn setlkw_flock_exclusive() {
+	let requests = setlk_test(|root| {
+		let path = root.join("setlk.txt");
+		flock(path, libc::LOCK_EX);
+	});
+	assert_eq!(requests.len(), 1);
+
+	let lock_pid = std::process::id();
+
+	let expect = format!(
+		r#"SetlkRequest {{
+    node_id: 2,
+    handle: 12345,
+    may_block: true,
+    owner: 123456789123456789,
+    lock: Some(
+        Lock {{
+            mode: Exclusive,
+            range: Range {{
+                start: 0,
+                length: None,
+            }},
+            process_id: Some({pid}),
+        }},
+    ),
+    lock_range: Range {{
+        start: 0,
+        length: None,
+    }},
+    flags: SetlkRequestFlags {{
+        LK_FLOCK,
+    }},
+}}"#,
+		pid = lock_pid
+	);
+	if let Some(diff) = diff_str(&expect, &requests[0]) {
+		println!("{}", diff);
+		assert!(false);
+	}
+}
+
+#[test]
+#[cfg_attr(target_os = "freebsd", ignore)] // FUSE_LK_FLOCK not supported by FreeBSD
+fn setlk_flock_unlock() {
+	let requests = setlk_test(|root| {
+		let path = root.join("setlk.txt");
+		flock(path, libc::LOCK_UN | libc::LOCK_NB);
+	});
+	assert_eq!(requests.len(), 1);
+
+	let expect = r#"SetlkRequest {
+    node_id: 2,
+    handle: 12345,
+    may_block: false,
+    owner: 123456789123456789,
+    lock: None,
+    lock_range: Range {
+        start: 0,
+        length: None,
+    },
+    flags: SetlkRequestFlags {
+        LK_FLOCK,
+    },
+}"#;
+	if let Some(diff) = diff_str(&expect, &requests[0]) {
+		println!("{}", diff);
+		assert!(false);
+	}
+}
+
+#[test]
+#[cfg_attr(target_os = "freebsd", ignore)] // FUSE_LK_FLOCK not supported by FreeBSD
+fn setlkw_flock_unlock() {
+	let requests = setlk_test(|root| {
+		let path = root.join("setlk.txt");
+		flock(path, libc::LOCK_UN);
+	});
+	assert_eq!(requests.len(), 1);
+
+	let expect = r#"SetlkRequest {
+    node_id: 2,
+    handle: 12345,
+    may_block: true,
+    owner: 123456789123456789,
+    lock: None,
+    lock_range: Range {
+        start: 0,
+        length: None,
+    },
+    flags: SetlkRequestFlags {
+        LK_FLOCK,
+    },
+}"#;
 	if let Some(diff) = diff_str(&expect, &requests[0]) {
 		println!("{}", diff);
 		assert!(false);

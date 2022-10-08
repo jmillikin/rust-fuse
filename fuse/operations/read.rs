@@ -20,6 +20,7 @@ use core::fmt;
 
 use crate::internal::compat;
 use crate::internal::fuse_kernel;
+use crate::lock;
 use crate::node;
 use crate::server;
 use crate::server::decode;
@@ -64,12 +65,12 @@ impl ReadRequest<'_> {
 	}
 
 	#[must_use]
-	pub fn lock_owner(&self) -> Option<u64> {
+	pub fn lock_owner(&self) -> Option<lock::Owner> {
 		let body = self.body.as_v7p9()?;
 		if body.read_flags & fuse_kernel::FUSE_READ_LOCKOWNER == 0 {
 			return None;
 		}
-		Some(body.lock_owner)
+		Some(lock::Owner::new(body.lock_owner))
 	}
 
 	#[must_use]
