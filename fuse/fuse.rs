@@ -128,6 +128,40 @@ impl core::fmt::Debug for PollHandle {
 	}
 }
 
+/// Represents a process that initiated a FUSE request.
+///
+/// The concept of a "process ID" is not fully specified by POSIX, and some
+/// platforms may report process IDs that don't match the intuitive userland
+/// meaning. For example, platforms that represent processes as a group of
+/// threads might populate a request's process ID from the thread ID (TID)
+/// rather than the thread group ID (TGID).
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ProcessId {
+	pid: core::num::NonZeroU32,
+}
+
+impl ProcessId {
+	/// Creates a new `ProcessId` if the given value is not zero.
+	#[inline]
+	#[must_use]
+	pub fn new(pid: u32) -> Option<ProcessId> {
+		Some(Self { pid: core::num::NonZeroU32::new(pid)? })
+	}
+
+	/// Returns the process ID as a primitive integer.
+	#[inline]
+	#[must_use]
+	pub fn get(&self) -> u32 {
+		self.pid.get()
+	}
+}
+
+impl core::fmt::Debug for ProcessId {
+	fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
+		self.pid.fmt(fmt)
+	}
+}
+
 /// A version of the FUSE protocol.
 ///
 /// FUSE protocol versions are a (major, minor) version tuple, but FUSE does

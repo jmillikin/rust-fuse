@@ -118,12 +118,12 @@ impl RequestHeader {
 	}
 
 	#[must_use]
-	pub const fn opcode(&self) -> crate::Opcode {
+	pub fn opcode(&self) -> crate::Opcode {
 		crate::Opcode(self.raw.opcode.0)
 	}
 
 	#[must_use]
-	pub const fn request_id(&self) -> u64 {
+	pub fn request_id(&self) -> u64 {
 		self.raw.unique
 	}
 
@@ -133,22 +133,30 @@ impl RequestHeader {
 	}
 
 	#[must_use]
-	pub const fn user_id(&self) -> u32 {
+	pub fn user_id(&self) -> u32 {
 		self.raw.uid
 	}
 
 	#[must_use]
-	pub const fn group_id(&self) -> u32 {
+	pub fn group_id(&self) -> u32 {
 		self.raw.gid
 	}
 
+	/// The process that initiated a CUSE/FUSE request, if available.
+	///
+	/// See the documentation of [`ProcessId`](crate::ProcessId) for details
+	/// on the semantics of this value.
+	///
+	/// A request might not have a process ID, for example if it was generated
+	/// internally by the kernel, or if the client's PID isn't visible in the
+	/// server's PID namespace.
 	#[must_use]
-	pub const fn process_id(&self) -> u32 {
-		self.raw.pid
+	pub fn process_id(&self) -> Option<crate::ProcessId> {
+		crate::ProcessId::new(self.raw.pid)
 	}
 
 	#[must_use]
-	pub const fn len(&self) -> u32 {
+	pub fn len(&self) -> u32 {
 		self.raw.len
 	}
 }
@@ -161,7 +169,7 @@ impl fmt::Debug for RequestHeader {
 			.field("node_id", &format_args!("{:?}", self.node_id()))
 			.field("user_id", &self.raw.uid)
 			.field("group_id", &self.raw.gid)
-			.field("process_id", &self.raw.pid)
+			.field("process_id", &format_args!("{:?}", self.process_id()))
 			.field("len", &self.raw.len)
 			.finish()
 	}
