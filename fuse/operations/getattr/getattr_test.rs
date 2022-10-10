@@ -182,8 +182,7 @@ fn response_impl_debug() {
 	let mut response = GetattrResponse::new();
 	response.attr_mut().set_node_id(node_id);
 	response.attr_mut().set_size(999);
-	response.attr_mut().set_file_type(node::Type::Regular);
-	response.attr_mut().set_permissions(0o644);
+	response.attr_mut().set_mode(node::Mode::S_IFREG | 0o644);
 	response.set_attr_timeout(time::Duration::new(123, 456));
 
 	assert_eq!(

@@ -95,17 +95,6 @@ impl NodeAttr {
 		self.0.mode = mode.get();
 	}
 
-	pub fn set_file_type(&mut self, file_type: node::Type) {
-		let type_bits = file_type.as_bits() << 12;
-		let mask = !(0xF << 12);
-		self.0.mode = (self.0.mode & mask) | type_bits
-	}
-
-	pub fn set_permissions(&mut self, permissions: u32) {
-		let mask = !0o777_u32;
-		self.0.mode = (self.0.mode & mask) | permissions
-	}
-
 	pub fn set_nlink(&mut self, nlink: u32) {
 		self.0.nlink = nlink;
 	}

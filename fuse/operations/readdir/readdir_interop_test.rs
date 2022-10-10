@@ -54,8 +54,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 		node.set_cache_timeout(std::time::Duration::from_secs(60));
 
 		let attr = node.attr_mut();
-		attr.set_file_type(node::Type::Directory);
-		attr.set_permissions(0o755);
+		attr.set_mode(node::Mode::S_IFDIR | 0o755);
 		attr.set_nlink(2);
 
 		call.respond_ok(&resp)

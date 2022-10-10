@@ -54,8 +54,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 		node.set_cache_timeout(std::time::Duration::from_secs(60));
 
 		let attr = node.attr_mut();
-		attr.set_file_type(node::Type::Regular);
-		attr.set_permissions(0o644);
+		attr.set_mode(node::Mode::S_IFREG | 0o644);
 		attr.set_nlink(1);
 
 		call.respond_ok(&resp)
@@ -73,8 +72,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 		node.set_id(node::Id::new(3).unwrap());
 
 		let attr = node.attr_mut();
-		attr.set_file_type(node::Type::Regular);
-		attr.set_permissions(0o644);
+		attr.set_mode(node::Mode::S_IFREG | 0o644);
 		attr.set_nlink(1);
 
 		call.respond_ok(&resp)

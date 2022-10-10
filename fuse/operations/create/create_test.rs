@@ -216,8 +216,7 @@ fn response_impl_debug() {
 	node.set_id(node::Id::new(11).unwrap());
 	node.set_generation(22);
 	node.attr_mut().set_node_id(node::Id::new(11).unwrap());
-	node.attr_mut().set_file_type(node::Type::Regular);
-	node.attr_mut().set_permissions(0o644);
+	node.attr_mut().set_mode(node::Mode::S_IFREG | 0o644);
 
 	response.set_handle(123);
 	response.mut_flags().set(CreateResponseFlag::DIRECT_IO);

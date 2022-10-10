@@ -18,6 +18,7 @@
 
 use core::fmt;
 use core::num;
+use core::ops;
 
 use crate::internal::fuse_kernel;
 
@@ -298,6 +299,23 @@ pub struct Mode {
 }
 
 impl Mode {
+	/// Mode mask for a [`Directory`](Type::Directory) node.
+	pub const S_IFDIR: Mode = Type::Directory.as_mode();
+	/// Mode mask for a [`CharacterDevice`](Type::CharacterDevice) node.
+	pub const S_IFCHR: Mode = Type::CharacterDevice.as_mode();
+	/// Mode mask for a [`BlockDevice`](Type::BlockDevice) node.
+	pub const S_IFBLK: Mode = Type::BlockDevice.as_mode();
+	/// Mode mask for a [`Regular`](Type::Regular) node.
+	pub const S_IFREG: Mode = Type::Regular.as_mode();
+	/// Mode mask for a [`Symlink`](Type::Symlink) node.
+	pub const S_IFLNK: Mode = Type::Symlink.as_mode();
+	/// Mode mask for a [`Socket`](Type::Socket) node.
+	pub const S_IFSOCK: Mode = Type::Socket.as_mode();
+	/// Mode mask for a [`NamedPipe`](Type::NamedPipe) node.
+	pub const S_IFIFO: Mode = Type::NamedPipe.as_mode();
+}
+
+impl Mode {
 	/// Creates a new `Mode` with the given value.
 	#[inline]
 	#[must_use]
@@ -346,6 +364,15 @@ impl fmt::UpperHex for Mode {
 	}
 }
 
+impl ops::BitOr<u32> for Mode {
+	type Output = Mode;
+
+	fn bitor(self, rhs: u32) -> Mode {
+		Mode {
+			bits: self.bits | rhs,
+		}
+	}
+}
 
 // }}}
 
@@ -417,6 +444,12 @@ impl Type {
 
 	#[inline]
 	#[must_use]
+	pub const fn as_mode(&self) -> Mode {
+		Mode::new(self.as_bits() << 12)
+	}
+
+	#[inline]
+	#[must_use]
 	pub(crate) const fn as_bits(self) -> u32 {
 		match self {
 			Self::NamedPipe       => Self::DT_FIFO,
@@ -442,6 +475,12 @@ impl Type {
 			Self::DT_SOCK => Some(Self::Socket),
 			_ => None,
 		}
+	}
+}
+
+impl From<Type> for Mode {
+	fn from(node_type: Type) -> Mode {
+		node_type.as_mode()
 	}
 }
 

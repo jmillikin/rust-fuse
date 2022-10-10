@@ -122,8 +122,7 @@ fn response_v7p1() {
 	let mut response = SetattrResponse::new();
 	let attr = response.attr_mut();
 	attr.set_node_id(node::Id::new(2).unwrap());
-	attr.set_file_type(node::Type::Regular);
-	attr.set_permissions(0o644);
+	attr.set_mode(node::Mode::S_IFREG | 0o644);
 	attr.set_nlink(1);
 	attr.set_size(999);
 	response.set_cache_duration(time::Duration::new(123, 456));
@@ -166,8 +165,7 @@ fn response_v7p9() {
 	let mut response = SetattrResponse::new();
 	let attr = response.attr_mut();
 	attr.set_node_id(node::Id::new(2).unwrap());
-	attr.set_file_type(node::Type::Regular);
-	attr.set_permissions(0o644);
+	attr.set_mode(node::Mode::S_IFREG | 0o644);
 	attr.set_nlink(1);
 	attr.set_size(999);
 	response.set_cache_duration(time::Duration::new(123, 456));
@@ -206,8 +204,7 @@ fn response_impl_debug() {
 	let mut response = SetattrResponse::new();
 	let attr = response.attr_mut();
 	attr.set_node_id(node::Id::new(2).unwrap());
-	attr.set_file_type(node::Type::Regular);
-	attr.set_permissions(0o644);
+	attr.set_mode(node::Mode::S_IFREG | 0o644);
 	attr.set_nlink(1);
 	attr.set_size(999);
 	response.set_cache_duration(time::Duration::new(123, 456));

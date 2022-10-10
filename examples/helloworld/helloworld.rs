@@ -35,8 +35,7 @@ impl HelloTxt {
 	fn set_attr(&self, attr: &mut fuse::NodeAttr) {
 		attr.set_user_id(getuid());
 		attr.set_group_id(getgid());
-		attr.set_file_type(node::Type::Regular);
-		attr.set_permissions(0o644);
+		attr.set_mode(node::Mode::S_IFREG | 0o644);
 		attr.set_size(HELLO_WORLD.len() as u64);
 		attr.set_nlink(1);
 	}
@@ -78,8 +77,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for HelloWorldFS {
 		if request.node_id().is_root() {
 			attr.set_user_id(getuid());
 			attr.set_group_id(getgid());
-			attr.set_file_type(node::Type::Directory);
-			attr.set_permissions(0o755);
+			attr.set_mode(node::Mode::S_IFDIR | 0o755);
 			attr.set_nlink(2);
 			return call.respond_ok(&resp);
 		}
