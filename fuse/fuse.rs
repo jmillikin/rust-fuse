@@ -161,6 +161,114 @@ impl core::fmt::Debug for ProcessId {
 	}
 }
 
+/// A measurement of Unix time with nanosecond precision.
+///
+/// Unix time is the number of Unix seconds that have elapsed since the Unix
+/// epoch of 1970-01-01 00:00:00 UTC. Unix seconds are exactly 1/86400 of a day.
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct UnixTime {
+	seconds: i64,
+	nanos: u32,
+}
+
+const UNIX_EPOCH: UnixTime = UnixTime {
+	seconds: 0,
+	nanos: 0,
+};
+
+impl UnixTime {
+	/// The Unix epoch, 1970-01-01 00:00:00 UTC.
+	pub const EPOCH: UnixTime = UNIX_EPOCH;
+
+	/// Creates a new `UnixTime` with the given offset from the epoch.
+	///
+	/// Returns `None` if the nanoseconds value exceeds 999,999,999.
+	#[inline]
+	#[must_use]
+	pub const fn new(seconds: i64, nanos: u32) -> Option<UnixTime> {
+		if nanos > crate::internal::timestamp::MAX_NANOS {
+			return None;
+		}
+		Some(Self { seconds, nanos })
+	}
+
+	/// Creates a new `UnixTime` without checking that the nanoseconds value
+	/// is valid.
+	///
+	/// # Safety
+	///
+	/// The nanoseconds value must not exceed 999,999,999.
+	#[inline]
+	#[must_use]
+	pub const unsafe fn new_unchecked(seconds: i64, nanos: u32) -> UnixTime {
+		Self { seconds, nanos }
+	}
+
+	#[inline]
+	#[must_use]
+	pub(crate) unsafe fn from_timespec_unchecked(
+		seconds: u64,
+		nanos: u32,
+	) -> UnixTime {
+		Self {
+			seconds: seconds as i64,
+			nanos,
+		}
+	}
+
+	#[inline]
+	#[must_use]
+	pub(crate) fn as_timespec(&self) -> (u64, u32) {
+		(self.seconds as u64, self.nanos)
+	}
+
+	/// Returns the number of whole seconds contained by this `UnixTime`.
+	#[inline]
+	#[must_use]
+	pub const fn seconds(&self) -> i64 {
+		self.seconds
+	}
+
+	/// Returns the fractional part of this `UnixTime`, in nanoseconds.
+	#[inline]
+	#[must_use]
+	pub const fn nanos(&self) -> u32 {
+		self.nanos
+	}
+
+	/// Attempts to convert this `UnixTime` to a [`SystemTime`].
+	///
+	/// [`SystemTime`]: std::time::SystemTime
+	#[cfg(any(feature = "std", doc))]
+	#[must_use]
+	pub fn to_system_time(&self) -> Option<std::time::SystemTime> {
+		use std::time::{Duration, SystemTime};
+
+		if self.seconds == 0 && self.nanos == 0 {
+			return Some(SystemTime::UNIX_EPOCH);
+		}
+
+		if self.seconds > 0 {
+			return SystemTime::UNIX_EPOCH
+				.checked_add(Duration::from_secs(self.seconds as u64))?
+				.checked_add(Duration::from_nanos(u64::from(self.nanos)));
+		}
+
+		let seconds = self.seconds.checked_neg()?;
+		SystemTime::UNIX_EPOCH
+			.checked_sub(Duration::from_secs(seconds as u64))?
+			.checked_sub(Duration::from_nanos(u64::from(self.nanos)))
+	}
+}
+
+impl core::fmt::Debug for UnixTime {
+	fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
+		fmt.debug_tuple("UnixTime")
+			.field(&format_args!("{:?}.{:09?}", self.seconds, self.nanos))
+			.finish()
+	}
+}
+
 /// A version of the FUSE protocol.
 ///
 /// FUSE protocol versions are a (major, minor) version tuple, but FUSE does

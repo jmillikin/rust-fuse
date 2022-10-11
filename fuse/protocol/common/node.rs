@@ -18,6 +18,7 @@ use core::{fmt, slice, time};
 
 use crate::node;
 use crate::internal::fuse_kernel;
+use crate::internal::timestamp;
 use crate::protocol::common::NodeAttr;
 use crate::server::encode;
 
@@ -44,22 +45,24 @@ impl Node {
 
 	#[must_use]
 	pub fn cache_timeout(&self) -> time::Duration {
-		time::Duration::new(self.0.entry_valid, self.0.entry_valid_nsec)
+		timestamp::new_duration(self.0.entry_valid, self.0.entry_valid_nsec)
 	}
 
 	pub fn set_cache_timeout(&mut self, d: time::Duration) {
-		self.0.entry_valid = d.as_secs();
-		self.0.entry_valid_nsec = d.subsec_nanos();
+		let (seconds, nanos) = timestamp::split_duration(d);
+		self.0.entry_valid = seconds;
+		self.0.entry_valid_nsec = nanos;
 	}
 
 	#[must_use]
 	pub fn attr_cache_timeout(&self) -> time::Duration {
-		time::Duration::new(self.0.attr_valid, self.0.attr_valid_nsec)
+		timestamp::new_duration(self.0.attr_valid, self.0.attr_valid_nsec)
 	}
 
 	pub fn set_attr_cache_timeout(&mut self, d: time::Duration) {
-		self.0.attr_valid = d.as_secs();
-		self.0.attr_valid_nsec = d.subsec_nanos();
+		let (seconds, nanos) = timestamp::split_duration(d);
+		self.0.attr_valid = seconds;
+		self.0.attr_valid_nsec = nanos;
 	}
 
 	#[must_use]

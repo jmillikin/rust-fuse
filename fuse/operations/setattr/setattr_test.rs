@@ -55,17 +55,42 @@ fn request() {
 	assert_eq!(request.handle(), Some(1));
 	assert_eq!(request.size(), Some(2));
 	assert_eq!(request.lock_owner(), Some(lock::Owner::new(3)));
-	assert_eq!(request.atime(), Some(time::Duration::new(4, 7)));
+	assert_eq!(request.atime(), fuse::UnixTime::new(4, 7));
 	assert_eq!(request.atime_now(), true);
-	assert_eq!(request.mtime(), Some(time::Duration::new(5, 8)));
+	assert_eq!(request.mtime(), fuse::UnixTime::new(5, 8));
 	assert_eq!(request.mtime_now(), true);
-	assert_eq!(request.ctime(), Some(time::Duration::new(6, 9)));
+	assert_eq!(request.ctime(), fuse::UnixTime::new(6, 9));
 	assert_eq!(request.user_id(), Some(12));
 	assert_eq!(request.group_id(), Some(13));
 
 	let mode = request.mode().unwrap();
 	assert_eq!(node::Type::from_mode(mode), Some(node::Type::Regular));
 	assert_eq!(mode.permissions(), 0o644);
+}
+
+#[test]
+fn request_negative_unix_times() {
+	let buf;
+	let request = fuse_testutil::build_request!(buf, SetattrRequest, {
+		.set_header(|h| {
+			h.opcode = fuse_kernel::FUSE_SETATTR;
+			h.nodeid = 1000;
+		})
+		.push_sized(&fuse_kernel::fuse_setattr_in {
+			valid: 0xFFFF,
+			atime: -4_i64 as u64,
+			mtime: -5_i64 as u64,
+			ctime: -6_i64 as u64,
+			atimensec: 7,
+			mtimensec: 8,
+			ctimensec: 9,
+			..fuse_kernel::fuse_setattr_in::zeroed()
+		})
+	});
+
+	assert_eq!(request.atime(), fuse::UnixTime::new(-4, 7));
+	assert_eq!(request.mtime(), fuse::UnixTime::new(-5, 8));
+	assert_eq!(request.ctime(), fuse::UnixTime::new(-6, 9));
 }
 
 #[test]
@@ -104,11 +129,11 @@ fn request_impl_debug() {
 			"    handle: Some(1),\n",
 			"    size: Some(2),\n",
 			"    lock_owner: Some(0x0000000000000003),\n",
-			"    atime: Some(4.000000007s),\n",
+			"    atime: Some(UnixTime(4.000000007)),\n",
 			"    atime_now: true,\n",
-			"    mtime: Some(5.000000008s),\n",
+			"    mtime: Some(UnixTime(5.000000008)),\n",
 			"    mtime_now: true,\n",
-			"    ctime: Some(6.000000009s),\n",
+			"    ctime: Some(UnixTime(6.000000009)),\n",
 			"    mode: Some(0o100644),\n",
 			"    user_id: Some(12),\n",
 			"    group_id: Some(13),\n",
@@ -217,9 +242,9 @@ fn response_impl_debug() {
 			"        node_id: Some(2),\n",
 			"        size: 999,\n",
 			"        blocks: 0,\n",
-			"        atime: 0ns,\n",
-			"        mtime: 0ns,\n",
-			"        ctime: 0ns,\n",
+			"        atime: UnixTime(0.000000000),\n",
+			"        mtime: UnixTime(0.000000000),\n",
+			"        ctime: UnixTime(0.000000000),\n",
 			"        mode: 0o100644,\n",
 			"        nlink: 1,\n",
 			"        uid: 0,\n",

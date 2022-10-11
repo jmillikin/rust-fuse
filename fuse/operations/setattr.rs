@@ -23,6 +23,7 @@ use core::time;
 
 use crate::NodeAttr;
 use crate::internal::fuse_kernel;
+use crate::internal::timestamp;
 use crate::lock;
 use crate::node;
 use crate::server;
@@ -60,11 +61,13 @@ impl SetattrRequest<'_> {
 		bitmask: u32,
 		seconds: u64,
 		nanos: u32,
-	) -> Option<time::Duration> {
+	) -> Option<crate::UnixTime> {
 		if self.raw.valid & bitmask == 0 {
 			return None;
 		}
-		Some(time::Duration::new(seconds, nanos))
+		Some(unsafe {
+			crate::UnixTime::from_timespec_unchecked(seconds, nanos)
+		})
 	}
 
 	#[must_use]
@@ -86,7 +89,7 @@ impl SetattrRequest<'_> {
 	}
 
 	#[must_use]
-	pub fn atime(&self) -> Option<time::Duration> {
+	pub fn atime(&self) -> Option<crate::UnixTime> {
 		self.get_timestamp(
 			fuse_kernel::FATTR_ATIME,
 			self.raw.atime,
@@ -100,7 +103,7 @@ impl SetattrRequest<'_> {
 	}
 
 	#[must_use]
-	pub fn mtime(&self) -> Option<time::Duration> {
+	pub fn mtime(&self) -> Option<crate::UnixTime> {
 		self.get_timestamp(
 			fuse_kernel::FATTR_MTIME,
 			self.raw.mtime,
@@ -114,7 +117,7 @@ impl SetattrRequest<'_> {
 	}
 
 	#[must_use]
-	pub fn ctime(&self) -> Option<time::Duration> {
+	pub fn ctime(&self) -> Option<crate::UnixTime> {
 		self.get_timestamp(
 			fuse_kernel::FATTR_CTIME,
 			self.raw.ctime,
@@ -150,7 +153,18 @@ impl<'a> decode::FuseRequest<'a> for SetattrRequest<'a> {
 		dec.expect_opcode(fuse_kernel::FUSE_SETATTR)?;
 		let header = dec.header();
 		decode::node_id(header.nodeid)?;
-		let raw = dec.next_sized()?;
+		let raw: &fuse_kernel::fuse_setattr_in = dec.next_sized()?;
+
+		if raw.valid & fuse_kernel::FATTR_ATIME > 0 {
+			decode::check_timespec_nanos(raw.atimensec)?;
+		}
+		if raw.valid & fuse_kernel::FATTR_MTIME > 0 {
+			decode::check_timespec_nanos(raw.mtimensec)?;
+		}
+		if raw.valid & fuse_kernel::FATTR_CTIME > 0 {
+			decode::check_timespec_nanos(raw.ctimensec)?;
+		}
+
 		Ok(Self { header, raw })
 	}
 }
@@ -208,12 +222,13 @@ impl<'a> SetattrResponse<'a> {
 
 	#[must_use]
 	pub fn cache_duration(&self) -> time::Duration {
-		time::Duration::new(self.raw.attr_valid, self.raw.attr_valid_nsec)
+		timestamp::new_duration(self.raw.attr_valid, self.raw.attr_valid_nsec)
 	}
 
 	pub fn set_cache_duration(&mut self, cache_duration: time::Duration) {
-		self.raw.attr_valid = cache_duration.as_secs();
-		self.raw.attr_valid_nsec = cache_duration.subsec_nanos();
+		let (seconds, nanos) = timestamp::split_duration(cache_duration);
+		self.raw.attr_valid = seconds;
+		self.raw.attr_valid_nsec = nanos;
 	}
 }
 

@@ -240,9 +240,52 @@ fn setattr_utimens() {
     handle: None,
     size: None,
     lock_owner: None,
-    atime: Some(1400000000.001234s),
+    atime: Some(UnixTime(1400000000.001234000)),
     atime_now: false,
-    mtime: Some(1500000000.005678s),
+    mtime: Some(UnixTime(1500000000.005678000)),
+    mtime_now: false,
+    ctime: None,
+    mode: None,
+    user_id: None,
+    group_id: None,
+}"#;
+	if let Some(diff) = diff_str(expect, &requests[0]) {
+		println!("{}", diff);
+		assert!(false);
+	}
+}
+
+#[test]
+fn setattr_utimens_negative() {
+	let requests = setattr_test(None, |root| {
+		let path = path_cstr(root.join("file.txt"));
+
+		let times = [
+			// atime
+			libc::timeval {
+				tv_sec: -1400000000,
+				tv_usec: 1234,
+			},
+			// mtime
+			libc::timeval {
+				tv_sec: -1500000000,
+				tv_usec: 5678,
+			},
+		];
+
+		let rc = unsafe { libc::utimes(path.as_ptr(), (&times).as_ptr()) };
+		assert_eq!(rc, 0);
+	});
+	assert_eq!(requests.len(), 1);
+
+	let expect = r#"SetattrRequest {
+    node_id: 2,
+    handle: None,
+    size: None,
+    lock_owner: None,
+    atime: Some(UnixTime(-1400000000.001234000)),
+    atime_now: false,
+    mtime: Some(UnixTime(-1500000000.005678000)),
     mtime_now: false,
     ctime: None,
     mode: None,

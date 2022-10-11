@@ -8,6 +8,7 @@ filegroup(
         "dirent.rs",
         "fuse_kernel.rs",
         "fuse_kernel_util.rs",
+        "timestamp.rs",
     ],
     visibility = ["//fuse:__subpackages__"],
 )

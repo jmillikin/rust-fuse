@@ -85,6 +85,7 @@ pub enum RequestError {
 	MissingNodeId,
 	NodeNameError(node::NameError),
 	OpcodeMismatch,
+	TimestampNanosOverflow,
 	UnexpectedEof,
 	XattrNameError(xattr::NameError),
 	XattrValueError(xattr::ValueError),

@@ -21,6 +21,7 @@ use core::mem::{align_of, size_of};
 use core::slice::from_raw_parts;
 
 use crate::internal::fuse_kernel;
+use crate::internal::timestamp;
 use crate::node;
 use crate::server;
 use crate::server::RequestError;
@@ -235,4 +236,11 @@ pub(crate) fn node_id(raw: u64) -> Result<node::Id, RequestError> {
 		Some(x) => Ok(x),
 		None => Err(RequestError::MissingNodeId),
 	}
+}
+
+pub(crate) fn check_timespec_nanos(nanos: u32) -> Result<(), RequestError> {
+	if nanos > timestamp::MAX_NANOS {
+		return Err(RequestError::TimestampNanosOverflow)
+	}
+	Ok(())
 }

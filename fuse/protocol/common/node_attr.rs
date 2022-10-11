@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::{fmt, time};
+use core::fmt;
 
 use crate::node;
 use crate::internal::fuse_kernel;
@@ -57,33 +57,30 @@ impl NodeAttr {
 	}
 
 	#[must_use]
-	pub fn atime(&self) -> time::Duration {
-		time::Duration::new(self.0.atime, self.0.atimensec)
+	pub fn atime(&self) -> crate::UnixTime {
+		crate::UnixTime::new(self.0.atime as i64, self.0.atimensec).unwrap()
 	}
 
-	pub fn set_atime(&mut self, atime: time::Duration) {
-		self.0.atime = atime.as_secs();
-		self.0.atimensec = atime.subsec_nanos();
-	}
-
-	#[must_use]
-	pub fn mtime(&self) -> time::Duration {
-		time::Duration::new(self.0.mtime, self.0.mtimensec)
-	}
-
-	pub fn set_mtime(&mut self, mtime: time::Duration) {
-		self.0.mtime = mtime.as_secs();
-		self.0.mtimensec = mtime.subsec_nanos();
+	pub fn set_atime(&mut self, atime: crate::UnixTime) {
+		(self.0.atime, self.0.atimensec) = atime.as_timespec();
 	}
 
 	#[must_use]
-	pub fn ctime(&self) -> time::Duration {
-		time::Duration::new(self.0.ctime, self.0.ctimensec)
+	pub fn mtime(&self) -> crate::UnixTime {
+		crate::UnixTime::new(self.0.mtime as i64, self.0.mtimensec).unwrap()
 	}
 
-	pub fn set_ctime(&mut self, ctime: time::Duration) {
-		self.0.ctime = ctime.as_secs();
-		self.0.ctimensec = ctime.subsec_nanos();
+	pub fn set_mtime(&mut self, mtime: crate::UnixTime) {
+		(self.0.mtime, self.0.mtimensec) = mtime.as_timespec();
+	}
+
+	#[must_use]
+	pub fn ctime(&self) -> crate::UnixTime {
+		crate::UnixTime::new(self.0.ctime as i64, self.0.ctimensec).unwrap()
+	}
+
+	pub fn set_ctime(&mut self, ctime: crate::UnixTime) {
+		(self.0.ctime, self.0.ctimensec) = ctime.as_timespec();
 	}
 
 	#[must_use]
@@ -132,9 +129,9 @@ impl fmt::Debug for NodeAttr {
 			.field("node_id", &format_args!("{:?}", &self.node_id()))
 			.field("size", &self.0.size)
 			.field("blocks", &self.0.blocks)
-			.field("atime", &self.atime())
-			.field("mtime", &self.mtime())
-			.field("ctime", &self.ctime())
+			.field("atime", &format_args!("{:?}", self.atime()))
+			.field("mtime", &format_args!("{:?}", self.mtime()))
+			.field("ctime", &format_args!("{:?}", self.ctime()))
 			.field("mode", &format_args!("{:#o}", &self.0.mode))
 			.field("nlink", &self.0.nlink)
 			.field("uid", &self.0.uid)

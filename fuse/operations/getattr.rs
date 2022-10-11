@@ -19,11 +19,12 @@
 use core::fmt;
 use core::marker::PhantomData;
 use core::slice;
-use core::time::Duration;
+use core::time;
 
 use crate::NodeAttr;
 use crate::internal::compat;
 use crate::internal::fuse_kernel;
+use crate::internal::timestamp;
 use crate::node;
 use crate::server;
 use crate::server::decode;
@@ -114,13 +115,14 @@ impl<'a> GetattrResponse<'a> {
 	}
 
 	#[must_use]
-	pub fn attr_timeout(&self) -> Duration {
-		Duration::new(self.raw.attr_valid, self.raw.attr_valid_nsec)
+	pub fn attr_timeout(&self) -> time::Duration {
+		timestamp::new_duration(self.raw.attr_valid, self.raw.attr_valid_nsec)
 	}
 
-	pub fn set_attr_timeout(&mut self, attr_timeout: Duration) {
-		self.raw.attr_valid = attr_timeout.as_secs();
-		self.raw.attr_valid_nsec = attr_timeout.subsec_nanos();
+	pub fn set_attr_timeout(&mut self, attr_timeout: time::Duration) {
+		let (seconds, nanos) = timestamp::split_duration(attr_timeout);
+		self.raw.attr_valid = seconds;
+		self.raw.attr_valid_nsec = nanos;
 	}
 
 	#[must_use]
