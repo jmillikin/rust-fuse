@@ -15,9 +15,28 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #![warn(
+	// API hygiene
+	clippy::exhaustive_enums,
+	clippy::exhaustive_structs,
 	clippy::must_use_candidate,
+
+	// Panic hygiene
+	clippy::expect_used,
+	clippy::todo,
+	clippy::unimplemented,
+	clippy::unwrap_used,
+
+	// Explicit casts
+	clippy::fn_to_numeric_cast_any,
 	clippy::ptr_as_ptr,
+
+	// Optimization
 	clippy::trivially_copy_pass_by_ref,
+
+	// Unused symbols
+	clippy::let_underscore_must_use,
+	clippy::no_effect_underscore_binding,
+	clippy::used_underscore_binding,
 )]
 
 // use core::ffi::CStr;

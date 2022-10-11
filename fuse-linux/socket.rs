@@ -32,9 +32,7 @@ struct Socket {
 
 impl Drop for Socket {
 	fn drop(&mut self) {
-		unsafe {
-			let _ = sys::close(self.fd);
-		}
+		let _rc = unsafe { sys::close(self.fd) };
 	}
 }
 

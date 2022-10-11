@@ -127,7 +127,7 @@ impl RequestHeader {
 
 	#[must_use]
 	pub fn opcode(&self) -> crate::Opcode {
-		crate::Opcode(self.raw.opcode.0)
+		crate::Opcode { bits: self.raw.opcode.0 }
 	}
 
 	#[must_use]

@@ -26,9 +26,28 @@
 )]
 
 #![warn(
+	// API hygiene
+	clippy::exhaustive_enums,
+	clippy::exhaustive_structs,
 	clippy::must_use_candidate,
+
+	// Panic hygiene
+	clippy::expect_used,
+	clippy::todo,
+	clippy::unimplemented,
+	clippy::unwrap_used,
+
+	// Explicit casts
+	clippy::fn_to_numeric_cast_any,
 	clippy::ptr_as_ptr,
+
+	// Optimization
 	clippy::trivially_copy_pass_by_ref,
+
+	// Unused symbols
+	clippy::let_underscore_must_use,
+	clippy::no_effect_underscore_binding,
+	clippy::used_underscore_binding,
 )]
 
 #[macro_use]
@@ -302,19 +321,23 @@ impl Version {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Opcode(pub u32);
+pub struct Opcode {
+	bits: u32,
+}
 
 macro_rules! export_opcodes {
 	( $( $(#[$meta:meta])* $name:ident , )+ ) => {
 		mod fuse_opcode {
 			$(
-				pub const $name: u32 = crate::internal::fuse_kernel::$name.0;
+				pub const $name: crate::Opcode = crate::Opcode {
+					bits: crate::internal::fuse_kernel::$name.0,
+				};
 			)+
 		}
 		impl Opcode {
 			$(
 				$(#[$meta])*
-				pub const $name: Opcode = Opcode(fuse_opcode::$name);
+				pub const $name: Opcode = fuse_opcode::$name;
 			)+
 		}
 	};
