@@ -31,7 +31,7 @@ pub use freebsd_errno as ErrorCode;
 
 struct PrintHooks {}
 
-impl server::ServerHooks for PrintHooks {
+impl server::Hooks for PrintHooks {
 	fn unknown_request(&self, request: &fuse::server::UnknownRequest) {
 		println!("\n[unknown_request]\n{:#?}", request);
 	}

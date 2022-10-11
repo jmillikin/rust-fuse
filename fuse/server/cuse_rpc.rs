@@ -26,10 +26,7 @@ use crate::server;
 use crate::server::io;
 use crate::server::{CuseRequestBuilder, ErrorResponse, ServerError};
 
-#[cfg(feature = "std")]
-use crate::server::ServerHooks;
-
-pub use crate::server::io::CuseSocket as CuseSocket;
+pub use crate::server::io::CuseSocket;
 
 pub struct CuseServerBuilder<S, H> {
 	socket: S,
@@ -37,7 +34,7 @@ pub struct CuseServerBuilder<S, H> {
 	opts: CuseOptions,
 
 	#[cfg(feature = "std")]
-	hooks: Option<Box<dyn ServerHooks>>,
+	hooks: Option<Box<dyn server::Hooks>>,
 }
 
 struct CuseOptions {
@@ -90,7 +87,7 @@ impl<S, H> CuseServerBuilder<S, H> {
 
 	#[cfg(feature = "std")]
 	#[must_use]
-	pub fn server_hooks(mut self, hooks: Box<dyn ServerHooks>) -> Self {
+	pub fn server_hooks(mut self, hooks: Box<dyn server::Hooks>) -> Self {
 		self.hooks = Some(hooks);
 		self
 	}
@@ -148,7 +145,7 @@ pub struct CuseServer<S, H> {
 	req_builder: CuseRequestBuilder,
 
 	#[cfg(feature = "std")]
-	hooks: Option<Box<dyn ServerHooks>>,
+	hooks: Option<Box<dyn server::Hooks>>,
 }
 
 impl<S, H> CuseServer<S, H>
@@ -158,15 +155,17 @@ where
 {
 	pub fn serve(&self) -> Result<(), ServerError<S::Error>> {
 		let mut buf = ArrayBuffer::new();
+
+		#[allow(unused_mut)]
+		let mut dispatcher = CuseDispatcher::new(&self.socket, &self.handlers);
+
+		#[cfg(feature = "std")]
+		if let Some(hooks) = self.hooks.as_ref() {
+			dispatcher.set_hooks(hooks.as_ref());
+		}
+
 		while let Some(request) = self.try_next(buf.borrow_mut())? {
-			let result = cuse_request_dispatch(
-				&self.socket,
-				&self.handlers,
-				#[cfg(feature = "std")]
-				self.hooks.as_ref().map(|h| h.as_ref()),
-				request,
-			);
-			match result {
+			match dispatcher.dispatch(&request) {
 				Ok(()) => {},
 				Err(io::SendError::NotFound(_)) => {},
 				Err(err) => return Err(err.into()),
@@ -235,9 +234,7 @@ pub struct CuseCall<'a, S> {
 	header: &'a server::RequestHeader,
 	response_ctx: server::ResponseContext,
 	sent_reply: &'a mut bool,
-
-	#[cfg(feature = "std")]
-	hooks: Option<&'a dyn ServerHooks>,
+	hooks: Option<&'a dyn server::Hooks>,
 }
 
 impl<S> CuseCall<'_, S> {
@@ -282,7 +279,6 @@ impl<S: CuseSocket> CuseCall<'_, S> {
 	}
 
 	fn unimplemented<R>(self) -> CuseResult<R, S::Error> {
-		#[cfg(feature = "std")]
 		if let Some(hooks) = self.hooks {
 			hooks.unhandled_request(self.header);
 		}
@@ -290,17 +286,44 @@ impl<S: CuseSocket> CuseCall<'_, S> {
 	}
 }
 
+pub struct CuseDispatcher<'a, S, H> {
+	socket: &'a S,
+	handlers: &'a H,
+	hooks: Option<&'a dyn server::Hooks>,
+}
+
+impl<'a, S, H> CuseDispatcher<'a, S, H> {
+	pub fn new(socket: &'a S, handlers: &'a H) -> CuseDispatcher<'a, S, H> {
+		Self {
+			socket,
+			handlers,
+			hooks: None,
+		}
+	}
+
+	pub fn set_hooks(&mut self, hooks: &'a dyn server::Hooks) {
+		self.hooks = Some(hooks);
+	}
+}
+
+impl<S: CuseSocket, H: CuseHandlers<S>> CuseDispatcher<'_, S, H> {
+	pub fn dispatch(
+		&self,
+		request: &server::CuseRequest,
+	) -> Result<(), io::SendError<S::Error>> {
+		cuse_request_dispatch(self.socket, self.handlers, self.hooks, request)
+	}
+}
+
 fn cuse_request_dispatch<S: CuseSocket>(
 	socket: &S,
 	handlers: &impl CuseHandlers<S>,
-	#[cfg(feature = "std")]
-	hooks: Option<&dyn ServerHooks>,
-	request: server::CuseRequest,
+	hooks: Option<&dyn server::Hooks>,
+	request: &server::CuseRequest,
 ) -> Result<(), io::SendError<S::Error>> {
 	use crate::server::decode::CuseRequest;
 
 	let header = request.header();
-	#[cfg(feature = "std")]
 	if let Some(hooks) = hooks {
 		hooks.request(header);
 	}
@@ -313,13 +336,12 @@ fn cuse_request_dispatch<S: CuseSocket>(
 		header,
 		response_ctx,
 		sent_reply: &mut sent_reply,
-		#[cfg(feature = "std")]
 		hooks,
 	};
 
 	macro_rules! do_dispatch {
 		($req_type:ty, $handler:tt) => {{
-			match <$req_type>::from_cuse_request(&request) {
+			match <$req_type>::from_cuse_request(request) {
 				Ok(request) => {
 					let handler_result = handlers.$handler(call, &request);
 					if sent_reply {
@@ -333,7 +355,6 @@ fn cuse_request_dispatch<S: CuseSocket>(
 					Ok(())
 				},
 				Err(err) => {
-					#[cfg(feature = "std")]
 					if let Some(hooks) = hooks {
 						hooks.request_error(header, err);
 					}
@@ -351,10 +372,9 @@ fn cuse_request_dispatch<S: CuseSocket>(
 		Op::FUSE_FLUSH => do_dispatch!(FlushRequest, flush),
 		Op::FUSE_FSYNC => do_dispatch!(FsyncRequest, fsync),
 		Op::FUSE_INTERRUPT => {
-			match InterruptRequest::from_cuse_request(&request) {
+			match InterruptRequest::from_cuse_request(request) {
 				Ok(request) => handlers.interrupt(call, &request),
 				Err(err) => {
-					#[cfg(feature = "std")]
 					if let Some(hooks) = hooks {
 						hooks.request_error(header, err);
 					}
@@ -370,9 +390,8 @@ fn cuse_request_dispatch<S: CuseSocket>(
 		Op::FUSE_RELEASE => do_dispatch!(ReleaseRequest, release),
 		Op::FUSE_WRITE => do_dispatch!(WriteRequest, write),
 		_ => {
-			#[cfg(feature = "std")]
 			if let Some(hooks) = hooks {
-				let req = server::UnknownRequest::from_cuse_request(&request);
+				let req = server::UnknownRequest::from_cuse_request(request);
 				hooks.unknown_request(&req);
 			}
 			let response = ErrorResponse::new(crate::Error::UNIMPLEMENTED);
@@ -405,7 +424,6 @@ pub trait CuseHandlers<S: CuseSocket> {
 		call: CuseCall<S>,
 		request: &operations::InterruptRequest,
 	) {
-		#[cfg(feature = "std")]
 		if let Some(hooks) = call.hooks {
 			hooks.unhandled_request(call.header);
 		}

@@ -25,10 +25,7 @@ use crate::server;
 use crate::server::io;
 use crate::server::{ErrorResponse, FuseRequestBuilder, ServerError};
 
-#[cfg(feature = "std")]
-use crate::server::ServerHooks;
-
-pub use crate::server::io::FuseSocket as FuseSocket;
+pub use crate::server::io::FuseSocket;
 
 pub struct FuseServerBuilder<S, H> {
 	socket: S,
@@ -36,7 +33,7 @@ pub struct FuseServerBuilder<S, H> {
 	opts: FuseOptions,
 
 	#[cfg(feature = "std")]
-	hooks: Option<Box<dyn ServerHooks>>,
+	hooks: Option<Box<dyn server::Hooks>>,
 }
 
 struct FuseOptions {
@@ -73,7 +70,7 @@ impl<S, H> FuseServerBuilder<S, H> {
 
 	#[cfg(feature = "std")]
 	#[must_use]
-	pub fn server_hooks(mut self, hooks: Box<dyn ServerHooks>) -> Self {
+	pub fn server_hooks(mut self, hooks: Box<dyn server::Hooks>) -> Self {
 		self.hooks = Some(hooks);
 		self
 	}
@@ -124,7 +121,7 @@ pub struct FuseServer<S, H> {
 	req_builder: FuseRequestBuilder,
 
 	#[cfg(feature = "std")]
-	hooks: Option<Box<dyn ServerHooks>>,
+	hooks: Option<Box<dyn server::Hooks>>,
 }
 
 impl<S, H> FuseServer<S, H>
@@ -134,15 +131,17 @@ where
 {
 	pub fn serve(&self) -> Result<(), ServerError<S::Error>> {
 		let mut buf = ArrayBuffer::new();
+
+		#[allow(unused_mut)]
+		let mut dispatcher = FuseDispatcher::new(&self.socket, &self.handlers);
+
+		#[cfg(feature = "std")]
+		if let Some(hooks) = self.hooks.as_ref() {
+			dispatcher.set_hooks(hooks.as_ref());
+		}
+
 		while let Some(request) = self.try_next(buf.borrow_mut())? {
-			let result = fuse_request_dispatch(
-				&self.socket,
-				&self.handlers,
-				#[cfg(feature = "std")]
-				self.hooks.as_ref().map(|h| h.as_ref()),
-				request,
-			);
-			match result {
+			match dispatcher.dispatch(&request) {
 				Ok(()) => {},
 				Err(io::SendError::NotFound(_)) => {},
 				Err(err) => return Err(err.into()),
@@ -247,9 +246,7 @@ pub struct FuseCall<'a, S> {
 	header: &'a server::RequestHeader,
 	response_ctx: server::ResponseContext,
 	sent_reply: &'a mut bool,
-
-	#[cfg(feature = "std")]
-	hooks: Option<&'a dyn ServerHooks>,
+	hooks: Option<&'a dyn server::Hooks>,
 }
 
 impl<S> FuseCall<'_, S> {
@@ -294,7 +291,6 @@ impl<S: FuseSocket> FuseCall<'_, S> {
 	}
 
 	fn unimplemented<R>(self) -> FuseResult<R, S::Error> {
-		#[cfg(feature = "std")]
 		if let Some(hooks) = self.hooks {
 			hooks.unhandled_request(self.header);
 		}
@@ -302,17 +298,44 @@ impl<S: FuseSocket> FuseCall<'_, S> {
 	}
 }
 
+pub struct FuseDispatcher<'a, S, H> {
+	socket: &'a S,
+	handlers: &'a H,
+	hooks: Option<&'a dyn server::Hooks>,
+}
+
+impl<'a, S, H> FuseDispatcher<'a, S, H> {
+	pub fn new(socket: &'a S, handlers: &'a H) -> FuseDispatcher<'a, S, H> {
+		Self {
+			socket,
+			handlers,
+			hooks: None,
+		}
+	}
+
+	pub fn set_hooks(&mut self, hooks: &'a dyn server::Hooks) {
+		self.hooks = Some(hooks);
+	}
+}
+
+impl<S: FuseSocket, H: FuseHandlers<S>> FuseDispatcher<'_, S, H> {
+	pub fn dispatch(
+		&self,
+		request: &server::FuseRequest,
+	) -> Result<(), io::SendError<S::Error>> {
+		fuse_request_dispatch(self.socket, self.handlers, self.hooks, request)
+	}
+}
+
 fn fuse_request_dispatch<S: FuseSocket>(
 	socket: &S,
 	handlers: &impl FuseHandlers<S>,
-	#[cfg(feature = "std")]
-	hooks: Option<&dyn ServerHooks>,
-	request: server::FuseRequest,
+	hooks: Option<&dyn server::Hooks>,
+	request: &server::FuseRequest,
 ) -> Result<(), io::SendError<S::Error>> {
 	use crate::server::decode::FuseRequest;
 
 	let header = request.header();
-	#[cfg(feature = "std")]
 	if let Some(hooks) = hooks {
 		hooks.request(header);
 	}
@@ -325,13 +348,12 @@ fn fuse_request_dispatch<S: FuseSocket>(
 		header,
 		response_ctx,
 		sent_reply: &mut sent_reply,
-		#[cfg(feature = "std")]
 		hooks,
 	};
 
 	macro_rules! do_dispatch {
 		($req_type:ty, $handler:tt) => {{
-			match <$req_type>::from_fuse_request(&request) {
+			match <$req_type>::from_fuse_request(request) {
 				Ok(request) => {
 					let handler_result = handlers.$handler(call, &request);
 					if sent_reply {
@@ -345,7 +367,6 @@ fn fuse_request_dispatch<S: FuseSocket>(
 					Ok(())
 				},
 				Err(err) => {
-					#[cfg(feature = "std")]
 					if let Some(hooks) = hooks {
 						hooks.request_error(header, err);
 					}
@@ -370,10 +391,9 @@ fn fuse_request_dispatch<S: FuseSocket>(
 		Op::FUSE_FALLOCATE => do_dispatch!(FallocateRequest, fallocate),
 		Op::FUSE_FLUSH => do_dispatch!(FlushRequest, flush),
 		Op::FUSE_FORGET | Op::FUSE_BATCH_FORGET => {
-			match ForgetRequest::from_fuse_request(&request) {
+			match ForgetRequest::from_fuse_request(request) {
 				Ok(request) => handlers.forget(call, &request),
 				Err(err) => {
-					#[cfg(feature = "std")]
 					if let Some(hooks) = hooks {
 						hooks.request_error(header, err);
 					}
@@ -388,10 +408,9 @@ fn fuse_request_dispatch<S: FuseSocket>(
 		Op::FUSE_GETLK => do_dispatch!(GetlkRequest, getlk),
 		Op::FUSE_GETXATTR => do_dispatch!(GetxattrRequest, getxattr),
 		Op::FUSE_INTERRUPT => {
-			match InterruptRequest::from_fuse_request(&request) {
+			match InterruptRequest::from_fuse_request(request) {
 				Ok(request) => handlers.interrupt(call, &request),
 				Err(err) => {
-					#[cfg(feature = "std")]
 					if let Some(hooks) = hooks {
 						hooks.request_error(header, err);
 					}
@@ -430,9 +449,8 @@ fn fuse_request_dispatch<S: FuseSocket>(
 		Op::FUSE_UNLINK => do_dispatch!(UnlinkRequest, unlink),
 		Op::FUSE_WRITE => do_dispatch!(WriteRequest, write),
 		_ => {
-			#[cfg(feature = "std")]
 			if let Some(hooks) = hooks {
-				let req = server::UnknownRequest::from_fuse_request(&request);
+				let req = server::UnknownRequest::from_fuse_request(request);
 				hooks.unknown_request(&req);
 			}
 			let response = ErrorResponse::new(crate::Error::UNIMPLEMENTED);
@@ -514,7 +532,6 @@ pub trait FuseHandlers<S: FuseSocket> {
 	}
 
 	fn forget(&self, call: FuseCall<S>, request: &operations::ForgetRequest) {
-		#[cfg(feature = "std")]
 		if let Some(hooks) = call.hooks {
 			hooks.unhandled_request(call.header);
 		}
@@ -565,7 +582,6 @@ pub trait FuseHandlers<S: FuseSocket> {
 		call: FuseCall<S>,
 		request: &operations::InterruptRequest,
 	) {
-		#[cfg(feature = "std")]
 		if let Some(hooks) = call.hooks {
 			hooks.unhandled_request(call.header);
 		}
@@ -759,7 +775,6 @@ pub trait FuseHandlers<S: FuseSocket> {
 
 		#[cfg(target_os = "freebsd")]
 		{
-			#[cfg(feature = "std")]
 			if let Some(hooks) = call.hooks {
 				hooks.unhandled_request(call.header);
 			}

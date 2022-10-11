@@ -702,7 +702,7 @@ impl<S: io::AsyncFuseSocket> AsyncFuseRequests<'_, S> {
 }
 
 #[allow(unused_variables)]
-pub trait ServerHooks {
+pub trait Hooks {
 	fn request(&self, header: &RequestHeader) {}
 
 	fn unknown_request(&self, request: &UnknownRequest) {}
