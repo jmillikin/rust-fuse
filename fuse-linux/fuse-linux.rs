@@ -37,6 +37,10 @@
 	clippy::let_underscore_must_use,
 	clippy::no_effect_underscore_binding,
 	clippy::used_underscore_binding,
+
+	// Leftover debugging
+	clippy::print_stderr,
+	clippy::print_stdout,
 )]
 
 // use core::ffi::CStr;

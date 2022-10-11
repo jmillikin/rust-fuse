@@ -104,8 +104,6 @@ impl<'a> decode::FuseRequest<'a> for SetlkRequest<'a> {
 
 		let body: &fuse_kernel::fuse_lk_in = dec.next_sized()?;
 
-		eprintln!("\n[SetlkRequest]\n{header:?}\n{body:?}");
-
 		let lock;
 		let lock_range;
 		if body.lk.r#type == lock::F_UNLCK {
