@@ -243,7 +243,7 @@ impl server::io::Socket for DevCuse {
 		buf: fuse::io::SendBuf,
 	) -> Result<(), SendError<io::Error>> {
 		use std::io::Write;
-		let buf = buf.to_vec();
+		let buf = buf.to_vec().unwrap();
 		let write_size = match Write::write(&mut &self.dev_cuse, &buf) {
 			Err(err) => return Err(SendError::Other(err)),
 			Ok(x) => x,

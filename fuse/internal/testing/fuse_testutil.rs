@@ -165,7 +165,7 @@ impl fuse::server::io::Socket for FakeSocket {
 		if self.write.borrow().is_some() {
 			panic!("expected exactly one write to FakeSocket");
 		}
-		self.write.replace(Some(buf.to_vec()));
+		self.write.replace(Some(buf.to_vec().unwrap()));
 		Ok(())
 	}
 }
