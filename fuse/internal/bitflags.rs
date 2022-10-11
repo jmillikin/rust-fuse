@@ -123,6 +123,16 @@ macro_rules! bitflags {
 			pub fn set(&mut self, flag: $flag) {
 				self.bits |= flag.mask;
 			}
+
+			#[allow(dead_code)]
+			#[inline]
+			pub(crate) fn set_to(&mut self, flag: $flag, set: bool) {
+				if set {
+					self.bits |= flag.mask;
+				} else {
+					self.bits &= !flag.mask;
+				}
+			}
 		}
 
 		impl core::cmp::PartialEq<$flag> for $flags {

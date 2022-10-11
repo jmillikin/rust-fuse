@@ -56,23 +56,24 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
 
-		let mut resp = fuse::LookupResponse::new();
-		let node = resp.node_mut();
+		let node_id;
 		if request.name() == "file_src.txt" {
-			node.set_id(node::Id::new(2).unwrap());
+			node_id = node::Id::new(2).unwrap();
 		} else if request.name() == "file_dst.txt" {
-			node.set_id(node::Id::new(3).unwrap());
+			node_id = node::Id::new(3).unwrap();
 		} else {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
 
-		node.set_cache_timeout(std::time::Duration::from_secs(60));
-
-		let attr = node.attr_mut();
+		let mut attr = node::Attributes::new(node_id);
 		attr.set_mode(node::Mode::S_IFREG | 0o644);
-		attr.set_nlink(2);
+		attr.set_link_count(1);
 		attr.set_size(1_000_000);
 
+		let mut entry = node::Entry::new(attr);
+		entry.set_cache_timeout(std::time::Duration::from_secs(60));
+
+		let resp = fuse::LookupResponse::new(Some(entry));
 		call.respond_ok(&resp)
 	}
 

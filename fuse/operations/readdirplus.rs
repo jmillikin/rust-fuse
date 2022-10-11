@@ -186,31 +186,25 @@ impl<'a> ReaddirplusEntry<'a> {
 	#[inline]
 	#[must_use]
 	pub fn new(
-		node_id: node::Id,
 		name: &'a node::Name,
 		offset: num::NonZeroU64,
+		entry: node::Entry,
 	) -> ReaddirplusEntry<'a> {
+		let node_id = entry.attributes().node_id();
+		let mode = entry.attributes().mode();
 		Self {
 			dirent: fuse_kernel::fuse_direntplus {
 				dirent: fuse_kernel::fuse_dirent {
 					ino: node_id.get(),
 					off: offset.get(),
+					r#type: mode.type_bits(),
 					namelen: name.as_bytes().len() as u32,
 					..fuse_kernel::fuse_dirent::zeroed()
 				},
-				entry_out: fuse_kernel::fuse_entry_out {
-					nodeid: node_id.get(),
-					..fuse_kernel::fuse_entry_out::zeroed()
-				},
+				entry_out: entry.into_entry_out(),
 			},
 			name,
 		}
-	}
-
-	#[inline]
-	#[must_use]
-	pub fn node_id(&self) -> node::Id {
-		unsafe { node::Id::new_unchecked(self.dirent.dirent.ino) }
 	}
 
 	#[inline]
@@ -227,36 +221,17 @@ impl<'a> ReaddirplusEntry<'a> {
 
 	#[inline]
 	#[must_use]
-	pub fn file_type(&self) -> Option<node::Type> {
-		node::Type::from_bits(self.dirent.dirent.r#type)
-	}
-
-	#[inline]
-	pub fn set_file_type(&mut self, file_type: node::Type) {
-		self.dirent.dirent.r#type = file_type.as_bits();
-	}
-
-	#[inline]
-	#[must_use]
-	pub fn node_attr(&self) -> &crate::NodeAttr {
-		crate::NodeAttr::new_ref(&self.dirent.entry_out.attr)
-	}
-
-	#[inline]
-	#[must_use]
-	pub fn mut_node_attr(&mut self) -> &mut crate::NodeAttr {
-		crate::NodeAttr::new_ref_mut(&mut self.dirent.entry_out.attr)
+	pub fn entry(&self) -> &node::Entry {
+		unsafe { node::Entry::from_ref(&self.dirent.entry_out) }
 	}
 }
 
 impl fmt::Debug for ReaddirplusEntry<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("ReaddirEntry")
-			.field("node_id", &self.node_id())
-			.field("offset", &self.offset())
-			.field("file_type", &format_args!("{:?}", self.file_type()))
 			.field("name", &self.name())
-			.field("node_attr", &self.node_attr())
+			.field("offset", &self.offset())
+			.field("entry", &self.entry())
 			.finish()
 	}
 }

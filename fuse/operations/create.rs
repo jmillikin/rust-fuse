@@ -19,7 +19,6 @@
 use core::fmt;
 use core::marker::PhantomData;
 
-use crate::Node;
 use crate::internal::compat;
 use crate::internal::fuse_kernel;
 use crate::node;
@@ -136,48 +135,59 @@ impl fmt::Debug for CreateRequest<'_> {
 /// `FUSE_CREATE` operation.
 pub struct CreateResponse<'a> {
 	phantom: PhantomData<&'a ()>,
-	entry_out: fuse_kernel::fuse_entry_out,
-	handle: u64,
-	flags: CreateResponseFlags,
+	entry: node::Entry,
+	open_out: fuse_kernel::fuse_open_out,
 }
 
 impl<'a> CreateResponse<'a> {
+	#[inline]
 	#[must_use]
-	pub fn new() -> CreateResponse<'a> {
+	pub fn new(entry: node::Entry) -> CreateResponse<'a> {
 		Self {
 			phantom: PhantomData,
-			entry_out: fuse_kernel::fuse_entry_out::zeroed(),
-			handle: 0,
-			flags: CreateResponseFlags::new(),
+			entry,
+			open_out: fuse_kernel::fuse_open_out::zeroed(),
 		}
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn node(&self) -> &Node {
-		Node::new_ref(&self.entry_out)
+	pub fn entry(&self) -> &node::Entry {
+		&self.entry
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn node_mut(&mut self) -> &mut Node {
-		Node::new_ref_mut(&mut self.entry_out)
+	pub fn entry_mut(&mut self) -> &mut node::Entry {
+		&mut self.entry
 	}
 
+	#[inline]
+	#[must_use]
+	pub fn handle(&self) -> u64 {
+		self.open_out.fh
+	}
+
+	#[inline]
 	pub fn set_handle(&mut self, handle: u64) {
-		self.handle = handle;
+		self.open_out.fh = handle;
 	}
 
+	#[inline]
 	#[must_use]
 	pub fn flags(&self) -> CreateResponseFlags {
-		self.flags
+		CreateResponseFlags { bits: self.open_out.open_flags }
 	}
 
+	#[inline]
 	#[must_use]
 	pub fn mut_flags(&mut self) -> &mut CreateResponseFlags {
-		&mut self.flags
+		CreateResponseFlags::reborrow_mut(&mut self.open_out.open_flags)
 	}
 
+	#[inline]
 	pub fn set_flags(&mut self, flags: CreateResponseFlags) {
-		self.flags = flags;
+		self.open_out.open_flags = flags.bits;
 	}
 }
 
@@ -186,9 +196,9 @@ response_send_funcs!(CreateResponse<'_>);
 impl fmt::Debug for CreateResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("CreateResponse")
-			.field("node", &self.entry_out)
-			.field("handle", &self.handle)
-			.field("flags", &self.flags)
+			.field("entry", &self.entry())
+			.field("handle", &self.handle())
+			.field("flags", &self.flags())
 			.finish()
 	}
 }
@@ -200,12 +210,10 @@ impl CreateResponse<'_> {
 		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		let open_out = fuse_kernel::fuse_open_out {
-			fh: self.handle,
-			open_flags: self.flags.bits,
-			padding: 0,
-		};
-		self.node().encode_entry_sized(enc, ctx.version_minor, &open_out)
+		if ctx.version_minor >= 9 {
+			return enc.encode_sized_sized(self.entry.as_v7p9(), &self.open_out)
+		}
+		enc.encode_sized_sized(self.entry.as_v7p1(), &self.open_out)
 	}
 }
 

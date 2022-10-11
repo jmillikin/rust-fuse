@@ -32,12 +32,12 @@ impl HelloTxt {
 		node::Id::new(100).unwrap()
 	}
 
-	fn set_attr(&self, attr: &mut fuse::NodeAttr) {
+	fn set_attr(&self, attr: &mut node::Attributes) {
 		attr.set_user_id(getuid());
 		attr.set_group_id(getgid());
 		attr.set_mode(node::Mode::S_IFREG | 0o644);
 		attr.set_size(HELLO_WORLD.len() as u64);
-		attr.set_nlink(1);
+		attr.set_link_count(1);
 	}
 }
 
@@ -58,11 +58,11 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for HelloWorldFS {
 			return call.respond_err(fuse::Error::NOT_FOUND);
 		}
 
-		let mut resp = fuse::LookupResponse::new();
-		let node = resp.node_mut();
-		node.set_id(HELLO_TXT.node_id());
-		HELLO_TXT.set_attr(node.attr_mut());
+		let mut attr = node::Attributes::new(HELLO_TXT.node_id());
+		HELLO_TXT.set_attr(&mut attr);
 
+		let entry = node::Entry::new(attr);
+		let resp = fuse::LookupResponse::new(Some(entry));
 		call.respond_ok(&resp)
 	}
 
@@ -71,19 +71,20 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for HelloWorldFS {
 		call: fuse_rpc::FuseCall<S>,
 		request: &fuse::GetattrRequest,
 	) -> fuse_rpc::FuseResult<fuse::GetattrResponse, S::Error> {
-		let mut resp = fuse::GetattrResponse::new();
-		let attr = resp.attr_mut();
+		let mut attr = node::Attributes::new(request.node_id());
 
 		if request.node_id().is_root() {
 			attr.set_user_id(getuid());
 			attr.set_group_id(getgid());
 			attr.set_mode(node::Mode::S_IFDIR | 0o755);
-			attr.set_nlink(2);
+			attr.set_link_count(2);
+			let resp = fuse::GetattrResponse::new(attr);
 			return call.respond_ok(&resp);
 		}
 
 		if request.node_id() == HELLO_TXT.node_id() {
-			HELLO_TXT.set_attr(attr);
+			HELLO_TXT.set_attr(&mut attr);
+			let resp = fuse::GetattrResponse::new(attr);
 			return call.respond_ok(&resp);
 		}
 

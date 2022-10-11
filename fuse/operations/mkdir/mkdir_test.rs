@@ -74,12 +74,10 @@ fn request_impl_debug() {
 
 #[test]
 fn response_v7p1() {
-	let mut resp = MkdirResponse::new();
-	resp.node_mut().set_id(node::Id::new(11).unwrap());
-	resp.node_mut().set_generation(22);
-	resp.node_mut()
-		.attr_mut()
-		.set_node_id(node::Id::new(11).unwrap());
+	let attr = node::Attributes::new(node::Id::new(11).unwrap());
+	let mut entry = node::Entry::new(attr);
+	entry.set_generation(22);
+	let resp = MkdirResponse::new(entry);
 
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 1),
@@ -116,12 +114,10 @@ fn response_v7p1() {
 
 #[test]
 fn response_v7p9() {
-	let mut resp = MkdirResponse::new();
-	resp.node_mut().set_id(node::Id::new(11).unwrap());
-	resp.node_mut().set_generation(22);
-	resp.node_mut()
-		.attr_mut()
-		.set_node_id(node::Id::new(11).unwrap());
+	let attr = node::Attributes::new(node::Id::new(11).unwrap());
+	let mut entry = node::Entry::new(attr);
+	entry.set_generation(22);
+	let resp = MkdirResponse::new(entry);
 
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 9),
@@ -154,36 +150,35 @@ fn response_v7p9() {
 
 #[test]
 fn response_impl_debug() {
-	let mut response = MkdirResponse::new();
-	let node = response.node_mut();
-	node.set_id(node::Id::new(11).unwrap());
-	node.set_generation(22);
-	node.attr_mut().set_node_id(node::Id::new(11).unwrap());
-	node.attr_mut().set_mode(node::Mode::S_IFREG | 0o644);
+	let mut attr = node::Attributes::new(node::Id::new(11).unwrap());
+	attr.set_mode(node::Mode::S_IFREG | 0o644);
+	let mut entry = node::Entry::new(attr);
+	entry.set_generation(22);
+	let response = MkdirResponse::new(entry);
 
 	assert_eq!(
 		format!("{:#?}", response),
 		concat!(
 			"MkdirResponse {\n",
-			"    node: Node {\n",
-			"        id: Some(11),\n",
+			"    entry: Entry {\n",
 			"        generation: 22,\n",
-			"        cache_timeout: 0ns,\n",
-			"        attr_cache_timeout: 0ns,\n",
-			"        attr: NodeAttr {\n",
-			"            node_id: Some(11),\n",
+			"        attributes: Attributes {\n",
+			"            node_id: 11,\n",
+			"            mode: 0o100644,\n",
 			"            size: 0,\n",
-			"            blocks: 0,\n",
 			"            atime: UnixTime(0.000000000),\n",
 			"            mtime: UnixTime(0.000000000),\n",
 			"            ctime: UnixTime(0.000000000),\n",
-			"            mode: 0o100644,\n",
-			"            nlink: 0,\n",
-			"            uid: 0,\n",
-			"            gid: 0,\n",
-			"            rdev: 0,\n",
-			"            blksize: 0,\n",
+			"            link_count: 0,\n",
+			"            user_id: 0,\n",
+			"            group_id: 0,\n",
+			"            device_number: 0,\n",
+			"            block_count: 0,\n",
+			"            block_size: 0,\n",
+			"            flags: AttributeFlags {},\n",
 			"        },\n",
+			"        cache_timeout: 0ns,\n",
+			"        attribute_cache_timeout: 0ns,\n",
 			"    },\n",
 			"}",
 		),

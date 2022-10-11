@@ -44,37 +44,41 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
 
-		let mut resp = fuse::LookupResponse::new();
-		let node = resp.node_mut();
-		node.set_cache_timeout(std::time::Duration::from_secs(60));
+		let cache_timeout = std::time::Duration::from_secs(60);
 
 		if request.name() == "rename_old.txt" {
-			node.set_id(node::Id::new(2).unwrap());
-
-			let attr = node.attr_mut();
+			let mut attr = node::Attributes::new(node::Id::new(2).unwrap());
 			attr.set_mode(node::Mode::S_IFREG | 0o644);
-			attr.set_nlink(1);
+			attr.set_link_count(1);
 
+			let mut entry = node::Entry::new(attr);
+			entry.set_cache_timeout(cache_timeout);
+
+			let resp = fuse::LookupResponse::new(Some(entry));
 			return call.respond_ok(&resp);
 		}
 
 		if request.name() == "rename_new.txt" {
-			node.set_id(node::Id::new(3).unwrap());
-
-			let attr = node.attr_mut();
+			let mut attr = node::Attributes::new(node::Id::new(4).unwrap());
 			attr.set_mode(node::Mode::S_IFREG | 0o644);
-			attr.set_nlink(1);
+			attr.set_link_count(1);
 
+			let mut entry = node::Entry::new(attr);
+			entry.set_cache_timeout(cache_timeout);
+
+			let resp = fuse::LookupResponse::new(Some(entry));
 			return call.respond_ok(&resp);
 		}
 
 		if request.name() == "rename_dir.d" {
-			node.set_id(node::Id::new(4).unwrap());
-
-			let attr = node.attr_mut();
+			let mut attr = node::Attributes::new(node::Id::new(4).unwrap());
 			attr.set_mode(node::Mode::S_IFDIR | 0o755);
-			attr.set_nlink(2);
+			attr.set_link_count(2);
 
+			let mut entry = node::Entry::new(attr);
+			entry.set_cache_timeout(cache_timeout);
+
+			let resp = fuse::LookupResponse::new(Some(entry));
 			return call.respond_ok(&resp);
 		}
 

@@ -19,7 +19,6 @@
 use core::fmt;
 use core::marker::PhantomData;
 
-use crate::Node;
 use crate::internal::fuse_kernel;
 use crate::node;
 use crate::server;
@@ -97,26 +96,28 @@ impl fmt::Debug for SymlinkRequest<'_> {
 /// `FUSE_SYMLINK` operation.
 pub struct SymlinkResponse<'a> {
 	phantom: PhantomData<&'a ()>,
-	raw: fuse_kernel::fuse_entry_out,
+	entry: node::Entry,
 }
 
 impl<'a> SymlinkResponse<'a> {
 	#[must_use]
-	pub fn new() -> SymlinkResponse<'a> {
+	pub fn new(entry: node::Entry) -> SymlinkResponse<'a> {
 		Self {
 			phantom: PhantomData,
-			raw: fuse_kernel::fuse_entry_out::zeroed(),
+			entry,
 		}
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn node(&self) -> &Node {
-		Node::new_ref(&self.raw)
+	pub fn entry(&self) -> &node::Entry {
+		&self.entry
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn node_mut(&mut self) -> &mut Node {
-		Node::new_ref_mut(&mut self.raw)
+	pub fn entry_mut(&mut self) -> &mut node::Entry {
+		&mut self.entry
 	}
 }
 
@@ -125,7 +126,7 @@ response_send_funcs!(SymlinkResponse<'_>);
 impl fmt::Debug for SymlinkResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("SymlinkResponse")
-			.field("node", &self.node())
+			.field("entry", &self.entry())
 			.finish()
 	}
 }
@@ -137,7 +138,10 @@ impl SymlinkResponse<'_> {
 		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		self.node().encode_entry(enc, ctx.version_minor)
+		if ctx.version_minor >= 9 {
+			return enc.encode_sized(self.entry.as_v7p9())
+		}
+		enc.encode_sized(self.entry.as_v7p1())
 	}
 }
 

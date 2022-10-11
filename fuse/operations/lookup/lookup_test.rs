@@ -66,12 +66,11 @@ fn request_impl_debug() {
 
 #[test]
 fn response_v7p1() {
-	let mut response = LookupResponse::new();
-	let node = response.node_mut();
-	node.set_id(node::Id::new(11).unwrap());
-	node.set_generation(22);
-	node.attr_mut().set_node_id(node::Id::new(11).unwrap());
-	node.attr_mut().set_mode(node::Mode::S_IFREG | 0o644);
+	let mut attr = node::Attributes::new(node::Id::new(11).unwrap());
+	attr.set_mode(node::Mode::S_IFREG | 0o644);
+	let mut entry = node::Entry::new(attr);
+	entry.set_generation(22);
+	let response = LookupResponse::new(Some(entry));
 
 	let encoded = encode_response!(response, {
 		protocol_version: (7, 1),
@@ -109,12 +108,11 @@ fn response_v7p1() {
 
 #[test]
 fn response_v7p9() {
-	let mut response = LookupResponse::new();
-	let node = response.node_mut();
-	node.set_id(node::Id::new(11).unwrap());
-	node.set_generation(22);
-	node.attr_mut().set_node_id(node::Id::new(11).unwrap());
-	node.attr_mut().set_mode(node::Mode::S_IFREG | 0o644);
+	let mut attr = node::Attributes::new(node::Id::new(11).unwrap());
+	attr.set_mode(node::Mode::S_IFREG | 0o644);
+	let mut entry = node::Entry::new(attr);
+	entry.set_generation(22);
+	let response = LookupResponse::new(Some(entry));
 
 	let encoded = encode_response!(response, {
 		protocol_version: (7, 9),
@@ -148,7 +146,7 @@ fn response_v7p9() {
 
 #[test]
 fn response_noexist_v7p1() {
-	let resp = LookupResponse::new();
+	let resp = LookupResponse::new(None);
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 1),
 	});
@@ -167,7 +165,7 @@ fn response_noexist_v7p1() {
 
 #[test]
 fn response_noexist_v7p4() {
-	let resp = LookupResponse::new();
+	let resp = LookupResponse::new(None);
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 4),
 	});
@@ -200,37 +198,40 @@ fn response_noexist_v7p4() {
 
 #[test]
 fn response_impl_debug() {
-	let mut response = LookupResponse::new();
-	let node = response.node_mut();
-	node.set_id(node::Id::new(11).unwrap());
-	node.set_generation(22);
-	node.attr_mut().set_node_id(node::Id::new(11).unwrap());
-	node.attr_mut().set_mode(node::Mode::S_IFREG | 0o644);
+	let mut attr = node::Attributes::new(node::Id::new(11).unwrap());
+	attr.set_mode(node::Mode::S_IFREG | 0o644);
+	let mut entry = node::Entry::new(attr);
+	entry.set_generation(22);
+	let response = LookupResponse::new(Some(entry));
 
 	assert_eq!(
 		format!("{:#?}", response),
 		concat!(
 			"LookupResponse {\n",
-			"    node: Node {\n",
-			"        id: Some(11),\n",
-			"        generation: 22,\n",
-			"        cache_timeout: 0ns,\n",
-			"        attr_cache_timeout: 0ns,\n",
-			"        attr: NodeAttr {\n",
-			"            node_id: Some(11),\n",
-			"            size: 0,\n",
-			"            blocks: 0,\n",
-			"            atime: UnixTime(0.000000000),\n",
-			"            mtime: UnixTime(0.000000000),\n",
-			"            ctime: UnixTime(0.000000000),\n",
-			"            mode: 0o100644,\n",
-			"            nlink: 0,\n",
-			"            uid: 0,\n",
-			"            gid: 0,\n",
-			"            rdev: 0,\n",
-			"            blksize: 0,\n",
+			"    entry: Some(\n",
+			"        Entry {\n",
+			"            generation: 22,\n",
+			"            attributes: Attributes {\n",
+			"                node_id: 11,\n",
+			"                mode: 0o100644,\n",
+			"                size: 0,\n",
+			"                atime: UnixTime(0.000000000),\n",
+			"                mtime: UnixTime(0.000000000),\n",
+			"                ctime: UnixTime(0.000000000),\n",
+			"                link_count: 0,\n",
+			"                user_id: 0,\n",
+			"                group_id: 0,\n",
+			"                device_number: 0,\n",
+			"                block_count: 0,\n",
+			"                block_size: 0,\n",
+			"                flags: AttributeFlags {},\n",
+			"            },\n",
+			"            cache_timeout: 0ns,\n",
+			"            attribute_cache_timeout: 0ns,\n",
 			"        },\n",
-			"    },\n",
+			"    ),\n",
+			"    cache_timeout: 0ns,\n",
+			"    attribute_cache_timeout: 0ns,\n",
 			"}",
 		),
 	);

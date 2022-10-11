@@ -38,22 +38,19 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 		if !request.parent_id().is_root() {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
-
-		let mut resp = fuse::LookupResponse::new();
-		let node = resp.node_mut();
-		node.set_cache_timeout(std::time::Duration::from_secs(60));
-
-		if request.name() == "file.txt" {
-			node.set_id(node::Id::new(2).unwrap());
-
-			let attr = node.attr_mut();
-			attr.set_mode(node::Mode::S_IFREG | 0o644);
-			attr.set_nlink(1);
-
-			return call.respond_ok(&resp);
+		if request.name() != "file.txt" {
+			return call.respond_err(ErrorCode::ENOENT);
 		}
 
-		call.respond_err(ErrorCode::ENOENT)
+		let mut attr = node::Attributes::new(node::Id::new(2).unwrap());
+		attr.set_mode(node::Mode::S_IFREG | 0o644);
+		attr.set_link_count(1);
+
+		let mut entry = node::Entry::new(attr);
+		entry.set_cache_timeout(std::time::Duration::from_secs(60));
+
+		let resp = fuse::LookupResponse::new(Some(entry));
+		call.respond_ok(&resp)
 	}
 
 	fn getattr(
@@ -63,18 +60,19 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 	) -> fuse_rpc::FuseResult<fuse::GetattrResponse, S::Error> {
 		println!("{:#?}", request);
 
-		let mut resp = fuse::GetattrResponse::new();
-		let attr = resp.attr_mut();
+		let mut attr = node::Attributes::new(request.node_id());
 
 		if request.node_id().is_root() {
 			attr.set_mode(node::Mode::S_IFDIR | 0o755);
-			attr.set_nlink(2);
+			attr.set_link_count(2);
+			let resp = fuse::GetattrResponse::new(attr);
 			return call.respond_ok(&resp);
 		}
 
 		if request.node_id() == node::Id::new(2).unwrap() {
 			attr.set_mode(node::Mode::S_IFREG | 0o644);
-			attr.set_nlink(1);
+			attr.set_link_count(1);
+			let resp = fuse::GetattrResponse::new(attr);
 			return call.respond_ok(&resp);
 		}
 

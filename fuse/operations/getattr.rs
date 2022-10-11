@@ -18,13 +18,10 @@
 
 use core::fmt;
 use core::marker::PhantomData;
-use core::slice;
 use core::time;
 
-use crate::NodeAttr;
 use crate::internal::compat;
 use crate::internal::fuse_kernel;
-use crate::internal::timestamp;
 use crate::node;
 use crate::server;
 use crate::server::decode;
@@ -102,37 +99,40 @@ impl fmt::Debug for GetattrRequest<'_> {
 /// `FUSE_GETATTR` operation.
 pub struct GetattrResponse<'a> {
 	phantom: PhantomData<&'a ()>,
-	raw: fuse_kernel::fuse_attr_out,
+	attr_out: node::FuseAttrOut,
 }
 
 impl<'a> GetattrResponse<'a> {
+	#[inline]
 	#[must_use]
-	pub fn new() -> GetattrResponse<'a> {
+	pub fn new(attributes: node::Attributes) -> GetattrResponse<'a> {
 		Self {
 			phantom: PhantomData,
-			raw: fuse_kernel::fuse_attr_out::zeroed(),
+			attr_out: node::FuseAttrOut::new(attributes),
 		}
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn attr_timeout(&self) -> time::Duration {
-		timestamp::new_duration(self.raw.attr_valid, self.raw.attr_valid_nsec)
+	pub fn attributes(&self) -> &node::Attributes {
+		self.attr_out.attributes()
 	}
 
-	pub fn set_attr_timeout(&mut self, attr_timeout: time::Duration) {
-		let (seconds, nanos) = timestamp::split_duration(attr_timeout);
-		self.raw.attr_valid = seconds;
-		self.raw.attr_valid_nsec = nanos;
+	#[inline]
+	#[must_use]
+	pub fn attributes_mut(&mut self) -> &mut node::Attributes {
+		self.attr_out.attributes_mut()
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn attr(&self) -> &NodeAttr {
-		NodeAttr::new_ref(&self.raw.attr)
+	pub fn cache_timeout(&self) -> time::Duration {
+		self.attr_out.cache_timeout()
 	}
 
-	#[must_use]
-	pub fn attr_mut(&mut self) -> &mut NodeAttr {
-		NodeAttr::new_ref_mut(&mut self.raw.attr)
+	#[inline]
+	pub fn set_cache_timeout(&mut self, timeout: time::Duration) {
+		self.attr_out.set_cache_timeout(timeout)
 	}
 }
 
@@ -141,8 +141,8 @@ response_send_funcs!(GetattrResponse<'_>);
 impl fmt::Debug for GetattrResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("GetattrResponse")
-			.field("attr_timeout", &self.attr_timeout())
-			.field("attr", self.attr())
+			.field("attributes", self.attributes())
+			.field("cache_timeout", &self.cache_timeout())
 			.finish()
 	}
 }
@@ -154,20 +154,10 @@ impl GetattrResponse<'_> {
 		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-
-		// The `fuse_attr::blksize` field was added in FUSE v7.9.
-		if ctx.version_minor < 9 {
-			let buf: &[u8] = unsafe {
-				let raw_ptr = &self.raw as *const fuse_kernel::fuse_attr_out;
-				slice::from_raw_parts(
-					raw_ptr.cast::<u8>(),
-					fuse_kernel::FUSE_COMPAT_ATTR_OUT_SIZE,
-				)
-			};
-			return enc.encode_bytes(buf);
+		if ctx.version_minor >= 9 {
+			return enc.encode_sized(self.attr_out.as_v7p9())
 		}
-
-		enc.encode_sized(&self.raw)
+		enc.encode_sized(self.attr_out.as_v7p1())
 	}
 }
 

@@ -112,12 +112,11 @@ fn request_impl_debug() {
 
 #[test]
 fn response_v7p1() {
-	let mut resp = CreateResponse::new();
-	resp.node_mut().set_id(node::Id::new(11).unwrap());
-	resp.node_mut().set_generation(22);
-	resp.node_mut()
-		.attr_mut()
-		.set_node_id(node::Id::new(11).unwrap());
+	let attr = node::Attributes::new(node::Id::new(11).unwrap());
+	let mut entry = node::Entry::new(attr);
+	entry.set_generation(22);
+
+	let mut resp = CreateResponse::new(entry);
 	resp.set_handle(123);
 	resp.mut_flags().set(CreateResponseFlag::DIRECT_IO);
 	resp.mut_flags().set(CreateResponseFlag::KEEP_CACHE);
@@ -163,12 +162,11 @@ fn response_v7p1() {
 
 #[test]
 fn response_v7p9() {
-	let mut resp = CreateResponse::new();
-	resp.node_mut().set_id(node::Id::new(11).unwrap());
-	resp.node_mut().set_generation(22);
-	resp.node_mut()
-		.attr_mut()
-		.set_node_id(node::Id::new(11).unwrap());
+	let attr = node::Attributes::new(node::Id::new(11).unwrap());
+	let mut entry = node::Entry::new(attr);
+	entry.set_generation(22);
+
+	let mut resp = CreateResponse::new(entry);
 	resp.set_handle(123);
 	resp.mut_flags().set(CreateResponseFlag::DIRECT_IO);
 	resp.mut_flags().set(CreateResponseFlag::KEEP_CACHE);
@@ -210,14 +208,14 @@ fn response_v7p9() {
 
 #[test]
 fn response_impl_debug() {
-	let mut response = CreateResponse::new();
 
-	let node = response.node_mut();
-	node.set_id(node::Id::new(11).unwrap());
-	node.set_generation(22);
-	node.attr_mut().set_node_id(node::Id::new(11).unwrap());
-	node.attr_mut().set_mode(node::Mode::S_IFREG | 0o644);
+	let mut attr = node::Attributes::new(node::Id::new(11).unwrap());
+	attr.set_mode(node::Mode::S_IFREG | 0o644);
 
+	let mut entry = node::Entry::new(attr);
+	entry.set_generation(22);
+
+	let mut response = CreateResponse::new(entry);
 	response.set_handle(123);
 	response.mut_flags().set(CreateResponseFlag::DIRECT_IO);
 	response.mut_flags().set(CreateResponseFlag::KEEP_CACHE);
@@ -226,31 +224,25 @@ fn response_impl_debug() {
 		format!("{:#?}", response),
 		concat!(
 			"CreateResponse {\n",
-			"    node: fuse_entry_out {\n",
-			"        nodeid: 11,\n",
+			"    entry: Entry {\n",
 			"        generation: 22,\n",
-			"        entry_valid: 0,\n",
-			"        attr_valid: 0,\n",
-			"        entry_valid_nsec: 0,\n",
-			"        attr_valid_nsec: 0,\n",
-			"        attr: fuse_attr {\n",
-			"            ino: 11,\n",
+			"        attributes: Attributes {\n",
+			"            node_id: 11,\n",
+			"            mode: 0o100644,\n",
 			"            size: 0,\n",
-			"            blocks: 0,\n",
-			"            atime: 0,\n",
-			"            mtime: 0,\n",
-			"            ctime: 0,\n",
-			"            atimensec: 0,\n",
-			"            mtimensec: 0,\n",
-			"            ctimensec: 0,\n",
-			"            mode: 33188,\n",
-			"            nlink: 0,\n",
-			"            uid: 0,\n",
-			"            gid: 0,\n",
-			"            rdev: 0,\n",
-			"            blksize: 0,\n",
-			"            flags: 0,\n",
+			"            atime: UnixTime(0.000000000),\n",
+			"            mtime: UnixTime(0.000000000),\n",
+			"            ctime: UnixTime(0.000000000),\n",
+			"            link_count: 0,\n",
+			"            user_id: 0,\n",
+			"            group_id: 0,\n",
+			"            device_number: 0,\n",
+			"            block_count: 0,\n",
+			"            block_size: 0,\n",
+			"            flags: AttributeFlags {},\n",
 			"        },\n",
+			"        cache_timeout: 0ns,\n",
+			"        attribute_cache_timeout: 0ns,\n",
 			"    },\n",
 			"    handle: 123,\n",
 			"    flags: CreateResponseFlags {\n",

@@ -49,16 +49,15 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 	) -> fuse_rpc::FuseResult<fuse::CreateResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
-		let mut resp = fuse::CreateResponse::new();
-		resp.set_handle(12345);
-
-		let node = resp.node_mut();
-		node.set_id(node::Id::new(2).unwrap());
-		node.set_cache_timeout(std::time::Duration::from_secs(60));
-
-		let attr = node.attr_mut();
+		let mut attr = node::Attributes::new(node::Id::new(2).unwrap());
 		attr.set_mode(node::Mode::S_IFREG | 0o644);
-		attr.set_nlink(2);
+		attr.set_link_count(1);
+
+		let mut entry = node::Entry::new(attr);
+		entry.set_cache_timeout(std::time::Duration::from_secs(60));
+
+		let mut resp = fuse::CreateResponse::new(entry);
+		resp.set_handle(12345);
 
 		call.respond_ok(&resp)
 	}

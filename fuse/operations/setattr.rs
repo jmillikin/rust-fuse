@@ -18,12 +18,9 @@
 
 use core::fmt;
 use core::marker::PhantomData;
-use core::slice;
 use core::time;
 
-use crate::NodeAttr;
 use crate::internal::fuse_kernel;
-use crate::internal::timestamp;
 use crate::lock;
 use crate::node;
 use crate::server;
@@ -198,37 +195,40 @@ impl fmt::Debug for SetattrRequest<'_> {
 /// `FUSE_SETATTR` operation.
 pub struct SetattrResponse<'a> {
 	phantom: PhantomData<&'a ()>,
-	raw: fuse_kernel::fuse_attr_out,
+	attr_out: node::FuseAttrOut,
 }
 
 impl<'a> SetattrResponse<'a> {
+	#[inline]
 	#[must_use]
-	pub fn new() -> SetattrResponse<'a> {
+	pub fn new(attributes: node::Attributes) -> SetattrResponse<'a> {
 		Self {
 			phantom: PhantomData,
-			raw: fuse_kernel::fuse_attr_out::zeroed(),
+			attr_out: node::FuseAttrOut::new(attributes),
 		}
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn attr(&self) -> &NodeAttr {
-		NodeAttr::new_ref(&self.raw.attr)
+	pub fn attributes(&self) -> &node::Attributes {
+		self.attr_out.attributes()
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn attr_mut(&mut self) -> &mut NodeAttr {
-		NodeAttr::new_ref_mut(&mut self.raw.attr)
+	pub fn attributes_mut(&mut self) -> &mut node::Attributes {
+		self.attr_out.attributes_mut()
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn cache_duration(&self) -> time::Duration {
-		timestamp::new_duration(self.raw.attr_valid, self.raw.attr_valid_nsec)
+	pub fn cache_timeout(&self) -> time::Duration {
+		self.attr_out.cache_timeout()
 	}
 
-	pub fn set_cache_duration(&mut self, cache_duration: time::Duration) {
-		let (seconds, nanos) = timestamp::split_duration(cache_duration);
-		self.raw.attr_valid = seconds;
-		self.raw.attr_valid_nsec = nanos;
+	#[inline]
+	pub fn set_cache_timeout(&mut self, timeout: time::Duration) {
+		self.attr_out.set_cache_timeout(timeout)
 	}
 }
 
@@ -237,8 +237,8 @@ response_send_funcs!(SetattrResponse<'_>);
 impl fmt::Debug for SetattrResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("SetattrResponse")
-			.field("attr", self.attr())
-			.field("cache_duration", &self.cache_duration())
+			.field("attributes", self.attributes())
+			.field("cache_timeout", &self.cache_timeout())
 			.finish()
 	}
 }
@@ -250,20 +250,10 @@ impl SetattrResponse<'_> {
 		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-
-		// The `fuse_attr::blksize` field was added in FUSE v7.9.
-		if ctx.version_minor < 9 {
-			let buf: &[u8] = unsafe {
-				let raw_ptr = &self.raw as *const fuse_kernel::fuse_attr_out;
-				slice::from_raw_parts(
-					raw_ptr.cast::<u8>(),
-					fuse_kernel::FUSE_COMPAT_ATTR_OUT_SIZE,
-				)
-			};
-			return enc.encode_bytes(buf);
+		if ctx.version_minor >= 9 {
+			return enc.encode_sized(self.attr_out.as_v7p9())
 		}
-
-		enc.encode_sized(&self.raw)
+		enc.encode_sized(self.attr_out.as_v7p1())
 	}
 }
 

@@ -19,7 +19,6 @@
 use core::fmt;
 use core::marker::PhantomData;
 
-use crate::Node;
 use crate::internal::fuse_kernel;
 use crate::node;
 use crate::server;
@@ -102,26 +101,29 @@ impl fmt::Debug for MkdirRequest<'_> {
 /// `FUSE_MKDIR` operation.
 pub struct MkdirResponse<'a> {
 	phantom: PhantomData<&'a ()>,
-	raw: fuse_kernel::fuse_entry_out,
+	entry: node::Entry,
 }
 
 impl<'a> MkdirResponse<'a> {
+	#[inline]
 	#[must_use]
-	pub fn new() -> MkdirResponse<'a> {
+	pub fn new(entry: node::Entry) -> MkdirResponse<'a> {
 		Self {
 			phantom: PhantomData,
-			raw: fuse_kernel::fuse_entry_out::zeroed(),
+			entry,
 		}
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn node(&self) -> &Node {
-		Node::new_ref(&self.raw)
+	pub fn entry(&self) -> &node::Entry {
+		&self.entry
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn node_mut(&mut self) -> &mut Node {
-		Node::new_ref_mut(&mut self.raw)
+	pub fn entry_mut(&mut self) -> &mut node::Entry {
+		&mut self.entry
 	}
 }
 
@@ -130,7 +132,7 @@ response_send_funcs!(MkdirResponse<'_>);
 impl fmt::Debug for MkdirResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("MkdirResponse")
-			.field("node", &self.node())
+			.field("entry", &self.entry())
 			.finish()
 	}
 }
@@ -142,7 +144,10 @@ impl MkdirResponse<'_> {
 		ctx: &server::ResponseContext,
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		self.node().encode_entry(enc, ctx.version_minor)
+		if ctx.version_minor >= 9 {
+			return enc.encode_sized(self.entry.as_v7p9())
+		}
+		enc.encode_sized(self.entry.as_v7p1())
 	}
 }
 

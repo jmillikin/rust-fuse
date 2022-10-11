@@ -18,9 +18,10 @@
 
 use core::fmt;
 use core::marker::PhantomData;
+use core::time;
 
-use crate::Node;
 use crate::internal::fuse_kernel;
+use crate::internal::timestamp;
 use crate::node;
 use crate::server;
 use crate::server::decode;
@@ -81,22 +82,64 @@ pub struct LookupResponse<'a> {
 }
 
 impl<'a> LookupResponse<'a> {
+	#[inline]
 	#[must_use]
-	pub fn new() -> LookupResponse<'a> {
+	pub fn new(entry: Option<node::Entry>) -> LookupResponse<'a> {
 		Self {
 			phantom: PhantomData,
-			entry_out: fuse_kernel::fuse_entry_out::zeroed(),
+			entry_out: match entry {
+				Some(entry) => entry.into_entry_out(),
+				None => fuse_kernel::fuse_entry_out::zeroed(),
+			},
 		}
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn node(&self) -> &Node {
-		Node::new_ref(&self.entry_out)
+	pub fn entry(&self) -> Option<&node::Entry> {
+		if self.entry_out.nodeid == 0 {
+			return None;
+		}
+		Some(unsafe {
+			node::Entry::from_ref(&self.entry_out)
+		})
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn node_mut(&mut self) -> &mut Node {
-		Node::new_ref_mut(&mut self.entry_out)
+	pub fn entry_mut(&mut self) -> Option<&mut node::Entry> {
+		if self.entry_out.nodeid == 0 {
+			return None;
+		}
+		Some(unsafe {
+			node::Entry::from_ref_mut(&mut self.entry_out)
+		})
+	}
+
+	#[inline]
+	#[must_use]
+	pub fn cache_timeout(&self) -> time::Duration {
+		timestamp::new_duration(self.entry_out.entry_valid, self.entry_out.entry_valid_nsec)
+	}
+
+	#[inline]
+	pub fn set_cache_timeout(&mut self, timeout: time::Duration) {
+		let (seconds, nanos) = timestamp::split_duration(timeout);
+		self.entry_out.entry_valid = seconds;
+		self.entry_out.entry_valid_nsec = nanos;
+	}
+
+	#[inline]
+	#[must_use]
+	pub fn attribute_cache_timeout(&self) -> time::Duration {
+		timestamp::new_duration(self.entry_out.attr_valid, self.entry_out.attr_valid_nsec)
+	}
+
+	#[inline]
+	pub fn set_attribute_cache_timeout(&mut self, timeout: time::Duration) {
+		let (seconds, nanos) = timestamp::split_duration(timeout);
+		self.entry_out.attr_valid = seconds;
+		self.entry_out.attr_valid_nsec = nanos;
 	}
 }
 
@@ -105,7 +148,9 @@ response_send_funcs!(LookupResponse<'_>);
 impl fmt::Debug for LookupResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("LookupResponse")
-			.field("node", self.node())
+			.field("entry", &self.entry())
+			.field("cache_timeout", &self.cache_timeout())
+			.field("attribute_cache_timeout", &self.attribute_cache_timeout())
 			.finish()
 	}
 }
@@ -123,7 +168,11 @@ impl LookupResponse<'_> {
 		if self.entry_out.nodeid == 0 && ctx.version_minor < 4 {
 			return enc.encode_error(crate::Error::NOT_FOUND);
 		}
-		self.node().encode_entry(enc, ctx.version_minor)
+		let entry = unsafe { node::Entry::from_ref(&self.entry_out) };
+		if ctx.version_minor >= 9 {
+			return enc.encode_sized(entry.as_v7p9())
+		}
+		enc.encode_sized(entry.as_v7p1())
 	}
 }
 

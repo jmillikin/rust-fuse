@@ -80,11 +80,6 @@ pub mod operations;
 
 pub use self::operations::types_only::*;
 
-pub use self::protocol::common::{
-	Node,
-	NodeAttr,
-};
-
 pub mod xattr;
 
 pub const MIN_READ_BUFFER: usize = internal::fuse_kernel::FUSE_MIN_READ_BUFFER;

@@ -44,24 +44,23 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
 
-		let node_id: u64;
+		let node_id;
 		if request.name() == "flush.txt" {
-			node_id = 2;
+			node_id = node::Id::new(2).unwrap();
 		} else if request.name() == "flush_err.txt" {
-			node_id = 3;
+			node_id = node::Id::new(3).unwrap();
 		} else {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
 
-		let mut resp = fuse::LookupResponse::new();
-		let node = resp.node_mut();
-		node.set_id(node::Id::new(node_id).unwrap());
-		node.set_cache_timeout(std::time::Duration::from_secs(60));
-
-		let attr = node.attr_mut();
+		let mut attr = node::Attributes::new(node_id);
 		attr.set_mode(node::Mode::S_IFREG | 0o644);
-		attr.set_nlink(2);
+		attr.set_link_count(1);
 
+		let mut entry = node::Entry::new(attr);
+		entry.set_cache_timeout(std::time::Duration::from_secs(60));
+
+		let resp = fuse::LookupResponse::new(Some(entry));
 		call.respond_ok(&resp)
 	}
 

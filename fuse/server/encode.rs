@@ -131,14 +131,6 @@ impl<S: SendOnce> ReplyEncoder<S> {
 		self.encode_bytes(sized_to_slice(t))
 	}
 
-	pub(crate) fn encode_sized_bytes<T: Sized>(
-		self,
-		bytes_1: &[u8],
-		t: &T,
-	) -> S::Result {
-		self.encode_bytes_2(bytes_1, sized_to_slice(t))
-	}
-
 	pub(crate) fn encode_sized_sized<T1: Sized, T2: Sized>(
 		self,
 		t_1: &T1,

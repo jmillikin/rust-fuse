@@ -144,13 +144,13 @@ fn request_impl_debug() {
 
 #[test]
 fn response_v7p1() {
-	let mut response = SetattrResponse::new();
-	let attr = response.attr_mut();
-	attr.set_node_id(node::Id::new(2).unwrap());
+	let mut attr = node::Attributes::new(node::Id::new(2).unwrap());
 	attr.set_mode(node::Mode::S_IFREG | 0o644);
-	attr.set_nlink(1);
+	attr.set_link_count(1);
 	attr.set_size(999);
-	response.set_cache_duration(time::Duration::new(123, 456));
+
+	let mut response = SetattrResponse::new(attr);
+	response.set_cache_timeout(time::Duration::new(123, 456));
 
 	let encoded = fuse_testutil::encode_response!(response, {
 		protocol_version: (7, 1),
@@ -187,13 +187,13 @@ fn response_v7p1() {
 
 #[test]
 fn response_v7p9() {
-	let mut response = SetattrResponse::new();
-	let attr = response.attr_mut();
-	attr.set_node_id(node::Id::new(2).unwrap());
+	let mut attr = node::Attributes::new(node::Id::new(2).unwrap());
 	attr.set_mode(node::Mode::S_IFREG | 0o644);
-	attr.set_nlink(1);
+	attr.set_link_count(1);
 	attr.set_size(999);
-	response.set_cache_duration(time::Duration::new(123, 456));
+
+	let mut response = SetattrResponse::new(attr);
+	response.set_cache_timeout(time::Duration::new(123, 456));
 
 	let encoded = fuse_testutil::encode_response!(response, {
 		protocol_version: (7, 9),
@@ -226,33 +226,34 @@ fn response_v7p9() {
 
 #[test]
 fn response_impl_debug() {
-	let mut response = SetattrResponse::new();
-	let attr = response.attr_mut();
-	attr.set_node_id(node::Id::new(2).unwrap());
+	let mut attr = node::Attributes::new(node::Id::new(2).unwrap());
 	attr.set_mode(node::Mode::S_IFREG | 0o644);
-	attr.set_nlink(1);
+	attr.set_link_count(1);
 	attr.set_size(999);
-	response.set_cache_duration(time::Duration::new(123, 456));
+
+	let mut response = SetattrResponse::new(attr);
+	response.set_cache_timeout(time::Duration::new(123, 456));
 
 	assert_eq!(
 		format!("{:#?}", response),
 		concat!(
 			"SetattrResponse {\n",
-			"    attr: NodeAttr {\n",
-			"        node_id: Some(2),\n",
+			"    attributes: Attributes {\n",
+			"        node_id: 2,\n",
+			"        mode: 0o100644,\n",
 			"        size: 999,\n",
-			"        blocks: 0,\n",
 			"        atime: UnixTime(0.000000000),\n",
 			"        mtime: UnixTime(0.000000000),\n",
 			"        ctime: UnixTime(0.000000000),\n",
-			"        mode: 0o100644,\n",
-			"        nlink: 1,\n",
-			"        uid: 0,\n",
-			"        gid: 0,\n",
-			"        rdev: 0,\n",
-			"        blksize: 0,\n",
+			"        link_count: 1,\n",
+			"        user_id: 0,\n",
+			"        group_id: 0,\n",
+			"        device_number: 0,\n",
+			"        block_count: 0,\n",
+			"        block_size: 0,\n",
+			"        flags: AttributeFlags {},\n",
 			"    },\n",
-			"    cache_duration: 123.000000456s,\n",
+			"    cache_timeout: 123.000000456s,\n",
 			"}",
 		),
 	);
