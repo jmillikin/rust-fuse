@@ -21,10 +21,10 @@ use core::num;
 use core::ops;
 use core::time;
 
+use crate::internal::debug;
 use crate::internal::fuse_kernel;
 use crate::internal::timestamp;
 
-use crate::protocol::common::DebugBytesAsString;
 
 // Id {{{
 
@@ -254,7 +254,7 @@ impl Name {
 
 impl fmt::Debug for Name {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		DebugBytesAsString(&self.bytes).fmt(fmt)
+		debug::bytes(&self.bytes).fmt(fmt)
 	}
 }
 

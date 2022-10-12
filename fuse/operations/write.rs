@@ -20,15 +20,13 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::internal::compat;
+use crate::internal::debug;
 use crate::internal::fuse_kernel;
 use crate::lock;
 use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
-
-use crate::protocol::common::DebugBytesAsString;
-use crate::protocol::common::DebugHexU32;
 
 // WriteRequest {{{
 
@@ -145,10 +143,10 @@ impl fmt::Debug for WriteRequest<'_> {
 			.field("node_id", &self.node_id())
 			.field("offset", &self.offset())
 			.field("handle", &self.handle())
-			.field("value", &DebugBytesAsString(self.value))
+			.field("value", &debug::bytes(self.value))
 			.field("flags", &self.flags())
 			.field("lock_owner", &format_args!("{:?}", &self.lock_owner()))
-			.field("open_flags", &DebugHexU32(self.open_flags()))
+			.field("open_flags", &debug::hex_u32(self.open_flags()))
 			.finish()
 	}
 }

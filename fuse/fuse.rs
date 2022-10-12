@@ -91,12 +91,6 @@ pub mod io;
 
 pub use crate::error::Error;
 
-#[macro_use]
-mod protocol {
-	#[macro_use]
-	pub(crate) mod common;
-}
-
 pub mod notify;
 
 pub mod operations;

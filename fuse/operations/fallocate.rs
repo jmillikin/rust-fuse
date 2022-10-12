@@ -19,13 +19,12 @@
 use core::fmt;
 use core::marker::PhantomData;
 
+use crate::internal::debug;
 use crate::internal::fuse_kernel;
 use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
-
-use crate::protocol::common::DebugHexU32;
 
 // FallocateRequest {{{
 
@@ -90,7 +89,7 @@ impl fmt::Debug for FallocateRequest<'_> {
 			.field("handle", &self.handle())
 			.field("offset", &self.offset())
 			.field("length", &self.length())
-			.field("fallocate_flags", &DebugHexU32(self.fallocate_flags()))
+			.field("fallocate_flags", &debug::hex_u32(self.fallocate_flags()))
 			.finish()
 	}
 }

@@ -19,13 +19,12 @@
 use core::fmt;
 use core::marker::PhantomData;
 
+use crate::internal::debug;
 use crate::internal::fuse_kernel;
 use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
-
-use crate::protocol::common::DebugBytesAsString;
 
 // SymlinkRequest {{{
 
@@ -81,7 +80,7 @@ impl fmt::Debug for SymlinkRequest<'_> {
 		fmt.debug_struct("SymlinkRequest")
 			.field("parent_id", &self.parent_id)
 			.field("name", &self.name)
-			.field("content", &DebugBytesAsString(self.content))
+			.field("content", &debug::bytes(self.content))
 			.finish()
 	}
 }

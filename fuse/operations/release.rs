@@ -20,14 +20,13 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::internal::compat;
+use crate::internal::debug;
 use crate::internal::fuse_kernel;
 use crate::lock;
 use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
-
-use crate::protocol::common::DebugHexU32;
 
 // ReleaseRequest {{{
 
@@ -121,7 +120,7 @@ impl fmt::Debug for ReleaseRequest<'_> {
 			.field("node_id", &self.node_id())
 			.field("handle", &self.handle())
 			.field("lock_owner", &format_args!("{:?}", self.lock_owner()))
-			.field("open_flags", &DebugHexU32(self.open_flags()))
+			.field("open_flags", &debug::hex_u32(self.open_flags()))
 			.finish()
 	}
 }

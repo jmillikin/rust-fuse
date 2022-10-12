@@ -5,6 +5,7 @@ filegroup(
     srcs = [
         "bitflags.rs",
         "compat.rs",
+        "debug.rs",
         "dirent.rs",
         "fuse_kernel.rs",
         "fuse_kernel_util.rs",

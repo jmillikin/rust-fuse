@@ -20,14 +20,12 @@ use core::fmt;
 use core::marker::PhantomData;
 use core::mem::size_of;
 
+use crate::internal::debug;
 use crate::internal::fuse_kernel;
 use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
-
-use crate::protocol::common::DebugHexU32;
-use crate::protocol::common::DebugHexU64;
 
 // IoctlRequest {{{
 
@@ -133,8 +131,8 @@ impl fmt::Debug for IoctlRequest<'_> {
 		fmt.debug_struct("IoctlRequest")
 			.field("node_id", &self.node_id())
 			.field("handle", &self.body.fh)
-			.field("command", &DebugHexU32(self.body.cmd))
-			.field("arg", &DebugHexU64(self.body.arg))
+			.field("command", &debug::hex_u32(self.body.cmd))
+			.field("arg", &debug::hex_u64(self.body.arg))
 			.field("output_len", &self.body.out_size)
 			.field("flags", &self.flags())
 			.field("input", &self.input)
@@ -162,7 +160,7 @@ impl IoctlCmd {
 impl fmt::Debug for IoctlCmd {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_tuple("IoctlCmd")
-			.field(&DebugHexU32(self.cmd))
+			.field(&debug::hex_u32(self.cmd))
 			.finish()
 	}
 }
@@ -192,7 +190,7 @@ impl IoctlArg {
 impl fmt::Debug for IoctlArg {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_tuple("IoctlArg")
-			.field(&DebugHexU64(self.arg))
+			.field(&debug::hex_u64(self.arg))
 			.finish()
 	}
 }
@@ -221,7 +219,7 @@ impl<T> IoctlPtr<T> {
 impl<T> fmt::Debug for IoctlPtr<T> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("IoctlPtr")
-			.field("addr", &DebugHexU64(self.addr))
+			.field("addr", &debug::hex_u64(self.addr))
 			.field("len", &size_of::<T>())
 			.finish()
 	}
@@ -437,7 +435,7 @@ impl IoctlSlice {
 impl fmt::Debug for IoctlSlice {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("IoctlSlice")
-			.field("base", &DebugHexU64(self.base))
+			.field("base", &debug::hex_u64(self.base))
 			.field("len", &self.len)
 			.finish()
 	}

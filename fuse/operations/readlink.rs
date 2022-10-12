@@ -23,13 +23,12 @@ use std::ffi::CStr;
 use core::fmt;
 use core::marker::PhantomData;
 
+use crate::internal::debug;
 use crate::internal::fuse_kernel;
 use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
-
-use crate::protocol::common::DebugBytesAsString;
 
 // ReadlinkRequest {{{
 
@@ -104,7 +103,7 @@ response_send_funcs!(ReadlinkResponse<'_>);
 impl fmt::Debug for ReadlinkResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("ReadlinkResponse")
-			.field("target", &DebugBytesAsString(self.target))
+			.field("target", &debug::bytes(self.target))
 			.finish()
 	}
 }

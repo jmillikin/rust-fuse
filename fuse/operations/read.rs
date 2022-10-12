@@ -19,15 +19,13 @@
 use core::fmt;
 
 use crate::internal::compat;
+use crate::internal::debug;
 use crate::internal::fuse_kernel;
 use crate::lock;
 use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
-
-use crate::protocol::common::DebugBytesAsString;
-use crate::protocol::common::DebugHexU32;
 
 // ReadRequest {{{
 
@@ -136,7 +134,7 @@ impl fmt::Debug for ReadRequest<'_> {
 			.field("offset", &self.offset())
 			.field("handle", &self.handle())
 			.field("lock_owner", &format_args!("{:?}", &self.lock_owner()))
-			.field("open_flags", &DebugHexU32(self.open_flags()))
+			.field("open_flags", &debug::hex_u32(self.open_flags()))
 			.finish()
 	}
 }
@@ -168,9 +166,8 @@ response_send_funcs!(ReadResponse<'_>);
 
 impl fmt::Debug for ReadResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		let bytes = DebugBytesAsString(self.bytes);
 		fmt.debug_struct("ReadResponse")
-			.field("bytes", &bytes)
+			.field("bytes", &debug::bytes(self.bytes))
 			.finish()
 	}
 }

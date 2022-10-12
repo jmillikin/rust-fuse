@@ -22,9 +22,8 @@
 //! and `FUSE_SETATTR` operations.
 
 use core::fmt;
-use core::fmt::Debug;
 
-use crate::protocol::common::DebugBytesAsString;
+use crate::internal::debug;
 
 #[cfg(target_os = "freebsd")]
 const EXTATTR_MAXNAMELEN: usize = 255;
@@ -170,9 +169,9 @@ impl Name {
 	}
 }
 
-impl Debug for Name {
+impl fmt::Debug for Name {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		DebugBytesAsString(&self.bytes).fmt(fmt)
+		debug::bytes(&self.bytes).fmt(fmt)
 	}
 }
 
@@ -289,7 +288,7 @@ impl Value {
 	}
 }
 
-impl Debug for Value {
+impl fmt::Debug for Value {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		self.bytes.fmt(fmt)
 	}

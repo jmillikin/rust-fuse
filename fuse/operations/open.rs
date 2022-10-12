@@ -19,13 +19,12 @@
 use core::fmt;
 use core::marker::PhantomData;
 
+use crate::internal::debug;
 use crate::internal::fuse_kernel;
 use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
-
-use crate::protocol::common::DebugHexU32;
 
 // OpenRequest {{{
 
@@ -99,7 +98,7 @@ impl fmt::Debug for OpenRequest<'_> {
 		fmt.debug_struct("OpenRequest")
 			.field("node_id", &self.node_id())
 			.field("flags", &self.flags())
-			.field("open_flags", &DebugHexU32(self.open_flags()))
+			.field("open_flags", &debug::hex_u32(self.open_flags()))
 			.finish()
 	}
 }

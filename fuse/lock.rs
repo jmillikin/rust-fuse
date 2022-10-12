@@ -19,9 +19,8 @@
 use core::fmt;
 use core::num;
 
+use crate::internal::debug;
 use crate::internal::fuse_kernel;
-
-use crate::protocol::common::DebugHexU64;
 
 #[cfg(target_os = "freebsd")]
 mod sys_fcntl {
@@ -97,7 +96,7 @@ impl Owner {
 
 impl fmt::Debug for Owner {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		DebugHexU64(self.owner).fmt(fmt)
+		debug::hex_u64(self.owner).fmt(fmt)
 	}
 }
 

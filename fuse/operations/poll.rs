@@ -19,13 +19,12 @@
 use core::fmt;
 use core::marker::PhantomData;
 
+use crate::internal::debug;
 use crate::internal::fuse_kernel;
 use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
-
-use crate::protocol::common::DebugHexU32;
 
 // PollRequest {{{
 
@@ -100,7 +99,7 @@ impl fmt::Debug for PollRequest<'_> {
 		fmt.debug_struct("PollRequest")
 			.field("node_id", &self.node_id())
 			.field("poll_handle", &self.poll_handle())
-			.field("poll_events", &DebugHexU32(self.poll_events()))
+			.field("poll_events", &debug::hex_u32(self.poll_events()))
 			.field("flags", &self.flags())
 			.finish()
 	}
@@ -143,7 +142,7 @@ response_send_funcs!(PollResponse<'_>);
 impl fmt::Debug for PollResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("PollResponse")
-			.field("poll_events", &DebugHexU32(self.poll_events()))
+			.field("poll_events", &debug::hex_u32(self.poll_events()))
 			.finish()
 	}
 }

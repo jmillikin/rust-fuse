@@ -25,9 +25,8 @@
 //! CUSE, but it implements a different API that is unrelated to FUSE.
 
 use core::fmt;
-use core::fmt::Debug;
 
-use crate::protocol::common::DebugBytesAsString;
+use crate::internal::debug;
 
 // Matches the `limits.h` constant for Linux.
 //
@@ -150,9 +149,9 @@ impl DeviceName {
 	}
 }
 
-impl Debug for DeviceName {
+impl fmt::Debug for DeviceName {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		DebugBytesAsString(&self.bytes).fmt(fmt)
+		debug::bytes(&self.bytes).fmt(fmt)
 	}
 }
 

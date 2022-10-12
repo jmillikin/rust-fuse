@@ -20,14 +20,13 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::internal::compat;
+use crate::internal::debug;
 use crate::internal::fuse_kernel;
 use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
 use crate::xattr;
-
-use crate::protocol::common::DebugHexU32;
 
 // SetxattrRequest {{{
 
@@ -116,7 +115,7 @@ impl fmt::Debug for SetxattrRequest<'_> {
 			.field("node_id", &self.node_id())
 			.field("name", &self.name())
 			.field("flags", &self.flags())
-			.field("setxattr_flags", &DebugHexU32(self.setxattr_flags()))
+			.field("setxattr_flags", &debug::hex_u32(self.setxattr_flags()))
 			.field("value", &self.value().as_bytes())
 			.finish()
 	}

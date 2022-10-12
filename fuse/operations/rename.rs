@@ -19,13 +19,12 @@
 use core::fmt;
 use core::marker::PhantomData;
 
+use crate::internal::debug;
 use crate::internal::fuse_kernel;
 use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
-
-use crate::protocol::common::DebugHexU32;
 
 // RenameRequest {{{
 
@@ -109,7 +108,7 @@ impl fmt::Debug for RenameRequest<'_> {
 			.field("old_name", &self.old_name)
 			.field("new_directory_id", &self.new_directory_id)
 			.field("new_name", &self.new_name)
-			.field("rename_flags", &DebugHexU32(self.rename_flags))
+			.field("rename_flags", &debug::hex_u32(self.rename_flags))
 			.finish()
 	}
 }

@@ -21,14 +21,13 @@ use core::fmt;
 use core::num;
 
 use crate::internal::compat;
+use crate::internal::debug;
 use crate::internal::dirent;
 use crate::internal::fuse_kernel;
 use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
-
-use crate::protocol::common::DebugHexU32;
 
 // ReaddirRequest {{{
 
@@ -108,7 +107,7 @@ impl fmt::Debug for ReaddirRequest<'_> {
 			.field("size", &self.size())
 			.field("offset", &format_args!("{:?}", self.offset()))
 			.field("handle", &self.handle())
-			.field("open_flags", &DebugHexU32(self.open_flags()))
+			.field("open_flags", &debug::hex_u32(self.open_flags()))
 			.finish()
 	}
 }
