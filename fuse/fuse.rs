@@ -324,9 +324,15 @@ impl Version {
 	}
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Opcode {
 	bits: u32,
+}
+
+impl core::fmt::Debug for Opcode {
+	fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
+		internal::fuse_kernel::fuse_opcode(self.bits).fmt(fmt)
+	}
 }
 
 macro_rules! export_opcodes {
