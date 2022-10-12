@@ -17,7 +17,7 @@
 use core::cell::RefCell;
 use core::cmp::min;
 use core::fmt;
-use core::mem::{size_of, transmute};
+use core::mem::size_of;
 
 use crate::Version;
 use crate::internal::fuse_kernel::fuse_in_header;
@@ -116,74 +116,6 @@ impl From<xattr::ValueError> for RequestError {
 	}
 }
 
-#[derive(Copy, Clone)]
-pub struct RequestHeader {
-	raw: fuse_in_header,
-}
-
-impl RequestHeader {
-	pub(crate) fn new_ref<'a>(raw: &'a fuse_in_header) -> &'a RequestHeader {
-		unsafe { transmute(raw) }
-	}
-
-	#[must_use]
-	pub fn opcode(&self) -> crate::Opcode {
-		crate::Opcode { bits: self.raw.opcode.0 }
-	}
-
-	#[must_use]
-	pub fn request_id(&self) -> u64 {
-		self.raw.unique
-	}
-
-	#[must_use]
-	pub fn node_id(&self) -> Option<node::Id> {
-		node::Id::new(self.raw.nodeid)
-	}
-
-	#[must_use]
-	pub fn user_id(&self) -> u32 {
-		self.raw.uid
-	}
-
-	#[must_use]
-	pub fn group_id(&self) -> u32 {
-		self.raw.gid
-	}
-
-	/// The process that initiated a CUSE/FUSE request, if available.
-	///
-	/// See the documentation of [`ProcessId`](crate::ProcessId) for details
-	/// on the semantics of this value.
-	///
-	/// A request might not have a process ID, for example if it was generated
-	/// internally by the kernel, or if the client's PID isn't visible in the
-	/// server's PID namespace.
-	#[must_use]
-	pub fn process_id(&self) -> Option<crate::ProcessId> {
-		crate::ProcessId::new(self.raw.pid)
-	}
-
-	#[must_use]
-	pub fn len(&self) -> u32 {
-		self.raw.len
-	}
-}
-
-impl fmt::Debug for RequestHeader {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("RequestHeader")
-			.field("opcode", &self.raw.opcode)
-			.field("request_id", &self.raw.unique)
-			.field("node_id", &format_args!("{:?}", self.node_id()))
-			.field("user_id", &self.raw.uid)
-			.field("group_id", &self.raw.gid)
-			.field("process_id", &format_args!("{:?}", self.process_id()))
-			.field("len", &self.raw.len)
-			.finish()
-	}
-}
-
 #[derive(Clone, Copy)]
 pub struct ResponseContext {
 	pub(crate) request_id: u64,
@@ -251,14 +183,14 @@ impl<'a> CuseRequest<'a> {
 	}
 
 	#[must_use]
-	pub fn header(&self) -> &'a RequestHeader {
-		RequestHeader::new_ref(self.buf.header())
+	pub fn header(&self) -> &'a crate::RequestHeader {
+		self.buf.header()
 	}
 
 	#[must_use]
 	pub fn response_context(&self) -> ResponseContext {
 		ResponseContext {
-			request_id: self.header().request_id(),
+			request_id: self.header().request_id().get(),
 			version_minor: self.version_minor,
 		}
 	}
@@ -333,14 +265,14 @@ impl<'a> FuseRequest<'a> {
 	}
 
 	#[must_use]
-	pub fn header(&self) -> &'a RequestHeader {
-		RequestHeader::new_ref(self.buf.header())
+	pub fn header(&self) -> &'a crate::RequestHeader {
+		self.buf.header()
 	}
 
 	#[must_use]
 	pub fn response_context(&self) -> ResponseContext {
 		ResponseContext {
-			request_id: self.header().request_id(),
+			request_id: self.header().request_id().get(),
 			version_minor: self.version_minor,
 		}
 	}
@@ -351,7 +283,7 @@ impl<'a> FuseRequest<'a> {
 }
 
 pub struct UnknownRequest<'a> {
-	header: &'a fuse_in_header,
+	header: &'a crate::RequestHeader,
 	body: RefCell<UnknownBody<'a>>,
 }
 
@@ -378,8 +310,8 @@ impl<'a> UnknownRequest<'a> {
 	}
 
 	#[must_use]
-	pub fn header(&self) -> &RequestHeader {
-		RequestHeader::new_ref(self.header)
+	pub fn header(&self) -> &crate::RequestHeader {
+		self.header
 	}
 
 	pub fn body(&self) -> Result<&'a [u8], RequestError> {
@@ -387,8 +319,9 @@ impl<'a> UnknownRequest<'a> {
 		self.body.replace_with(|body| match body {
 			UnknownBody::Raw(buf) => {
 				let body_offset = size_of::<fuse_in_header>() as u32;
+				let header = buf.raw_header();
 				let mut dec = decode::RequestDecoder::new(*buf);
-				result = dec.next_bytes(self.header.len - body_offset);
+				result = dec.next_bytes(header.len - body_offset);
 				UnknownBody::Parsed(result)
 			},
 			UnknownBody::Parsed(r) => {
@@ -704,11 +637,11 @@ impl<S: io::AsyncFuseSocket> AsyncFuseRequests<'_, S> {
 
 #[allow(unused_variables)]
 pub trait Hooks {
-	fn request(&self, header: &RequestHeader) {}
+	fn request(&self, header: &crate::RequestHeader) {}
 
 	fn unknown_request(&self, request: &UnknownRequest) {}
 
-	fn unhandled_request(&self, header: &RequestHeader) {}
+	fn unhandled_request(&self, header: &crate::RequestHeader) {}
 
-	fn request_error(&self, header: &RequestHeader, err: RequestError) {}
+	fn request_error(&self, header: &crate::RequestHeader, err: RequestError) {}
 }

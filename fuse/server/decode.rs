@@ -53,7 +53,8 @@ pub trait FuseRequest<'a>: Sealed {
 #[derive(Copy, Clone)]
 pub(crate) union RequestBuf<'a> {
 	buf: Slice<'a>,
-	header: &'a fuse_kernel::fuse_in_header,
+	header: &'a crate::RequestHeader,
+	raw_header: &'a fuse_kernel::fuse_in_header,
 }
 
 #[repr(C)]
@@ -104,15 +105,19 @@ impl<'a> RequestBuf<'a> {
 		})
 	}
 
-	pub(crate) fn header(self) -> &'a fuse_kernel::fuse_in_header {
+	pub(crate) fn header(self) -> &'a crate::RequestHeader {
 		unsafe { self.header }
+	}
+
+	pub(crate) fn raw_header(self) -> &'a fuse_kernel::fuse_in_header {
+		unsafe { self.raw_header }
 	}
 
 	pub(crate) fn expect_opcode(
 		&self,
 		opcode: fuse_kernel::fuse_opcode,
 	) -> Result<(), RequestError> {
-		if self.header().opcode != opcode {
+		if self.raw_header().opcode != opcode {
 			return Err(RequestError::OpcodeMismatch);
 		}
 		Ok(())
@@ -148,7 +153,7 @@ impl<'a> RequestDecoder<'a> {
 	}
 
 	pub(crate) fn header(&self) -> &'a fuse_kernel::fuse_in_header {
-		self.buf.header()
+		self.buf.raw_header()
 	}
 
 	fn consume(&self, len: u32) -> Result<u32, RequestError> {

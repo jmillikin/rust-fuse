@@ -86,7 +86,7 @@ impl<'a> FlushRequest<'a> {
 		let node_id = if is_cuse {
 			node::Id::ROOT
 		} else {
-			decode::node_id(buf.header().nodeid)?
+			decode::node_id(buf.raw_header().nodeid)?
 		};
 		let mut dec = decode::RequestDecoder::new(buf);
 

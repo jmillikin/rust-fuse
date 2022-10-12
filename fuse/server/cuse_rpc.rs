@@ -231,7 +231,7 @@ impl_cuse_response! {
 
 pub struct CuseCall<'a, S> {
 	socket: &'a S,
-	header: &'a server::RequestHeader,
+	header: &'a crate::RequestHeader,
 	response_ctx: server::ResponseContext,
 	sent_reply: &'a mut bool,
 	hooks: Option<&'a dyn server::Hooks>,
@@ -239,7 +239,7 @@ pub struct CuseCall<'a, S> {
 
 impl<S> CuseCall<'_, S> {
 	#[must_use]
-	pub fn header(&self) -> &server::RequestHeader {
+	pub fn header(&self) -> &crate::RequestHeader {
 		self.header
 	}
 

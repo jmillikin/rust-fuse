@@ -119,6 +119,137 @@ pub trait Flags<Flag>: sealed::Sealed {
 	fn set(&mut self, flag: Flag);
 }
 
+// RequestHeader {{{
+
+/// The header of a FUSE request.
+#[derive(Clone, Copy)]
+pub struct RequestHeader {
+	raw: internal::fuse_kernel::fuse_in_header,
+}
+
+impl RequestHeader {
+	/// Returns the unique ID for this request.
+	#[inline]
+	#[must_use]
+	pub fn request_id(&self) -> core::num::NonZeroU64 {
+		unsafe { core::num::NonZeroU64::new_unchecked(self.raw.unique) }
+	}
+
+	/// Returns the length of this request, including the header.
+	#[inline]
+	#[must_use]
+	pub fn request_len(&self) -> core::num::NonZeroU32 {
+		unsafe { core::num::NonZeroU32::new_unchecked(self.raw.len) }
+	}
+
+	/// Returns the opcode of this request.
+	#[inline]
+	#[must_use]
+	pub fn opcode(&self) -> Opcode {
+		Opcode { bits: self.raw.opcode.0 }
+	}
+
+	/// Returns the ID of this request's primary node, if present.
+	#[inline]
+	#[must_use]
+	pub fn node_id(&self) -> Option<node::Id> {
+		node::Id::new(self.raw.nodeid)
+	}
+
+	/// Returns the user ID of the process that initiated this request.
+	#[inline]
+	#[must_use]
+	pub fn user_id(&self) -> u32 {
+		self.raw.uid
+	}
+
+	/// Returns the group ID of the process that initiated this request.
+	#[inline]
+	#[must_use]
+	pub fn group_id(&self) -> u32 {
+		self.raw.gid
+	}
+
+	/// Returns the process ID of the process that initiated this request,
+	/// if present.
+	///
+	/// See the documentation of [`ProcessId`](crate::ProcessId) for details
+	/// on the semantics of this value.
+	///
+	/// A request might not have a process ID, for example if it was generated
+	/// internally by the kernel, or if the client's PID isn't visible in the
+	/// server's PID namespace.
+	#[inline]
+	#[must_use]
+	pub fn process_id(&self) -> Option<ProcessId> {
+		ProcessId::new(self.raw.pid)
+	}
+}
+
+impl core::fmt::Debug for RequestHeader {
+	fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
+		fmt.debug_struct("RequestHeader")
+			.field("request_id", &self.request_id())
+			.field("request_len", &self.request_len())
+			.field("opcode", &self.opcode())
+			.field("node_id", &format_args!("{:?}", self.node_id()))
+			.field("user_id", &self.user_id())
+			.field("group_id", &self.group_id())
+			.field("process_id", &format_args!("{:?}", self.process_id()))
+			.finish()
+	}
+}
+
+// }}}
+
+// ResponseHeader {{{
+
+/// The header of a FUSE response.
+#[derive(Copy, Clone)]
+pub struct ResponseHeader {
+	raw: internal::fuse_kernel::fuse_out_header,
+}
+
+impl ResponseHeader {
+	/// Returns the unique ID for the original request, if present.
+	///
+	/// Responses without a request ID are notifications.
+	#[inline]
+	#[must_use]
+	pub fn request_id(&self) -> Option<core::num::NonZeroU64> {
+		core::num::NonZeroU64::new(self.raw.unique)
+	}
+
+	/// Returns the length of this response, including the header.
+	#[inline]
+	#[must_use]
+	pub fn response_len(&self) -> core::num::NonZeroU32 {
+		unsafe { core::num::NonZeroU32::new_unchecked(self.raw.len) }
+	}
+
+	/// Returns the error code for the original request, if present.
+	///
+	/// Responses without an error code indicate successful completion of the
+	/// original request.
+	#[inline]
+	#[must_use]
+	pub fn error(&self) -> Option<core::num::NonZeroI32> {
+		core::num::NonZeroI32::new(self.raw.error)
+	}
+}
+
+impl core::fmt::Debug for ResponseHeader {
+	fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
+		fmt.debug_struct("ResponseHeader")
+			.field("request_id", &format_args!("{:?}", self.request_id()))
+			.field("response_len", &self.response_len())
+			.field("error", &format_args!("{:?}", self.error()))
+			.finish()
+	}
+}
+
+// }}}
+
 /// OS-specific flags passed to `fallocate()`.
 pub type FallocateFlags = u32;
 

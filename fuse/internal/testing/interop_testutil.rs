@@ -36,13 +36,13 @@ impl server::Hooks for PrintHooks {
 		println!("\n[unknown_request]\n{:#?}", request);
 	}
 
-	fn unhandled_request(&self, header: &fuse::server::RequestHeader) {
+	fn unhandled_request(&self, header: &fuse::RequestHeader) {
 		println!("\n[unhandled_request]\n{:#?}", header);
 	}
 
 	fn request_error(
 		&self,
-		header: &fuse::server::RequestHeader,
+		header: &fuse::RequestHeader,
 		err: fuse::server::RequestError,
 	) {
 		println!("\n[request_error]\n{:#?}", header);
