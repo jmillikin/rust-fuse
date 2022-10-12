@@ -94,7 +94,7 @@ impl MessageBuilder {
 			None => fuse_kernel::fuse_in_header {
 				len: 0,
 				opcode: fuse_kernel::fuse_opcode(0),
-				unique: 0,
+				unique: 0xAABBCCDD,
 				nodeid: 0,
 				uid: 0,
 				gid: 0,

@@ -120,7 +120,7 @@ fn response_v7p1() {
 				len: (size_of::<fuse_kernel::fuse_out_header>()
 					+ fuse_kernel::FUSE_COMPAT_INIT_OUT_SIZE) as u32,
 				error: 0,
-				unique: 0,
+				unique: 0xAABBCCDD,
 			})
 			.push_sized(&7u32) // fuse_init_in::major
 			.push_sized(&1u32) // fuse_init_in::minor
@@ -141,7 +141,7 @@ fn response_v7p5() {
 				len: (size_of::<fuse_kernel::fuse_out_header>()
 					+ fuse_kernel::FUSE_COMPAT_22_INIT_OUT_SIZE) as u32,
 				error: 0,
-				unique: 0,
+				unique: 0xAABBCCDD,
 			})
 			.push_sized(&7u32) // fuse_init_out_v7p5::major
 			.push_sized(&5u32) // fuse_init_out_v7p5::minor
@@ -167,7 +167,7 @@ fn response_v7p23() {
 				len: (size_of::<fuse_kernel::fuse_out_header>()
 					+ size_of::<fuse_kernel::fuse_init_out>()) as u32,
 				error: 0,
-				unique: 0,
+				unique: 0xAABBCCDD,
 			})
 			.push_sized(&fuse_kernel::fuse_init_out {
 				major: 7,

@@ -156,7 +156,7 @@ fn readdir_response() {
 					+ size_of::<fuse_kernel::fuse_dirent>()
 					+ 8) as u32,
 				error: 0,
-				unique: 0,
+				unique: 0xAABBCCDD,
 			})
 			.push_sized(&fuse_kernel::fuse_dirent {
 				ino: 100,

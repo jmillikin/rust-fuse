@@ -83,6 +83,7 @@ impl<E> From<io::SendError<E>> for ServerError<E> {
 pub enum RequestError {
 	LockError(lock::LockError),
 	MissingNodeId,
+	MissingRequestId,
 	NodeNameError(node::NameError),
 	OpcodeMismatch,
 	TimestampNanosOverflow,

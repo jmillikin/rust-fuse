@@ -77,6 +77,10 @@ impl<'a> RequestBuf<'a> {
 		let header_ptr = buf.as_ptr().cast::<fuse_kernel::fuse_in_header>();
 		let header = unsafe { &*header_ptr };
 
+		if header.unique == 0 {
+			return Err(RequestError::MissingRequestId);
+		}
+
 		let buf_len: u32;
 		if size_of::<usize>() > size_of::<u32>() {
 			if buf.len() > u32::MAX as usize {

@@ -83,7 +83,7 @@ fn response_v7p1() {
 				len: (size_of::<fuse_kernel::fuse_out_header>()
 					+ fuse_kernel::FUSE_COMPAT_ENTRY_OUT_SIZE) as u32,
 				error: 0,
-				unique: 0,
+				unique: 0xAABBCCDD,
 			})
 			.push_sized(&fuse_kernel::fuse_entry_out {
 				nodeid: 11,
@@ -125,7 +125,7 @@ fn response_v7p9() {
 				len: (size_of::<fuse_kernel::fuse_out_header>()
 					+ size_of::<fuse_kernel::fuse_entry_out>()) as u32,
 				error: 0,
-				unique: 0,
+				unique: 0xAABBCCDD,
 			})
 			.push_sized(&fuse_kernel::fuse_entry_out {
 				nodeid: 11,
@@ -157,7 +157,7 @@ fn response_noexist_v7p1() {
 			.push_sized(&fuse_kernel::fuse_out_header {
 				len: size_of::<fuse_kernel::fuse_out_header>() as u32,
 				error: -(os_errno::ENOENT.get() as i32),
-				unique: 0,
+				unique: 0xAABBCCDD,
 			})
 			.build()
 	);
@@ -177,7 +177,7 @@ fn response_noexist_v7p4() {
 				len: (size_of::<fuse_kernel::fuse_out_header>()
 					+ fuse_kernel::FUSE_COMPAT_ENTRY_OUT_SIZE) as u32,
 				error: 0,
-				unique: 0,
+				unique: 0xAABBCCDD,
 			})
 			.push_sized(&fuse_kernel::fuse_entry_out {
 				nodeid: 0,

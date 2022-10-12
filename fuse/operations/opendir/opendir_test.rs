@@ -85,7 +85,7 @@ fn response() {
 				len: (size_of::<fuse_kernel::fuse_out_header>()
 					+ size_of::<fuse_kernel::fuse_open_out>()) as u32,
 				error: 0,
-				unique: 0,
+				unique: 0xAABBCCDD,
 			})
 			.push_sized(&fuse_kernel::fuse_open_out {
 				fh: 123,

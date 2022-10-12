@@ -146,7 +146,7 @@ fn response() {
 				len: (size_of::<fuse_kernel::fuse_out_header>()
 					+ resp_bytes.len()) as u32,
 				error: 0,
-				unique: 0,
+				unique: 0xAABBCCDD,
 			})
 			.push_bytes(&[255, 0, 255])
 			.build()

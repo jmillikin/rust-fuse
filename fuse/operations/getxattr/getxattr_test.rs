@@ -103,7 +103,7 @@ fn response_with_value() {
 			.push_sized(&fuse_kernel::fuse_out_header {
 				len: (size_of::<fuse_kernel::fuse_out_header>() + 3) as u32,
 				error: 0,
-				unique: 0,
+				unique: 0xAABBCCDD,
 			})
 			.push_bytes(&[255, 0, 255])
 			.build()
@@ -122,7 +122,7 @@ fn response_with_value_size() {
 				len: (size_of::<fuse_kernel::fuse_out_header>()
 					+ size_of::<fuse_kernel::fuse_getxattr_out>()) as u32,
 				error: 0,
-				unique: 0,
+				unique: 0xAABBCCDD,
 			})
 			.push_sized(&fuse_kernel::fuse_getxattr_out {
 				size: 4,

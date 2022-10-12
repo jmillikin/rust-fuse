@@ -163,7 +163,7 @@ fn response_v7p1() {
 				len: (size_of::<fuse_kernel::fuse_out_header>()
 					+ fuse_kernel::FUSE_COMPAT_ATTR_OUT_SIZE) as u32,
 				error: 0,
-				unique: 0,
+				unique: 0xAABBCCDD,
 			})
 			.push_sized(&fuse_kernel::fuse_attr_out {
 				attr_valid: 123,
@@ -206,7 +206,7 @@ fn response_v7p9() {
 				len: (size_of::<fuse_kernel::fuse_out_header>()
 					+ size_of::<fuse_kernel::fuse_attr_out>()) as u32,
 				error: 0,
-				unique: 0,
+				unique: 0xAABBCCDD,
 			})
 			.push_sized(&fuse_kernel::fuse_attr_out {
 				attr_valid: 123,

@@ -82,7 +82,7 @@ fn response_empty() {
 			.push_sized(&fuse_kernel::fuse_out_header {
 				len: size_of::<fuse_kernel::fuse_out_header>() as u32,
 				error: 0,
-				unique: 0,
+				unique: 0xAABBCCDD,
 			})
 			.build()
 	);

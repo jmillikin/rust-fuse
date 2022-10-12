@@ -101,7 +101,7 @@ fn response() {
 					+ size_of::<fuse_kernel::cuse_init_out>()
 					+ b"DEVNAME=test-device\x00".len()) as u32,
 				error: 0,
-				unique: 0,
+				unique: 0xAABBCCDD,
 			})
 			.push_sized(&fuse_kernel::cuse_init_out {
 				major: 7,

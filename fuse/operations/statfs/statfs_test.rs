@@ -71,7 +71,7 @@ fn response_v7p1() {
 				len: (size_of::<fuse_kernel::fuse_out_header>()
 					+ fuse_kernel::FUSE_COMPAT_STATFS_SIZE) as u32,
 				error: 0,
-				unique: 0,
+				unique: 0xAABBCCDD,
 			})
 			.push_sized(&fuse_kernel::fuse_statfs_out {
 				st: fuse_kernel::fuse_kstatfs {
@@ -117,7 +117,7 @@ fn response_v7p4() {
 				len: (size_of::<fuse_kernel::fuse_out_header>()
 					+ size_of::<fuse_kernel::fuse_statfs_out>()) as u32,
 				error: 0,
-				unique: 0,
+				unique: 0xAABBCCDD,
 			})
 			.push_sized(&fuse_kernel::fuse_statfs_out {
 				st: fuse_kernel::fuse_kstatfs {
