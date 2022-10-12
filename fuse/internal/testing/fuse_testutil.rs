@@ -46,6 +46,8 @@ mod io {
 	}
 }
 
+pub use io::ArrayBuffer;
+
 pub struct MessageBuilder {
 	header: Option<fuse_kernel::fuse_in_header>,
 	buf: Vec<u8>,

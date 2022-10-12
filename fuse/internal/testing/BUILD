@@ -1,4 +1,4 @@
-load("@rules_rust//rust:defs.bzl", "rust_library")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library")
 
 package(
     default_testonly = True,
@@ -33,4 +33,22 @@ rust_library(
         ],
         "//conditions:default": [],
     }),
+)
+
+rust_binary(
+    name = "benchmark_io",
+    testonly = True,
+    srcs = ["benchmark_io.rs"],
+    args = ["--bench"],
+    edition = "2021",
+    rustc_flags = [
+        "-Copt-level=3",
+    ],
+    tags = ["manual"],
+    deps = [
+        "//fuse",
+        "//fuse/internal:fuse_kernel",
+        "//fuse/internal/testing:fuse_testutil",
+        "@rust_criterion//:criterion",
+    ],
 )
