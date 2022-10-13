@@ -15,7 +15,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::cuse;
-use crate::io::ArrayBuffer;
 use crate::operations;
 use crate::operations::cuse_init::{
 	CuseInitFlags,
@@ -154,7 +153,7 @@ where
 	H: CuseHandlers<S>,
 {
 	pub fn serve(&self) -> Result<(), ServerError<S::Error>> {
-		let mut buf = ArrayBuffer::new();
+		let mut buf = crate::io::MinReadBuffer::new();
 
 		#[allow(unused_mut)]
 		let mut dispatcher = CuseDispatcher::new(&self.socket, &self.handlers);
@@ -164,7 +163,7 @@ where
 			dispatcher.set_hooks(hooks.as_ref());
 		}
 
-		while let Some(request) = self.try_next(buf.borrow_mut())? {
+		while let Some(request) = self.try_next(&mut buf)? {
 			match dispatcher.dispatch(&request) {
 				Ok(()) => {},
 				Err(io::SendError::NotFound(_)) => {},
@@ -176,10 +175,11 @@ where
 
 	fn try_next<'a>(
 		&self,
-		buf: &'a mut [u8],
+		buf: &'a mut crate::io::MinReadBuffer,
 	) -> Result<Option<server::CuseRequest<'a>>, ServerError<S::Error>> {
-		let recv_len = self.socket.recv(buf)?;
-		Ok(Some(self.req_builder.build(&buf[..recv_len])?))
+		let recv_len = self.socket.recv(buf.as_slice_mut())?;
+		let recv_buf = buf.as_aligned_slice().truncate(recv_len);
+		Ok(Some(self.req_builder.build(recv_buf)?))
 	}
 }
 

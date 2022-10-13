@@ -99,8 +99,6 @@ pub use self::operations::types_only::*;
 
 pub mod xattr;
 
-pub const MIN_READ_BUFFER: usize = internal::fuse_kernel::FUSE_MIN_READ_BUFFER;
-
 mod sealed {
 	pub trait Sealed {}
 }

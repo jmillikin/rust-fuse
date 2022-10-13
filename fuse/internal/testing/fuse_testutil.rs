@@ -22,32 +22,6 @@ pub const VERSION: (u32, u32) = (
 	fuse_kernel::FUSE_KERNEL_MINOR_VERSION,
 );
 
-mod io {
-	use fuse_kernel::FUSE_MIN_READ_BUFFER;
-
-	pub struct ArrayBuffer(ArrayBufferImpl);
-
-	#[repr(align(8))]
-	struct ArrayBufferImpl([u8; FUSE_MIN_READ_BUFFER]);
-
-	impl ArrayBuffer {
-		pub fn new() -> Self {
-			ArrayBuffer(ArrayBufferImpl([0u8; FUSE_MIN_READ_BUFFER]))
-		}
-
-		#[allow(unused)]
-		pub fn borrow(&self) -> &[u8] {
-			&self.0 .0
-		}
-
-		pub fn borrow_mut(&mut self) -> &mut [u8] {
-			&mut self.0 .0
-		}
-	}
-}
-
-pub use io::ArrayBuffer;
-
 pub struct MessageBuilder {
 	header: Option<fuse_kernel::fuse_in_header>,
 	buf: Vec<u8>,
@@ -75,10 +49,10 @@ impl MessageBuilder {
 		out
 	}
 
-	pub fn build_aligned(self) -> io::ArrayBuffer {
+	pub fn build_aligned(self) -> fuse::io::MinReadBuffer {
 		let buf = self.build();
-		let mut out = io::ArrayBuffer::new();
-		out.borrow_mut()[0..buf.len()].copy_from_slice(&buf);
+		let mut out = fuse::io::MinReadBuffer::new();
+		out.as_slice_mut()[..buf.len()].copy_from_slice(&buf);
 		out
 	}
 
@@ -128,11 +102,8 @@ impl MessageBuilder {
 	}
 }
 
-#[macro_export]
-macro_rules! struct_fake_socket {
-	() => {
 pub struct FakeSocket {
-	pub write: core::cell::RefCell<Option<Vec<u8>>>,
+	write: core::cell::RefCell<Option<Vec<u8>>>,
 }
 
 impl FakeSocket {
@@ -142,9 +113,9 @@ impl FakeSocket {
 		}
 	}
 
-	pub fn expect_write(&self) -> Vec<u8> {
-		match &*self.write.borrow() {
-			Some(w) => w.clone(),
+	pub fn expect_write(self) -> Vec<u8> {
+		match self.write.into_inner() {
+			Some(w) => w,
 			None => panic!("expected exactly one write to FakeSocket"),
 		}
 	}
@@ -172,9 +143,6 @@ impl fuse::server::io::Socket for FakeSocket {
 	}
 }
 
-	};
-}
-
 #[macro_export]
 macro_rules! decode_request {
 	($t:ty, $buf: ident) => {
@@ -186,14 +154,14 @@ macro_rules! decode_request {
 		use fuse::server::decode::FuseRequest;
 
 		let opts = $crate::decode_request_opts!($opts);
-		let request_len = $buf.borrow().len();
+		let request_len = $buf.as_slice().len();
 		let protocol_version = fuse::Version::new(
 			opts.protocol_version.0,
 			opts.protocol_version.1,
 		);
 		let fuse_request = FuseRequestBuilder::new()
 			.version(protocol_version)
-			.build(&$buf.borrow()[..request_len])
+			.build($buf.as_aligned_slice().truncate(request_len))
 			.unwrap();
 		<$t>::from_fuse_request(&fuse_request).unwrap()
 	}};
@@ -227,8 +195,6 @@ macro_rules! encode_response {
 	($response:expr, $opts:tt $(,)?) => {{
 		use fuse_testutil::EncodeRequestOpts;
 
-		$crate::struct_fake_socket! {}
-
 		let opts = $crate::encode_request_opts!($opts);
 
 		let request_buf = $crate::MessageBuilder::new()
@@ -241,11 +207,11 @@ macro_rules! encode_response {
 		);
 		let response_ctx = fuse::server::FuseRequestBuilder::new()
 			.version(protocol_version)
-			.build(request_buf.borrow())
+			.build(request_buf.as_aligned_slice())
 			.unwrap()
 			.response_context();
 
-		let socket = FakeSocket::new();
+		let socket = $crate::FakeSocket::new();
 		$response.send(&socket, &response_ctx).unwrap();
 		socket.expect_write()
 	}};

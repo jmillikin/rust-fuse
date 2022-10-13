@@ -14,7 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::io::ArrayBuffer;
 use crate::operations;
 use crate::operations::fuse_init::{
 	FuseInitFlags,
@@ -130,7 +129,7 @@ where
 	H: FuseHandlers<S>,
 {
 	pub fn serve(&self) -> Result<(), ServerError<S::Error>> {
-		let mut buf = ArrayBuffer::new();
+		let mut buf = crate::io::MinReadBuffer::new();
 
 		#[allow(unused_mut)]
 		let mut dispatcher = FuseDispatcher::new(&self.socket, &self.handlers);
@@ -140,7 +139,7 @@ where
 			dispatcher.set_hooks(hooks.as_ref());
 		}
 
-		while let Some(request) = self.try_next(buf.borrow_mut())? {
+		while let Some(request) = self.try_next(&mut buf)? {
 			match dispatcher.dispatch(&request) {
 				Ok(()) => {},
 				Err(io::SendError::NotFound(_)) => {},
@@ -152,14 +151,15 @@ where
 
 	fn try_next<'a>(
 		&self,
-		buf: &'a mut [u8],
+		buf: &'a mut crate::io::MinReadBuffer,
 	) -> Result<Option<server::FuseRequest<'a>>, ServerError<S::Error>> {
-		let recv_len = match self.socket.recv(buf) {
+		let recv_len = match self.socket.recv(buf.as_slice_mut()) {
 			Ok(x) => x,
 			Err(io::RecvError::ConnectionClosed(_)) => return Ok(None),
 			Err(err) => return Err(err.into()),
 		};
-		Ok(Some(self.req_builder.build(&buf[..recv_len])?))
+		let recv_buf = buf.as_aligned_slice().truncate(recv_len);
+		Ok(Some(self.req_builder.build(recv_buf)?))
 	}
 }
 

@@ -22,6 +22,11 @@ use crate::internal::fuse_kernel;
 use crate::server::RequestError;
 use crate::server::decode::{RequestBuf, RequestDecoder};
 
+fn aligned_slice(buf: &fuse::io::MinReadBuffer) -> crate::io::AlignedSlice {
+	let slice = buf.as_aligned_slice().get();
+	unsafe { crate::io::AlignedSlice::new_unchecked(slice) }
+}
+
 #[test]
 fn request_decoder_new() {
 	let buf = MessageBuilder::new()
@@ -29,7 +34,7 @@ fn request_decoder_new() {
 		.push_bytes(&[1, 2, 3, 4, 5, 6, 7, 8, 9])
 		.build_aligned();
 
-	let request_buf = RequestBuf::new(buf.borrow()).unwrap();
+	let request_buf = RequestBuf::new(aligned_slice(&buf)).unwrap();
 	let decoder = RequestDecoder::new(request_buf);
 
 	assert_eq!(
@@ -45,7 +50,7 @@ fn request_decoder_eof_handling() {
 		.push_bytes(&[10, 20, 30, 40, 50, 60, 70, 80, 90])
 		.build_aligned();
 
-	let request_buf = RequestBuf::new(buf.borrow()).unwrap();
+	let request_buf = RequestBuf::new(aligned_slice(&buf)).unwrap();
 	let mut decoder = RequestDecoder::new(request_buf);
 
 	// OK to read right up to the frame size.
@@ -92,7 +97,7 @@ fn request_decoder_sized() {
 		.push_bytes(&[1, 2, 3, 4, 5, 6, 7, 8, 9])
 		.build_aligned();
 
-	let request_buf = RequestBuf::new(buf.borrow()).unwrap();
+	let request_buf = RequestBuf::new(aligned_slice(&buf)).unwrap();
 	let mut decoder = RequestDecoder::new(request_buf);
 
 	// [0 .. 4]
@@ -117,7 +122,7 @@ fn frame_decoder_bytes() {
 		.push_bytes(&[1, 2, 3, 4, 5, 6, 7, 8, 9])
 		.build_aligned();
 
-	let request_buf = RequestBuf::new(buf.borrow()).unwrap();
+	let request_buf = RequestBuf::new(aligned_slice(&buf)).unwrap();
 	let mut decoder = RequestDecoder::new(request_buf);
 
 	// [0 .. 4)

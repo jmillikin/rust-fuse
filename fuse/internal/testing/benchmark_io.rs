@@ -83,29 +83,30 @@ fn benchmark_read(c: &mut criterion::Criterion) {
 			flags: 67,
 			padding: 0,
 		})
-		.build();
+		.build_aligned();
 
-	let socket = FakeSocket { buf: buf.clone() };
+	let socket = FakeSocket { buf: buf.as_slice().to_vec() };
 	let handlers = FakeHandlers {};
-	let mut recv_buf = fuse_testutil::ArrayBuffer::new();
-	let recv_buf = recv_buf.borrow_mut();
 
 	let req_builder = server::FuseRequestBuilder::new();
 	let dispatcher = fuse_rpc::FuseDispatcher::new(&socket, &handlers);
 
-	let unparsed_request = req_builder.build(&buf).unwrap();
+	let unparsed_request = req_builder.build(buf.as_aligned_slice()).unwrap();
 
 	c.bench_function("read_end_to_end", |b| {
+		let mut recv_buf = fuse::io::MinReadBuffer::new();
 		b.iter(|| {
-			let recv_len = socket.recv(recv_buf).unwrap();
-			let request = req_builder.build(&recv_buf[..recv_len]).unwrap();
+			let recv_len = socket.recv(recv_buf.as_slice_mut()).unwrap();
+			let recv_buf = recv_buf.as_aligned_slice().truncate(recv_len);
+			let request = req_builder.build(recv_buf).unwrap();
 			dispatcher.dispatch(&request)
 		})
 	});
 
 	c.bench_function("read_decode", |b| {
+		let aligned_buf = buf.as_aligned_slice();
 		b.iter(|| {
-			let fuse_request = req_builder.build(&buf).unwrap();
+			let fuse_request = req_builder.build(aligned_buf).unwrap();
 			fuse::ReadRequest::from_fuse_request(&fuse_request)
 		})
 	});
@@ -131,29 +132,30 @@ fn benchmark_write(c: &mut criterion::Criterion) {
 			padding: 0,
 		})
 		.push_bytes(&[0u8; 4096])
-		.build();
+		.build_aligned();
 
-	let socket = FakeSocket { buf: buf.clone() };
+	let socket = FakeSocket { buf: buf.as_slice().to_vec() };
 	let handlers = FakeHandlers {};
-	let mut recv_buf = fuse_testutil::ArrayBuffer::new();
-	let recv_buf = recv_buf.borrow_mut();
 
 	let req_builder = server::FuseRequestBuilder::new();
 	let dispatcher = fuse_rpc::FuseDispatcher::new(&socket, &handlers);
 
-	let unparsed_request = req_builder.build(&buf).unwrap();
+	let unparsed_request = req_builder.build(buf.as_aligned_slice()).unwrap();
 
 	c.bench_function("write_end_to_end", |b| {
+		let mut recv_buf = fuse::io::MinReadBuffer::new();
 		b.iter(|| {
-			let recv_len = socket.recv(recv_buf).unwrap();
-			let request = req_builder.build(&recv_buf[..recv_len]).unwrap();
+			let recv_len = socket.recv(recv_buf.as_slice_mut()).unwrap();
+			let recv_buf = recv_buf.as_aligned_slice().truncate(recv_len);
+			let request = req_builder.build(recv_buf).unwrap();
 			dispatcher.dispatch(&request)
 		})
 	});
 
 	c.bench_function("write_decode", |b| {
+		let aligned_buf = buf.as_aligned_slice();
 		b.iter(|| {
-			let fuse_request = req_builder.build(&buf).unwrap();
+			let fuse_request = req_builder.build(aligned_buf).unwrap();
 			fuse::WriteRequest::from_fuse_request(&fuse_request)
 		})
 	});

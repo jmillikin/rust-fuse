@@ -41,7 +41,7 @@ fn request() {
 		.build_aligned();
 
 	let cuse_request = CuseRequestBuilder::new()
-		.build(buf.borrow())
+		.build(buf.as_aligned_slice())
 		.unwrap();
 	let req = CuseInitRequest::from_cuse_request(&cuse_request).unwrap();
 
@@ -63,7 +63,7 @@ fn request_impl_debug() {
 		.build_aligned();
 
 	let cuse_request = CuseRequestBuilder::new()
-		.build(buf.borrow())
+		.build(buf.as_aligned_slice())
 		.unwrap();
 
 	let request = CuseInitRequest::from_cuse_request(&cuse_request).unwrap();

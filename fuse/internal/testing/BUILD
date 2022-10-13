@@ -10,6 +10,7 @@ rust_library(
     srcs = ["fuse_testutil.rs"],
     edition = "2018",
     deps = [
+        "//fuse",
         "//fuse/internal:fuse_kernel",
     ],
 )

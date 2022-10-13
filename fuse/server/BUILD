@@ -21,6 +21,7 @@ rust_test(
     crate_features = ["std"],
     rustc_flags = ['--cfg=rust_fuse_test="decode_test"'],
     deps = [
+        "//fuse",
         "//fuse/internal/testing:fuse_testutil",
     ],
 )

@@ -8,7 +8,7 @@ load(
 
 rust_library(
     name = "fuse",
-    srcs = glob(["**/*.rs"]) + [
+    srcs = glob(["*.rs"]) + [
         "//fuse/client:srcs",
         "//fuse/internal:srcs",
         "//fuse/operations:srcs",

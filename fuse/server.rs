@@ -21,7 +21,6 @@ use core::mem::size_of;
 
 use crate::Version;
 use crate::internal::fuse_kernel::fuse_in_header;
-use crate::io::ArrayBuffer;
 use crate::lock;
 use crate::node;
 use crate::operations::cuse_init::{
@@ -164,7 +163,10 @@ impl CuseRequestBuilder {
 		self
 	}
 
-	pub fn build<'a>(&self, buf: &'a [u8]) -> Result<CuseRequest<'a>, RequestError> {
+	pub fn build<'a>(
+		&self,
+		buf: crate::io::AlignedSlice<'a>,
+	) -> Result<CuseRequest<'a>, RequestError> {
 		Ok(CuseRequest {
 			buf: decode::RequestBuf::new(buf)?,
 			version_minor: self.version.minor(),
@@ -238,7 +240,10 @@ impl FuseRequestBuilder {
 		self
 	}
 
-	pub fn build<'a>(&self, buf: &'a [u8]) -> Result<FuseRequest<'a>, RequestError> {
+	pub fn build<'a>(
+		&self,
+		buf: crate::io::AlignedSlice<'a>,
+	) -> Result<FuseRequest<'a>, RequestError> {
 		let mut toggles = 0;
 		if self.init_flags.get(FuseInitFlag::SETXATTR_EXT) {
 			toggles |= TOGGLE_SETXATTR_EXT;
@@ -380,13 +385,13 @@ pub fn cuse_init<'a, S: io::CuseSocket>(
 ) -> Result<CuseInitResponse<'a>, ServerError<S::Error>> {
 	use crate::server::decode::CuseRequest;
 
-	let mut buf = ArrayBuffer::new();
-	let buf = buf.borrow_mut();
+	let mut buf = crate::io::MinReadBuffer::new();
 
 	let req_builder = CuseRequestBuilder::new();
 	loop {
-		let recv_len = socket.recv(buf)?;
-		let fuse_req = req_builder.build(&buf[..recv_len])?;
+		let recv_len = socket.recv(buf.as_slice_mut())?;
+		let recv_buf = buf.as_aligned_slice().truncate(recv_len);
+		let fuse_req = req_builder.build(recv_buf)?;
 		let response_ctx = fuse_req.response_context();
 		let init_req = CuseInitRequest::from_cuse_request(&fuse_req)?;
 		let (response, ok) = cuse_handshake(&init_req, &mut init_fn)?;
@@ -403,13 +408,13 @@ pub async fn cuse_init_async<'a, S: io::AsyncCuseSocket>(
 ) -> Result<CuseInitResponse<'a>, ServerError<S::Error>> {
 	use crate::server::decode::CuseRequest;
 
-	let mut buf = ArrayBuffer::new();
-	let buf = buf.borrow_mut();
+	let mut buf = crate::io::MinReadBuffer::new();
 
 	let req_builder = CuseRequestBuilder::new();
 	loop {
-		let recv_len = socket.recv(buf).await?;
-		let fuse_req = req_builder.build(&buf[..recv_len])?;
+		let recv_len = socket.recv(buf.as_slice_mut()).await?;
+		let recv_buf = buf.as_aligned_slice().truncate(recv_len);
+		let fuse_req = req_builder.build(recv_buf)?;
 		let response_ctx = fuse_req.response_context();
 		let init_req = CuseInitRequest::from_cuse_request(&fuse_req)?;
 		let (response, ok) = cuse_handshake(&init_req, &mut init_fn)?;
@@ -444,13 +449,13 @@ pub fn fuse_init<S: io::FuseSocket>(
 ) -> Result<FuseInitResponse, ServerError<S::Error>> {
 	use crate::server::decode::FuseRequest;
 
-	let mut buf = ArrayBuffer::new();
-	let buf = buf.borrow_mut();
+	let mut buf = crate::io::MinReadBuffer::new();
 
 	let req_builder = FuseRequestBuilder::new();
 	loop {
-		let recv_len = socket.recv(buf)?;
-		let fuse_req = req_builder.build(&buf[..recv_len])?;
+		let recv_len = socket.recv(buf.as_slice_mut())?;
+		let recv_buf = buf.as_aligned_slice().truncate(recv_len);
+		let fuse_req = req_builder.build(recv_buf)?;
 		let response_ctx = fuse_req.response_context();
 		let init_req = FuseInitRequest::from_fuse_request(&fuse_req)?;
 		let (response, ok) = fuse_handshake(&init_req, &mut init_fn)?;
@@ -467,13 +472,13 @@ pub async fn fuse_init_async<S: io::AsyncFuseSocket>(
 ) -> Result<FuseInitResponse, ServerError<S::Error>> {
 	use crate::server::decode::FuseRequest;
 
-	let mut buf = ArrayBuffer::new();
-	let buf = buf.borrow_mut();
+	let mut buf = crate::io::MinReadBuffer::new();
 
 	let req_builder = FuseRequestBuilder::new();
 	loop {
-		let recv_len = socket.recv(buf).await?;
-		let fuse_req = req_builder.build(&buf[..recv_len])?;
+		let recv_len = socket.recv(buf.as_slice_mut()).await?;
+		let recv_buf = buf.as_aligned_slice().truncate(recv_len);
+		let fuse_req = req_builder.build(recv_buf)?;
 		let response_ctx = fuse_req.response_context();
 		let init_req = FuseInitRequest::from_fuse_request(&fuse_req)?;
 		let (response, ok) = fuse_handshake(&init_req, &mut init_fn)?;
@@ -536,10 +541,11 @@ impl<'a, S> CuseRequests<'a, S> {
 impl<S: io::CuseSocket> CuseRequests<'_, S> {
 	pub fn try_next<'a>(
 		&self,
-		buf: &'a mut [u8],
+		mut buf: crate::io::AlignedSliceMut<'a>,
 	) -> Result<Option<CuseRequest<'a>>, ServerError<S::Error>> {
-		let recv_len = self.socket.recv(buf)?;
-		Ok(Some(self.builder.build(&buf[..recv_len])?))
+		let recv_len = self.socket.recv(buf.get_mut())?;
+		let recv_buf = buf.truncate(recv_len);
+		Ok(Some(self.builder.build(recv_buf.into())?))
 	}
 }
 
@@ -564,10 +570,11 @@ impl<'a, S> AsyncCuseRequests<'a, S> {
 impl<S: io::AsyncCuseSocket> AsyncCuseRequests<'_, S> {
 	pub async fn try_next<'a>(
 		&self,
-		buf: &'a mut [u8],
+		mut buf: crate::io::AlignedSliceMut<'a>,
 	) -> Result<Option<CuseRequest<'a>>, ServerError<S::Error>> {
-		let recv_len = self.socket.recv(buf).await?;
-		Ok(Some(self.builder.build(&buf[..recv_len])?))
+		let recv_len = self.socket.recv(buf.get_mut()).await?;
+		let recv_buf = buf.truncate(recv_len);
+		Ok(Some(self.builder.build(recv_buf.into())?))
 	}
 }
 
@@ -592,14 +599,15 @@ impl<'a, S> FuseRequests<'a, S> {
 impl<S: io::FuseSocket> FuseRequests<'_, S> {
 	pub fn try_next<'a>(
 		&self,
-		buf: &'a mut [u8],
+		mut buf: crate::io::AlignedSliceMut<'a>,
 	) -> Result<Option<FuseRequest<'a>>, ServerError<S::Error>> {
-		let recv_len = match self.socket.recv(buf) {
+		let recv_len = match self.socket.recv(buf.get_mut()) {
 			Ok(x) => x,
 			Err(io::RecvError::ConnectionClosed(_)) => return Ok(None),
 			Err(err) => return Err(err.into()),
 		};
-		Ok(Some(self.builder.build(&buf[..recv_len])?))
+		let recv_buf = buf.truncate(recv_len);
+		Ok(Some(self.builder.build(recv_buf.into())?))
 	}
 }
 
@@ -624,14 +632,15 @@ impl<'a, S> AsyncFuseRequests<'a, S> {
 impl<S: io::AsyncFuseSocket> AsyncFuseRequests<'_, S> {
 	pub async fn try_next<'a>(
 		&self,
-		buf: &'a mut [u8],
+		mut buf: crate::io::AlignedSliceMut<'a>,
 	) -> Result<Option<FuseRequest<'a>>, ServerError<S::Error>> {
-		let recv_len = match self.socket.recv(buf).await {
+		let recv_len = match self.socket.recv(buf.get_mut()).await {
 			Ok(x) => x,
 			Err(io::RecvError::ConnectionClosed(_)) => return Ok(None),
 			Err(err) => return Err(err.into()),
 		};
-		Ok(Some(self.builder.build(&buf[..recv_len])?))
+		let recv_buf = buf.truncate(recv_len);
+		Ok(Some(self.builder.build(recv_buf.into())?))
 	}
 }
 
