@@ -42,8 +42,6 @@ pub mod io;
 pub mod decode;
 pub(crate) mod encode;
 
-const DEFAULT_MAX_WRITE: u32 = 4096;
-
 // ServerError {{{
 
 #[non_exhaustive]
@@ -130,7 +128,6 @@ pub struct ResponseContext {
 
 pub struct CuseRequestBuilder {
 	init_flags: CuseInitFlags,
-	max_write: u32,
 	version: crate::Version,
 }
 
@@ -139,7 +136,6 @@ impl CuseRequestBuilder {
 	pub fn new() -> CuseRequestBuilder {
 		CuseRequestBuilder {
 			init_flags: CuseInitFlags::new(),
-			max_write: DEFAULT_MAX_WRITE,
 			version: crate::Version::LATEST,
 		}
 	}
@@ -150,7 +146,6 @@ impl CuseRequestBuilder {
 	) -> CuseRequestBuilder {
 		CuseRequestBuilder {
 			init_flags: init_response.flags(),
-			max_write: init_response.max_write(),
 			version: init_response.version(),
 		}
 	}
@@ -162,11 +157,6 @@ impl CuseRequestBuilder {
 
 	pub fn init_flags(&mut self, init_flags: CuseInitFlags) -> &mut Self {
 		self.init_flags = init_flags;
-		self
-	}
-
-	pub fn max_write(&mut self, max_write: u32) -> &mut Self {
-		self.max_write = max_write;
 		self
 	}
 
@@ -207,7 +197,6 @@ impl<'a> CuseRequest<'a> {
 
 pub struct FuseRequestBuilder {
 	init_flags: FuseInitFlags,
-	max_write: u32,
 	version: crate::Version,
 }
 
@@ -216,7 +205,6 @@ impl FuseRequestBuilder {
 	pub fn new() -> FuseRequestBuilder {
 		FuseRequestBuilder {
 			init_flags: FuseInitFlags::new(),
-			max_write: DEFAULT_MAX_WRITE,
 			version: crate::Version::LATEST,
 		}
 	}
@@ -227,7 +215,6 @@ impl FuseRequestBuilder {
 	) -> FuseRequestBuilder {
 		FuseRequestBuilder {
 			init_flags: init_response.flags(),
-			max_write: init_response.max_write(),
 			version: init_response.version(),
 		}
 	}
@@ -239,11 +226,6 @@ impl FuseRequestBuilder {
 
 	pub fn init_flags(&mut self, init_flags: FuseInitFlags) -> &mut Self {
 		self.init_flags = init_flags;
-		self
-	}
-
-	pub fn max_write(&mut self, max_write: u32) -> &mut Self {
-		self.max_write = max_write;
 		self
 	}
 
