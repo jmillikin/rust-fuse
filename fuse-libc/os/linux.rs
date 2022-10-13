@@ -17,9 +17,15 @@
 // use core::ffi::CStr;
 use std::ffi::CStr;
 
-use fuse::os::linux::MountData;
+#[cfg(target_os = "linux")]
+use fuse::os::linux as fuse_os_linux;
 
 use crate::io::socket::{FuseServerSocket, LibcError};
+
+#[cfg(all(doc, not(target_os = "linux")))]
+mod fuse_os_linux {
+	pub struct MountOptions<'a> { _p: &'a () }
+}
 
 const MS_NOSUID: u32 = 0x2;
 const MS_NODEV: u32 = 0x4;
@@ -34,7 +40,7 @@ const PAGE_SIZE: usize = 4096;
 
 #[derive(Copy, Clone)]
 pub struct MountOptions<'a> {
-	opts: fuse::os::linux::MountOptions<'a>,
+	opts: fuse_os_linux::MountOptions<'a>,
 	dev_fuse: Option<&'a CStr>,
 	flags: u32,
 }
@@ -59,8 +65,8 @@ impl<'a> MountOptions<'a> {
 	}
 }
 
-impl<'a> From<fuse::os::linux::MountOptions<'a>> for MountOptions<'a> {
-	fn from(opts: fuse::os::linux::MountOptions<'a>) -> Self {
+impl<'a> From<fuse_os_linux::MountOptions<'a>> for MountOptions<'a> {
+	fn from(opts: fuse_os_linux::MountOptions<'a>) -> Self {
 		Self {
 			opts,
 			dev_fuse: None,
@@ -73,6 +79,8 @@ pub fn mount<'a>(
 	target: &CStr,
 	options: impl Into<MountOptions<'a>>,
 ) -> Result<FuseServerSocket, LibcError> {
+	use fuse::os::linux::MountData;
+
 	let options = options.into();
 	let mut opts = options.opts;
 	if opts.root_mode().is_none() {

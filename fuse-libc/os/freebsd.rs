@@ -17,8 +17,16 @@
 // use core::ffi::CStr;
 use std::ffi::CStr;
 
+#[cfg(target_os = "freebsd")]
+use fuse::os::freebsd as fuse_os_freebsd;
+
 use crate::io::iovec::IoVec;
 use crate::io::socket::{FuseServerSocket, LibcError};
+
+#[cfg(all(doc, not(target_os = "freebsd")))]
+mod fuse_os_freebsd {
+	pub struct MountOptions<'a> { _p: &'a () }
+}
 
 const MNT_NOSUID: i32 = 0x08;
 
@@ -26,7 +34,7 @@ const DEFAULT_FLAGS: i32 = MNT_NOSUID;
 
 #[derive(Copy, Clone)]
 pub struct MountOptions<'a> {
-	opts: fuse::os::freebsd::MountOptions<'a>,
+	opts: fuse_os_freebsd::MountOptions<'a>,
 	flags: i32,
 }
 
@@ -41,8 +49,8 @@ impl<'a> MountOptions<'a> {
 	}
 }
 
-impl<'a> From<fuse::os::freebsd::MountOptions<'a>> for MountOptions<'a> {
-	fn from(opts: fuse::os::freebsd::MountOptions<'a>) -> Self {
+impl<'a> From<fuse_os_freebsd::MountOptions<'a>> for MountOptions<'a> {
+	fn from(opts: fuse_os_freebsd::MountOptions<'a>) -> Self {
 		Self {
 			opts,
 			flags: DEFAULT_FLAGS,
