@@ -35,10 +35,10 @@ impl interop_testutil::TestDev for TestCharDev {
 	}
 }
 
-impl<S: cuse_rpc::CuseSocket> cuse_rpc::CuseHandlers<S> for TestCharDev {
+impl<S: cuse_rpc::CuseSocket> cuse_rpc::Handlers<S> for TestCharDev {
 	fn ioctl(
 		&self,
-		call: cuse_rpc::CuseCall<S>,
+		call: cuse_rpc::Call<S>,
 		request: &fuse::IoctlRequest,
 	) -> cuse_rpc::CuseResult<fuse::IoctlResponse, S::Error> {
 		println!("{:#?}", request);
@@ -101,7 +101,7 @@ impl<S: cuse_rpc::CuseSocket> cuse_rpc::CuseHandlers<S> for TestCharDev {
 
 	fn open(
 		&self,
-		call: cuse_rpc::CuseCall<S>,
+		call: cuse_rpc::Call<S>,
 		_request: &fuse::OpenRequest,
 	) -> cuse_rpc::CuseResult<fuse::OpenResponse, S::Error> {
 		let mut resp = fuse::OpenResponse::new();

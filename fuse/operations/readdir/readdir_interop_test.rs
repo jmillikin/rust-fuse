@@ -35,10 +35,10 @@ struct TestFS {
 
 impl interop_testutil::TestFS for TestFS {}
 
-impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
+impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 	fn lookup(
 		&self,
-		call: fuse_rpc::FuseCall<S>,
+		call: fuse_rpc::Call<S>,
 		request: &fuse::LookupRequest,
 	) -> fuse_rpc::FuseResult<fuse::LookupResponse, S::Error> {
 		if !request.parent_id().is_root() {
@@ -61,7 +61,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 
 	fn opendir(
 		&self,
-		call: fuse_rpc::FuseCall<S>,
+		call: fuse_rpc::Call<S>,
 		_request: &fuse::OpendirRequest,
 	) -> fuse_rpc::FuseResult<fuse::OpendirResponse, S::Error> {
 		let mut resp = fuse::OpendirResponse::new();
@@ -71,7 +71,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 
 	fn readdir(
 		&self,
-		call: fuse_rpc::FuseCall<S>,
+		call: fuse_rpc::Call<S>,
 		request: &fuse::ReaddirRequest,
 	) -> fuse_rpc::FuseResult<fuse::ReaddirResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
@@ -125,7 +125,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 
 	fn releasedir(
 		&self,
-		call: fuse_rpc::FuseCall<S>,
+		call: fuse_rpc::Call<S>,
 		_request: &fuse::ReleasedirRequest,
 	) -> fuse_rpc::FuseResult<fuse::ReleasedirResponse, S::Error> {
 		let resp = fuse::ReleasedirResponse::new();

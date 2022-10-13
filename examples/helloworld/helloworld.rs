@@ -45,10 +45,10 @@ const HELLO_TXT: HelloTxt = HelloTxt {};
 
 struct HelloWorldFS {}
 
-impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for HelloWorldFS {
+impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for HelloWorldFS {
 	fn lookup(
 		&self,
-		call: fuse_rpc::FuseCall<S>,
+		call: fuse_rpc::Call<S>,
 		request: &fuse::LookupRequest,
 	) -> fuse_rpc::FuseResult<fuse::LookupResponse, S::Error> {
 		if !request.parent_id().is_root() {
@@ -68,7 +68,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for HelloWorldFS {
 
 	fn getattr(
 		&self,
-		call: fuse_rpc::FuseCall<S>,
+		call: fuse_rpc::Call<S>,
 		request: &fuse::GetattrRequest,
 	) -> fuse_rpc::FuseResult<fuse::GetattrResponse, S::Error> {
 		let mut attr = node::Attributes::new(request.node_id());
@@ -93,7 +93,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for HelloWorldFS {
 
 	fn open(
 		&self,
-		call: fuse_rpc::FuseCall<S>,
+		call: fuse_rpc::Call<S>,
 		request: &fuse::OpenRequest,
 	) -> fuse_rpc::FuseResult<fuse::OpenResponse, S::Error> {
 		if request.node_id() != HELLO_TXT.node_id() {
@@ -107,7 +107,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for HelloWorldFS {
 
 	fn read(
 		&self,
-		call: fuse_rpc::FuseCall<S>,
+		call: fuse_rpc::Call<S>,
 		request: &fuse::ReadRequest,
 	) -> fuse_rpc::FuseResult<fuse::ReadResponse, S::Error> {
 		if request.handle() != 1001 {
@@ -120,7 +120,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for HelloWorldFS {
 
 	fn opendir(
 		&self,
-		call: fuse_rpc::FuseCall<S>,
+		call: fuse_rpc::Call<S>,
 		request: &fuse::OpendirRequest,
 	) -> fuse_rpc::FuseResult<fuse::OpendirResponse, S::Error> {
 		if !request.node_id().is_root() {
@@ -134,7 +134,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for HelloWorldFS {
 
 	fn readdir(
 		&self,
-		call: fuse_rpc::FuseCall<S>,
+		call: fuse_rpc::Call<S>,
 		request: &fuse::ReaddirRequest,
 	) -> fuse_rpc::FuseResult<fuse::ReaddirResponse, S::Error> {
 		if request.handle() != 1002 {
@@ -163,7 +163,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for HelloWorldFS {
 
 	fn releasedir(
 		&self,
-		call: fuse_rpc::FuseCall<S>,
+		call: fuse_rpc::Call<S>,
 		request: &fuse::ReleasedirRequest,
 	) -> fuse_rpc::FuseResult<fuse::ReleasedirResponse, S::Error> {
 		if request.handle() != 1002 {
@@ -220,7 +220,7 @@ fn main() {
 			.unwrap();
 	}
 
-	let srv = fuse_rpc::FuseServerBuilder::new(dev_fuse, handlers)
+	let srv = fuse_rpc::ServerBuilder::new(dev_fuse, handlers)
 		.fuse_init()
 		.unwrap();
 

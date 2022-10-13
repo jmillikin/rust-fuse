@@ -60,7 +60,7 @@ extern crate fuse;
 use fuse::server::fuse_rpc;
 
 struct HelloFS {}
-impl fuse_rpc::FuseHandlers for HelloFS {
+impl fuse_rpc::Handlers for HelloFS {
     // your filesystem handlers here
 }
 ----

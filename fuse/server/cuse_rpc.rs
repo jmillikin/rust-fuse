@@ -27,29 +27,31 @@ use crate::server::{CuseRequestBuilder, ErrorResponse, ServerError};
 
 pub use crate::server::io::CuseSocket;
 
-pub struct CuseServerBuilder<S, H> {
+// ServerBuilder {{{
+
+pub struct ServerBuilder<S, H> {
 	socket: S,
 	handlers: H,
-	opts: CuseOptions,
+	opts: ServerOptions,
 
 	#[cfg(feature = "std")]
 	hooks: Option<Box<dyn server::Hooks>>,
 }
 
-struct CuseOptions {
+struct ServerOptions {
 	device_number: cuse::DeviceNumber,
 	max_read: u32,
 	max_write: u32,
 	flags: CuseInitFlags,
 }
 
-impl<S, H> CuseServerBuilder<S, H> {
+impl<S, H> ServerBuilder<S, H> {
 	#[must_use]
 	pub fn new(socket: S, handlers: H) -> Self {
 		Self {
 			socket,
 			handlers,
-			opts: CuseOptions {
+			opts: ServerOptions {
 				device_number: cuse::DeviceNumber::new(0, 0),
 				max_read: 0,
 				max_write: 0,
@@ -92,11 +94,11 @@ impl<S, H> CuseServerBuilder<S, H> {
 	}
 }
 
-impl<S: CuseSocket, H> CuseServerBuilder<S, H> {
+impl<S: CuseSocket, H> ServerBuilder<S, H> {
 	pub fn cuse_init(
 		self,
 		device_name: &cuse::DeviceName,
-	) -> Result<CuseServer<S, H>, ServerError<S::Error>> {
+	) -> Result<Server<S, H>, ServerError<S::Error>> {
 		self.cuse_init_fn(device_name, |_init_request, _init_response| {})
 	}
 
@@ -104,7 +106,7 @@ impl<S: CuseSocket, H> CuseServerBuilder<S, H> {
 		self,
 		device_name: &cuse::DeviceName,
 		mut init_fn: impl FnMut(&CuseInitRequest, &mut CuseInitResponse),
-	) -> Result<CuseServer<S, H>, ServerError<S::Error>> {
+	) -> Result<Server<S, H>, ServerError<S::Error>> {
 		let opts = self.opts;
 		let mut socket = self.socket;
 		let init_response = server::cuse_init(&mut socket, |request| {
@@ -113,7 +115,7 @@ impl<S: CuseSocket, H> CuseServerBuilder<S, H> {
 			response
 		})?;
 
-		Ok(CuseServer {
+		Ok(Server {
 			socket,
 			handlers: self.handlers,
 			req_builder: CuseRequestBuilder::from_init_response(&init_response),
@@ -123,7 +125,7 @@ impl<S: CuseSocket, H> CuseServerBuilder<S, H> {
 	}
 }
 
-impl CuseOptions {
+impl ServerOptions {
 	fn init_response<'a>(
 		&self,
 		_request: &CuseInitRequest,
@@ -138,7 +140,11 @@ impl CuseOptions {
 	}
 }
 
-pub struct CuseServer<S, H> {
+// }}}
+
+// Server {{{
+
+pub struct Server<S, H> {
 	socket: S,
 	handlers: H,
 	req_builder: CuseRequestBuilder,
@@ -147,10 +153,10 @@ pub struct CuseServer<S, H> {
 	hooks: Option<Box<dyn server::Hooks>>,
 }
 
-impl<S, H> CuseServer<S, H>
+impl<S, H> Server<S, H>
 where
 	S: CuseSocket,
-	H: CuseHandlers<S>,
+	H: Handlers<S>,
 {
 	pub fn serve(&self) -> Result<(), ServerError<S::Error>> {
 		let mut buf = crate::io::MinReadBuffer::new();
@@ -183,6 +189,12 @@ where
 	}
 }
 
+// }}}
+
+// CuseResponse {{{
+
+pub trait CuseResponse: Sealed {}
+
 mod sealed {
 	pub struct Sent<T: ?Sized> {
 		pub(super) _phantom: core::marker::PhantomData<fn(&T)>,
@@ -191,7 +203,7 @@ mod sealed {
 	pub trait Sealed {
 		fn __internal_send<S: super::CuseSocket>(
 			&self,
-			call: super::CuseCall<S>,
+			call: super::Call<S>,
 		) -> super::CuseResult<Self, S::Error>;
 	}
 }
@@ -200,8 +212,6 @@ use sealed::{Sealed, Sent};
 
 pub type CuseResult<R, E> = Result<Sent<R>, io::SendError<E>>;
 
-pub trait CuseResponse: Sealed {}
-
 macro_rules! impl_cuse_response {
 	( $( $t:ident $( , )? )+ ) => {
 		$(
@@ -209,7 +219,7 @@ macro_rules! impl_cuse_response {
 			impl Sealed for operations::$t<'_> {
 				fn __internal_send<S: CuseSocket>(
 					&self,
-					call: CuseCall<S>,
+					call: Call<S>,
 				) -> CuseResult<Self, S::Error> {
 					self.send(call.socket, &call.response_ctx)?;
 					call.sent()
@@ -229,7 +239,11 @@ impl_cuse_response! {
 	WriteResponse,
 }
 
-pub struct CuseCall<'a, S> {
+// }}}
+
+// Call {{{
+
+pub struct Call<'a, S> {
 	socket: &'a S,
 	header: &'a crate::RequestHeader,
 	response_ctx: server::ResponseContext,
@@ -237,7 +251,7 @@ pub struct CuseCall<'a, S> {
 	hooks: Option<&'a dyn server::Hooks>,
 }
 
-impl<S> CuseCall<'_, S> {
+impl<S> Call<'_, S> {
 	#[must_use]
 	pub fn header(&self) -> &crate::RequestHeader {
 		self.header
@@ -249,7 +263,7 @@ impl<S> CuseCall<'_, S> {
 	}
 }
 
-impl<S: CuseSocket> CuseCall<'_, S> {
+impl<S: CuseSocket> Call<'_, S> {
 	fn sent<T>(self) -> CuseResult<T, S::Error> {
 		*self.sent_reply = true;
 		Ok(Sent {
@@ -258,7 +272,7 @@ impl<S: CuseSocket> CuseCall<'_, S> {
 	}
 }
 
-impl<S: CuseSocket> CuseCall<'_, S> {
+impl<S: CuseSocket> Call<'_, S> {
 	pub fn respond_ok<R: CuseResponse>(
 		self,
 		response: &R,
@@ -286,6 +300,10 @@ impl<S: CuseSocket> CuseCall<'_, S> {
 	}
 }
 
+// }}}
+
+// Dispatcher {{{
+
 pub struct CuseDispatcher<'a, S, H> {
 	socket: &'a S,
 	handlers: &'a H,
@@ -306,7 +324,7 @@ impl<'a, S, H> CuseDispatcher<'a, S, H> {
 	}
 }
 
-impl<S: CuseSocket, H: CuseHandlers<S>> CuseDispatcher<'_, S, H> {
+impl<S: CuseSocket, H: Handlers<S>> CuseDispatcher<'_, S, H> {
 	pub fn dispatch(
 		&self,
 		request: &server::CuseRequest,
@@ -317,7 +335,7 @@ impl<S: CuseSocket, H: CuseHandlers<S>> CuseDispatcher<'_, S, H> {
 
 fn cuse_request_dispatch<S: CuseSocket>(
 	socket: &S,
-	handlers: &impl CuseHandlers<S>,
+	handlers: &impl Handlers<S>,
 	hooks: Option<&dyn server::Hooks>,
 	request: &server::CuseRequest,
 ) -> Result<(), io::SendError<S::Error>> {
@@ -331,7 +349,7 @@ fn cuse_request_dispatch<S: CuseSocket>(
 	let response_ctx = request.response_context();
 
 	let mut sent_reply = false;
-	let call = CuseCall {
+	let call = Call {
 		socket,
 		header,
 		response_ctx,
@@ -400,12 +418,16 @@ fn cuse_request_dispatch<S: CuseSocket>(
 	}
 }
 
+// }}}
+
+// Handlers {{{
+
 /// User-provided handlers for CUSE operations.
 #[allow(unused_variables)]
-pub trait CuseHandlers<S: CuseSocket> {
+pub trait Handlers<S: CuseSocket> {
 	fn flush(
 		&self,
-		call: CuseCall<S>,
+		call: Call<S>,
 		request: &operations::FlushRequest,
 	) -> CuseResult<operations::FlushResponse, S::Error> {
 		call.unimplemented()
@@ -413,7 +435,7 @@ pub trait CuseHandlers<S: CuseSocket> {
 
 	fn fsync(
 		&self,
-		call: CuseCall<S>,
+		call: Call<S>,
 		request: &operations::FsyncRequest,
 	) -> CuseResult<operations::FsyncResponse, S::Error> {
 		call.unimplemented()
@@ -421,7 +443,7 @@ pub trait CuseHandlers<S: CuseSocket> {
 
 	fn interrupt(
 		&self,
-		call: CuseCall<S>,
+		call: Call<S>,
 		request: &operations::InterruptRequest,
 	) {
 		if let Some(hooks) = call.hooks {
@@ -431,7 +453,7 @@ pub trait CuseHandlers<S: CuseSocket> {
 
 	fn ioctl(
 		&self,
-		call: CuseCall<S>,
+		call: Call<S>,
 		request: &operations::IoctlRequest,
 	) -> CuseResult<operations::IoctlResponse, S::Error> {
 		call.unimplemented()
@@ -439,7 +461,7 @@ pub trait CuseHandlers<S: CuseSocket> {
 
 	fn open(
 		&self,
-		call: CuseCall<S>,
+		call: Call<S>,
 		request: &operations::OpenRequest,
 	) -> CuseResult<operations::OpenResponse, S::Error> {
 		call.unimplemented()
@@ -447,7 +469,7 @@ pub trait CuseHandlers<S: CuseSocket> {
 
 	fn poll(
 		&self,
-		call: CuseCall<S>,
+		call: Call<S>,
 		request: &operations::PollRequest,
 	) -> CuseResult<operations::PollResponse, S::Error> {
 		call.unimplemented()
@@ -455,7 +477,7 @@ pub trait CuseHandlers<S: CuseSocket> {
 
 	fn read(
 		&self,
-		call: CuseCall<S>,
+		call: Call<S>,
 		request: &operations::ReadRequest,
 	) -> CuseResult<operations::ReadResponse, S::Error> {
 		call.unimplemented()
@@ -463,7 +485,7 @@ pub trait CuseHandlers<S: CuseSocket> {
 
 	fn release(
 		&self,
-		call: CuseCall<S>,
+		call: Call<S>,
 		request: &operations::ReleaseRequest,
 	) -> CuseResult<operations::ReleaseResponse, S::Error> {
 		call.unimplemented()
@@ -471,9 +493,11 @@ pub trait CuseHandlers<S: CuseSocket> {
 
 	fn write(
 		&self,
-		call: CuseCall<S>,
+		call: Call<S>,
 		request: &operations::WriteRequest,
 	) -> CuseResult<operations::WriteResponse, S::Error> {
 		call.unimplemented()
 	}
 }
+
+// }}}

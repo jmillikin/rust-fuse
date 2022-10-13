@@ -47,10 +47,10 @@ impl server::io::Socket for FakeSocket {
 
 struct FakeHandlers {}
 
-impl fuse_rpc::FuseHandlers<FakeSocket> for FakeHandlers {
+impl fuse_rpc::Handlers<FakeSocket> for FakeHandlers {
 	fn read(
 		&self,
-		call: fuse_rpc::FuseCall<FakeSocket>,
+		call: fuse_rpc::Call<FakeSocket>,
 		_request: &fuse::ReadRequest,
 	) -> fuse_rpc::FuseResult<fuse::ReadResponse, std::io::Error> {
 		let resp = fuse::ReadResponse::from_bytes(&[0u8; 4096]);
@@ -59,7 +59,7 @@ impl fuse_rpc::FuseHandlers<FakeSocket> for FakeHandlers {
 
 	fn write(
 		&self,
-		call: fuse_rpc::FuseCall<FakeSocket>,
+		call: fuse_rpc::Call<FakeSocket>,
 		request: &fuse::WriteRequest,
 	) -> fuse_rpc::FuseResult<fuse::WriteResponse, std::io::Error> {
 		let mut resp = fuse::WriteResponse::new();
@@ -91,7 +91,7 @@ fn benchmark_read(c: &mut criterion::Criterion) {
 	let handlers = FakeHandlers {};
 
 	let req_builder = server::FuseRequestBuilder::new();
-	let dispatcher = fuse_rpc::FuseDispatcher::new(&socket, &handlers);
+	let dispatcher = fuse_rpc::Dispatcher::new(&socket, &handlers);
 
 	let unparsed_request = req_builder.build(buf.as_aligned_slice()).unwrap();
 
@@ -142,7 +142,7 @@ fn benchmark_write(c: &mut criterion::Criterion) {
 	let handlers = FakeHandlers {};
 
 	let req_builder = server::FuseRequestBuilder::new();
-	let dispatcher = fuse_rpc::FuseDispatcher::new(&socket, &handlers);
+	let dispatcher = fuse_rpc::Dispatcher::new(&socket, &handlers);
 
 	let unparsed_request = req_builder.build(buf.as_aligned_slice()).unwrap();
 

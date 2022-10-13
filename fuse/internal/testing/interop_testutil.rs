@@ -56,7 +56,7 @@ type DevFuse = fuse_linux::FuseServerSocket;
 #[cfg(target_os = "freebsd")]
 type DevFuse = fuse_libc::FuseServerSocket;
 
-pub trait TestDev: cuse_rpc::CuseHandlers<DevCuse> {
+pub trait TestDev: cuse_rpc::Handlers<DevCuse> {
 	#[allow(unused)]
 	fn cuse_init(
 		init_request: &fuse::CuseInitRequest,
@@ -65,7 +65,7 @@ pub trait TestDev: cuse_rpc::CuseHandlers<DevCuse> {
 	}
 }
 
-pub trait TestFS: fuse_rpc::FuseHandlers<DevFuse> {
+pub trait TestFS: fuse_rpc::Handlers<DevFuse> {
 	#[allow(unused)]
 	fn fuse_init(
 		init_request: &fuse::FuseInitRequest,
@@ -157,9 +157,7 @@ pub fn fuse_interop_test<H: TestFS + Send + 'static>(
 	let server_thread = {
 		let ready = sync::Arc::clone(&server_ready);
 		thread::spawn(move || {
-			use fuse_rpc::FuseServerBuilder;
-
-			let builder = FuseServerBuilder::new(dev_fuse, handlers);
+			let builder = fuse_rpc::ServerBuilder::new(dev_fuse, handlers);
 			let srv = builder
 				.server_hooks(Box::new(PrintHooks {}))
 				.fuse_init_fn(|req, resp| {
@@ -357,11 +355,9 @@ pub fn cuse_interop_test<H: TestDev + Send + 'static>(
 	let server_thread = {
 		let ready = sync::Arc::clone(&server_ready);
 		thread::spawn(move || {
-			use cuse_rpc::CuseServerBuilder;
-
 			let devname = cuse::DeviceName::from_bytes(&mktemp_template)
 				.unwrap();
-			let srv = CuseServerBuilder::new(dev_cuse, handlers)
+			let srv = cuse_rpc::ServerBuilder::new(dev_cuse, handlers)
 				.device_number(cuse::DeviceNumber::new(
 					CUSE_DEV_MAJOR,
 					CUSE_DEV_MINOR,

@@ -41,10 +41,10 @@ impl interop_testutil::TestFS for TestFS {
 	}
 }
 
-impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
+impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 	fn lookup(
 		&self,
-		call: fuse_rpc::FuseCall<S>,
+		call: fuse_rpc::Call<S>,
 		request: &fuse::LookupRequest,
 	) -> fuse_rpc::FuseResult<fuse::LookupResponse, S::Error> {
 		if !request.parent_id().is_root() {
@@ -67,7 +67,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 
 	fn open(
 		&self,
-		call: fuse_rpc::FuseCall<S>,
+		call: fuse_rpc::Call<S>,
 		_request: &fuse::OpenRequest,
 	) -> fuse_rpc::FuseResult<fuse::OpenResponse, S::Error> {
 		let mut resp = fuse::OpenResponse::new();
@@ -77,7 +77,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 
 	fn setlk(
 		&self,
-		call: fuse_rpc::FuseCall<S>,
+		call: fuse_rpc::Call<S>,
 		request: &fuse::SetlkRequest,
 	) -> fuse_rpc::FuseResult<fuse::SetlkResponse, S::Error> {
 		let mut request_str = format!("{:#?}", request);

@@ -31,10 +31,10 @@ struct TestCharDev {
 
 impl interop_testutil::TestDev for TestCharDev {}
 
-impl<S: cuse_rpc::CuseSocket> cuse_rpc::CuseHandlers<S> for TestCharDev {
+impl<S: cuse_rpc::CuseSocket> cuse_rpc::Handlers<S> for TestCharDev {
 	fn open(
 		&self,
-		call: cuse_rpc::CuseCall<S>,
+		call: cuse_rpc::Call<S>,
 		request: &fuse::OpenRequest,
 	) -> cuse_rpc::CuseResult<fuse::OpenResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
@@ -46,7 +46,7 @@ impl<S: cuse_rpc::CuseSocket> cuse_rpc::CuseHandlers<S> for TestCharDev {
 
 	fn read(
 		&self,
-		call: cuse_rpc::CuseCall<S>,
+		call: cuse_rpc::Call<S>,
 		request: &fuse::ReadRequest,
 	) -> cuse_rpc::CuseResult<fuse::ReadResponse, S::Error> {
 		let mut request_str = format!("{:#?}", request);
@@ -68,7 +68,7 @@ impl<S: cuse_rpc::CuseSocket> cuse_rpc::CuseHandlers<S> for TestCharDev {
 
 	fn release(
 		&self,
-		call: cuse_rpc::CuseCall<S>,
+		call: cuse_rpc::Call<S>,
 		request: &fuse::ReleaseRequest,
 	) -> cuse_rpc::CuseResult<fuse::ReleaseResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
@@ -79,7 +79,7 @@ impl<S: cuse_rpc::CuseSocket> cuse_rpc::CuseHandlers<S> for TestCharDev {
 
 	fn write(
 		&self,
-		call: cuse_rpc::CuseCall<S>,
+		call: cuse_rpc::Call<S>,
 		request: &fuse::WriteRequest,
 	) -> cuse_rpc::CuseResult<fuse::WriteResponse, S::Error> {
 		let mut request_str = format!("{:#?}", request);
