@@ -99,18 +99,6 @@ pub use self::operations::types_only::*;
 
 pub mod xattr;
 
-mod sealed {
-	pub trait Sealed {}
-}
-
-pub trait Flags<Flag>: sealed::Sealed {
-	fn new() -> Self;
-
-	fn get(&self, flag: Flag) -> bool;
-
-	fn set(&mut self, flag: Flag);
-}
-
 // RequestHeader {{{
 
 /// The header of a FUSE request.

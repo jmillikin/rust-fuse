@@ -77,27 +77,7 @@ macro_rules! bitflags {
 			}
 		}
 
-		impl crate::sealed::Sealed for $flags {}
-
-		impl crate::Flags<$flag> for $flags {
-			#[inline(always)]
-			#[must_use]
-			fn new() -> Self {
-				$flags::new()
-			}
-
-			#[inline(always)]
-			#[must_use]
-			fn get(&self, flag: $flag) -> bool {
-				$flags::get(self, flag)
-			}
-
-			#[inline(always)]
-			fn set(&mut self, flag: $flag) {
-				$flags::set(self, flag)
-			}
-		}
-
+		#[allow(dead_code)]
 		impl $flags {
 			#[inline(always)]
 			#[must_use]
@@ -105,7 +85,6 @@ macro_rules! bitflags {
 				Self { bits: 0 }
 			}
 
-			#[allow(dead_code)]
 			#[inline(always)]
 			#[must_use]
 			pub(crate) fn reborrow_mut<'a>(r: &'a mut $bits) -> &'a mut Self {
@@ -124,7 +103,6 @@ macro_rules! bitflags {
 				self.bits |= flag.mask;
 			}
 
-			#[allow(dead_code)]
 			#[inline]
 			pub(crate) fn set_to(&mut self, flag: $flag, set: bool) {
 				if set {
