@@ -309,12 +309,6 @@ impl std::fmt::Debug for dirent<'_> {
 
 #[allow(unused_mut)]
 fn diff_dirent(mut expect: dirent, got: &libc::dirent) -> Option<String> {
-	// https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=253411
-	#[cfg(target_os = "freebsd")]
-	{
-		expect.d_off = 0;
-	}
-
 	let expect = format!("{:#?}", &expect);
 	let got = format!(
 		"{:#?}",

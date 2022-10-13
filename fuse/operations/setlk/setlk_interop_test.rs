@@ -162,13 +162,16 @@ fn setlk_fcntl_read() {
 			},
 		);
 	});
-	assert_eq!(requests.len(), 1);
 
 	#[cfg(target_os = "linux")]
-	let lock_pid = std::process::id();
+	let stlk_request_count = 1;
 
 	#[cfg(target_os = "freebsd")]
-	let lock_pid = 3000;
+	let stlk_request_count = 2;
+
+	assert_eq!(requests.len(), stlk_request_count);
+
+	let lock_pid = std::process::id();
 
 	let expect = format!(
 		r#"SetlkRequest {{
@@ -198,6 +201,25 @@ fn setlk_fcntl_read() {
 		println!("{}", diff);
 		assert!(false);
 	}
+
+	if stlk_request_count >= 2 {
+		let expect = r#"SetlkRequest {
+    node_id: 2,
+    handle: 12345,
+    may_block: false,
+    owner: 123456789123456789,
+    lock: None,
+    lock_range: Range {
+        start: 0,
+        length: None,
+    },
+    flags: SetlkRequestFlags {},
+}"#;
+		if let Some(diff) = diff_str(expect, &requests[1]) {
+			println!("{}", diff);
+			assert!(false);
+		}
+	}
 }
 
 #[test]
@@ -218,7 +240,14 @@ fn setlkw_fcntl_read() {
 			},
 		);
 	});
-	assert_eq!(requests.len(), 1);
+
+	#[cfg(target_os = "linux")]
+	let stlk_request_count = 1;
+
+	#[cfg(target_os = "freebsd")]
+	let stlk_request_count = 2;
+
+	assert_eq!(requests.len(), stlk_request_count);
 
 	#[cfg(target_os = "linux")]
 	let lock_pid = std::process::id();
@@ -254,6 +283,25 @@ fn setlkw_fcntl_read() {
 		println!("{}", diff);
 		assert!(false);
 	}
+
+	if stlk_request_count >= 2 {
+		let expect = r#"SetlkRequest {
+    node_id: 2,
+    handle: 12345,
+    may_block: false,
+    owner: 123456789123456789,
+    lock: None,
+    lock_range: Range {
+        start: 0,
+        length: None,
+    },
+    flags: SetlkRequestFlags {},
+}"#;
+		if let Some(diff) = diff_str(expect, &requests[1]) {
+			println!("{}", diff);
+			assert!(false);
+		}
+	}
 }
 
 #[test]
@@ -273,16 +321,16 @@ fn setlk_fcntl_write() {
 			},
 		);
 	});
-	assert_eq!(requests.len(), 1);
 
-	#[allow(unused_assignments, unused_mut)]
-	let mut lock_pid = std::process::id();
+	#[cfg(target_os = "linux")]
+	let stlk_request_count = 1;
 
-	// https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=256005
 	#[cfg(target_os = "freebsd")]
-	{
-		lock_pid = 9999;
-	}
+	let stlk_request_count = 2;
+
+	assert_eq!(requests.len(), stlk_request_count);
+
+	let lock_pid = std::process::id();
 
 	let expect = format!(
 		r#"SetlkRequest {{
@@ -312,6 +360,25 @@ fn setlk_fcntl_write() {
 		println!("{}", diff);
 		assert!(false);
 	}
+
+	if stlk_request_count >= 2 {
+		let expect = r#"SetlkRequest {
+    node_id: 2,
+    handle: 12345,
+    may_block: false,
+    owner: 123456789123456789,
+    lock: None,
+    lock_range: Range {
+        start: 0,
+        length: None,
+    },
+    flags: SetlkRequestFlags {},
+}"#;
+		if let Some(diff) = diff_str(expect, &requests[1]) {
+			println!("{}", diff);
+			assert!(false);
+		}
+	}
 }
 
 #[test]
@@ -334,14 +401,7 @@ fn setlkw_fcntl_write() {
 	});
 	assert_eq!(requests.len(), 1);
 
-	#[allow(unused_assignments, unused_mut)]
-	let mut lock_pid = std::process::id();
-
-	// https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=256005
-	#[cfg(target_os = "freebsd")]
-	{
-		lock_pid = 9999;
-	}
+	let lock_pid = std::process::id();
 
 	let expect = format!(
 		r#"SetlkRequest {{
