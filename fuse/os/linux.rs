@@ -14,8 +14,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::fmt::{self, Write};
 // use core::ffi::CStr;
+use core::fmt;
+use core::fmt::Write;
 
 #[cfg(any(doc, feature = "std"))]
 use std::ffi::CStr;
@@ -24,6 +25,8 @@ use std::ffi::CStr;
 const CSTR_FUSE: &CStr = unsafe {
 	CStr::from_bytes_with_nul_unchecked(b"fuse\0")
 };
+
+// MountOptions {{{
 
 #[derive(Copy, Clone)]
 pub struct MountOptions<'a> {
@@ -172,6 +175,10 @@ impl<'a> MountOptions<'a> {
 	}
 }
 
+// }}}
+
+// MountData {{{
+
 #[derive(Copy, Clone)]
 pub struct MountData<'a> {
 	buf: &'a [u8],
@@ -253,6 +260,10 @@ fn write_mount_data(w: &mut BufWriter, opts: &MountOptions) -> fmt::Result {
 	Ok(())
 }
 
+// }}}
+
+// BufWriter {{{
+
 struct BufWriter<'a> {
 	buf: &'a mut [u8],
 	count: usize,
@@ -284,6 +295,8 @@ impl fmt::Write for BufWriter<'_> {
 		self.write_bytes(s.as_bytes())
 	}
 }
+
+// }}}
 
 #[cfg(feature = "std")]
 fn cstr_is_empty(s: &CStr) -> bool {

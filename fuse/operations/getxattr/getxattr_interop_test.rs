@@ -76,7 +76,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::FuseHandlers<S> for TestFS {
 				None => {
 					let resp = fuse::GetxattrResponse::with_value_size(value.size());
 					return call.respond_ok(&resp);
-				}
+				},
 				Some(request_size) => {
 					if value.size() > request_size.get() {
 						return call.respond_err(ErrorCode::ERANGE);

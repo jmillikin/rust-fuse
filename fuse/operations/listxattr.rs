@@ -156,9 +156,7 @@ impl ListxattrResponse<'_> {
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		match self.output {
-			ListxattrOutput::Names(names) => {
-				enc.encode_bytes(names.buf)
-			},
+			ListxattrOutput::Names(names) => enc.encode_bytes(names.buf),
 			ListxattrOutput::Size(size) => match check_list_size(size) {
 				Ok(size_u32) => {
 					enc.encode_sized(&fuse_kernel::fuse_getxattr_out {
@@ -217,7 +215,9 @@ impl<'a> core::iter::Iterator for XattrNamesIter<'a> {
 				let (name, _) = self.0.split_at(ii);
 				let (_, next) = self.0.split_at(ii + 1);
 				self.0 = next;
-				return Some(unsafe { xattr::Name::from_bytes_unchecked(name) });
+				return Some(unsafe {
+					xattr::Name::from_bytes_unchecked(name)
+				});
 			}
 		}
 		let name = unsafe { xattr::Name::from_bytes_unchecked(self.0) };

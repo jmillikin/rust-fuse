@@ -25,7 +25,6 @@ use crate::internal::debug;
 use crate::internal::fuse_kernel;
 use crate::internal::timestamp;
 
-
 // Id {{{
 
 /// Node IDs are per-mount unique identifiers for filesystem nodes.
@@ -136,7 +135,7 @@ pub enum NameError {
 /// does not contain a forbidden character (`NUL` or `'/'`).
 #[derive(Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Name {
-	bytes: [u8]
+	bytes: [u8],
 }
 
 #[cfg(target_os = "freebsd")]

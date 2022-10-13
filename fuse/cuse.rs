@@ -37,7 +37,7 @@ use crate::internal::debug;
 // response data into a stack-allocated `[u8; PAGE_SIZE]` buffer in the future.
 const NAME_MAX: usize = 255;
 
-// DeviceName {{{
+// DeviceNameError {{{
 
 /// Errors that may occur when validating a CUSE device name.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -52,6 +52,10 @@ pub enum DeviceNameError {
 	/// The input length in bytes exceeds `NAME_MAX`.
 	ExceedsMaxLen,
 }
+
+// }}}
+
+// DeviceName {{{
 
 /// A borrowed CUSE device name.
 ///

@@ -95,7 +95,10 @@ fn request_device_number() {
 		protocol_version: (7, 12),
 	});
 
-	assert_eq!(node::Type::from_mode(req.mode()), Some(node::Type::BlockDevice));
+	assert_eq!(
+		node::Type::from_mode(req.mode()),
+		Some(node::Type::BlockDevice)
+	);
 	assert_eq!(req.mode().permissions(), 0o644);
 	assert_eq!(req.device_number(), Some(123));
 }

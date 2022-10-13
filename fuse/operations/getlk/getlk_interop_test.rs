@@ -143,7 +143,10 @@ fn fcntl_getlk(path: std::path::PathBuf, mut lock: libc::flock) -> libc::flock {
 }
 
 #[cfg(target_os = "linux")]
-fn fcntl_ofd_getlk(path: std::path::PathBuf, mut lock: libc::flock) -> libc::flock {
+fn fcntl_ofd_getlk(
+	path: std::path::PathBuf,
+	mut lock: libc::flock,
+) -> libc::flock {
 	let path_cstr = path_cstr(path);
 
 	let file_fd = unsafe { libc::open(path_cstr.as_ptr(), libc::O_RDWR) };

@@ -19,6 +19,8 @@
 #[cfg(any(doc, feature = "std"))]
 use std::ffi::CStr;
 
+// MountOptions {{{
+
 #[derive(Copy, Clone)]
 pub struct MountOptions<'a> {
 	default_permissions: bool,
@@ -56,3 +58,5 @@ impl<'a> MountOptions<'a> {
 		self.fs_subtype = fs_subtype;
 	}
 }
+
+// }}}

@@ -16,7 +16,7 @@
 
 use core::convert::TryInto;
 use core::fmt;
-use core::num::NonZeroU64;
+use core::num;
 
 use crate::internal::fuse_kernel;
 use crate::node;
@@ -231,7 +231,7 @@ impl InvalidateInode {
 		self.raw.len
 	}
 
-	pub fn set_size(&mut self, size: Option<NonZeroU64>) {
+	pub fn set_size(&mut self, size: Option<num::NonZeroU64>) {
 		self.raw.len = match size {
 			Some(size_u64) => match size_u64.get().try_into() {
 				Ok(size_i64) => size_i64,

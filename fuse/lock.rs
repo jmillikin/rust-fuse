@@ -66,7 +66,7 @@ mod sys_fcntl {
 	pub(crate) const F_UNLCK: u32 = 2;
 }
 
-pub(crate) use sys_fcntl::{F_RDLCK, F_WRLCK, F_UNLCK};
+pub(crate) use sys_fcntl::{F_RDLCK, F_UNLCK, F_WRLCK};
 
 pub(crate) const OFFSET_MAX: u64 = i64::MAX as u64;
 
@@ -174,7 +174,9 @@ impl ProcessId {
 	#[inline]
 	#[must_use]
 	pub fn new(pid: u32) -> Option<ProcessId> {
-		Some(Self { pid: num::NonZeroU32::new(pid)? })
+		Some(Self {
+			pid: num::NonZeroU32::new(pid)?,
+		})
 	}
 
 	/// Returns the process ID as a primitive integer.
@@ -271,14 +273,18 @@ impl fmt::Debug for Lock {
 
 // }}}
 
-pub(crate) fn decode(raw: &fuse_kernel::fuse_file_lock) -> Result<Lock, LockError> {
+pub(crate) fn decode(
+	raw: &fuse_kernel::fuse_file_lock,
+) -> Result<Lock, LockError> {
 	let mode = decode_mode(raw)?;
 	let range = decode_range(raw)?;
 	let process_id = ProcessId::new(raw.pid);
 	Ok(Lock { mode, range, process_id })
 }
 
-pub(crate) fn decode_mode(raw: &fuse_kernel::fuse_file_lock) -> Result<Mode, LockError> {
+pub(crate) fn decode_mode(
+	raw: &fuse_kernel::fuse_file_lock,
+) -> Result<Mode, LockError> {
 	match raw.r#type {
 		F_WRLCK => Ok(Mode::Exclusive),
 		F_RDLCK => Ok(Mode::Shared),
@@ -286,7 +292,9 @@ pub(crate) fn decode_mode(raw: &fuse_kernel::fuse_file_lock) -> Result<Mode, Loc
 	}
 }
 
-pub(crate) fn decode_range(raw: &fuse_kernel::fuse_file_lock) -> Result<Range, LockError> {
+pub(crate) fn decode_range(
+	raw: &fuse_kernel::fuse_file_lock,
+) -> Result<Range, LockError> {
 	// Both Linux and FreeBSD allow the `(*struct flock)->l_len` field to be
 	// negative, but generate different `fuse_file_lock` values in this case:
 	//
@@ -313,7 +321,7 @@ pub(crate) fn decode_range(raw: &fuse_kernel::fuse_file_lock) -> Result<Range, L
 		return Ok(Range {
 			start: raw.start,
 			length: None,
-		})
+		});
 	}
 
 	let length = (raw.end - raw.start).saturating_add(1);
@@ -324,4 +332,3 @@ pub(crate) fn decode_range(raw: &fuse_kernel::fuse_file_lock) -> Result<Range, L
 		}),
 	})
 }
-

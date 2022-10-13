@@ -119,7 +119,10 @@ impl<'a> LookupResponse<'a> {
 	#[inline]
 	#[must_use]
 	pub fn cache_timeout(&self) -> time::Duration {
-		timestamp::new_duration(self.entry_out.entry_valid, self.entry_out.entry_valid_nsec)
+		timestamp::new_duration(
+			self.entry_out.entry_valid,
+			self.entry_out.entry_valid_nsec,
+		)
 	}
 
 	#[inline]
@@ -132,7 +135,10 @@ impl<'a> LookupResponse<'a> {
 	#[inline]
 	#[must_use]
 	pub fn attribute_cache_timeout(&self) -> time::Duration {
-		timestamp::new_duration(self.entry_out.attr_valid, self.entry_out.attr_valid_nsec)
+		timestamp::new_duration(
+			self.entry_out.attr_valid,
+			self.entry_out.attr_valid_nsec,
+		)
 	}
 
 	#[inline]
@@ -170,7 +176,7 @@ impl LookupResponse<'_> {
 		}
 		let entry = unsafe { node::Entry::from_ref(&self.entry_out) };
 		if ctx.version_minor >= 9 {
-			return enc.encode_sized(entry.as_v7p9())
+			return enc.encode_sized(entry.as_v7p9());
 		}
 		enc.encode_sized(entry.as_v7p1())
 	}

@@ -14,13 +14,12 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::cell::RefCell;
-use core::cmp::min;
+use core::cell;
+use core::cmp;
 use core::fmt;
-use core::mem::size_of;
+use core::mem;
 
-use crate::Version;
-use crate::internal::fuse_kernel::fuse_in_header;
+use crate::internal::fuse_kernel;
 use crate::lock;
 use crate::node;
 use crate::operations::cuse_init::{
@@ -44,6 +43,8 @@ pub mod decode;
 pub(crate) mod encode;
 
 const DEFAULT_MAX_WRITE: u32 = 4096;
+
+// ServerError {{{
 
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -76,6 +77,10 @@ impl<E> From<io::SendError<E>> for ServerError<E> {
 		})
 	}
 }
+
+// }}}
+
+// RequestError {{{
 
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -115,6 +120,8 @@ impl From<xattr::ValueError> for RequestError {
 	}
 }
 
+// }}}
+
 #[derive(Clone, Copy)]
 pub struct ResponseContext {
 	pub(crate) request_id: u64,
@@ -124,7 +131,7 @@ pub struct ResponseContext {
 pub struct CuseRequestBuilder {
 	init_flags: CuseInitFlags,
 	max_write: u32,
-	version: Version,
+	version: crate::Version,
 }
 
 impl CuseRequestBuilder {
@@ -133,7 +140,7 @@ impl CuseRequestBuilder {
 		CuseRequestBuilder {
 			init_flags: CuseInitFlags::new(),
 			max_write: DEFAULT_MAX_WRITE,
-			version: Version::LATEST,
+			version: crate::Version::LATEST,
 		}
 	}
 
@@ -148,7 +155,7 @@ impl CuseRequestBuilder {
 		}
 	}
 
-	pub fn version(&mut self, version: Version) -> &mut Self {
+	pub fn version(&mut self, version: crate::Version) -> &mut Self {
 		self.version = version;
 		self
 	}
@@ -201,7 +208,7 @@ impl<'a> CuseRequest<'a> {
 pub struct FuseRequestBuilder {
 	init_flags: FuseInitFlags,
 	max_write: u32,
-	version: Version,
+	version: crate::Version,
 }
 
 impl FuseRequestBuilder {
@@ -210,7 +217,7 @@ impl FuseRequestBuilder {
 		FuseRequestBuilder {
 			init_flags: FuseInitFlags::new(),
 			max_write: DEFAULT_MAX_WRITE,
-			version: Version::LATEST,
+			version: crate::Version::LATEST,
 		}
 	}
 
@@ -225,7 +232,7 @@ impl FuseRequestBuilder {
 		}
 	}
 
-	pub fn version(&mut self, version: Version) -> &mut Self {
+	pub fn version(&mut self, version: crate::Version) -> &mut Self {
 		self.version = version;
 		self
 	}
@@ -287,9 +294,11 @@ impl<'a> FuseRequest<'a> {
 	}
 }
 
+// UnknownRequest {{{
+
 pub struct UnknownRequest<'a> {
 	header: &'a crate::RequestHeader,
-	body: RefCell<UnknownBody<'a>>,
+	body: cell::RefCell<UnknownBody<'a>>,
 }
 
 enum UnknownBody<'a> {
@@ -302,7 +311,7 @@ impl<'a> UnknownRequest<'a> {
 	pub fn from_fuse_request(request: &FuseRequest<'a>) -> Self {
 		Self {
 			header: request.buf.header(),
-			body: RefCell::new(UnknownBody::Raw(request.buf)),
+			body: cell::RefCell::new(UnknownBody::Raw(request.buf)),
 		}
 	}
 
@@ -310,7 +319,7 @@ impl<'a> UnknownRequest<'a> {
 	pub fn from_cuse_request(request: &CuseRequest<'a>) -> Self {
 		Self {
 			header: request.buf.header(),
-			body: RefCell::new(UnknownBody::Raw(request.buf)),
+			body: cell::RefCell::new(UnknownBody::Raw(request.buf)),
 		}
 	}
 
@@ -321,9 +330,10 @@ impl<'a> UnknownRequest<'a> {
 
 	pub fn body(&self) -> Result<&'a [u8], RequestError> {
 		let mut result: Result<&'a [u8], RequestError> = Ok(&[]);
+		const HEADER_LEN: usize = mem::size_of::<fuse_kernel::fuse_in_header>();
 		self.body.replace_with(|body| match body {
 			UnknownBody::Raw(buf) => {
-				let body_offset = size_of::<fuse_in_header>() as u32;
+				let body_offset = HEADER_LEN as u32;
 				let header = buf.raw_header();
 				let mut dec = decode::RequestDecoder::new(*buf);
 				result = dec.next_bytes(header.len - body_offset);
@@ -346,6 +356,10 @@ impl fmt::Debug for UnknownRequest<'_> {
 			.finish()
 	}
 }
+
+// }}}
+
+// ErrorResponse {{{
 
 #[derive(Clone, Copy)]
 pub struct ErrorResponse {
@@ -378,6 +392,8 @@ impl ErrorResponse {
 		enc.encode_error(self.error).await
 	}
 }
+
+// }}}
 
 pub fn cuse_init<'a, S: io::CuseSocket>(
 	socket: &mut S,
@@ -437,7 +453,7 @@ fn cuse_handshake<'a, E>(
 		},
 		None => {
 			let mut response = CuseInitResponse::new_nameless();
-			response.set_version(Version::LATEST);
+			response.set_version(crate::Version::LATEST);
 			Ok((response, false))
 		},
 	}
@@ -501,22 +517,20 @@ fn fuse_handshake<E>(
 		},
 		None => {
 			let mut response = FuseInitResponse::new();
-			response.set_version(Version::LATEST);
+			response.set_version(crate::Version::LATEST);
 			Ok((response, false))
 		},
 	}
 }
 
-fn negotiate_version(
-	kernel: crate::Version,
-) -> Option<crate::Version> {
-	if kernel.major() != Version::LATEST.major() {
+fn negotiate_version(kernel: crate::Version) -> Option<crate::Version> {
+	if kernel.major() != crate::Version::LATEST.major() {
 		// TODO: hard error on kernel major version < FUSE_KERNEL_VERSION
 		return None;
 	}
 	Some(crate::Version::new(
-		Version::LATEST.major(),
-		min(kernel.minor(), Version::LATEST.minor()),
+		crate::Version::LATEST.major(),
+		cmp::min(kernel.minor(), crate::Version::LATEST.minor()),
 	))
 }
 
@@ -644,6 +658,8 @@ impl<S: io::AsyncFuseSocket> AsyncFuseRequests<'_, S> {
 	}
 }
 
+// Hooks {{{
+
 #[allow(unused_variables)]
 pub trait Hooks {
 	fn request(&self, header: &crate::RequestHeader) {}
@@ -654,3 +670,5 @@ pub trait Hooks {
 
 	fn request_error(&self, header: &crate::RequestHeader, err: RequestError) {}
 }
+
+// }}}

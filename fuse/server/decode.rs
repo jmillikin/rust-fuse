@@ -248,7 +248,7 @@ pub(crate) fn node_id(raw: u64) -> Result<node::Id, RequestError> {
 
 pub(crate) fn check_timespec_nanos(nanos: u32) -> Result<(), RequestError> {
 	if nanos > timestamp::MAX_NANOS {
-		return Err(RequestError::TimestampNanosOverflow)
+		return Err(RequestError::TimestampNanosOverflow);
 	}
 	Ok(())
 }

@@ -155,7 +155,7 @@ impl GetattrResponse<'_> {
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		if ctx.version_minor >= 9 {
-			return enc.encode_sized(self.attr_out.as_v7p9())
+			return enc.encode_sized(self.attr_out.as_v7p9());
 		}
 		enc.encode_sized(self.attr_out.as_v7p1())
 	}

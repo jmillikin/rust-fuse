@@ -60,7 +60,7 @@ impl SetxattrRequest<'_> {
 		if let Some(body) = self.body.as_v7p33() {
 			return SetxattrRequestFlags {
 				bits: body.setxattr_flags,
-			}
+			};
 		}
 		SetxattrRequestFlags::new()
 	}

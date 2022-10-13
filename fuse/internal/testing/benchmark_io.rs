@@ -85,7 +85,9 @@ fn benchmark_read(c: &mut criterion::Criterion) {
 		})
 		.build_aligned();
 
-	let socket = FakeSocket { buf: buf.as_slice().to_vec() };
+	let socket = FakeSocket {
+		buf: buf.as_slice().to_vec(),
+	};
 	let handlers = FakeHandlers {};
 
 	let req_builder = server::FuseRequestBuilder::new();
@@ -134,7 +136,9 @@ fn benchmark_write(c: &mut criterion::Criterion) {
 		.push_bytes(&[0u8; 4096])
 		.build_aligned();
 
-	let socket = FakeSocket { buf: buf.as_slice().to_vec() };
+	let socket = FakeSocket {
+		buf: buf.as_slice().to_vec(),
+	};
 	let handlers = FakeHandlers {};
 
 	let req_builder = server::FuseRequestBuilder::new();

@@ -16,8 +16,8 @@
 
 use core::mem::size_of;
 
-use crate::io::SendBuf;
 use crate::internal::fuse_kernel;
+use crate::io::SendBuf;
 use crate::server::io;
 
 pub(crate) trait SendOnce {

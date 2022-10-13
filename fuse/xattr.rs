@@ -37,6 +37,8 @@ pub(crate) const XATTR_LIST_MAX: usize = 65536;
 #[cfg(target_os = "linux")]
 const XATTR_SIZE_MAX: usize = 65536;
 
+// NameError {{{
+
 /// Errors that may occur when validating an extended attribute name.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[non_exhaustive]
@@ -48,6 +50,10 @@ pub enum NameError {
 	/// The input length in bytes exceeds [`Name::MAX_LEN`].
 	ExceedsMaxLen,
 }
+
+// }}}
+
+// Name {{{
 
 /// A borrowed extended attribute name.
 ///
@@ -199,6 +205,10 @@ impl PartialEq<Name> for [u8] {
 	}
 }
 
+// }}}
+
+// ValueError {{{
+
 /// Errors that may occur when validating an extended attribute value.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[non_exhaustive]
@@ -206,6 +216,10 @@ pub enum ValueError {
 	/// The input length in bytes exceeds [`Value::MAX_LEN`].
 	ExceedsMaxLen,
 }
+
+// }}}
+
+// Value {{{
 
 /// A borrowed extended attribute value.
 ///
@@ -305,3 +319,5 @@ impl PartialEq<Value> for [u8] {
 		self.eq(other.as_bytes())
 	}
 }
+
+// }}}

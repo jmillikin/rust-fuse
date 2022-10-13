@@ -61,22 +61,17 @@ mod error;
 
 pub mod client;
 pub mod cuse;
+pub mod io;
 pub mod lock;
 pub mod node;
+pub mod notify;
+pub mod operations;
 pub mod os;
 pub mod server;
-
-pub mod io;
-
-pub use crate::error::Error;
-
-pub mod notify;
-
-pub mod operations;
-
-pub use self::operations::types_only::*;
-
 pub mod xattr;
+
+pub use self::error::Error;
+pub use self::operations::types_only::*;
 
 // RequestHeader {{{
 
@@ -105,7 +100,9 @@ impl RequestHeader {
 	#[inline]
 	#[must_use]
 	pub fn opcode(&self) -> Opcode {
-		Opcode { bits: self.raw.opcode.0 }
+		Opcode {
+			bits: self.raw.opcode.0,
+		}
 	}
 
 	/// Returns the ID of this request's primary node, if present.
@@ -224,6 +221,8 @@ pub type SetxattrFlags = u32;
 /// OS-specific event types used with `poll()`.
 pub type PollEvents = u32;
 
+// PollHandle {{{
+
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct PollHandle {
 	bits: u64,
@@ -234,6 +233,10 @@ impl core::fmt::Debug for PollHandle {
 		self.bits.fmt(fmt)
 	}
 }
+
+// }}}
+
+// ProcessId {{{
 
 /// Represents a process that initiated a FUSE request.
 ///
@@ -252,7 +255,9 @@ impl ProcessId {
 	#[inline]
 	#[must_use]
 	pub fn new(pid: u32) -> Option<ProcessId> {
-		Some(Self { pid: core::num::NonZeroU32::new(pid)? })
+		Some(Self {
+			pid: core::num::NonZeroU32::new(pid)?,
+		})
 	}
 
 	/// Returns the process ID as a primitive integer.
@@ -268,6 +273,10 @@ impl core::fmt::Debug for ProcessId {
 		self.pid.fmt(fmt)
 	}
 }
+
+// }}}
+
+// UnixTime {{{
 
 /// A measurement of Unix time with nanosecond precision.
 ///
@@ -377,6 +386,10 @@ impl core::fmt::Debug for UnixTime {
 	}
 }
 
+// }}}
+
+// Version {{{
+
 /// A version of the FUSE protocol.
 ///
 /// FUSE protocol versions are a (major, minor) version tuple, but FUSE does
@@ -413,6 +426,10 @@ impl Version {
 		self.minor
 	}
 }
+
+// }}}
+
+// Opcode {{{
 
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Opcode {
@@ -498,3 +515,5 @@ export_opcodes! {
 	CUSE_INIT_BSWAP_RESERVED,
 	FUSE_INIT_BSWAP_RESERVED,
 }
+
+// }}}
