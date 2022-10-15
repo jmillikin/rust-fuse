@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use core::convert::TryFrom;
 use core::mem::size_of;
 
 use crate::internal::fuse_kernel;
@@ -68,15 +69,15 @@ impl<S: SendOnce> ReplyEncoder<S> {
 	}
 
 	pub(crate) fn encode_error(self, err: crate::Error) -> S::Result {
-		let len = size_of::<fuse_kernel::fuse_out_header>();
+		let response_len = size_of::<fuse_kernel::fuse_out_header>();
 		let out_hdr = fuse_kernel::fuse_out_header {
-			len: len as u32,
+			len: response_len as u32,
 			error: err.raw_fuse_error_code(),
 			unique: self.request_id,
 		};
 		let out_hdr_buf = sized_to_slice(&out_hdr);
 
-		self.sender.send(SendBuf::new_1(len, out_hdr_buf))
+		self.sender.send(SendBuf::new_1(response_len, out_hdr_buf))
 	}
 
 	pub(crate) fn encode_unsolicited<T: core::fmt::Debug>(
@@ -90,21 +91,13 @@ impl<S: SendOnce> ReplyEncoder<S> {
 			payload_len = payload_len.saturating_add(name_bytes.len());
 			payload_len = payload_len.saturating_add(1);
 		}
-
-		let mut len = size_of::<fuse_kernel::fuse_out_header>();
-		match len.checked_add(payload_len) {
-			Some(x) => len = x,
-			None => panic!("{} + {} overflows usize", len, payload_len),
-		}
-
-		if size_of::<usize>() > size_of::<u32>() {
-			if len > u32::MAX as usize {
-				panic!("{} overflows u32", len);
-			}
-		}
+		let response_len = match checked_response_len(payload_len) {
+			Some(len) => len,
+			None => return self.encode_error(crate::Error::OVERFLOW),
+		};
 
 		let out_hdr = fuse_kernel::fuse_out_header {
-			len: len as u32,
+			len: response_len as u32,
 			error: notify_code.0 as i32,
 			unique: 0,
 		};
@@ -112,7 +105,7 @@ impl<S: SendOnce> ReplyEncoder<S> {
 		let body_buf = sized_to_slice(body);
 		if let Some(name_bytes) = name_bytes {
 			self.sender.send(SendBuf::new_4(
-				payload_len,
+				response_len,
 				out_hdr_buf,
 				body_buf,
 				name_bytes,
@@ -120,7 +113,7 @@ impl<S: SendOnce> ReplyEncoder<S> {
 			))
 		} else {
 			self.sender.send(SendBuf::new_2(
-				payload_len,
+				response_len,
 				out_hdr_buf,
 				body_buf,
 			))
@@ -140,39 +133,32 @@ impl<S: SendOnce> ReplyEncoder<S> {
 	}
 
 	pub(crate) fn encode_header_only(self) -> S::Result {
-		let len = size_of::<fuse_kernel::fuse_out_header>();
+		let response_len = size_of::<fuse_kernel::fuse_out_header>();
 		let out_hdr = fuse_kernel::fuse_out_header {
-			len: len as u32,
+			len: response_len as u32,
 			error: 0,
 			unique: self.request_id,
 		};
 		let out_hdr_buf = sized_to_slice(&out_hdr);
 
-		self.sender.send(SendBuf::new_1(len, out_hdr_buf))
+		self.sender.send(SendBuf::new_1(response_len, out_hdr_buf))
 	}
 
 	pub(crate) fn encode_bytes(self, bytes: &[u8]) -> S::Result {
-		let mut len = size_of::<fuse_kernel::fuse_out_header>();
-
-		match len.checked_add(bytes.len()) {
-			Some(x) => len = x,
-			None => panic!("{} + {} overflows usize", len, bytes.len()),
-		}
-
-		if size_of::<usize>() > size_of::<u32>() {
-			if len > u32::MAX as usize {
-				panic!("{} overflows u32", len);
-			}
-		}
+		let payload_len = bytes.len();
+		let response_len = match checked_response_len(payload_len) {
+			Some(len) => len,
+			None => return self.encode_error(crate::Error::OVERFLOW),
+		};
 
 		let out_hdr = fuse_kernel::fuse_out_header {
-			len: len as u32,
+			len: response_len as u32,
 			error: 0,
 			unique: self.request_id,
 		};
 		let out_hdr_buf = sized_to_slice(&out_hdr);
 
-		self.sender.send(SendBuf::new_2(len, out_hdr_buf, bytes))
+		self.sender.send(SendBuf::new_2(response_len, out_hdr_buf, bytes))
 	}
 
 	pub(crate) fn encode_bytes_2(
@@ -180,31 +166,21 @@ impl<S: SendOnce> ReplyEncoder<S> {
 		bytes_1: &[u8],
 		bytes_2: &[u8],
 	) -> S::Result {
-		let mut len = size_of::<fuse_kernel::fuse_out_header>();
-
-		match len.checked_add(bytes_1.len()) {
-			Some(x) => len = x,
-			None => panic!("{} + {} overflows usize", len, bytes_1.len()),
-		}
-		match len.checked_add(bytes_2.len()) {
-			Some(x) => len = x,
-			None => panic!("{} + {} overflows usize", len, bytes_2.len()),
-		}
-
-		if size_of::<usize>() > size_of::<u32>() {
-			if len > u32::MAX as usize {
-				panic!("{} overflows u32", len);
-			}
-		}
+		let mut payload_len = bytes_1.len();
+		payload_len = payload_len.saturating_add(bytes_2.len());
+		let response_len = match checked_response_len(payload_len) {
+			Some(len) => len,
+			None => return self.encode_error(crate::Error::OVERFLOW),
+		};
 
 		let out_hdr = fuse_kernel::fuse_out_header {
-			len: len as u32,
+			len: response_len as u32,
 			error: 0,
 			unique: self.request_id,
 		};
 		let out_hdr_buf = sized_to_slice(&out_hdr);
 
-		self.sender.send(SendBuf::new_3(len, out_hdr_buf, bytes_1, bytes_2))
+		self.sender.send(SendBuf::new_3(response_len, out_hdr_buf, bytes_1, bytes_2))
 	}
 
 	pub(crate) fn encode_bytes_4(
@@ -214,39 +190,23 @@ impl<S: SendOnce> ReplyEncoder<S> {
 		bytes_3: &[u8],
 		bytes_4: &[u8],
 	) -> S::Result {
-		let mut len = size_of::<fuse_kernel::fuse_out_header>();
-
-		match len.checked_add(bytes_1.len()) {
-			Some(x) => len = x,
-			None => panic!("{} + {} overflows usize", len, bytes_1.len()),
-		}
-		match len.checked_add(bytes_2.len()) {
-			Some(x) => len = x,
-			None => panic!("{} + {} overflows usize", len, bytes_2.len()),
-		}
-		match len.checked_add(bytes_3.len()) {
-			Some(x) => len = x,
-			None => panic!("{} + {} overflows usize", len, bytes_3.len()),
-		}
-		match len.checked_add(bytes_4.len()) {
-			Some(x) => len = x,
-			None => panic!("{} + {} overflows usize", len, bytes_4.len()),
-		}
-
-		if size_of::<usize>() > size_of::<u32>() {
-			if len > u32::MAX as usize {
-				panic!("{} overflows u32", len);
-			}
-		}
+		let mut payload_len = bytes_1.len();
+		payload_len = payload_len.saturating_add(bytes_2.len());
+		payload_len = payload_len.saturating_add(bytes_3.len());
+		payload_len = payload_len.saturating_add(bytes_4.len());
+		let response_len = match checked_response_len(payload_len) {
+			Some(len) => len,
+			None => return self.encode_error(crate::Error::OVERFLOW),
+		};
 
 		let out_hdr = fuse_kernel::fuse_out_header {
-			len: len as u32,
+			len: response_len as u32,
 			error: 0,
 			unique: self.request_id,
 		};
 		let out_hdr_buf = sized_to_slice(&out_hdr);
 
-		self.sender.send(SendBuf::new_5(len, out_hdr_buf, bytes_1, bytes_2, bytes_3, bytes_4))
+		self.sender.send(SendBuf::new_5(response_len, out_hdr_buf, bytes_1, bytes_2, bytes_3, bytes_4))
 	}
 }
 
@@ -254,4 +214,13 @@ impl<S: SendOnce> ReplyEncoder<S> {
 fn sized_to_slice<T>(t: &T) -> &[u8] {
 	let t_ptr = (t as *const T).cast::<u8>();
 	unsafe { core::slice::from_raw_parts(t_ptr, size_of::<T>()) }
+}
+
+#[inline]
+#[must_use]
+fn checked_response_len(payload_len: usize) -> Option<usize> {
+	let header_len = size_of::<fuse_kernel::fuse_out_header>();
+	let response_len = header_len.checked_add(payload_len)?;
+	u32::try_from(response_len).ok()?;
+	Some(response_len)
 }

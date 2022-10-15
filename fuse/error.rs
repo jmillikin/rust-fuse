@@ -112,6 +112,7 @@ mod errno {
 	pub(super) const EIO: Error = Error::from_errno(os_errno::EIO);
 	pub(super) const ENOENT: Error = Error::from_errno(os_errno::ENOENT);
 	pub(super) const ENOSYS: Error = Error::from_errno(os_errno::ENOSYS);
+	pub(super) const EOVERFLOW: Error = Error::from_errno(os_errno::EOVERFLOW);
 
 	#[cfg(target_os = "linux")]
 	pub(super) const ENODATA: Error = Error::from_errno(os_errno::ENODATA);
@@ -143,6 +144,11 @@ impl Error {
 	///
 	/// This error maps to `ENOENT`.
 	pub const NOT_FOUND: Error = errno::ENOENT;
+
+	/// A value is too large to store in its data type.
+	///
+	/// This error maps to `EOVERFLOW`.
+	pub const OVERFLOW: Error = errno::EOVERFLOW;
 
 	/// The requested operation is not implemented in this server.
 	///
