@@ -166,7 +166,40 @@ pub struct ResponseHeader {
 	raw: internal::fuse_kernel::fuse_out_header,
 }
 
+const HEADER_LEN_U32: u32 =
+	core::mem::size_of::<internal::fuse_kernel::fuse_out_header>() as u32;
+
 impl ResponseHeader {
+	/// Creates a new `ResponseHeader` with the given request ID.
+	///
+	/// The initial length is `size_of::<ResponseHeader>()`.
+	#[inline]
+	#[must_use]
+	pub fn new(request_id: core::num::NonZeroU64) -> ResponseHeader {
+		Self {
+			raw: internal::fuse_kernel::fuse_out_header {
+				len: HEADER_LEN_U32,
+				unique: request_id.get(),
+				error: 0,
+			},
+		}
+	}
+
+	/// Creates a new `ResponseHeader` with no request ID (a notification).
+	///
+	/// The initial length is `size_of::<ResponseHeader>()`.
+	#[inline]
+	#[must_use]
+	pub fn new_notification() -> ResponseHeader {
+		Self {
+			raw: internal::fuse_kernel::fuse_out_header {
+				len: HEADER_LEN_U32,
+				unique: 0,
+				error: 0,
+			},
+		}
+	}
+
 	/// Returns the unique ID for the original request, if present.
 	///
 	/// Responses without a request ID are notifications.
@@ -183,6 +216,12 @@ impl ResponseHeader {
 		unsafe { core::num::NonZeroU32::new_unchecked(self.raw.len) }
 	}
 
+	/// Sets the length of this response, including the header.
+	#[inline]
+	pub fn set_response_len(&mut self, response_len: core::num::NonZeroU32) {
+		self.raw.len = response_len.get();
+	}
+
 	/// Returns the error code for the original request, if present.
 	///
 	/// Responses without an error code indicate successful completion of the
@@ -191,6 +230,12 @@ impl ResponseHeader {
 	#[must_use]
 	pub fn error(&self) -> Option<core::num::NonZeroI32> {
 		core::num::NonZeroI32::new(self.raw.error)
+	}
+
+	/// Sets the error code for the original request.
+	#[inline]
+	pub fn set_error(&mut self, error: core::num::NonZeroI32) {
+		self.raw.error = error.get();
 	}
 }
 
