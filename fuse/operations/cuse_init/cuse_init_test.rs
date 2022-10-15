@@ -123,6 +123,7 @@ fn response() {
 fn response_impl_debug() {
 	let device_name = cuse::DeviceName::new("test-device").unwrap();
 	let mut response = CuseInitResponse::new(device_name);
+	response.set_version(fuse::Version::new(123, 456));
 	response.set_max_read(4096);
 	response.set_max_write(8192);
 	response.set_device_number(cuse::DeviceNumber::new(10, 11));
@@ -133,6 +134,10 @@ fn response_impl_debug() {
 		concat!(
 			"CuseInitResponse {\n",
 			"    device_name: \"test-device\",\n",
+			"    version: Version {\n",
+			"        major: 123,\n",
+			"        minor: 456,\n",
+			"    },\n",
 			"    flags: CuseInitFlags {\n",
 			"        UNRESTRICTED_IOCTL,\n",
 			"    },\n",

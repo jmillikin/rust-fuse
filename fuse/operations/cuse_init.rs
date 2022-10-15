@@ -179,6 +179,7 @@ impl fmt::Debug for CuseInitResponse<'_> {
 			dbg.field("device_name", &device_name);
 		}
 		dbg
+			.field("version", &self.version())
 			.field("flags", &self.flags())
 			.field("max_read", &self.max_read())
 			.field("max_write", &self.max_write())
