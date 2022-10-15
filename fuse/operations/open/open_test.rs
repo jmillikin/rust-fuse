@@ -76,7 +76,9 @@ fn request_impl_debug() {
 fn response() {
 	let mut response = OpenResponse::new();
 	response.set_handle(123);
-	response.mut_flags().set(OpenResponseFlag::KEEP_CACHE);
+	response.update_flags(|flags| {
+		flags.set(OpenResponseFlag::KEEP_CACHE);
+	});
 
 	let encoded = encode_response!(response);
 
@@ -102,8 +104,10 @@ fn response() {
 fn response_impl_debug() {
 	let mut response = OpenResponse::new();
 	response.set_handle(123);
-	response.mut_flags().set(OpenResponseFlag::DIRECT_IO);
-	response.mut_flags().set(OpenResponseFlag::KEEP_CACHE);
+	response.update_flags(|flags| {
+		flags.set(OpenResponseFlag::DIRECT_IO);
+		flags.set(OpenResponseFlag::KEEP_CACHE);
+	});
 
 	assert_eq!(
 		format!("{:#?}", response),

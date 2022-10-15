@@ -31,7 +31,9 @@ impl interop_testutil::TestDev for TestCharDev {
 		_request: &fuse::CuseInitRequest,
 		response: &mut fuse::CuseInitResponse,
 	) {
-		response.mut_flags().set(fuse::CuseInitFlag::UNRESTRICTED_IOCTL);
+		response.update_flags(|flags| {
+			flags.set(fuse::CuseInitFlag::UNRESTRICTED_IOCTL);
+		});
 	}
 }
 

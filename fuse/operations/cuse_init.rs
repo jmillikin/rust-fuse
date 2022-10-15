@@ -91,7 +91,6 @@ impl fmt::Debug for CuseInitRequest<'_> {
 /// `CUSE_INIT` operation.
 pub struct CuseInitResponse<'a> {
 	raw: fuse_kernel::cuse_init_out,
-	flags: CuseInitFlags,
 	device_name: Option<&'a cuse::DeviceName>,
 }
 
@@ -100,7 +99,6 @@ impl<'a> CuseInitResponse<'a> {
 	pub fn new(device_name: &'a cuse::DeviceName) -> CuseInitResponse<'a> {
 		CuseInitResponse {
 			raw: fuse_kernel::cuse_init_out::zeroed(),
-			flags: CuseInitFlags::new(),
 			device_name: Some(device_name),
 		}
 	}
@@ -109,7 +107,6 @@ impl<'a> CuseInitResponse<'a> {
 	pub(crate) fn new_nameless() -> CuseInitResponse<'static> {
 		CuseInitResponse {
 			raw: fuse_kernel::cuse_init_out::zeroed(),
-			flags: CuseInitFlags::new(),
 			device_name: None,
 		}
 	}
@@ -126,16 +123,18 @@ impl<'a> CuseInitResponse<'a> {
 
 	#[must_use]
 	pub fn flags(&self) -> CuseInitFlags {
-		self.flags
-	}
-
-	#[must_use]
-	pub fn mut_flags(&mut self) -> &mut CuseInitFlags {
-		&mut self.flags
+		CuseInitFlags { bits: self.raw.flags }
 	}
 
 	pub fn set_flags(&mut self, flags: CuseInitFlags) {
-		self.flags = flags;
+		self.raw.flags = flags.bits;
+	}
+
+	#[inline]
+	pub fn update_flags(&mut self, f: impl FnOnce(&mut CuseInitFlags)) {
+		let mut flags = self.flags();
+		f(&mut flags);
+		self.set_flags(flags)
 	}
 
 	#[must_use]
@@ -194,8 +193,7 @@ impl CuseInitResponse<'_> {
 		send: S,
 		ctx: &server::ResponseContext,
 	) -> S::Result {
-		let mut out = self.raw;
-		out.flags = self.flags.bits;
+		let out = self.raw;
 		let out_buf: &[u8] = unsafe {
 			slice::from_raw_parts(
 				(&out as *const fuse_kernel::cuse_init_out).cast::<u8>(),

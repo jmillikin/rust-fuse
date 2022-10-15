@@ -36,8 +36,10 @@ impl interop_testutil::TestFS for TestFS {
 		_request: &fuse::FuseInitRequest,
 		response: &mut fuse::FuseInitResponse,
 	) {
-		response.mut_flags().set(fuse::FuseInitFlag::FLOCK_LOCKS);
-		response.mut_flags().set(fuse::FuseInitFlag::POSIX_LOCKS);
+		response.update_flags(|flags| {
+			flags.set(fuse::FuseInitFlag::FLOCK_LOCKS);
+			flags.set(fuse::FuseInitFlag::POSIX_LOCKS);
+		});
 	}
 }
 

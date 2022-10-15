@@ -72,7 +72,9 @@ fn request_impl_debug() {
 fn response() {
 	let mut response = OpendirResponse::new();
 	response.set_handle(123);
-	response.mut_flags().set(OpendirResponseFlag::KEEP_CACHE);
+	response.update_flags(|flags| {
+		flags.set(OpendirResponseFlag::KEEP_CACHE);
+	});
 
 	let encoded = encode_response!(response, {
 		protocol_version: (7, 1),
@@ -100,7 +102,9 @@ fn response() {
 fn response_impl_debug() {
 	let mut response = OpendirResponse::new();
 	response.set_handle(123);
-	response.mut_flags().set(OpendirResponseFlag::KEEP_CACHE);
+	response.update_flags(|flags| {
+		flags.set(OpendirResponseFlag::KEEP_CACHE);
+	});
 
 	assert_eq!(
 		format!("{:#?}", response),

@@ -146,7 +146,6 @@ impl fmt::Debug for FuseInitRequest<'_> {
 /// `FUSE_INIT` operation.
 pub struct FuseInitResponse {
 	raw: fuse_kernel::fuse_init_out,
-	flags: FuseInitFlags,
 }
 
 impl FuseInitResponse {
@@ -167,7 +166,6 @@ impl FuseInitResponse {
 				flags2: 0,
 				unused: [0; 7],
 			},
-			flags: FuseInitFlags::new(),
 		}
 	}
 
@@ -183,16 +181,21 @@ impl FuseInitResponse {
 
 	#[must_use]
 	pub fn flags(&self) -> FuseInitFlags {
-		self.flags
-	}
-
-	#[must_use]
-	pub fn mut_flags(&mut self) -> &mut FuseInitFlags {
-		&mut self.flags
+		let mut bits = u64::from(self.raw.flags);
+		bits |= u64::from(self.raw.flags2) << 32;
+		FuseInitFlags { bits }
 	}
 
 	pub fn set_flags(&mut self, flags: FuseInitFlags) {
-		self.flags = flags;
+		self.raw.flags = (flags.bits & u64::from(u32::MAX)) as u32;
+		self.raw.flags2 = (flags.bits >> 32) as u32;
+	}
+
+	#[inline]
+	pub fn update_flags(&mut self, f: impl FnOnce(&mut FuseInitFlags)) {
+		let mut flags = self.flags();
+		f(&mut flags);
+		self.set_flags(flags)
 	}
 
 	#[must_use]
@@ -281,10 +284,7 @@ impl FuseInitResponse {
 	) -> S::Result {
 		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
 		if self.raw.minor >= 23 {
-			let mut out = self.raw;
-			out.flags = (self.flags.bits & u64::from(u32::MAX)) as u32;
-			out.flags2 = (self.flags.bits >> 32) as u32;
-			return enc.encode_sized(&out);
+			return enc.encode_sized(&self.raw);
 		}
 
 		if self.raw.minor >= 5 {
@@ -292,7 +292,7 @@ impl FuseInitResponse {
 				major: self.raw.major,
 				minor: self.raw.minor,
 				max_readahead: self.raw.max_readahead,
-				flags: (self.flags.bits & u64::from(u32::MAX)) as u32,
+				flags: self.raw.flags,
 				max_background: self.raw.max_background,
 				congestion_threshold: self.raw.congestion_threshold,
 				max_write: self.raw.max_write,

@@ -141,13 +141,15 @@ impl<'a> OpenResponse<'a> {
 		}
 	}
 
-	#[must_use]
-	pub fn mut_flags(&mut self) -> &mut OpenResponseFlags {
-		OpenResponseFlags::reborrow_mut(&mut self.raw.open_flags)
-	}
-
 	pub fn set_flags(&mut self, flags: OpenResponseFlags) {
 		self.raw.open_flags = flags.bits
+	}
+
+	#[inline]
+	pub fn update_flags(&mut self, f: impl FnOnce(&mut OpenResponseFlags)) {
+		let mut flags = self.flags();
+		f(&mut flags);
+		self.set_flags(flags)
 	}
 }
 

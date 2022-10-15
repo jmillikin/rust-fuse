@@ -156,8 +156,10 @@ fn response_v7p23() {
 	let mut resp = FuseInitResponse::new();
 	resp.set_version(Version::new(7, 23));
 	resp.set_max_readahead(4096);
-	resp.mut_flags().set(FuseInitFlag::ASYNC_READ);
-	resp.mut_flags().set(FuseInitFlag::HAS_INODE_DAX);
+	resp.update_flags(|flags| {
+		flags.set(FuseInitFlag::ASYNC_READ);
+		flags.set(FuseInitFlag::HAS_INODE_DAX);
+	});
 	let encoded = encode_response!(resp);
 
 	assert_eq!(
@@ -258,7 +260,9 @@ fn response_impl_debug() {
 	response.set_max_background(10);
 	response.set_congestion_threshold(11);
 	response.set_time_granularity(100);
-	response.mut_flags().set(FuseInitFlag::ASYNC_READ);
+	response.update_flags(|flags| {
+		flags.set(FuseInitFlag::ASYNC_READ);
+	});
 
 	assert_eq!(
 		format!("{:#?}", response),

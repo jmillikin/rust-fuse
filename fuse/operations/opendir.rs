@@ -122,13 +122,15 @@ impl<'a> OpendirResponse<'a> {
 		}
 	}
 
-	#[must_use]
-	pub fn mut_flags(&mut self) -> &mut OpendirResponseFlags {
-		OpendirResponseFlags::reborrow_mut(&mut self.raw.open_flags)
-	}
-
 	pub fn set_flags(&mut self, flags: OpendirResponseFlags) {
 		self.raw.open_flags = flags.bits
+	}
+
+	#[inline]
+	pub fn update_flags(&mut self, f: impl FnOnce(&mut OpendirResponseFlags)) {
+		let mut flags = self.flags();
+		f(&mut flags);
+		self.set_flags(flags)
 	}
 }
 

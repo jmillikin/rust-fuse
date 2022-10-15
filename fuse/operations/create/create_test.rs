@@ -118,8 +118,10 @@ fn response_v7p1() {
 
 	let mut resp = CreateResponse::new(entry);
 	resp.set_handle(123);
-	resp.mut_flags().set(CreateResponseFlag::DIRECT_IO);
-	resp.mut_flags().set(CreateResponseFlag::KEEP_CACHE);
+	resp.update_flags(|flags| {
+		flags.set(CreateResponseFlag::DIRECT_IO);
+		flags.set(CreateResponseFlag::KEEP_CACHE);
+	});
 
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 1),
@@ -168,8 +170,10 @@ fn response_v7p9() {
 
 	let mut resp = CreateResponse::new(entry);
 	resp.set_handle(123);
-	resp.mut_flags().set(CreateResponseFlag::DIRECT_IO);
-	resp.mut_flags().set(CreateResponseFlag::KEEP_CACHE);
+	resp.update_flags(|flags| {
+		flags.set(CreateResponseFlag::DIRECT_IO);
+		flags.set(CreateResponseFlag::KEEP_CACHE);
+	});
 
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 9),
@@ -217,8 +221,10 @@ fn response_impl_debug() {
 
 	let mut response = CreateResponse::new(entry);
 	response.set_handle(123);
-	response.mut_flags().set(CreateResponseFlag::DIRECT_IO);
-	response.mut_flags().set(CreateResponseFlag::KEEP_CACHE);
+	response.update_flags(|flags| {
+		flags.set(CreateResponseFlag::DIRECT_IO);
+		flags.set(CreateResponseFlag::KEEP_CACHE);
+	});
 
 	assert_eq!(
 		format!("{:#?}", response),

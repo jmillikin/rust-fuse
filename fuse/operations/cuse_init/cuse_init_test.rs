@@ -90,7 +90,9 @@ fn response() {
 	let mut resp = CuseInitResponse::new(device_name);
 	resp.set_version(Version::new(7, 23));
 	resp.set_max_write(4096);
-	resp.mut_flags().set(CuseInitFlag::UNRESTRICTED_IOCTL);
+	resp.update_flags(|flags| {
+		flags.set(CuseInitFlag::UNRESTRICTED_IOCTL);
+	});
 	let encoded = encode_response!(resp);
 
 	assert_eq!(
@@ -127,7 +129,9 @@ fn response_impl_debug() {
 	response.set_max_read(4096);
 	response.set_max_write(8192);
 	response.set_device_number(cuse::DeviceNumber::new(10, 11));
-	response.mut_flags().set(CuseInitFlag::UNRESTRICTED_IOCTL);
+	response.update_flags(|flags| {
+		flags.set(CuseInitFlag::UNRESTRICTED_IOCTL);
+	});
 
 	assert_eq!(
 		format!("{:#?}", response),
