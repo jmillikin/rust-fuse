@@ -91,8 +91,14 @@ fn benchmark_read(c: &mut criterion::Criterion) {
 
 	let mut init = fuse::FuseInitResponse::new();
 	init.set_version(fuse::Version::new(7, u32::MAX));
-	let req_opts = fuse::server::FuseRequestOptions::from_init_response(&init);
-	let dispatcher = fuse_rpc::Dispatcher::new(&socket, &handlers, req_opts);
+	let req_opts = server::FuseRequestOptions::from_init_response(&init);
+	let resp_opts = server::FuseResponseOptions::from_init_response(&init);
+	let dispatcher = fuse_rpc::Dispatcher::new(
+		&socket,
+		&handlers,
+		req_opts,
+		resp_opts,
+	);
 
 	let request_buf = server::Request::new(buf.as_aligned_slice()).unwrap();
 
@@ -144,7 +150,13 @@ fn benchmark_write(c: &mut criterion::Criterion) {
 	let mut init = fuse::FuseInitResponse::new();
 	init.set_version(fuse::Version::new(7, u32::MAX));
 	let req_opts = fuse::server::FuseRequestOptions::from_init_response(&init);
-	let dispatcher = fuse_rpc::Dispatcher::new(&socket, &handlers, req_opts);
+	let resp_opts = server::FuseResponseOptions::from_init_response(&init);
+	let dispatcher = fuse_rpc::Dispatcher::new(
+		&socket,
+		&handlers,
+		req_opts,
+		resp_opts,
+	);
 
 	let request_buf = server::Request::new(buf.as_aligned_slice()).unwrap();
 

@@ -18,6 +18,7 @@ use core::cell;
 use core::cmp;
 use core::fmt;
 use core::mem;
+use core::num;
 
 use crate::internal::fuse_kernel;
 use crate::lock;
@@ -662,6 +663,30 @@ pub async fn recv_async<'a, S: io::AsyncSocket>(
 	};
 	let recv_buf = buf.truncate(recv_len);
 	Ok(Some(Request::new(recv_buf.into())?))
+}
+
+/// Send an error response to a [`Socket`].
+///
+/// [`Socket`]: io::Socket
+pub fn send_error<S: io::Socket>(
+	socket: &S,
+	request_id: num::NonZeroU64,
+	error: crate::Error,
+) -> Result<(), io::SendError<S::Error>> {
+	let mut response_header = crate::ResponseHeader::new(request_id);
+	socket.send(encode::error(&mut response_header, error).into())
+}
+
+/// Send an error response to an [`AsyncSocket`].
+///
+/// [`AsyncSocket`]: io::AsyncSocket
+pub async fn send_error_async<S: io::AsyncSocket>(
+	socket: &S,
+	request_id: num::NonZeroU64,
+	error: crate::Error,
+) -> Result<(), io::SendError<S::Error>> {
+	let mut response_header = crate::ResponseHeader::new(request_id);
+	socket.send(encode::error(&mut response_header, error).into()).await
 }
 
 // Hooks {{{

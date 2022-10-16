@@ -21,7 +21,6 @@ use crate::operations::fuse_init::{
 	FuseInitResponse,
 };
 use crate::server;
-use crate::server::encode;
 use crate::server::io;
 use crate::server::ServerError;
 
@@ -97,10 +96,13 @@ impl<S: FuseSocket, H> ServerBuilder<S, H> {
 
 		let request_options =
 			server::FuseRequestOptions::from_init_response(&init_response);
+		let response_options =
+			server::FuseResponseOptions::from_init_response(&init_response);
 		Ok(Server {
 			socket,
 			handlers: self.handlers,
 			request_options,
+			response_options,
 			#[cfg(feature = "std")]
 			hooks: self.hooks,
 		})
@@ -127,6 +129,7 @@ pub struct Server<S, H> {
 	socket: S,
 	handlers: H,
 	request_options: server::FuseRequestOptions,
+	response_options: server::FuseResponseOptions,
 
 	#[cfg(feature = "std")]
 	hooks: Option<Box<dyn server::Hooks>>,
@@ -145,6 +148,7 @@ where
 			&self.socket,
 			&self.handlers,
 			self.request_options,
+			self.response_options,
 		);
 
 		#[cfg(feature = "std")]
@@ -217,15 +221,10 @@ impl<S: FuseSocket> Call<'_, S> {
 
 	pub fn respond_err<R>(
 		self,
-		err: impl Into<crate::Error>,
+		error: impl Into<crate::Error>,
 	) -> FuseResult<R, S::Error> {
-		let mut response_header = crate::ResponseHeader::new(
-			self.header.request_id(),
-		);
-		self.socket.send(encode::error(
-			&mut response_header,
-			err.into(),
-		).into())?;
+		let request_id = self.header.request_id();
+		server::send_error(self.socket, request_id, error.into())?;
 		*self.sent_reply = true;
 		Ok(sealed::Sent {
 			_phantom: core::marker::PhantomData,
@@ -248,6 +247,7 @@ pub struct Dispatcher<'a, S, H> {
 	socket: &'a S,
 	handlers: &'a H,
 	request_options: server::FuseRequestOptions,
+	response_options: server::FuseResponseOptions,
 	hooks: Option<&'a dyn server::Hooks>,
 }
 
@@ -256,11 +256,13 @@ impl<'a, S, H> Dispatcher<'a, S, H> {
 		socket: &'a S,
 		handlers: &'a H,
 		request_options: server::FuseRequestOptions,
+		response_options: server::FuseResponseOptions,
 	) -> Dispatcher<'a, S, H> {
 		Self {
 			socket,
 			handlers,
 			request_options,
+			response_options,
 			hooks: None,
 		}
 	}
@@ -298,9 +300,7 @@ impl<S: FuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 		Call {
 			socket: self.socket,
 			header,
-			response_opts: server::FuseResponseOptions {
-				version_minor: self.request_options.version_minor(),
-			},
+			response_opts: self.response_options,
 			sent_reply,
 			hooks: self.hooks,
 		}
@@ -450,11 +450,11 @@ impl<S: FuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 		if let Some(hooks) = self.hooks {
 			hooks.request_error(header, err);
 		}
-		let mut resp_header = crate::ResponseHeader::new(header.request_id());
-		self.socket.send(encode::error(
-			&mut resp_header,
-			crate::Error::EIO,
-		).into())
+		server::send_error(
+			self.socket,
+			header.request_id(),
+			crate::Error::INVALID_REQUEST,
+		)
 	}
 
 	#[cold]
@@ -464,25 +464,25 @@ impl<S: FuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 		header: &crate::RequestHeader,
 		request: server::Request,
 	) -> Result<(), io::SendError<S::Error>> {
-		let mut resp_header = crate::ResponseHeader::new(header.request_id());
 		if let Some(hooks) = self.hooks {
 			let req = server::UnknownRequest::from_request(request);
 			hooks.unknown_request(&req);
 		}
-		self.socket.send(encode::error(
-			&mut resp_header,
+		server::send_error(
+			self.socket,
+			header.request_id(),
 			crate::Error::UNIMPLEMENTED,
-		).into())
+		)
 	}
 
 	#[cold]
 	#[inline(never)]
 	fn err_no_response(&self, header: &crate::RequestHeader) {
-		let mut resp_header = crate::ResponseHeader::new(header.request_id());
-		let _ = self.socket.send(encode::error(
-			&mut resp_header,
-			crate::Error::EIO,
-		).into());
+		let _ = server::send_error(
+			self.socket,
+			header.request_id(),
+			crate::Error::INVALID_REQUEST,
+		);
 	}
 }
 

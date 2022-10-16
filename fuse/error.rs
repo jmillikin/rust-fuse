@@ -109,10 +109,10 @@ mod errno {
 
 	pub(super) const E2BIG: Error = Error::from_errno(os_errno::E2BIG);
 	pub(super) const EINVAL: Error = Error::from_errno(os_errno::EINVAL);
-	pub(super) const EIO: Error = Error::from_errno(os_errno::EIO);
 	pub(super) const ENOENT: Error = Error::from_errno(os_errno::ENOENT);
 	pub(super) const ENOSYS: Error = Error::from_errno(os_errno::ENOSYS);
 	pub(super) const EOVERFLOW: Error = Error::from_errno(os_errno::EOVERFLOW);
+	pub(super) const EPROTO: Error = Error::from_errno(os_errno::EPROTO);
 
 	#[cfg(target_os = "linux")]
 	pub(super) const ENODATA: Error = Error::from_errno(os_errno::ENODATA);
@@ -133,7 +133,6 @@ macro_rules! enodata_or_enoattr {
 
 impl Error {
 	pub(crate) const E2BIG: Error = errno::E2BIG;
-	pub(crate) const EIO: Error = errno::EIO;
 
 	/// The client specified an invalid argument.
 	///
@@ -160,4 +159,9 @@ impl Error {
 	/// This error maps to either `ENODATA` or `ENOATTR`, depending on the
 	/// target platform.
 	pub const XATTR_NOT_FOUND: Error = enodata_or_enoattr!();
+
+	/// An invalid FUSE request was received from the client.
+	///
+	/// This error maps to `EPROTO`.
+	pub const INVALID_REQUEST: Error = errno::EPROTO;
 }
