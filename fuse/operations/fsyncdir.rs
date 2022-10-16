@@ -55,13 +55,12 @@ impl FsyncdirRequest<'_> {
 	}
 }
 
-request_try_from! { FsyncdirRequest : fuse }
+impl server::sealed::Sealed for FsyncdirRequest<'_> {}
 
-impl decode::Sealed for FsyncdirRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for FsyncdirRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for FsyncdirRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_FSYNCDIR)?;
@@ -104,22 +103,21 @@ impl<'a> FsyncdirResponse<'a> {
 	}
 }
 
-response_send_funcs!(FsyncdirResponse<'_>);
-
 impl fmt::Debug for FsyncdirResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("FsyncdirResponse").finish()
 	}
 }
 
-impl FsyncdirResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_header_only()
+impl server::sealed::Sealed for FsyncdirResponse<'_> {}
+
+impl server::FuseResponse for FsyncdirResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::header_only(header)
 	}
 }
 

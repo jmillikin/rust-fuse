@@ -75,15 +75,14 @@ impl MknodRequest<'_> {
 	}
 }
 
-request_try_from! { MknodRequest : fuse }
+impl server::sealed::Sealed for MknodRequest<'_> {}
 
-impl decode::Sealed for MknodRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for MknodRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for MknodRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
-		let version_minor = request.version_minor;
+		let version_minor = options.version_minor();
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_MKNOD)?;
 
@@ -151,8 +150,6 @@ impl<'a> MknodResponse<'a> {
 	}
 }
 
-response_send_funcs!(MknodResponse<'_>);
-
 impl fmt::Debug for MknodResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("MknodResponse")
@@ -161,17 +158,18 @@ impl fmt::Debug for MknodResponse<'_> {
 	}
 }
 
-impl MknodResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		if ctx.version_minor >= 9 {
-			return enc.encode_sized(self.entry.as_v7p9());
+impl server::sealed::Sealed for MknodResponse<'_> {}
+
+impl server::FuseResponse for MknodResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		if options.version_minor() >= 9 {
+			return encode::sized(header, self.entry.as_v7p9());
 		}
-		enc.encode_sized(self.entry.as_v7p1())
+		encode::sized(header, self.entry.as_v7p1())
 	}
 }
 

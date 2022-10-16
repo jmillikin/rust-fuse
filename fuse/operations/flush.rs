@@ -56,39 +56,39 @@ impl FlushRequest<'_> {
 	}
 }
 
-request_try_from! { FlushRequest : cuse fuse }
+impl server::sealed::Sealed for FlushRequest<'_> {}
 
-impl decode::Sealed for FlushRequest<'_> {}
-
-impl<'a> decode::CuseRequest<'a> for FlushRequest<'a> {
-	fn from_cuse_request(
-		request: &server::CuseRequest<'a>,
+impl<'a> server::CuseRequest<'a> for FlushRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::CuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
-		Self::decode_request(request.buf, true)
+		Self::decode_request(request, true)
 	}
 }
 
-impl<'a> decode::FuseRequest<'a> for FlushRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for FlushRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
-		Self::decode_request(request.buf, false)
+		Self::decode_request(request, false)
 	}
 }
 
 impl<'a> FlushRequest<'a> {
 	fn decode_request(
-		buf: decode::RequestBuf<'a>,
+		request: server::Request<'a>,
 		is_cuse: bool,
 	) -> Result<Self, server::RequestError> {
-		buf.expect_opcode(fuse_kernel::FUSE_FLUSH)?;
+		let mut dec = request.decoder();
+		dec.expect_opcode(fuse_kernel::FUSE_FLUSH)?;
 
 		let node_id = if is_cuse {
 			node::Id::ROOT
 		} else {
-			decode::node_id(buf.raw_header().nodeid)?
+			decode::node_id(dec.header().nodeid)?
 		};
-		let mut dec = decode::RequestDecoder::new(buf);
 
 		let raw: &fuse_kernel::fuse_flush_in = dec.next_sized()?;
 		Ok(Self {
@@ -131,22 +131,31 @@ impl<'a> FlushResponse<'a> {
 	}
 }
 
-response_send_funcs!(FlushResponse<'_>);
-
 impl fmt::Debug for FlushResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("FlushResponse").finish()
 	}
 }
 
-impl FlushResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_header_only()
+impl server::sealed::Sealed for FlushResponse<'_> {}
+
+impl server::CuseResponse for FlushResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::CuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::header_only(header)
+	}
+}
+
+impl server::FuseResponse for FlushResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::header_only(header)
 	}
 }
 

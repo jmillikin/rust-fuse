@@ -15,7 +15,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use fuse::server;
-use fuse::server::decode::FuseRequest;
 use fuse::server::fuse_rpc;
 use fuse::server::io::Socket;
 
@@ -90,31 +89,32 @@ fn benchmark_read(c: &mut criterion::Criterion) {
 	};
 	let handlers = FakeHandlers {};
 
-	let req_builder = server::FuseRequestBuilder::new();
-	let dispatcher = fuse_rpc::Dispatcher::new(&socket, &handlers);
+	let mut init = fuse::FuseInitResponse::new();
+	init.set_version(fuse::Version::new(7, u32::MAX));
+	let req_opts = fuse::server::FuseRequestOptions::from_init_response(&init);
+	let dispatcher = fuse_rpc::Dispatcher::new(&socket, &handlers, req_opts);
 
-	let unparsed_request = req_builder.build(buf.as_aligned_slice()).unwrap();
+	let request_buf = server::Request::new(buf.as_aligned_slice()).unwrap();
 
 	c.bench_function("read_end_to_end", |b| {
 		let mut recv_buf = fuse::io::MinReadBuffer::new();
 		b.iter(|| {
 			let recv_len = socket.recv(recv_buf.as_slice_mut()).unwrap();
 			let recv_buf = recv_buf.as_aligned_slice().truncate(recv_len);
-			let request = req_builder.build(recv_buf).unwrap();
-			dispatcher.dispatch(&request)
+			let request = server::Request::new(recv_buf).unwrap();
+			dispatcher.dispatch(request)
 		})
 	});
 
 	c.bench_function("read_decode", |b| {
-		let aligned_buf = buf.as_aligned_slice();
 		b.iter(|| {
-			let fuse_request = req_builder.build(aligned_buf).unwrap();
-			fuse::ReadRequest::from_fuse_request(&fuse_request)
+			use fuse::server::FuseRequest;
+			fuse::ReadRequest::from_request(request_buf, req_opts)
 		})
 	});
 
 	c.bench_function("read_dispatch", |b| {
-		b.iter(|| dispatcher.dispatch(&unparsed_request))
+		b.iter(|| dispatcher.dispatch(request_buf))
 	});
 }
 
@@ -141,31 +141,32 @@ fn benchmark_write(c: &mut criterion::Criterion) {
 	};
 	let handlers = FakeHandlers {};
 
-	let req_builder = server::FuseRequestBuilder::new();
-	let dispatcher = fuse_rpc::Dispatcher::new(&socket, &handlers);
+	let mut init = fuse::FuseInitResponse::new();
+	init.set_version(fuse::Version::new(7, u32::MAX));
+	let req_opts = fuse::server::FuseRequestOptions::from_init_response(&init);
+	let dispatcher = fuse_rpc::Dispatcher::new(&socket, &handlers, req_opts);
 
-	let unparsed_request = req_builder.build(buf.as_aligned_slice()).unwrap();
+	let request_buf = server::Request::new(buf.as_aligned_slice()).unwrap();
 
 	c.bench_function("write_end_to_end", |b| {
 		let mut recv_buf = fuse::io::MinReadBuffer::new();
 		b.iter(|| {
 			let recv_len = socket.recv(recv_buf.as_slice_mut()).unwrap();
 			let recv_buf = recv_buf.as_aligned_slice().truncate(recv_len);
-			let request = req_builder.build(recv_buf).unwrap();
-			dispatcher.dispatch(&request)
+			let request = server::Request::new(recv_buf).unwrap();
+			dispatcher.dispatch(request)
 		})
 	});
 
 	c.bench_function("write_decode", |b| {
-		let aligned_buf = buf.as_aligned_slice();
 		b.iter(|| {
-			let fuse_request = req_builder.build(aligned_buf).unwrap();
-			fuse::WriteRequest::from_fuse_request(&fuse_request)
+			use fuse::server::FuseRequest;
+			fuse::WriteRequest::from_request(request_buf, req_opts)
 		})
 	});
 
 	c.bench_function("write_dispatch", |b| {
-		b.iter(|| dispatcher.dispatch(&unparsed_request))
+		b.iter(|| dispatcher.dispatch(request_buf))
 	});
 }
 

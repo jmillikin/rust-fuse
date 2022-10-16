@@ -23,10 +23,9 @@ use fuse::operations::cuse_init::{
 	CuseInitRequest,
 	CuseInitResponse,
 };
-use fuse::server::CuseRequestBuilder;
-use fuse::server::decode::CuseRequest;
+use fuse::server;
 
-use fuse_testutil::{encode_response, MessageBuilder};
+use fuse_testutil::MessageBuilder;
 
 #[test]
 fn request() {
@@ -40,10 +39,9 @@ fn request() {
 		})
 		.build_aligned();
 
-	let cuse_request = CuseRequestBuilder::new()
-		.build(buf.as_aligned_slice())
-		.unwrap();
-	let req = CuseInitRequest::from_cuse_request(&cuse_request).unwrap();
+	let req = CuseInitRequest::from_request(
+		server::Request::new(buf.as_aligned_slice()).unwrap(),
+	).unwrap();
 
 	assert_eq!(req.version().major(), 7);
 	assert_eq!(req.version().minor(), 6);
@@ -62,11 +60,9 @@ fn request_impl_debug() {
 		})
 		.build_aligned();
 
-	let cuse_request = CuseRequestBuilder::new()
-		.build(buf.as_aligned_slice())
-		.unwrap();
-
-	let request = CuseInitRequest::from_cuse_request(&cuse_request).unwrap();
+	let request = CuseInitRequest::from_request(
+		server::Request::new(buf.as_aligned_slice()).unwrap(),
+	).unwrap();
 
 	assert_eq!(
 		format!("{:#?}", request),
@@ -93,7 +89,12 @@ fn response() {
 	resp.update_flags(|flags| {
 		flags.set(CuseInitFlag::UNRESTRICTED_IOCTL);
 	});
-	let encoded = encode_response!(resp);
+
+	let request_id = core::num::NonZeroU64::new(0xAABBCCDD).unwrap();
+	let mut header = fuse::ResponseHeader::new(request_id);
+	let encoded = fuse::io::SendBuf::from(resp.to_response(&mut header))
+		.to_vec()
+		.unwrap();
 
 	assert_eq!(
 		encoded,

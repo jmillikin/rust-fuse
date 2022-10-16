@@ -59,8 +59,8 @@ impl Error {
 
 	#[inline]
 	#[must_use]
-	pub(crate) const fn raw_fuse_error_code(self) -> i32 {
-		self.fuse_error_code.get()
+	pub(crate) const fn raw_fuse_error_code(self) -> NonZeroI32 {
+		self.fuse_error_code
 	}
 
 	#[cfg(target_os = "linux")]

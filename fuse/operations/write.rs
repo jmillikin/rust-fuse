@@ -89,33 +89,33 @@ impl WriteRequest<'_> {
 	}
 }
 
-request_try_from! { WriteRequest : cuse fuse }
+impl server::sealed::Sealed for WriteRequest<'_> {}
 
-impl decode::Sealed for WriteRequest<'_> {}
-
-impl<'a> decode::CuseRequest<'a> for WriteRequest<'a> {
-	fn from_cuse_request(
-		request: &server::CuseRequest<'a>,
+impl<'a> server::CuseRequest<'a> for WriteRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		options: server::CuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
-		Self::decode_request(request.buf, request.version_minor, true)
+		Self::decode_request(request, options.version_minor(), true)
 	}
 }
 
-impl<'a> decode::FuseRequest<'a> for WriteRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for WriteRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
-		Self::decode_request(request.buf, request.version_minor, false)
+		Self::decode_request(request, options.version_minor(), false)
 	}
 }
 
 impl<'a> WriteRequest<'a> {
 	fn decode_request(
-		buf: decode::RequestBuf<'a>,
+		request: server::Request<'a>,
 		version_minor: u32,
 		is_cuse: bool,
 	) -> Result<Self, server::RequestError> {
-		let mut dec = decode::RequestDecoder::new(buf);
+		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_WRITE)?;
 
 		let header = dec.header();
@@ -181,8 +181,6 @@ impl<'a> WriteResponse<'a> {
 	}
 }
 
-response_send_funcs!(WriteResponse<'_>);
-
 impl fmt::Debug for WriteResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("WriteResponse")
@@ -191,14 +189,25 @@ impl fmt::Debug for WriteResponse<'_> {
 	}
 }
 
-impl WriteResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_sized(&self.raw)
+impl server::sealed::Sealed for WriteResponse<'_> {}
+
+impl server::CuseResponse for WriteResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::CuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::sized(header, &self.raw)
+	}
+}
+
+impl server::FuseResponse for WriteResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::sized(header, &self.raw)
 	}
 }
 

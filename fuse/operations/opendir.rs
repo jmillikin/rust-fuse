@@ -56,13 +56,12 @@ impl OpendirRequest<'_> {
 	}
 }
 
-request_try_from! { OpendirRequest : fuse }
+impl server::sealed::Sealed for OpendirRequest<'_> {}
 
-impl decode::Sealed for OpendirRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for OpendirRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for OpendirRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_OPENDIR)?;
@@ -134,8 +133,6 @@ impl<'a> OpendirResponse<'a> {
 	}
 }
 
-response_send_funcs!(OpendirResponse<'_>);
-
 impl fmt::Debug for OpendirResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("OpendirResponse")
@@ -145,14 +142,15 @@ impl fmt::Debug for OpendirResponse<'_> {
 	}
 }
 
-impl OpendirResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_sized(&self.raw)
+impl server::sealed::Sealed for OpendirResponse<'_> {}
+
+impl server::FuseResponse for OpendirResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::sized(header, &self.raw)
 	}
 }
 

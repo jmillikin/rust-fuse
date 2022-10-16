@@ -78,13 +78,12 @@ impl SetxattrRequest<'_> {
 	}
 }
 
-request_try_from! { SetxattrRequest : fuse }
+impl server::sealed::Sealed for SetxattrRequest<'_> {}
 
-impl decode::Sealed for SetxattrRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for SetxattrRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for SetxattrRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_SETXATTR)?;
@@ -92,7 +91,7 @@ impl<'a> decode::FuseRequest<'a> for SetxattrRequest<'a> {
 		let header = dec.header();
 		decode::node_id(header.nodeid)?;
 
-		let body = if request.have_setxattr_ext() {
+		let body = if options.have_setxattr_ext() {
 			let body_v7p33 = dec.next_sized()?;
 			compat::Versioned::new_setxattr_v7p33(body_v7p33)
 		} else {
@@ -143,22 +142,21 @@ impl<'a> SetxattrResponse<'a> {
 	}
 }
 
-response_send_funcs!(SetxattrResponse<'_>);
-
 impl fmt::Debug for SetxattrResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("SetxattrResponse").finish()
 	}
 }
 
-impl SetxattrResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_header_only()
+impl server::sealed::Sealed for SetxattrResponse<'_> {}
+
+impl server::FuseResponse for SetxattrResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::header_only(header)
 	}
 }
 

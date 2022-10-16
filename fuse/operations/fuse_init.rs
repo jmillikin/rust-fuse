@@ -22,7 +22,6 @@ use core::marker::PhantomData;
 use crate::Version;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::decode;
 use crate::server::encode;
 
 // FuseInitRequest {{{
@@ -69,13 +68,9 @@ impl FuseInitRequest<'_> {
 	}
 }
 
-request_try_from! { FuseInitRequest : fuse }
-
-impl decode::Sealed for FuseInitRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for FuseInitRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> FuseInitRequest<'a> {
+	pub fn from_request(
+		request: server::Request<'a>,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_INIT)?;
@@ -244,8 +239,6 @@ impl FuseInitResponse {
 	}
 }
 
-response_send_funcs!(FuseInitResponse);
-
 impl fmt::Debug for FuseInitResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("FuseInitResponse")
@@ -277,31 +270,23 @@ struct fuse_init_out_v7p5 {
 }
 
 impl FuseInitResponse {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
+	pub fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+	) -> server::Response<'a> {
 		if self.raw.minor >= 23 {
-			return enc.encode_sized(&self.raw);
+			return encode::sized(header, &self.raw);
 		}
 
+		let raw_ptr = &self.raw as *const fuse_kernel::fuse_init_out;
 		if self.raw.minor >= 5 {
-			return enc.encode_sized(&fuse_init_out_v7p5 {
-				major: self.raw.major,
-				minor: self.raw.minor,
-				max_readahead: self.raw.max_readahead,
-				flags: self.raw.flags,
-				max_background: self.raw.max_background,
-				congestion_threshold: self.raw.congestion_threshold,
-				max_write: self.raw.max_write,
+			return encode::sized(header, unsafe {
+				&*(raw_ptr.cast::<fuse_init_out_v7p5>())
 			});
 		}
 
-		enc.encode_sized(&fuse_init_out_v7p1 {
-			major: self.raw.major,
-			minor: self.raw.minor,
+		encode::sized(header, unsafe {
+			&*(raw_ptr.cast::<fuse_init_out_v7p1>())
 		})
 	}
 }

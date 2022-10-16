@@ -22,8 +22,9 @@ use crate::operations::cuse_init::{
 	CuseInitResponse,
 };
 use crate::server;
+use crate::server::encode;
 use crate::server::io;
-use crate::server::{CuseRequestBuilder, ErrorResponse, ServerError};
+use crate::server::ServerError;
 
 pub use crate::server::io::CuseSocket;
 
@@ -115,10 +116,12 @@ impl<S: CuseSocket, H> ServerBuilder<S, H> {
 			response
 		})?;
 
+		let request_options =
+			server::CuseRequestOptions::from_init_response(&init_response);
 		Ok(Server {
 			socket,
 			handlers: self.handlers,
-			req_builder: CuseRequestBuilder::from_init_response(&init_response),
+			request_options,
 			#[cfg(feature = "std")]
 			hooks: self.hooks,
 		})
@@ -147,7 +150,7 @@ impl ServerOptions {
 pub struct Server<S, H> {
 	socket: S,
 	handlers: H,
-	req_builder: CuseRequestBuilder,
+	request_options: server::CuseRequestOptions,
 
 	#[cfg(feature = "std")]
 	hooks: Option<Box<dyn server::Hooks>>,
@@ -162,15 +165,22 @@ where
 		let mut buf = crate::io::MinReadBuffer::new();
 
 		#[allow(unused_mut)]
-		let mut dispatcher = CuseDispatcher::new(&self.socket, &self.handlers);
+		let mut dispatcher = CuseDispatcher::new(
+			&self.socket,
+			&self.handlers,
+			self.request_options,
+		);
 
 		#[cfg(feature = "std")]
 		if let Some(hooks) = self.hooks.as_ref() {
 			dispatcher.set_hooks(hooks.as_ref());
 		}
 
-		while let Some(request) = self.try_next(&mut buf)? {
-			match dispatcher.dispatch(&request) {
+		while let Some(request) = server::recv(
+			&self.socket,
+			buf.as_aligned_slice_mut(),
+		)? {
+			match dispatcher.dispatch(request) {
 				Ok(()) => {},
 				Err(io::SendError::NotFound(_)) => {},
 				Err(err) => return Err(err.into()),
@@ -178,66 +188,19 @@ where
 		}
 		Ok(())
 	}
-
-	fn try_next<'a>(
-		&self,
-		buf: &'a mut crate::io::MinReadBuffer,
-	) -> Result<Option<server::CuseRequest<'a>>, ServerError<S::Error>> {
-		let recv_len = self.socket.recv(buf.as_slice_mut())?;
-		let recv_buf = buf.as_aligned_slice().truncate(recv_len);
-		Ok(Some(self.req_builder.build(recv_buf)?))
-	}
 }
 
 // }}}
 
-// CuseResponse {{{
-
-pub trait CuseResponse: Sealed {}
+// CuseResult {{{
 
 mod sealed {
 	pub struct Sent<T: ?Sized> {
 		pub(super) _phantom: core::marker::PhantomData<fn(&T)>,
 	}
-
-	pub trait Sealed {
-		fn __internal_send<S: super::CuseSocket>(
-			&self,
-			call: super::Call<S>,
-		) -> super::CuseResult<Self, S::Error>;
-	}
 }
 
-use sealed::{Sealed, Sent};
-
-pub type CuseResult<R, E> = Result<Sent<R>, io::SendError<E>>;
-
-macro_rules! impl_cuse_response {
-	( $( $t:ident $( , )? )+ ) => {
-		$(
-			impl CuseResponse for operations::$t<'_> {}
-			impl Sealed for operations::$t<'_> {
-				fn __internal_send<S: CuseSocket>(
-					&self,
-					call: Call<S>,
-				) -> CuseResult<Self, S::Error> {
-					self.send(call.socket, &call.response_ctx)?;
-					call.sent()
-				}
-			}
-		)+
-	}
-}
-
-impl_cuse_response! {
-	FlushResponse,
-	FsyncResponse,
-	IoctlResponse,
-	OpenResponse,
-	ReadResponse,
-	ReleaseResponse,
-	WriteResponse,
-}
+pub type CuseResult<R, E> = Result<sealed::Sent<R>, io::SendError<E>>;
 
 // }}}
 
@@ -246,7 +209,8 @@ impl_cuse_response! {
 pub struct Call<'a, S> {
 	socket: &'a S,
 	header: &'a crate::RequestHeader,
-	response_ctx: server::ResponseContext,
+	response_header: &'a mut crate::ResponseHeader,
+	response_opts: server::CuseResponseOptions,
 	sent_reply: &'a mut bool,
 	hooks: Option<&'a dyn server::Hooks>,
 }
@@ -256,38 +220,33 @@ impl<S> Call<'_, S> {
 	pub fn header(&self) -> &crate::RequestHeader {
 		self.header
 	}
-
-	#[must_use]
-	pub fn response_context(&self) -> server::ResponseContext {
-		self.response_ctx
-	}
 }
 
 impl<S: CuseSocket> Call<'_, S> {
-	fn sent<T>(self) -> CuseResult<T, S::Error> {
-		*self.sent_reply = true;
-		Ok(Sent {
-			_phantom: core::marker::PhantomData,
-		})
-	}
-}
-
-impl<S: CuseSocket> Call<'_, S> {
-	pub fn respond_ok<R: CuseResponse>(
+	pub fn respond_ok<R: server::CuseResponse>(
 		self,
 		response: &R,
 	) -> CuseResult<R, S::Error> {
-		response.__internal_send(self)
+		self.socket.send(response.to_response(
+			self.response_header,
+			self.response_opts,
+		).into())?;
+		*self.sent_reply = true;
+		Ok(sealed::Sent {
+			_phantom: core::marker::PhantomData,
+		})
 	}
 
 	pub fn respond_err<R>(
 		self,
 		err: impl Into<crate::Error>,
 	) -> CuseResult<R, S::Error> {
-		let response = ErrorResponse::new(err.into());
-		response.send(self.socket, &self.response_ctx)?;
+		self.socket.send(encode::error(
+			self.response_header,
+			err.into(),
+		).into())?;
 		*self.sent_reply = true;
-		Ok(Sent {
+		Ok(sealed::Sent {
 			_phantom: core::marker::PhantomData,
 		})
 	}
@@ -307,14 +266,20 @@ impl<S: CuseSocket> Call<'_, S> {
 pub struct CuseDispatcher<'a, S, H> {
 	socket: &'a S,
 	handlers: &'a H,
+	request_options: server::CuseRequestOptions,
 	hooks: Option<&'a dyn server::Hooks>,
 }
 
 impl<'a, S, H> CuseDispatcher<'a, S, H> {
-	pub fn new(socket: &'a S, handlers: &'a H) -> CuseDispatcher<'a, S, H> {
+	pub fn new(
+		socket: &'a S,
+		handlers: &'a H,
+		request_options: server::CuseRequestOptions,
+	) -> CuseDispatcher<'a, S, H> {
 		Self {
 			socket,
 			handlers,
+			request_options,
 			hooks: None,
 		}
 	}
@@ -327,9 +292,15 @@ impl<'a, S, H> CuseDispatcher<'a, S, H> {
 impl<S: CuseSocket, H: Handlers<S>> CuseDispatcher<'_, S, H> {
 	pub fn dispatch(
 		&self,
-		request: &server::CuseRequest,
+		request: server::Request,
 	) -> Result<(), io::SendError<S::Error>> {
-		cuse_request_dispatch(self.socket, self.handlers, self.hooks, request)
+		cuse_request_dispatch(
+			self.socket,
+			self.handlers,
+			self.hooks,
+			request,
+			self.request_options,
+		)
 	}
 }
 
@@ -337,36 +308,39 @@ fn cuse_request_dispatch<S: CuseSocket>(
 	socket: &S,
 	handlers: &impl Handlers<S>,
 	hooks: Option<&dyn server::Hooks>,
-	request: &server::CuseRequest,
+	request: server::Request,
+	opts: server::CuseRequestOptions,
 ) -> Result<(), io::SendError<S::Error>> {
-	use crate::server::decode::CuseRequest;
+	use crate::server::CuseRequest;
 
 	let header = request.header();
 	if let Some(hooks) = hooks {
 		hooks.request(header);
 	}
 
-	let response_ctx = request.response_context();
-
+	let mut resp_header = crate::ResponseHeader::new(header.request_id());
 	let mut sent_reply = false;
 	let call = Call {
 		socket,
 		header,
-		response_ctx,
+		response_header: &mut resp_header,
+		response_opts: server::CuseResponseOptions { _empty: () },
 		sent_reply: &mut sent_reply,
 		hooks,
 	};
 
 	macro_rules! do_dispatch {
 		($req_type:ty, $handler:tt) => {{
-			match <$req_type>::from_cuse_request(request) {
+			match <$req_type>::from_request(request, opts) {
 				Ok(request) => {
 					let handler_result = handlers.$handler(call, &request);
 					if sent_reply {
 						handler_result?;
 					} else {
-						let response = ErrorResponse::new(crate::Error::EIO);
-						let err_result = response.send(socket, &response_ctx);
+						let err_result = socket.send(encode::error(
+							&mut resp_header,
+							crate::Error::EIO,
+						).into());
 						handler_result?;
 						err_result?;
 					}
@@ -376,9 +350,10 @@ fn cuse_request_dispatch<S: CuseSocket>(
 					if let Some(hooks) = hooks {
 						hooks.request_error(header, err);
 					}
-					let _ = err;
-					let response = ErrorResponse::new(crate::Error::EIO);
-					response.send(socket, &response_ctx)
+					socket.send(encode::error(
+						&mut resp_header,
+						crate::Error::EIO,
+					).into())
 				},
 			}
 		}};
@@ -390,7 +365,7 @@ fn cuse_request_dispatch<S: CuseSocket>(
 		Op::FUSE_FLUSH => do_dispatch!(FlushRequest, flush),
 		Op::FUSE_FSYNC => do_dispatch!(FsyncRequest, fsync),
 		Op::FUSE_INTERRUPT => {
-			match InterruptRequest::from_cuse_request(request) {
+			match InterruptRequest::from_request(request, opts) {
 				Ok(request) => handlers.interrupt(call, &request),
 				Err(err) => {
 					if let Some(hooks) = hooks {
@@ -409,11 +384,13 @@ fn cuse_request_dispatch<S: CuseSocket>(
 		Op::FUSE_WRITE => do_dispatch!(WriteRequest, write),
 		_ => {
 			if let Some(hooks) = hooks {
-				let req = server::UnknownRequest::from_cuse_request(request);
+				let req = server::UnknownRequest::from_request(request);
 				hooks.unknown_request(&req);
 			}
-			let response = ErrorResponse::new(crate::Error::UNIMPLEMENTED);
-			response.send(socket, &response_ctx)
+			socket.send(encode::error(
+				&mut resp_header,
+				crate::Error::UNIMPLEMENTED,
+			).into())
 		},
 	}
 }

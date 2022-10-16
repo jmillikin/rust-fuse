@@ -73,15 +73,14 @@ impl ReaddirRequest<'_> {
 	}
 }
 
-request_try_from! { ReaddirRequest : fuse }
+impl server::sealed::Sealed for ReaddirRequest<'_> {}
 
-impl decode::Sealed for ReaddirRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for ReaddirRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for ReaddirRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
-		let version_minor = request.version_minor;
+		let version_minor = options.version_minor();
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_READDIR)?;
 
@@ -154,19 +153,18 @@ impl fmt::Debug for ReaddirResponse<'_> {
 	}
 }
 
-response_send_funcs!(ReaddirResponse<'_>);
+impl server::sealed::Sealed for ReaddirResponse<'_> {}
 
-impl ReaddirResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
+impl server::FuseResponse for ReaddirResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
 		if self.entries.is_empty() {
-			enc.encode_header_only()
+			encode::header_only(header)
 		} else {
-			enc.encode_bytes(self.entries.buf)
+			encode::bytes(header, self.entries.buf)
 		}
 	}
 }

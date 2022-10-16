@@ -21,8 +21,9 @@ use crate::operations::fuse_init::{
 	FuseInitResponse,
 };
 use crate::server;
+use crate::server::encode;
 use crate::server::io;
-use crate::server::{ErrorResponse, FuseRequestBuilder, ServerError};
+use crate::server::ServerError;
 
 pub use crate::server::io::FuseSocket;
 
@@ -94,10 +95,12 @@ impl<S: FuseSocket, H> ServerBuilder<S, H> {
 			response
 		})?;
 
+		let request_options =
+			server::FuseRequestOptions::from_init_response(&init_response);
 		Ok(Server {
 			socket,
 			handlers: self.handlers,
-			req_builder: FuseRequestBuilder::from_init_response(&init_response),
+			request_options,
 			#[cfg(feature = "std")]
 			hooks: self.hooks,
 		})
@@ -123,7 +126,7 @@ impl ServerOptions {
 pub struct Server<S, H> {
 	socket: S,
 	handlers: H,
-	req_builder: FuseRequestBuilder,
+	request_options: server::FuseRequestOptions,
 
 	#[cfg(feature = "std")]
 	hooks: Option<Box<dyn server::Hooks>>,
@@ -138,15 +141,22 @@ where
 		let mut buf = crate::io::MinReadBuffer::new();
 
 		#[allow(unused_mut)]
-		let mut dispatcher = Dispatcher::new(&self.socket, &self.handlers);
+		let mut dispatcher = Dispatcher::new(
+			&self.socket,
+			&self.handlers,
+			self.request_options,
+		);
 
 		#[cfg(feature = "std")]
 		if let Some(hooks) = self.hooks.as_ref() {
 			dispatcher.set_hooks(hooks.as_ref());
 		}
 
-		while let Some(request) = self.try_next(&mut buf)? {
-			match dispatcher.dispatch(&request) {
+		while let Some(request) = server::recv(
+			&self.socket,
+			buf.as_aligned_slice_mut(),
+		)? {
+			match dispatcher.dispatch(request) {
 				Ok(()) => {},
 				Err(io::SendError::NotFound(_)) => {},
 				Err(err) => return Err(err.into()),
@@ -154,102 +164,19 @@ where
 		}
 		Ok(())
 	}
-
-	fn try_next<'a>(
-		&self,
-		buf: &'a mut crate::io::MinReadBuffer,
-	) -> Result<Option<server::FuseRequest<'a>>, ServerError<S::Error>> {
-		let recv_len = match self.socket.recv(buf.as_slice_mut()) {
-			Ok(x) => x,
-			Err(io::RecvError::ConnectionClosed(_)) => return Ok(None),
-			Err(err) => return Err(err.into()),
-		};
-		let recv_buf = buf.as_aligned_slice().truncate(recv_len);
-		Ok(Some(self.req_builder.build(recv_buf)?))
-	}
 }
 
 // }}}
 
-// FuseResponse {{{
-
-pub trait FuseResponse: Sealed {}
+// FuseResult {{{
 
 mod sealed {
 	pub struct Sent<T: ?Sized> {
 		pub(super) _phantom: core::marker::PhantomData<fn(&T)>,
 	}
-
-	pub trait Sealed {
-		fn __internal_send<S: super::FuseSocket>(
-			&self,
-			call: super::Call<S>,
-		) -> super::FuseResult<Self, S::Error>;
-	}
 }
 
-use sealed::{Sealed, Sent};
-
-pub type FuseResult<R, E> = Result<Sent<R>, io::SendError<E>>;
-
-macro_rules! impl_fuse_response {
-	( $( $t:ident $( , )? )+ ) => {
-		$(
-			impl FuseResponse for operations::$t<'_> {}
-			impl Sealed for operations::$t<'_> {
-				fn __internal_send<S: FuseSocket>(
-					&self,
-					call: Call<S>,
-				) -> FuseResult<Self, S::Error> {
-					self.send(call.socket, &call.response_ctx)?;
-					call.sent()
-				}
-			}
-		)+
-	}
-}
-
-impl_fuse_response! {
-	AccessResponse,
-	BmapResponse,
-	CopyFileRangeResponse,
-	CreateResponse,
-	DestroyResponse,
-	FallocateResponse,
-	FlushResponse,
-	FsyncdirResponse,
-	FsyncResponse,
-	GetattrResponse,
-	GetlkResponse,
-	GetxattrResponse,
-	IoctlResponse,
-	LinkResponse,
-	ListxattrResponse,
-	LookupResponse,
-	LseekResponse,
-	MkdirResponse,
-	MknodResponse,
-	OpendirResponse,
-	OpenResponse,
-	PollResponse,
-	ReaddirResponse,
-	ReaddirplusResponse,
-	ReadlinkResponse,
-	ReadResponse,
-	ReleasedirResponse,
-	ReleaseResponse,
-	RemovexattrResponse,
-	RenameResponse,
-	RmdirResponse,
-	SetattrResponse,
-	SetlkResponse,
-	SetxattrResponse,
-	StatfsResponse,
-	SymlinkResponse,
-	SyncfsResponse,
-	UnlinkResponse,
-	WriteResponse,
-}
+pub type FuseResult<R, E> = Result<sealed::Sent<R>, io::SendError<E>>;
 
 // }}}
 
@@ -258,7 +185,8 @@ impl_fuse_response! {
 pub struct Call<'a, S> {
 	socket: &'a S,
 	header: &'a crate::RequestHeader,
-	response_ctx: server::ResponseContext,
+	response_header: &'a mut crate::ResponseHeader,
+	response_opts: server::FuseResponseOptions,
 	sent_reply: &'a mut bool,
 	hooks: Option<&'a dyn server::Hooks>,
 }
@@ -268,38 +196,33 @@ impl<S> Call<'_, S> {
 	pub fn header(&self) -> &crate::RequestHeader {
 		self.header
 	}
-
-	#[must_use]
-	pub fn response_context(&self) -> server::ResponseContext {
-		self.response_ctx
-	}
 }
 
 impl<S: FuseSocket> Call<'_, S> {
-	fn sent<T>(self) -> FuseResult<T, S::Error> {
-		*self.sent_reply = true;
-		Ok(Sent {
-			_phantom: core::marker::PhantomData,
-		})
-	}
-}
-
-impl<S: FuseSocket> Call<'_, S> {
-	pub fn respond_ok<R: FuseResponse>(
+	pub fn respond_ok<R: server::FuseResponse>(
 		self,
 		response: &R,
 	) -> FuseResult<R, S::Error> {
-		response.__internal_send(self)
+		self.socket.send(response.to_response(
+			self.response_header,
+			self.response_opts,
+		).into())?;
+		*self.sent_reply = true;
+		Ok(sealed::Sent {
+			_phantom: core::marker::PhantomData,
+		})
 	}
 
 	pub fn respond_err<R>(
 		self,
 		err: impl Into<crate::Error>,
 	) -> FuseResult<R, S::Error> {
-		let response = ErrorResponse::new(err.into());
-		response.send(self.socket, &self.response_ctx)?;
+		self.socket.send(encode::error(
+			self.response_header,
+			err.into(),
+		).into())?;
 		*self.sent_reply = true;
-		Ok(Sent {
+		Ok(sealed::Sent {
 			_phantom: core::marker::PhantomData,
 		})
 	}
@@ -319,14 +242,20 @@ impl<S: FuseSocket> Call<'_, S> {
 pub struct Dispatcher<'a, S, H> {
 	socket: &'a S,
 	handlers: &'a H,
+	request_options: server::FuseRequestOptions,
 	hooks: Option<&'a dyn server::Hooks>,
 }
 
 impl<'a, S, H> Dispatcher<'a, S, H> {
-	pub fn new(socket: &'a S, handlers: &'a H) -> Dispatcher<'a, S, H> {
+	pub fn new(
+		socket: &'a S,
+		handlers: &'a H,
+		request_options: server::FuseRequestOptions,
+	) -> Dispatcher<'a, S, H> {
 		Self {
 			socket,
 			handlers,
+			request_options,
 			hooks: None,
 		}
 	}
@@ -339,9 +268,15 @@ impl<'a, S, H> Dispatcher<'a, S, H> {
 impl<S: FuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 	pub fn dispatch(
 		&self,
-		request: &server::FuseRequest,
+		request: server::Request,
 	) -> Result<(), io::SendError<S::Error>> {
-		fuse_request_dispatch(self.socket, self.handlers, self.hooks, request)
+		fuse_request_dispatch(
+			self.socket,
+			self.handlers,
+			self.hooks,
+			request,
+			self.request_options,
+		)
 	}
 }
 
@@ -349,36 +284,41 @@ fn fuse_request_dispatch<S: FuseSocket>(
 	socket: &S,
 	handlers: &impl Handlers<S>,
 	hooks: Option<&dyn server::Hooks>,
-	request: &server::FuseRequest,
+	request: server::Request,
+	opts: server::FuseRequestOptions,
 ) -> Result<(), io::SendError<S::Error>> {
-	use crate::server::decode::FuseRequest;
+	use crate::server::FuseRequest;
 
 	let header = request.header();
 	if let Some(hooks) = hooks {
 		hooks.request(header);
 	}
 
-	let response_ctx = request.response_context();
-
+	let mut resp_header = crate::ResponseHeader::new(header.request_id());
 	let mut sent_reply = false;
 	let call = Call {
 		socket,
 		header,
-		response_ctx,
+		response_header: &mut resp_header,
+		response_opts: server::FuseResponseOptions {
+			version_minor: opts.version_minor(),
+		},
 		sent_reply: &mut sent_reply,
 		hooks,
 	};
 
 	macro_rules! do_dispatch {
 		($req_type:ty, $handler:tt) => {{
-			match <$req_type>::from_fuse_request(request) {
+			match <$req_type>::from_request(request, opts) {
 				Ok(request) => {
 					let handler_result = handlers.$handler(call, &request);
 					if sent_reply {
 						handler_result?;
 					} else {
-						let response = ErrorResponse::new(crate::Error::EIO);
-						let err_result = response.send(socket, &response_ctx);
+						let err_result = socket.send(encode::error(
+							&mut resp_header,
+							crate::Error::EIO,
+						).into());
 						handler_result?;
 						err_result?;
 					}
@@ -389,8 +329,10 @@ fn fuse_request_dispatch<S: FuseSocket>(
 						hooks.request_error(header, err);
 					}
 					let _ = err;
-					let response = ErrorResponse::new(crate::Error::EIO);
-					response.send(socket, &response_ctx)
+					socket.send(encode::error(
+						&mut resp_header,
+						crate::Error::EIO,
+					).into())
 				},
 			}
 		}};
@@ -409,7 +351,7 @@ fn fuse_request_dispatch<S: FuseSocket>(
 		Op::FUSE_FALLOCATE => do_dispatch!(FallocateRequest, fallocate),
 		Op::FUSE_FLUSH => do_dispatch!(FlushRequest, flush),
 		Op::FUSE_FORGET | Op::FUSE_BATCH_FORGET => {
-			match ForgetRequest::from_fuse_request(request) {
+			match ForgetRequest::from_request(request, opts) {
 				Ok(request) => handlers.forget(call, &request),
 				Err(err) => {
 					if let Some(hooks) = hooks {
@@ -426,7 +368,7 @@ fn fuse_request_dispatch<S: FuseSocket>(
 		Op::FUSE_GETLK => do_dispatch!(GetlkRequest, getlk),
 		Op::FUSE_GETXATTR => do_dispatch!(GetxattrRequest, getxattr),
 		Op::FUSE_INTERRUPT => {
-			match InterruptRequest::from_fuse_request(request) {
+			match InterruptRequest::from_request(request, opts) {
 				Ok(request) => handlers.interrupt(call, &request),
 				Err(err) => {
 					if let Some(hooks) = hooks {
@@ -468,11 +410,13 @@ fn fuse_request_dispatch<S: FuseSocket>(
 		Op::FUSE_WRITE => do_dispatch!(WriteRequest, write),
 		_ => {
 			if let Some(hooks) = hooks {
-				let req = server::UnknownRequest::from_fuse_request(request);
+				let req = server::UnknownRequest::from_request(request);
 				hooks.unknown_request(&req);
 			}
-			let response = ErrorResponse::new(crate::Error::UNIMPLEMENTED);
-			response.send(socket, &response_ctx)
+			socket.send(encode::error(
+				&mut resp_header,
+				crate::Error::UNIMPLEMENTED,
+			).into())
 		},
 	}
 }

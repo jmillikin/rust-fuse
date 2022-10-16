@@ -16,6 +16,7 @@
 
 use core::convert::TryInto;
 use core::fmt;
+use core::mem;
 use core::num;
 
 use crate::internal::fuse_kernel;
@@ -38,50 +39,83 @@ impl FuseNotification<'_> {
 		&self,
 		socket: &S,
 	) -> Result<(), io::SendError<S::Error>> {
-		let send = encode::SyncSendOnce::new(socket);
-		self.encode(send)
+		let mut header = crate::ResponseHeader::new_notification();
+		socket.send(self.encode(&mut header))
 	}
 
 	pub async fn send_async<S: io::AsyncSocket>(
 		&self,
 		socket: &S,
 	) -> Result<(), io::SendError<S::Error>> {
-		let send = encode::AsyncSendOnce::new(socket);
-		self.encode(send).await
+		let mut header = crate::ResponseHeader::new_notification();
+		socket.send(self.encode(&mut header)).await
 	}
 
-	fn encode<S: encode::SendOnce>(&self, send: S) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, 0);
+	fn encode<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+	) -> crate::io::SendBuf<'a> {
 		match self {
-			FuseNotification::Poll(poll) => {
-				enc.encode_unsolicited(
-					fuse_kernel::FUSE_NOTIFY_POLL,
-					&poll.raw,
-					None,
-				)
-			},
-			FuseNotification::InvalidateEntry(inval_entry) => {
-				enc.encode_unsolicited(
-					fuse_kernel::FUSE_NOTIFY_INVAL_ENTRY,
-					&inval_entry.raw,
-					Some(inval_entry.name.as_bytes()),
-				)
-			},
-			FuseNotification::InvalidateInode(inval_inode) => {
-				enc.encode_unsolicited(
-					fuse_kernel::FUSE_NOTIFY_INVAL_INODE,
-					&inval_inode.raw,
-					None,
-				)
-			},
-			FuseNotification::Delete(delete) => {
-				enc.encode_unsolicited(
-					fuse_kernel::FUSE_NOTIFY_DELETE,
-					&delete.raw,
-					Some(delete.name.as_bytes()),
-				)
-			},
+			FuseNotification::Poll(poll) => encode_notify(
+				header,
+				fuse_kernel::FUSE_NOTIFY_POLL,
+				&poll.raw,
+				None,
+			),
+			FuseNotification::InvalidateEntry(inval_entry) => encode_notify(
+				header,
+				fuse_kernel::FUSE_NOTIFY_INVAL_ENTRY,
+				&inval_entry.raw,
+				Some(inval_entry.name.as_bytes()),
+			),
+			FuseNotification::InvalidateInode(inval_inode) => encode_notify(
+				header,
+				fuse_kernel::FUSE_NOTIFY_INVAL_INODE,
+				&inval_inode.raw,
+				None,
+			),
+			FuseNotification::Delete(delete) => encode_notify(
+				header,
+				fuse_kernel::FUSE_NOTIFY_DELETE,
+				&delete.raw,
+				Some(delete.name.as_bytes()),
+			),
 		}
+	}
+}
+
+fn encode_notify<'a, T: Sized>(
+	header: &'a mut crate::ResponseHeader,
+	notify_code: fuse_kernel::fuse_notify_code,
+	body: &'a T,
+	name_bytes: Option<&'a [u8]>,
+) -> crate::io::SendBuf<'a> {
+	let mut message_len = mem::size_of::<fuse_kernel::fuse_out_header>();
+	message_len += mem::size_of::<T>();
+	if let Some(name_bytes) = name_bytes {
+		message_len += name_bytes.len();
+		message_len += 1;
+	}
+	header.set_response_len(unsafe {
+		num::NonZeroU32::new_unchecked(message_len as u32)
+	});
+	header.set_error(unsafe {
+		num::NonZeroI32::new_unchecked(notify_code.0 as i32)
+	});
+	if let Some(name_bytes) = name_bytes {
+		crate::io::SendBuf::new_4(
+			message_len,
+			encode::sized_to_slice(header),
+			encode::sized_to_slice(body),
+			name_bytes,
+			b"\0",
+		)
+	} else {
+		crate::io::SendBuf::new_2(
+			message_len,
+			encode::sized_to_slice(header),
+			encode::sized_to_slice(body),
+		)
 	}
 }
 

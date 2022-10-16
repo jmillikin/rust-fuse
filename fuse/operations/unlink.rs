@@ -49,13 +49,12 @@ impl UnlinkRequest<'_> {
 	}
 }
 
-request_try_from! { UnlinkRequest : fuse }
+impl server::sealed::Sealed for UnlinkRequest<'_> {}
 
-impl decode::Sealed for UnlinkRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for UnlinkRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for UnlinkRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_UNLINK)?;
@@ -87,22 +86,21 @@ impl<'a> UnlinkResponse<'a> {
 	}
 }
 
-response_send_funcs!(UnlinkResponse<'_>);
-
 impl fmt::Debug for UnlinkResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("UnlinkResponse").finish()
 	}
 }
 
-impl UnlinkResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_header_only()
+impl server::sealed::Sealed for UnlinkResponse<'_> {}
+
+impl server::FuseResponse for UnlinkResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::header_only(header)
 	}
 }
 

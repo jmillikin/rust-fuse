@@ -23,8 +23,9 @@ use fuse::operations::fuse_init::{
 	FuseInitRequest,
 	FuseInitResponse,
 };
+use fuse::server;
 
-use fuse_testutil::{decode_request, encode_response, MessageBuilder};
+use fuse_testutil::MessageBuilder;
 
 #[test]
 fn request_v7p1() {
@@ -34,7 +35,9 @@ fn request_v7p1() {
 		.push_sized(&1u32) // fuse_init_in::minor
 		.build_aligned();
 
-	let req = decode_request!(FuseInitRequest, buf);
+	let req = FuseInitRequest::from_request(
+		server::Request::new(buf.as_aligned_slice()).unwrap(),
+	).unwrap();
 
 	assert_eq!(req.version().major(), 7);
 	assert_eq!(req.version().minor(), 1);
@@ -52,7 +55,9 @@ fn request_v7p6() {
 		.push_sized(&fuse_kernel::FUSE_ASYNC_READ) // fuse_init_in::flags
 		.build_aligned();
 
-	let req = decode_request!(FuseInitRequest, buf);
+	let req = FuseInitRequest::from_request(
+		server::Request::new(buf.as_aligned_slice()).unwrap(),
+	).unwrap();
 
 	assert_eq!(req.version().major(), 7);
 	assert_eq!(req.version().minor(), 6);
@@ -74,7 +79,9 @@ fn request_v7p36() {
 		})
 		.build_aligned();
 
-	let req = decode_request!(FuseInitRequest, buf);
+	let req = FuseInitRequest::from_request(
+		server::Request::new(buf.as_aligned_slice()).unwrap(),
+	).unwrap();
 
 	assert_eq!(req.version().major(), 7);
 	assert_eq!(req.version().minor(), 36);
@@ -99,7 +106,9 @@ fn request_major_mismatch() {
 		})
 		.build_aligned();
 
-	let req = decode_request!(FuseInitRequest, buf);
+	let req = FuseInitRequest::from_request(
+		server::Request::new(buf.as_aligned_slice()).unwrap(),
+	).unwrap();
 
 	assert_eq!(req.version().major(), 0xFF);
 	assert_eq!(req.version().minor(), 0xFF);
@@ -111,7 +120,12 @@ fn request_major_mismatch() {
 fn response_v7p1() {
 	let mut resp = FuseInitResponse::new();
 	resp.set_version(Version::new(7, 1));
-	let encoded = encode_response!(resp);
+
+	let request_id = core::num::NonZeroU64::new(0xAABBCCDD).unwrap();
+	let mut header = fuse::ResponseHeader::new(request_id);
+	let encoded = fuse::io::SendBuf::from(resp.to_response(&mut header))
+		.to_vec()
+		.unwrap();
 
 	assert_eq!(
 		encoded,
@@ -132,7 +146,12 @@ fn response_v7p1() {
 fn response_v7p5() {
 	let mut resp = FuseInitResponse::new();
 	resp.set_version(Version::new(7, 5));
-	let encoded = encode_response!(resp);
+
+	let request_id = core::num::NonZeroU64::new(0xAABBCCDD).unwrap();
+	let mut header = fuse::ResponseHeader::new(request_id);
+	let encoded = fuse::io::SendBuf::from(resp.to_response(&mut header))
+		.to_vec()
+		.unwrap();
 
 	assert_eq!(
 		encoded,
@@ -160,7 +179,12 @@ fn response_v7p23() {
 		flags.set(FuseInitFlag::ASYNC_READ);
 		flags.set(FuseInitFlag::HAS_INODE_DAX);
 	});
-	let encoded = encode_response!(resp);
+
+	let request_id = core::num::NonZeroU64::new(0xAABBCCDD).unwrap();
+	let mut header = fuse::ResponseHeader::new(request_id);
+	let encoded = fuse::io::SendBuf::from(resp.to_response(&mut header))
+		.to_vec()
+		.unwrap();
 
 	assert_eq!(
 		encoded,
@@ -191,8 +215,7 @@ fn response_v7p23() {
 
 #[test]
 fn init_flags() {
-	let buf;
-	let request = fuse_testutil::build_request!(buf, FuseInitRequest, {
+	let buf = MessageBuilder::new()
 		.set_opcode(fuse_kernel::FUSE_INIT)
 		.push_sized(&fuse_kernel::fuse_init_in {
 			major: fuse_testutil::VERSION.0,
@@ -202,7 +225,11 @@ fn init_flags() {
 			flags2: 0x3 | (1u32 << 31),
 			unused: [0; 11],
 		})
-	});
+		.build_aligned();
+
+	let request = FuseInitRequest::from_request(
+		server::Request::new(buf.as_aligned_slice()).unwrap(),
+	).unwrap();
 
 	// Flag sets render as a struct, with unknown flags falling back
 	// to hex.
@@ -222,8 +249,7 @@ fn init_flags() {
 
 #[test]
 fn request_impl_debug() {
-	let buf;
-	let request = fuse_testutil::build_request!(buf, FuseInitRequest, {
+	let buf = MessageBuilder::new()
 		.set_opcode(fuse_kernel::FUSE_INIT)
 		.push_sized(&fuse_kernel::fuse_init_in {
 			major: 7,
@@ -233,7 +259,11 @@ fn request_impl_debug() {
 			flags2: 0,
 			unused: [0; 11],
 		})
-	});
+		.build_aligned();
+
+	let request = FuseInitRequest::from_request(
+		server::Request::new(buf.as_aligned_slice()).unwrap(),
+	).unwrap();
 
 	assert_eq!(
 		format!("{:#?}", request),

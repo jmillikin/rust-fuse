@@ -55,13 +55,12 @@ impl SymlinkRequest<'_> {
 	}
 }
 
-request_try_from! { SymlinkRequest : fuse }
+impl server::sealed::Sealed for SymlinkRequest<'_> {}
 
-impl decode::Sealed for SymlinkRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for SymlinkRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for SymlinkRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_SYMLINK)?;
@@ -120,8 +119,6 @@ impl<'a> SymlinkResponse<'a> {
 	}
 }
 
-response_send_funcs!(SymlinkResponse<'_>);
-
 impl fmt::Debug for SymlinkResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("SymlinkResponse")
@@ -130,17 +127,18 @@ impl fmt::Debug for SymlinkResponse<'_> {
 	}
 }
 
-impl SymlinkResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		if ctx.version_minor >= 9 {
-			return enc.encode_sized(self.entry.as_v7p9());
+impl server::sealed::Sealed for SymlinkResponse<'_> {}
+
+impl server::FuseResponse for SymlinkResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		if options.version_minor() >= 9 {
+			return encode::sized(header, self.entry.as_v7p9());
 		}
-		enc.encode_sized(self.entry.as_v7p1())
+		encode::sized(header, self.entry.as_v7p1())
 	}
 }
 

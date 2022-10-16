@@ -55,32 +55,32 @@ impl FsyncRequest<'_> {
 	}
 }
 
-request_try_from! { FsyncRequest : cuse fuse }
+impl server::sealed::Sealed for FsyncRequest<'_> {}
 
-impl decode::Sealed for FsyncRequest<'_> {}
-
-impl<'a> decode::CuseRequest<'a> for FsyncRequest<'a> {
-	fn from_cuse_request(
-		request: &server::CuseRequest<'a>,
+impl<'a> server::CuseRequest<'a> for FsyncRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::CuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
-		Self::decode_request(request.buf, true)
+		Self::decode_request(request, true)
 	}
 }
 
-impl<'a> decode::FuseRequest<'a> for FsyncRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for FsyncRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
-		Self::decode_request(request.buf, false)
+		Self::decode_request(request, false)
 	}
 }
 
 impl<'a> FsyncRequest<'a> {
 	fn decode_request(
-		buf: decode::RequestBuf<'a>,
+		request: server::Request<'a>,
 		is_cuse: bool,
 	) -> Result<Self, server::RequestError> {
-		let mut dec = decode::RequestDecoder::new(buf);
+		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_FSYNC)?;
 
 		let header = dec.header();
@@ -123,22 +123,31 @@ impl<'a> FsyncResponse<'a> {
 	}
 }
 
-response_send_funcs!(FsyncResponse<'_>);
-
 impl fmt::Debug for FsyncResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("FsyncResponse").finish()
 	}
 }
 
-impl FsyncResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_header_only()
+impl server::sealed::Sealed for FsyncResponse<'_> {}
+
+impl server::CuseResponse for FsyncResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::CuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::header_only(header)
+	}
+}
+
+impl server::FuseResponse for FsyncResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::header_only(header)
 	}
 }
 

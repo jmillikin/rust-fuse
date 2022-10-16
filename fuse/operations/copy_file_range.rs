@@ -80,13 +80,12 @@ impl CopyFileRangeRequest<'_> {
 	}
 }
 
-request_try_from! { CopyFileRangeRequest : fuse }
+impl server::sealed::Sealed for CopyFileRangeRequest<'_> {}
 
-impl decode::Sealed for CopyFileRangeRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for CopyFileRangeRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for CopyFileRangeRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_COPY_FILE_RANGE)?;
@@ -147,8 +146,6 @@ impl<'a> CopyFileRangeResponse<'a> {
 	}
 }
 
-response_send_funcs!(CopyFileRangeResponse<'_>);
-
 impl fmt::Debug for CopyFileRangeResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("CopyFileRangeResponse")
@@ -157,14 +154,15 @@ impl fmt::Debug for CopyFileRangeResponse<'_> {
 	}
 }
 
-impl CopyFileRangeResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_sized(&self.raw)
+impl server::sealed::Sealed for CopyFileRangeResponse<'_> {}
+
+impl server::FuseResponse for CopyFileRangeResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::sized(header, &self.raw)
 	}
 }
 

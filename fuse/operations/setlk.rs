@@ -85,13 +85,12 @@ impl SetlkRequest<'_> {
 	}
 }
 
-request_try_from! { SetlkRequest : fuse }
+impl server::sealed::Sealed for SetlkRequest<'_> {}
 
-impl decode::Sealed for SetlkRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for SetlkRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for SetlkRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 
@@ -172,22 +171,21 @@ impl<'a> SetlkResponse<'a> {
 	}
 }
 
-response_send_funcs!(SetlkResponse<'_>);
-
 impl fmt::Debug for SetlkResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("SetlkResponse").finish()
 	}
 }
 
-impl SetlkResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_header_only()
+impl server::sealed::Sealed for SetlkResponse<'_> {}
+
+impl server::FuseResponse for SetlkResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::header_only(header)
 	}
 }
 

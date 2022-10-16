@@ -61,30 +61,31 @@ impl PollRequest<'_> {
 	}
 }
 
-request_try_from! { PollRequest : cuse fuse }
+impl server::sealed::Sealed for PollRequest<'_> {}
 
-impl decode::Sealed for PollRequest<'_> {}
-
-impl<'a> decode::CuseRequest<'a> for PollRequest<'a> {
-	fn from_cuse_request(
-		request: &server::CuseRequest<'a>,
+impl<'a> server::CuseRequest<'a> for PollRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::CuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
-		Self::decode(request.decoder())
+		Self::decode(request)
 	}
 }
 
-impl<'a> decode::FuseRequest<'a> for PollRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for PollRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
-		Self::decode(request.decoder())
+		Self::decode(request)
 	}
 }
 
 impl<'a> PollRequest<'a> {
 	fn decode(
-		mut dec: decode::RequestDecoder<'a>,
+		request: server::Request<'a>,
 	) -> Result<Self, server::RequestError> {
+		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_POLL)?;
 
 		let header = dec.header();
@@ -137,8 +138,6 @@ impl<'a> PollResponse<'a> {
 	}
 }
 
-response_send_funcs!(PollResponse<'_>);
-
 impl fmt::Debug for PollResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("PollResponse")
@@ -147,14 +146,25 @@ impl fmt::Debug for PollResponse<'_> {
 	}
 }
 
-impl PollResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_sized(&self.raw)
+impl server::sealed::Sealed for PollResponse<'_> {}
+
+impl server::CuseResponse for PollResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::CuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::sized(header, &self.raw)
+	}
+}
+
+impl server::FuseResponse for PollResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::sized(header, &self.raw)
 	}
 }
 

@@ -72,13 +72,12 @@ impl GetlkRequest<'_> {
 	}
 }
 
-request_try_from! { GetlkRequest : fuse }
+impl server::sealed::Sealed for GetlkRequest<'_> {}
 
-impl decode::Sealed for GetlkRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for GetlkRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for GetlkRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_GETLK)?;
@@ -116,15 +115,41 @@ impl fmt::Debug for GetlkRequest<'_> {
 pub struct GetlkResponse<'a> {
 	phantom: PhantomData<&'a ()>,
 	lock: Option<lock::Lock>,
+	raw: fuse_kernel::fuse_lk_out,
 }
 
 impl<'a> GetlkResponse<'a> {
 	#[inline]
 	#[must_use]
 	pub fn new(lock: Option<lock::Lock>) -> GetlkResponse<'a> {
+		let fuse_lock = match &lock {
+			None => fuse_kernel::fuse_file_lock {
+				r#type: lock::F_UNLCK,
+				start: 0,
+				end: 0,
+				pid: 0,
+			},
+			Some(lock) => fuse_kernel::fuse_file_lock {
+				r#type: match lock.mode() {
+					lock::Mode::Exclusive => lock::F_WRLCK,
+					lock::Mode::Shared => lock::F_RDLCK,
+				},
+				start: cmp::min(
+					lock.range().start(),
+					lock::OFFSET_MAX,
+				),
+				end: cmp::min(
+					lock.range().end().unwrap_or(lock::OFFSET_MAX),
+					lock::OFFSET_MAX,
+				),
+				pid: lock.process_id().map(|x| x.get()).unwrap_or(0),
+			},
+		};
+
 		Self {
 			phantom: PhantomData,
 			lock,
+			raw: fuse_kernel::fuse_lk_out { lk: fuse_lock },
 		}
 	}
 
@@ -135,8 +160,6 @@ impl<'a> GetlkResponse<'a> {
 	}
 }
 
-response_send_funcs!(GetlkResponse<'_>);
-
 impl fmt::Debug for GetlkResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("GetlkResponse")
@@ -145,39 +168,15 @@ impl fmt::Debug for GetlkResponse<'_> {
 	}
 }
 
-impl GetlkResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let lock = match self.lock {
-			None => fuse_kernel::fuse_file_lock {
-				r#type: lock::F_UNLCK,
-				start: 0,
-				end: 0,
-				pid: 0,
-			},
-			Some(lock) => {
-				fuse_kernel::fuse_file_lock {
-					r#type: match lock.mode() {
-						lock::Mode::Exclusive => lock::F_WRLCK,
-						lock::Mode::Shared => lock::F_RDLCK,
-					},
-					start: cmp::min(
-						lock.range().start(),
-						lock::OFFSET_MAX,
-					),
-					end: cmp::min(
-						lock.range().end().unwrap_or(lock::OFFSET_MAX),
-						lock::OFFSET_MAX,
-					),
-					pid: lock.process_id().map(|x| x.get()).unwrap_or(0),
-				}
-			},
-		};
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_sized(&fuse_kernel::fuse_lk_out { lk: lock })
+impl server::sealed::Sealed for GetlkResponse<'_> {}
+
+impl server::FuseResponse for GetlkResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::sized(header, &self.raw)
 	}
 }
 

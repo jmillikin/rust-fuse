@@ -23,13 +23,11 @@ use crate::internal::fuse_kernel;
 use crate::lock;
 use crate::node;
 use crate::operations::cuse_init::{
-	CuseInitFlags,
 	CuseInitRequest,
 	CuseInitResponse,
 };
 use crate::operations::fuse_init::{
 	FuseInitFlag,
-	FuseInitFlags,
 	FuseInitRequest,
 	FuseInitResponse,
 };
@@ -39,8 +37,12 @@ pub mod cuse_rpc;
 pub mod fuse_rpc;
 pub mod io;
 
-pub mod decode;
+pub(crate) mod decode;
 pub(crate) mod encode;
+
+pub(crate) mod sealed {
+	pub trait Sealed {}
+}
 
 // ServerError {{{
 
@@ -120,161 +122,327 @@ impl From<xattr::ValueError> for RequestError {
 
 // }}}
 
-#[derive(Clone, Copy)]
-pub struct ResponseContext {
-	pub(crate) request_id: u64,
-	pub(crate) version_minor: u32,
+// Request {{{
+
+/// A borrowed request received by a CUSE or FUSE server.
+///
+/// A `Request<'a>` is equivalent to `&'a [u8]`, with additional guarantees
+/// around alignment and minimum size.
+///
+/// The request header can be inspected via [`Request::header`], and conversion
+/// into operation-specific request types can be attempted using the
+/// [`CuseRequest`] or [`FuseRequest`] traits.
+#[derive(Copy, Clone)]
+pub struct Request<'a> {
+	slice: crate::io::AlignedSlice<'a>,
 }
 
-pub struct CuseRequestBuilder {
-	init_flags: CuseInitFlags,
-	version: crate::Version,
-}
-
-impl CuseRequestBuilder {
-	#[must_use]
-	pub fn new() -> CuseRequestBuilder {
-		CuseRequestBuilder {
-			init_flags: CuseInitFlags::new(),
-			version: crate::Version::LATEST,
+impl<'a> Request<'a> {
+	/// Attempts to reborrow an [`AlignedSlice`] as a [`Request`].
+	///
+	/// # Errors
+	///
+	/// Returns an error if:
+	/// * The slice isn't large enough to contain a [`RequestHeader`].
+	/// * The header's request length is larger than the slice.
+	/// * The header's request ID is zero.
+	///
+	/// [`AlignedSlice`]: crate::io::AlignedSlice
+	/// [`RequestHeader`]: crate::RequestHeader
+	#[inline]
+	pub fn new(
+		slice: crate::io::AlignedSlice<'a>,
+	) -> Result<Request<'a>, RequestError> {
+		let bytes = slice.get();
+		if bytes.len() < mem::size_of::<fuse_kernel::fuse_in_header>() {
+			return Err(RequestError::UnexpectedEof);
 		}
+
+		let header_ptr = bytes.as_ptr().cast::<fuse_kernel::fuse_in_header>();
+		let header = unsafe { &*header_ptr };
+
+		if header.unique == 0 {
+			return Err(RequestError::MissingRequestId);
+		}
+
+		let buf_len: u32;
+		if mem::size_of::<usize>() > mem::size_of::<u32>() {
+			if bytes.len() > u32::MAX as usize {
+				buf_len = u32::MAX;
+			} else {
+				buf_len = bytes.len() as u32;
+			}
+		} else {
+			buf_len = bytes.len() as u32;
+		}
+		if buf_len < header.len {
+			return Err(RequestError::UnexpectedEof);
+		}
+
+		Ok(unsafe { Self::new_unchecked(slice) })
 	}
 
+	/// Reborrows an [`AlignedSlice`] as a [`Request`], without validation.
+	///
+	/// # Safety
+	///
+	/// The slice must be at least large enough to contain a [`RequestHeader`].
+	/// The contained header must have a valid length and request ID.
+	///
+	/// [`AlignedSlice`]: crate::io::AlignedSlice
+	/// [`RequestHeader`]: crate::RequestHeader
+	#[inline]
+	#[must_use]
+	pub unsafe fn new_unchecked(
+		slice: crate::io::AlignedSlice<'a>,
+	) -> Request<'a> {
+		Self { slice }
+	}
+
+	/// Returns the header of this request.
+	#[inline]
+	#[must_use]
+	pub fn header(self) -> &'a crate::RequestHeader {
+		unsafe { &*(self.slice.get().as_ptr().cast()) }
+	}
+
+	/// Returns the full contents of this request as a byte slice.
+	#[inline]
+	#[must_use]
+	pub fn as_slice(self) -> &'a [u8] {
+		self.slice.get()
+	}
+
+	/// Returns the full contents of this request as an aligned byte slice.
+	#[inline]
+	#[must_use]
+	pub fn as_aligned_slice(self) -> crate::io::AlignedSlice<'a> {
+		self.slice
+	}
+
+	#[inline]
+	#[must_use]
+	pub(crate) fn decoder(self) -> decode::RequestDecoder<'a> {
+		unsafe { decode::RequestDecoder::new_unchecked(self.slice.get()) }
+	}
+}
+
+// }}}
+
+// CuseRequest {{{
+
+/// Requests that can be received by a CUSE server.
+pub trait CuseRequest<'a>: Sized + sealed::Sealed {
+	/// Attempt to decode a CUSE server request.
+	fn from_request(
+		request: Request<'a>,
+		request_options: CuseRequestOptions,
+	) -> Result<Self, RequestError>;
+}
+
+// }}}
+
+// CuseRequestOptions {{{
+
+/// Options for CUSE server request decoding.
+#[derive(Clone, Copy)]
+pub struct CuseRequestOptions {
+	version_minor: u32,
+}
+
+impl CuseRequestOptions {
+	/// Create a `CuseRequestOptions` from a given CUSE server init response.
+	#[inline]
 	#[must_use]
 	pub fn from_init_response(
 		init_response: &CuseInitResponse,
-	) -> CuseRequestBuilder {
-		CuseRequestBuilder {
-			init_flags: init_response.flags(),
-			version: init_response.version(),
+	) -> CuseRequestOptions {
+		Self {
+			version_minor: init_response.version().minor(),
 		}
 	}
 
-	pub fn version(&mut self, version: crate::Version) -> &mut Self {
-		self.version = version;
-		self
-	}
-
-	pub fn init_flags(&mut self, init_flags: CuseInitFlags) -> &mut Self {
-		self.init_flags = init_flags;
-		self
-	}
-
-	pub fn build<'a>(
-		&self,
-		buf: crate::io::AlignedSlice<'a>,
-	) -> Result<CuseRequest<'a>, RequestError> {
-		Ok(CuseRequest {
-			buf: decode::RequestBuf::new(buf)?,
-			version_minor: self.version.minor(),
-		})
-	}
-}
-
-pub struct CuseRequest<'a> {
-	pub(crate) buf: decode::RequestBuf<'a>,
-	pub(crate) version_minor: u32,
-}
-
-impl<'a> CuseRequest<'a> {
-	pub(crate) fn decoder(&self) -> decode::RequestDecoder<'a> {
-		decode::RequestDecoder::new(self.buf)
-	}
-
+	#[inline]
 	#[must_use]
-	pub fn header(&self) -> &'a crate::RequestHeader {
-		self.buf.header()
-	}
-
-	#[must_use]
-	pub fn response_context(&self) -> ResponseContext {
-		ResponseContext {
-			request_id: self.header().request_id().get(),
-			version_minor: self.version_minor,
-		}
+	pub(crate) fn version_minor(self) -> u32 {
+		self.version_minor
 	}
 }
 
-pub struct FuseRequestBuilder {
-	init_flags: FuseInitFlags,
-	version: crate::Version,
+// }}}
+
+// FuseRequest {{{
+
+/// Requests that can be received by a FUSE server.
+pub trait FuseRequest<'a>: Sized + sealed::Sealed {
+	/// Attempt to decode a FUSE server request.
+	fn from_request(
+		request: Request<'a>,
+		request_options: FuseRequestOptions,
+	) -> Result<Self, RequestError>;
 }
 
-impl FuseRequestBuilder {
-	#[must_use]
-	pub fn new() -> FuseRequestBuilder {
-		FuseRequestBuilder {
-			init_flags: FuseInitFlags::new(),
-			version: crate::Version::LATEST,
-		}
-	}
+// }}}
 
+// FuseRequestOptions {{{
+
+/// Options for FUSE server request decoding.
+#[derive(Clone, Copy)]
+pub struct FuseRequestOptions {
+	version_minor: u16,
+	features: u16,
+}
+
+const FEATURE_SETXATTR_EXT: u16 = 1 << 0;
+
+impl FuseRequestOptions {
+	/// Create a `FuseRequestOptions` from a given FUSE server init response.
+	#[inline]
 	#[must_use]
 	pub fn from_init_response(
 		init_response: &FuseInitResponse,
-	) -> FuseRequestBuilder {
-		FuseRequestBuilder {
-			init_flags: init_response.flags(),
-			version: init_response.version(),
+	) -> FuseRequestOptions {
+		let mut features = 0;
+		if init_response.flags().get(FuseInitFlag::SETXATTR_EXT) {
+			features |= FEATURE_SETXATTR_EXT;
+		}
+
+		let version = init_response.version();
+		let version_minor = if version.minor() > u32::from(u16::MAX) {
+			u16::MAX
+		} else {
+			version.minor() as u16
+		};
+
+		Self {
+			version_minor,
+			features,
 		}
 	}
 
-	pub fn version(&mut self, version: crate::Version) -> &mut Self {
-		self.version = version;
-		self
-	}
-
-	pub fn init_flags(&mut self, init_flags: FuseInitFlags) -> &mut Self {
-		self.init_flags = init_flags;
-		self
-	}
-
-	pub fn build<'a>(
-		&self,
-		buf: crate::io::AlignedSlice<'a>,
-	) -> Result<FuseRequest<'a>, RequestError> {
-		let mut toggles = 0;
-		if self.init_flags.get(FuseInitFlag::SETXATTR_EXT) {
-			toggles |= TOGGLE_SETXATTR_EXT;
-		}
-		Ok(FuseRequest {
-			buf: decode::RequestBuf::new(buf)?,
-			version_minor: self.version.minor(),
-			toggles,
-		})
-	}
-}
-
-pub struct FuseRequest<'a> {
-	pub(crate) buf: decode::RequestBuf<'a>,
-	pub(crate) version_minor: u32,
-	toggles: u32,
-}
-
-const TOGGLE_SETXATTR_EXT: u32 = 1 << 0;
-
-impl<'a> FuseRequest<'a> {
-	pub(crate) fn decoder(&self) -> decode::RequestDecoder<'a> {
-		decode::RequestDecoder::new(self.buf)
-	}
-
+	#[inline]
 	#[must_use]
-	pub fn header(&self) -> &'a crate::RequestHeader {
-		self.buf.header()
+	pub(crate) fn version_minor(self) -> u32 {
+		u32::from(self.version_minor)
 	}
 
+	#[inline]
 	#[must_use]
-	pub fn response_context(&self) -> ResponseContext {
-		ResponseContext {
-			request_id: self.header().request_id().get(),
-			version_minor: self.version_minor,
+	pub(crate) fn have_setxattr_ext(self) -> bool {
+		self.features & FEATURE_SETXATTR_EXT > 0
+	}
+}
+
+// }}}
+
+// Response {{{
+
+/// A response generated by a CUSE or FUSE server.
+pub struct Response<'a> {
+	buf: crate::io::SendBuf<'a>,
+}
+
+impl<'a> Response<'a> {
+	#[inline]
+	#[must_use]
+	pub(crate) fn new(buf: crate::io::SendBuf<'a>) -> Response<'a> {
+		Self { buf }
+	}
+}
+
+impl<'a> From<Response<'a>> for crate::io::SendBuf<'a> {
+	/// Converts a server response into a [`SendBuf`].
+	///
+	/// [`SendBuf`]: crate::io::SendBuf
+	#[inline]
+	#[must_use]
+	fn from(response: Response<'a>) -> crate::io::SendBuf<'a> {
+		response.buf
+	}
+}
+
+// }}}
+
+// CuseResponse {{{
+
+/// Responses that can be sent by a CUSE server.
+pub trait CuseResponse: sealed::Sealed {
+	/// Encode a CUSE server response.
+	///
+	/// The response header will be filled in with the response length and,
+	/// if appropriate, its error code.
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		response_options: CuseResponseOptions,
+	) -> Response<'a>;
+}
+
+// }}}
+
+// CuseResponseOptions {{{
+
+/// Options for CUSE server response encoding.
+#[derive(Clone, Copy)]
+pub struct CuseResponseOptions {
+	_empty: (),
+}
+
+impl CuseResponseOptions {
+	/// Create a `CuseResponseOptions` from a given FUSE server init response.
+	#[inline]
+	#[must_use]
+	pub fn from_init_response(
+		init_response: &CuseInitResponse,
+	) -> CuseResponseOptions {
+		let _ = init_response;
+		Self { _empty: () }
+	}
+}
+
+// }}}
+
+// FuseResponse {{{
+
+/// Responses that can be sent by a FUSE server.
+pub trait FuseResponse: sealed::Sealed {
+	/// Encode a FUSE server response.
+	///
+	/// The response header will be filled in with the response length and,
+	/// if appropriate, its error code.
+	fn to_response<'a>(
+		&'a self,
+		response_header: &'a mut crate::ResponseHeader,
+		response_options: FuseResponseOptions,
+	) -> Response<'a>;
+}
+
+/// Options for FUSE server response encoding.
+#[derive(Clone, Copy)]
+pub struct FuseResponseOptions {
+	version_minor: u32,
+}
+
+impl FuseResponseOptions {
+	/// Create a `FuseResponseOptions` from a given FUSE server init response.
+	#[inline]
+	#[must_use]
+	pub fn from_init_response(
+		init_response: &FuseInitResponse,
+	) -> FuseResponseOptions {
+		Self {
+			version_minor: init_response.version().minor(),
 		}
 	}
 
-	pub(crate) fn have_setxattr_ext(&self) -> bool {
-		self.toggles & TOGGLE_SETXATTR_EXT > 0
+	#[inline]
+	#[must_use]
+	pub(crate) fn version_minor(self) -> u32 {
+		self.version_minor
 	}
 }
+
+// }}}
 
 // UnknownRequest {{{
 
@@ -284,24 +452,16 @@ pub struct UnknownRequest<'a> {
 }
 
 enum UnknownBody<'a> {
-	Raw(decode::RequestBuf<'a>),
+	Raw(Request<'a>),
 	Parsed(Result<&'a [u8], RequestError>),
 }
 
 impl<'a> UnknownRequest<'a> {
 	#[must_use]
-	pub fn from_fuse_request(request: &FuseRequest<'a>) -> Self {
+	pub fn from_request(request: Request<'a>) -> Self {
 		Self {
-			header: request.buf.header(),
-			body: cell::RefCell::new(UnknownBody::Raw(request.buf)),
-		}
-	}
-
-	#[must_use]
-	pub fn from_cuse_request(request: &CuseRequest<'a>) -> Self {
-		Self {
-			header: request.buf.header(),
-			body: cell::RefCell::new(UnknownBody::Raw(request.buf)),
+			header: request.header(),
+			body: cell::RefCell::new(UnknownBody::Raw(request)),
 		}
 	}
 
@@ -314,11 +474,11 @@ impl<'a> UnknownRequest<'a> {
 		let mut result: Result<&'a [u8], RequestError> = Ok(&[]);
 		const HEADER_LEN: usize = mem::size_of::<fuse_kernel::fuse_in_header>();
 		self.body.replace_with(|body| match body {
-			UnknownBody::Raw(buf) => {
+			UnknownBody::Raw(request) => {
 				let body_offset = HEADER_LEN as u32;
-				let header = buf.raw_header();
-				let mut dec = decode::RequestDecoder::new(*buf);
-				result = dec.next_bytes(header.len - body_offset);
+				let request_len = self.header.request_len().get();
+				let mut dec = request.decoder();
+				result = dec.next_bytes(request_len - body_offset);
 				UnknownBody::Parsed(result)
 			},
 			UnknownBody::Parsed(r) => {
@@ -341,59 +501,20 @@ impl fmt::Debug for UnknownRequest<'_> {
 
 // }}}
 
-// ErrorResponse {{{
-
-#[derive(Clone, Copy)]
-pub struct ErrorResponse {
-	error: crate::Error,
-}
-
-impl ErrorResponse {
-	#[must_use]
-	pub fn new(error: crate::Error) -> ErrorResponse {
-		ErrorResponse { error }
-	}
-
-	pub fn send<S: io::Socket>(
-		&self,
-		socket: &S,
-		response_ctx: &ResponseContext,
-	) -> Result<(), io::SendError<S::Error>> {
-		let send = encode::SyncSendOnce::new(socket);
-		let enc = encode::ReplyEncoder::new(send, response_ctx.request_id);
-		enc.encode_error(self.error)
-	}
-
-	pub async fn send_async<S: io::AsyncSocket>(
-		&self,
-		socket: &S,
-		response_ctx: &ResponseContext,
-	) -> Result<(), io::SendError<S::Error>> {
-		let send = encode::AsyncSendOnce::new(socket);
-		let enc = encode::ReplyEncoder::new(send, response_ctx.request_id);
-		enc.encode_error(self.error).await
-	}
-}
-
-// }}}
-
 pub fn cuse_init<'a, S: io::CuseSocket>(
 	socket: &mut S,
 	mut init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse<'a>,
 ) -> Result<CuseInitResponse<'a>, ServerError<S::Error>> {
-	use crate::server::decode::CuseRequest;
-
 	let mut buf = crate::io::MinReadBuffer::new();
 
-	let req_builder = CuseRequestBuilder::new();
 	loop {
 		let recv_len = socket.recv(buf.as_slice_mut())?;
-		let recv_buf = buf.as_aligned_slice().truncate(recv_len);
-		let fuse_req = req_builder.build(recv_buf)?;
-		let response_ctx = fuse_req.response_context();
-		let init_req = CuseInitRequest::from_cuse_request(&fuse_req)?;
+		let request = Request::new(buf.as_aligned_slice().truncate(recv_len))?;
+		let init_req = CuseInitRequest::from_request(request)?;
 		let (response, ok) = cuse_handshake(&init_req, &mut init_fn)?;
-		response.send(socket, &response_ctx)?;
+		let request_id = request.header().request_id();
+		let mut header = crate::ResponseHeader::new(request_id);
+		socket.send(response.to_response(&mut header).into())?;
 		if ok {
 			return Ok(response);
 		}
@@ -404,19 +525,16 @@ pub async fn cuse_init_async<'a, S: io::AsyncCuseSocket>(
 	socket: &mut S,
 	mut init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse<'a>,
 ) -> Result<CuseInitResponse<'a>, ServerError<S::Error>> {
-	use crate::server::decode::CuseRequest;
-
 	let mut buf = crate::io::MinReadBuffer::new();
 
-	let req_builder = CuseRequestBuilder::new();
 	loop {
 		let recv_len = socket.recv(buf.as_slice_mut()).await?;
-		let recv_buf = buf.as_aligned_slice().truncate(recv_len);
-		let fuse_req = req_builder.build(recv_buf)?;
-		let response_ctx = fuse_req.response_context();
-		let init_req = CuseInitRequest::from_cuse_request(&fuse_req)?;
+		let request = Request::new(buf.as_aligned_slice().truncate(recv_len))?;
+		let init_req = CuseInitRequest::from_request(request)?;
 		let (response, ok) = cuse_handshake(&init_req, &mut init_fn)?;
-		response.send_async(socket, &response_ctx).await?;
+		let request_id = request.header().request_id();
+		let mut header = crate::ResponseHeader::new(request_id);
+		socket.send(response.to_response(&mut header).into()).await?;
 		if ok {
 			return Ok(response);
 		}
@@ -445,19 +563,16 @@ pub fn fuse_init<S: io::FuseSocket>(
 	socket: &mut S,
 	mut init_fn: impl FnMut(&FuseInitRequest) -> FuseInitResponse,
 ) -> Result<FuseInitResponse, ServerError<S::Error>> {
-	use crate::server::decode::FuseRequest;
-
 	let mut buf = crate::io::MinReadBuffer::new();
 
-	let req_builder = FuseRequestBuilder::new();
 	loop {
 		let recv_len = socket.recv(buf.as_slice_mut())?;
-		let recv_buf = buf.as_aligned_slice().truncate(recv_len);
-		let fuse_req = req_builder.build(recv_buf)?;
-		let response_ctx = fuse_req.response_context();
-		let init_req = FuseInitRequest::from_fuse_request(&fuse_req)?;
+		let request = Request::new(buf.as_aligned_slice().truncate(recv_len))?;
+		let init_req = FuseInitRequest::from_request(request)?;
 		let (response, ok) = fuse_handshake(&init_req, &mut init_fn)?;
-		response.send(socket, &response_ctx)?;
+		let request_id = request.header().request_id();
+		let mut header = crate::ResponseHeader::new(request_id);
+		socket.send(response.to_response(&mut header).into())?;
 		if ok {
 			return Ok(response);
 		}
@@ -468,19 +583,16 @@ pub async fn fuse_init_async<S: io::AsyncFuseSocket>(
 	socket: &mut S,
 	mut init_fn: impl FnMut(&FuseInitRequest) -> FuseInitResponse,
 ) -> Result<FuseInitResponse, ServerError<S::Error>> {
-	use crate::server::decode::FuseRequest;
-
 	let mut buf = crate::io::MinReadBuffer::new();
 
-	let req_builder = FuseRequestBuilder::new();
 	loop {
 		let recv_len = socket.recv(buf.as_slice_mut()).await?;
-		let recv_buf = buf.as_aligned_slice().truncate(recv_len);
-		let fuse_req = req_builder.build(recv_buf)?;
-		let response_ctx = fuse_req.response_context();
-		let init_req = FuseInitRequest::from_fuse_request(&fuse_req)?;
+		let request = Request::new(buf.as_aligned_slice().truncate(recv_len))?;
+		let init_req = FuseInitRequest::from_request(request)?;
 		let (response, ok) = fuse_handshake(&init_req, &mut init_fn)?;
-		response.send_async(socket, &response_ctx).await?;
+		let request_id = request.header().request_id();
+		let mut header = crate::ResponseHeader::new(request_id);
+		socket.send(response.to_response(&mut header).into()).await?;
 		if ok {
 			return Ok(response);
 		}
@@ -516,128 +628,40 @@ fn negotiate_version(kernel: crate::Version) -> Option<crate::Version> {
 	))
 }
 
-pub struct CuseRequests<'a, S> {
-	socket: &'a S,
-	builder: CuseRequestBuilder,
+/// Receive a CUSE or FUSE request from a [`Socket`].
+///
+/// Returns `Ok(None)` if the socket's connection has been closed.
+///
+/// [`Socket`]: io::Socket
+pub fn recv<'a, S: io::Socket>(
+	socket: &S,
+	mut buf: crate::io::AlignedSliceMut<'a>,
+) -> Result<Option<Request<'a>>, ServerError<S::Error>> {
+	let recv_len = match socket.recv(buf.get_mut()) {
+		Ok(len) => len,
+		Err(io::RecvError::ConnectionClosed(_)) => return Ok(None),
+		Err(err) => return Err(err.into()),
+	};
+	let recv_buf = buf.truncate(recv_len);
+	Ok(Some(Request::new(recv_buf.into())?))
 }
 
-impl<'a, S> CuseRequests<'a, S> {
-	#[must_use]
-	pub fn new(
-		socket: &'a S,
-		init_response: &CuseInitResponse,
-	) -> Self {
-		Self {
-			socket,
-			builder: CuseRequestBuilder::from_init_response(init_response),
-		}
-	}
-}
-
-impl<S: io::CuseSocket> CuseRequests<'_, S> {
-	pub fn try_next<'a>(
-		&self,
-		mut buf: crate::io::AlignedSliceMut<'a>,
-	) -> Result<Option<CuseRequest<'a>>, ServerError<S::Error>> {
-		let recv_len = self.socket.recv(buf.get_mut())?;
-		let recv_buf = buf.truncate(recv_len);
-		Ok(Some(self.builder.build(recv_buf.into())?))
-	}
-}
-
-pub struct AsyncCuseRequests<'a, S> {
-	socket: &'a S,
-	builder: CuseRequestBuilder,
-}
-
-impl<'a, S> AsyncCuseRequests<'a, S> {
-	#[must_use]
-	pub fn new(
-		socket: &'a S,
-		init_response: &CuseInitResponse,
-	) -> Self {
-		Self {
-			socket,
-			builder: CuseRequestBuilder::from_init_response(init_response),
-		}
-	}
-}
-
-impl<S: io::AsyncCuseSocket> AsyncCuseRequests<'_, S> {
-	pub async fn try_next<'a>(
-		&self,
-		mut buf: crate::io::AlignedSliceMut<'a>,
-	) -> Result<Option<CuseRequest<'a>>, ServerError<S::Error>> {
-		let recv_len = self.socket.recv(buf.get_mut()).await?;
-		let recv_buf = buf.truncate(recv_len);
-		Ok(Some(self.builder.build(recv_buf.into())?))
-	}
-}
-
-pub struct FuseRequests<'a, S> {
-	socket: &'a S,
-	builder: FuseRequestBuilder,
-}
-
-impl<'a, S> FuseRequests<'a, S> {
-	#[must_use]
-	pub fn new(
-		socket: &'a S,
-		init_response: &FuseInitResponse,
-	) -> Self {
-		Self {
-			socket,
-			builder: FuseRequestBuilder::from_init_response(init_response),
-		}
-	}
-}
-
-impl<S: io::FuseSocket> FuseRequests<'_, S> {
-	pub fn try_next<'a>(
-		&self,
-		mut buf: crate::io::AlignedSliceMut<'a>,
-	) -> Result<Option<FuseRequest<'a>>, ServerError<S::Error>> {
-		let recv_len = match self.socket.recv(buf.get_mut()) {
-			Ok(x) => x,
-			Err(io::RecvError::ConnectionClosed(_)) => return Ok(None),
-			Err(err) => return Err(err.into()),
-		};
-		let recv_buf = buf.truncate(recv_len);
-		Ok(Some(self.builder.build(recv_buf.into())?))
-	}
-}
-
-pub struct AsyncFuseRequests<'a, S> {
-	socket: &'a S,
-	builder: FuseRequestBuilder,
-}
-
-impl<'a, S> AsyncFuseRequests<'a, S> {
-	#[must_use]
-	pub fn new(
-		socket: &'a S,
-		init_response: &FuseInitResponse,
-	) -> Self {
-		Self {
-			socket,
-			builder: FuseRequestBuilder::from_init_response(init_response),
-		}
-	}
-}
-
-impl<S: io::AsyncFuseSocket> AsyncFuseRequests<'_, S> {
-	pub async fn try_next<'a>(
-		&self,
-		mut buf: crate::io::AlignedSliceMut<'a>,
-	) -> Result<Option<FuseRequest<'a>>, ServerError<S::Error>> {
-		let recv_len = match self.socket.recv(buf.get_mut()).await {
-			Ok(x) => x,
-			Err(io::RecvError::ConnectionClosed(_)) => return Ok(None),
-			Err(err) => return Err(err.into()),
-		};
-		let recv_buf = buf.truncate(recv_len);
-		Ok(Some(self.builder.build(recv_buf.into())?))
-	}
+/// Receive a CUSE or FUSE request from an [`AsyncSocket`].
+///
+/// Returns `Ok(None)` if the socket's connection has been closed.
+///
+/// [`AsyncSocket`]: io::AsyncSocket
+pub async fn recv_async<'a, S: io::AsyncSocket>(
+	socket: &S,
+	mut buf: crate::io::AlignedSliceMut<'a>,
+) -> Result<Option<Request<'a>>, ServerError<S::Error>> {
+	let recv_len = match socket.recv(buf.get_mut()).await {
+		Ok(len) => len,
+		Err(io::RecvError::ConnectionClosed(_)) => return Ok(None),
+		Err(err) => return Err(err.into()),
+	};
+	let recv_buf = buf.truncate(recv_len);
+	Ok(Some(Request::new(recv_buf.into())?))
 }
 
 // Hooks {{{

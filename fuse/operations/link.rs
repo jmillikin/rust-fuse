@@ -55,13 +55,12 @@ impl LinkRequest<'_> {
 	}
 }
 
-request_try_from! { LinkRequest : fuse }
+impl server::sealed::Sealed for LinkRequest<'_> {}
 
-impl decode::Sealed for LinkRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for LinkRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for LinkRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_LINK)?;
@@ -112,8 +111,6 @@ impl<'a> LinkResponse<'a> {
 	}
 }
 
-response_send_funcs!(LinkResponse<'_>);
-
 impl fmt::Debug for LinkResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("LinkResponse")
@@ -122,17 +119,18 @@ impl fmt::Debug for LinkResponse<'_> {
 	}
 }
 
-impl LinkResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		if ctx.version_minor >= 9 {
-			return enc.encode_sized(self.entry.as_v7p9());
+impl server::sealed::Sealed for LinkResponse<'_> {}
+
+impl server::FuseResponse for LinkResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		if options.version_minor() >= 9 {
+			return encode::sized(header, self.entry.as_v7p9());
 		}
-		enc.encode_sized(self.entry.as_v7p1())
+		encode::sized(header, self.entry.as_v7p1())
 	}
 }
 

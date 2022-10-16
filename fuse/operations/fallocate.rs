@@ -64,13 +64,12 @@ impl FallocateRequest<'_> {
 	}
 }
 
-request_try_from! { FallocateRequest : fuse }
+impl server::sealed::Sealed for FallocateRequest<'_> {}
 
-impl decode::Sealed for FallocateRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for FallocateRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for FallocateRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_FALLOCATE)?;
@@ -115,22 +114,21 @@ impl<'a> FallocateResponse<'a> {
 	}
 }
 
-response_send_funcs!(FallocateResponse<'_>);
-
 impl fmt::Debug for FallocateResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("FallocateResponse").finish()
 	}
 }
 
-impl FallocateResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_header_only()
+impl server::sealed::Sealed for FallocateResponse<'_> {}
+
+impl server::FuseResponse for FallocateResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::header_only(header)
 	}
 }
 

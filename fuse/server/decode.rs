@@ -23,36 +23,15 @@ use core::slice::from_raw_parts;
 use crate::internal::fuse_kernel;
 use crate::internal::timestamp;
 use crate::node;
-use crate::server;
 use crate::server::RequestError;
 
 #[cfg(rust_fuse_test = "decode_test")]
 #[path = "decode_test.rs"]
 mod decode_test;
 
-mod sealed {
-	pub trait Sealed: Sized {}
-}
-
-pub(crate) use sealed::Sealed;
-
-/// A trait for request types that are valid for CUSE servers.
-pub trait CuseRequest<'a>: Sealed {
-	fn from_cuse_request(
-		request: &server::CuseRequest<'a>,
-	) -> Result<Self, RequestError>;
-}
-
-/// A trait for request types that are valid for FUSE servers.
-pub trait FuseRequest<'a>: Sealed {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
-	) -> Result<Self, RequestError>;
-}
-
-#[derive(Copy, Clone)]
-pub(crate) union RequestBuf<'a> {
-	buf: Slice<'a>,
+#[repr(C)]
+union RequestBuf<'a> {
+	slice: Slice<'a>,
 	header: &'a crate::RequestHeader,
 	raw_header: &'a fuse_kernel::fuse_in_header,
 }
@@ -66,68 +45,10 @@ struct Slice<'a> {
 }
 
 impl<'a> RequestBuf<'a> {
-	pub(crate) fn new(
-		buf: crate::io::AlignedSlice<'a>,
-	) -> Result<Self, RequestError> {
-		let buf = buf.get();
-		if buf.len() < size_of::<fuse_kernel::fuse_in_header>() {
-			return Err(RequestError::UnexpectedEof);
-		}
-
-		let header_ptr = buf.as_ptr().cast::<fuse_kernel::fuse_in_header>();
-		let header = unsafe { &*header_ptr };
-
-		if header.unique == 0 {
-			return Err(RequestError::MissingRequestId);
-		}
-
-		let buf_len: u32;
-		if size_of::<usize>() > size_of::<u32>() {
-			if buf.len() > u32::MAX as usize {
-				buf_len = u32::MAX;
-			} else {
-				buf_len = buf.len() as u32;
-			}
-		} else {
-			buf_len = buf.len() as u32;
-		}
-		if buf_len < header.len {
-			return Err(RequestError::UnexpectedEof);
-		}
-
-		Ok(RequestBuf {
-			buf: Slice {
-				ptr: buf.as_ptr(),
-				len: buf.len(),
-				_phantom: PhantomData,
-			},
-		})
-	}
-
-	pub(crate) fn header(self) -> &'a crate::RequestHeader {
-		unsafe { self.header }
-	}
-
-	pub(crate) fn raw_header(self) -> &'a fuse_kernel::fuse_in_header {
-		unsafe { self.raw_header }
-	}
-
-	pub(crate) fn expect_opcode(
-		&self,
-		opcode: fuse_kernel::fuse_opcode,
-	) -> Result<(), RequestError> {
-		if self.raw_header().opcode != opcode {
-			return Err(RequestError::OpcodeMismatch);
-		}
-		Ok(())
-	}
-
-	fn as_ptr(&self) -> *const u8 {
-		unsafe { self.buf.ptr }
-	}
-
+	#[inline]
+	#[must_use]
 	fn as_slice(&self) -> &'a [u8] {
-		unsafe { from_raw_parts(self.buf.ptr, self.buf.len) }
+		unsafe { from_raw_parts(self.slice.ptr, self.slice.len) }
 	}
 }
 
@@ -137,9 +58,15 @@ pub(crate) struct RequestDecoder<'a> {
 }
 
 impl<'a> RequestDecoder<'a> {
-	pub(crate) fn new(buf: RequestBuf<'a>) -> Self {
-		RequestDecoder {
-			buf,
+	pub(crate) unsafe fn new_unchecked(buf: &'a [u8]) -> RequestDecoder<'a> {
+		Self {
+			buf: RequestBuf {
+				slice: Slice {
+					ptr: buf.as_ptr(),
+					len: buf.len(),
+					_phantom: PhantomData,
+				},
+			},
 			consumed: size_of::<fuse_kernel::fuse_in_header>() as u32,
 		}
 	}
@@ -148,11 +75,14 @@ impl<'a> RequestDecoder<'a> {
 		&self,
 		opcode: fuse_kernel::fuse_opcode,
 	) -> Result<(), RequestError> {
-		self.buf.expect_opcode(opcode)
+		if self.header().opcode != opcode {
+			return Err(RequestError::OpcodeMismatch);
+		}
+		Ok(())
 	}
 
 	pub(crate) fn header(&self) -> &'a fuse_kernel::fuse_in_header {
-		self.buf.raw_header()
+		unsafe { self.buf.raw_header }
 	}
 
 	fn consume(&self, len: u32) -> Result<u32, RequestError> {
@@ -181,7 +111,7 @@ impl<'a> RequestDecoder<'a> {
 		}
 		self.consume(size_of::<T>() as u32)?;
 		let out: &'a T = unsafe {
-			let out_p = self.buf.as_ptr().add(self.consumed as usize);
+			let out_p = self.buf.slice.ptr.add(self.consumed as usize);
 			&*(out_p.cast::<T>())
 		};
 		Ok(out)

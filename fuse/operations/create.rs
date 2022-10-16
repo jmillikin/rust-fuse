@@ -82,13 +82,14 @@ impl CreateRequest<'_> {
 	}
 }
 
-impl decode::Sealed for CreateRequest<'_> {}
+impl server::sealed::Sealed for CreateRequest<'_> {}
 
-impl<'a> decode::FuseRequest<'a> for CreateRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for CreateRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
-		let version_minor = request.version_minor;
+		let version_minor = options.version_minor();
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_CREATE)?;
 
@@ -108,8 +109,6 @@ impl<'a> decode::FuseRequest<'a> for CreateRequest<'a> {
 		Ok(Self { header, body, name })
 	}
 }
-
-request_try_from! { CreateRequest : fuse }
 
 impl fmt::Debug for CreateRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -191,8 +190,6 @@ impl<'a> CreateResponse<'a> {
 	}
 }
 
-response_send_funcs!(CreateResponse<'_>);
-
 impl fmt::Debug for CreateResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("CreateResponse")
@@ -203,17 +200,22 @@ impl fmt::Debug for CreateResponse<'_> {
 	}
 }
 
-impl CreateResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		if ctx.version_minor >= 9 {
-			return enc.encode_sized_sized(self.entry.as_v7p9(), &self.open_out)
+impl server::sealed::Sealed for CreateResponse<'_> {}
+
+impl server::FuseResponse for CreateResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		if options.version_minor() >= 9 {
+			return encode::sized2(
+				header,
+				self.entry.as_v7p9(),
+				&self.open_out,
+			);
 		}
-		enc.encode_sized_sized(self.entry.as_v7p1(), &self.open_out)
+		encode::sized2(header, self.entry.as_v7p1(), &self.open_out)
 	}
 }
 

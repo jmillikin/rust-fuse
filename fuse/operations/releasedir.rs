@@ -68,15 +68,14 @@ impl ReleasedirRequest<'_> {
 	}
 }
 
-request_try_from! { ReleasedirRequest : fuse }
+impl server::sealed::Sealed for ReleasedirRequest<'_> {}
 
-impl decode::Sealed for ReleasedirRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for ReleasedirRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for ReleasedirRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
-		let version_minor = request.version_minor;
+		let version_minor = options.version_minor();
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_RELEASEDIR)?;
 
@@ -127,22 +126,21 @@ impl<'a> ReleasedirResponse<'a> {
 	}
 }
 
-response_send_funcs!(ReleasedirResponse<'_>);
-
 impl fmt::Debug for ReleasedirResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("ReleasedirResponse").finish()
 	}
 }
 
-impl ReleasedirResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_header_only()
+impl server::sealed::Sealed for ReleasedirResponse<'_> {}
+
+impl server::FuseResponse for ReleasedirResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::header_only(header)
 	}
 }
 

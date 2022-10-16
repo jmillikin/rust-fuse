@@ -66,13 +66,12 @@ impl ListxattrRequest<'_> {
 	}
 }
 
-request_try_from! { ListxattrRequest : fuse }
+impl server::sealed::Sealed for ListxattrRequest<'_> {}
 
-impl decode::Sealed for ListxattrRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for ListxattrRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for ListxattrRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_LISTXATTR)?;
@@ -108,7 +107,8 @@ pub struct ListxattrResponse<'a> {
 
 enum ListxattrOutput<'a> {
 	Names(ListxattrNames<'a>),
-	Size(usize),
+	Size(fuse_kernel::fuse_getxattr_out),
+	ErrTooBig(usize),
 }
 
 impl<'a> ListxattrResponse<'a> {
@@ -125,13 +125,18 @@ impl<'a> ListxattrResponse<'a> {
 	#[inline]
 	#[must_use]
 	pub fn with_names_size(names_size: usize) -> ListxattrResponse<'a> {
+		if let Some(size_u32) = check_list_size(names_size) {
+			let output = ListxattrOutput::Size(fuse_kernel::fuse_getxattr_out {
+				size: size_u32,
+				..fuse_kernel::fuse_getxattr_out::zeroed()
+			});
+			return ListxattrResponse { output };
+		}
 		ListxattrResponse {
-			output: ListxattrOutput::Size(names_size),
+			output: ListxattrOutput::ErrTooBig(names_size),
 		}
 	}
 }
-
-response_send_funcs!(ListxattrResponse<'_>);
 
 impl fmt::Debug for ListxattrResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -140,7 +145,10 @@ impl fmt::Debug for ListxattrResponse<'_> {
 			ListxattrOutput::Names(names) => {
 				dbg.field("names", &names);
 			},
-			ListxattrOutput::Size(size) => {
+			ListxattrOutput::Size(raw) => {
+				dbg.field("size", &raw.size);
+			},
+			ListxattrOutput::ErrTooBig(size) => {
 				dbg.field("size", &size);
 			},
 		}
@@ -148,36 +156,32 @@ impl fmt::Debug for ListxattrResponse<'_> {
 	}
 }
 
-impl ListxattrResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		match self.output {
-			ListxattrOutput::Names(names) => enc.encode_bytes(names.buf),
-			ListxattrOutput::Size(size) => match check_list_size(size) {
-				Ok(size_u32) => {
-					enc.encode_sized(&fuse_kernel::fuse_getxattr_out {
-						size: size_u32,
-						padding: 0,
-					})
-				},
-				Err(err) => enc.encode_error(err),
-			},
+impl server::sealed::Sealed for ListxattrResponse<'_> {}
+
+impl server::FuseResponse for ListxattrResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		use ListxattrOutput as Out;
+		match &self.output {
+			Out::Names(names) => encode::bytes(header, names.buf),
+			Out::Size(out) => encode::sized(header, out),
+			Out::ErrTooBig(_) => encode::error(header, crate::Error::E2BIG),
 		}
 	}
 }
 
 #[inline]
-fn check_list_size(list_size: usize) -> Result<u32, crate::Error> {
+#[must_use]
+fn check_list_size(list_size: usize) -> Option<u32> {
 	if let Some(max_size) = NAMES_LIST_MAX_SIZE {
 		if list_size > max_size {
-			return Err(crate::Error::E2BIG);
+			return None;
 		}
 	}
-	u32::try_from(list_size).map_err(|_| crate::Error::E2BIG)
+	u32::try_from(list_size).ok()
 }
 
 // }}}

@@ -21,7 +21,6 @@ use core::marker::PhantomData;
 
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::decode;
 use crate::server::encode;
 
 // DestroyRequest {{{
@@ -34,13 +33,12 @@ pub struct DestroyRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 }
 
-request_try_from! { DestroyRequest : fuse }
+impl server::sealed::Sealed for DestroyRequest<'_> {}
 
-impl decode::Sealed for DestroyRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for DestroyRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for DestroyRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_DESTROY)?;
@@ -77,22 +75,21 @@ impl<'a> DestroyResponse<'a> {
 	}
 }
 
-response_send_funcs!(DestroyResponse<'_>);
-
 impl fmt::Debug for DestroyResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("DestroyResponse").finish()
 	}
 }
 
-impl DestroyResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_header_only()
+impl server::sealed::Sealed for DestroyResponse<'_> {}
+
+impl server::FuseResponse for DestroyResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::header_only(header)
 	}
 }
 

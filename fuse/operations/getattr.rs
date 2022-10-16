@@ -54,15 +54,14 @@ impl GetattrRequest<'_> {
 	}
 }
 
-request_try_from! { GetattrRequest : fuse }
+impl server::sealed::Sealed for GetattrRequest<'_> {}
 
-impl decode::Sealed for GetattrRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for GetattrRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for GetattrRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
-		let version_minor = request.version_minor;
+		let version_minor = options.version_minor();
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_GETATTR)?;
 
@@ -136,8 +135,6 @@ impl<'a> GetattrResponse<'a> {
 	}
 }
 
-response_send_funcs!(GetattrResponse<'_>);
-
 impl fmt::Debug for GetattrResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("GetattrResponse")
@@ -147,17 +144,18 @@ impl fmt::Debug for GetattrResponse<'_> {
 	}
 }
 
-impl GetattrResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		if ctx.version_minor >= 9 {
-			return enc.encode_sized(self.attr_out.as_v7p9());
+impl server::sealed::Sealed for GetattrResponse<'_> {}
+
+impl server::FuseResponse for GetattrResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		if options.version_minor() >= 9 {
+			return encode::sized(header, self.attr_out.as_v7p9());
 		}
-		enc.encode_sized(self.attr_out.as_v7p1())
+		encode::sized(header, self.attr_out.as_v7p1())
 	}
 }
 

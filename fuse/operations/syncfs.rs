@@ -21,7 +21,6 @@ use core::marker::PhantomData;
 
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::decode;
 use crate::server::encode;
 
 // SyncfsRequest {{{
@@ -34,13 +33,12 @@ pub struct SyncfsRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 }
 
-request_try_from! { SyncfsRequest : fuse }
+impl server::sealed::Sealed for SyncfsRequest<'_> {}
 
-impl decode::Sealed for SyncfsRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for SyncfsRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for SyncfsRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_SYNCFS)?;
@@ -79,21 +77,20 @@ impl<'a> SyncfsResponse<'a> {
 	}
 }
 
-response_send_funcs!(SyncfsResponse<'_>);
-
 impl fmt::Debug for SyncfsResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("SyncfsResponse").finish()
 	}
 }
 
-impl SyncfsResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_header_only()
+impl server::sealed::Sealed for SyncfsResponse<'_> {}
+
+impl server::FuseResponse for SyncfsResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::header_only(header)
 	}
 }

@@ -80,33 +80,33 @@ impl ReadRequest<'_> {
 	}
 }
 
-request_try_from! { ReadRequest : cuse fuse }
+impl server::sealed::Sealed for ReadRequest<'_> {}
 
-impl decode::Sealed for ReadRequest<'_> {}
-
-impl<'a> decode::CuseRequest<'a> for ReadRequest<'a> {
-	fn from_cuse_request(
-		request: &server::CuseRequest<'a>,
+impl<'a> server::CuseRequest<'a> for ReadRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		options: server::CuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
-		Self::decode_request(request.buf, request.version_minor, true)
+		Self::decode_request(request, options.version_minor(), true)
 	}
 }
 
-impl<'a> decode::FuseRequest<'a> for ReadRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for ReadRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
-		Self::decode_request(request.buf, request.version_minor, false)
+		Self::decode_request(request, options.version_minor(), false)
 	}
 }
 
 impl<'a> ReadRequest<'a> {
 	fn decode_request(
-		buf: decode::RequestBuf<'a>,
+		request: server::Request<'a>,
 		version_minor: u32,
 		is_cuse: bool,
 	) -> Result<ReadRequest<'a>, server::RequestError> {
-		let mut dec = decode::RequestDecoder::new(buf);
+		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_READ)?;
 		let header = dec.header();
 
@@ -162,8 +162,6 @@ impl<'a> ReadResponse<'a> {
 	// TODO: from file descriptor (for splicing)
 }
 
-response_send_funcs!(ReadResponse<'_>);
-
 impl fmt::Debug for ReadResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("ReadResponse")
@@ -172,14 +170,25 @@ impl fmt::Debug for ReadResponse<'_> {
 	}
 }
 
-impl ReadResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_bytes(self.bytes)
+impl server::sealed::Sealed for ReadResponse<'_> {}
+
+impl server::CuseResponse for ReadResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::CuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::bytes(header, self.bytes)
+	}
+}
+
+impl server::FuseResponse for ReadResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::bytes(header, self.bytes)
 	}
 }
 

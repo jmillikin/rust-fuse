@@ -49,13 +49,12 @@ impl RmdirRequest<'_> {
 	}
 }
 
-request_try_from! { RmdirRequest : fuse }
+impl server::sealed::Sealed for RmdirRequest<'_> {}
 
-impl decode::Sealed for RmdirRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for RmdirRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for RmdirRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_RMDIR)?;
@@ -87,22 +86,21 @@ impl<'a> RmdirResponse<'a> {
 	}
 }
 
-response_send_funcs!(RmdirResponse<'_>);
-
 impl fmt::Debug for RmdirResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("RmdirResponse").finish()
 	}
 }
 
-impl RmdirResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_header_only()
+impl server::sealed::Sealed for RmdirResponse<'_> {}
+
+impl server::FuseResponse for RmdirResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::header_only(header)
 	}
 }
 

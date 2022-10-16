@@ -18,14 +18,11 @@
 
 use core::fmt;
 use core::marker::PhantomData;
-use core::mem::size_of;
-use core::slice;
 
 use crate::Version;
 use crate::cuse;
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::decode;
 use crate::server::encode;
 
 // CuseInitRequest {{{
@@ -52,14 +49,10 @@ impl CuseInitRequest<'_> {
 	}
 }
 
-request_try_from! { CuseInitRequest : cuse }
-
-impl decode::Sealed for CuseInitRequest<'_> {}
-
-impl<'a> decode::CuseRequest<'a> for CuseInitRequest<'a> {
-	fn from_cuse_request(
-		request: &server::CuseRequest<'a>,
-	) -> Result<Self, server::RequestError> {
+impl<'a> CuseInitRequest<'a> {
+	pub fn from_request(
+		request: server::Request<'a>,
+	) -> Result<CuseInitRequest<'a>, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::CUSE_INIT)?;
 
@@ -169,8 +162,6 @@ impl<'a> CuseInitResponse<'a> {
 	}
 }
 
-response_send_funcs!(CuseInitResponse<'_>);
-
 impl fmt::Debug for CuseInitResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		let mut dbg = fmt.debug_struct("CuseInitResponse");
@@ -188,24 +179,19 @@ impl fmt::Debug for CuseInitResponse<'_> {
 }
 
 impl CuseInitResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let out = self.raw;
-		let out_buf: &[u8] = unsafe {
-			slice::from_raw_parts(
-				(&out as *const fuse_kernel::cuse_init_out).cast::<u8>(),
-				size_of::<fuse_kernel::cuse_init_out>(),
-			)
-		};
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
+	pub fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+	) -> server::Response<'a> {
 		match self.device_name.map(|n| n.as_bytes()) {
-			None => enc.encode_bytes(out_buf),
-			Some(device_name) => {
-				enc.encode_bytes_4(out_buf, b"DEVNAME=", device_name, b"\x00")
-			},
+			None => encode::sized(header, &self.raw),
+			Some(device_name) => encode::sized_bytes3(
+				header,
+				&self.raw,
+				b"DEVNAME=",
+				device_name,
+				b"\x00",
+			),
 		}
 	}
 }

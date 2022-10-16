@@ -48,13 +48,12 @@ impl ReadlinkRequest<'_> {
 	}
 }
 
-request_try_from! { ReadlinkRequest : fuse }
+impl server::sealed::Sealed for ReadlinkRequest<'_> {}
 
-impl decode::Sealed for ReadlinkRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for ReadlinkRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for ReadlinkRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_READLINK)?;
@@ -98,8 +97,6 @@ impl<'a> ReadlinkResponse<'a> {
 	}
 }
 
-response_send_funcs!(ReadlinkResponse<'_>);
-
 impl fmt::Debug for ReadlinkResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("ReadlinkResponse")
@@ -108,14 +105,15 @@ impl fmt::Debug for ReadlinkResponse<'_> {
 	}
 }
 
-impl ReadlinkResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_bytes(self.target)
+impl server::sealed::Sealed for ReadlinkResponse<'_> {}
+
+impl server::FuseResponse for ReadlinkResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::bytes(header, self.target)
 	}
 }
 

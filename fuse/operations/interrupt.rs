@@ -20,7 +20,6 @@ use core::fmt;
 
 use crate::internal::fuse_kernel;
 use crate::server;
-use crate::server::decode;
 
 // InterruptRequest {{{
 
@@ -39,30 +38,31 @@ impl InterruptRequest<'_> {
 	}
 }
 
-request_try_from! { InterruptRequest : cuse fuse }
+impl server::sealed::Sealed for InterruptRequest<'_> {}
 
-impl decode::Sealed for InterruptRequest<'_> {}
-
-impl<'a> decode::CuseRequest<'a> for InterruptRequest<'a> {
-	fn from_cuse_request(
-		request: &server::CuseRequest<'a>,
+impl<'a> server::CuseRequest<'a> for InterruptRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::CuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
-		Self::decode(request.decoder())
+		Self::decode(request)
 	}
 }
 
-impl<'a> decode::FuseRequest<'a> for InterruptRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for InterruptRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
-		Self::decode(request.decoder())
+		Self::decode(request)
 	}
 }
 
 impl<'a> InterruptRequest<'a> {
 	fn decode(
-		mut dec: decode::RequestDecoder<'a>,
+		request: server::Request<'a>,
 	) -> Result<Self, server::RequestError> {
+		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_INTERRUPT)?;
 		let body = dec.next_sized()?;
 		Ok(Self { body })

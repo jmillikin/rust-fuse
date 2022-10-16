@@ -51,13 +51,12 @@ impl LookupRequest<'_> {
 	}
 }
 
-request_try_from! { LookupRequest : fuse }
+impl server::sealed::Sealed for LookupRequest<'_> {}
 
-impl decode::Sealed for LookupRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for LookupRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for LookupRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_LOOKUP)?;
@@ -149,8 +148,6 @@ impl<'a> LookupResponse<'a> {
 	}
 }
 
-response_send_funcs!(LookupResponse<'_>);
-
 impl fmt::Debug for LookupResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("LookupResponse")
@@ -161,24 +158,25 @@ impl fmt::Debug for LookupResponse<'_> {
 	}
 }
 
-impl LookupResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
+impl server::sealed::Sealed for LookupResponse<'_> {}
+
+impl server::FuseResponse for LookupResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
 		// In early versions of FUSE, `fuse_entry_out::nodeid` was a required
 		// field and must be non-zero. FUSE v7.4 relaxed this so that a zero
 		// node ID was the same as returning ENOENT, but with a cache hint.
-		if self.entry_out.nodeid == 0 && ctx.version_minor < 4 {
-			return enc.encode_error(crate::Error::NOT_FOUND);
+		if self.entry_out.nodeid == 0 && options.version_minor() < 4 {
+			return encode::error(header, crate::Error::NOT_FOUND);
 		}
 		let entry = unsafe { node::Entry::from_ref(&self.entry_out) };
-		if ctx.version_minor >= 9 {
-			return enc.encode_sized(entry.as_v7p9());
+		if options.version_minor() >= 9 {
+			return encode::sized(header, entry.as_v7p9());
 		}
-		enc.encode_sized(entry.as_v7p1())
+		encode::sized(header, entry.as_v7p1())
 	}
 }
 

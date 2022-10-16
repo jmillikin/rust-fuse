@@ -56,32 +56,32 @@ impl OpenRequest<'_> {
 	}
 }
 
-request_try_from! { OpenRequest : cuse fuse }
+impl server::sealed::Sealed for OpenRequest<'_> {}
 
-impl decode::Sealed for OpenRequest<'_> {}
-
-impl<'a> decode::CuseRequest<'a> for OpenRequest<'a> {
-	fn from_cuse_request(
-		request: &server::CuseRequest<'a>,
+impl<'a> server::CuseRequest<'a> for OpenRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::CuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
-		Self::decode_request(request.buf, true)
+		Self::decode_request(request, true)
 	}
 }
 
-impl<'a> decode::FuseRequest<'a> for OpenRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for OpenRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
-		Self::decode_request(request.buf, false)
+		Self::decode_request(request, false)
 	}
 }
 
 impl<'a> OpenRequest<'a> {
 	fn decode_request(
-		buf: decode::RequestBuf<'a>,
+		request: server::Request<'a>,
 		is_cuse: bool,
 	) -> Result<Self, server::RequestError> {
-		let mut dec = decode::RequestDecoder::new(buf);
+		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_OPEN)?;
 
 		let header = dec.header();
@@ -153,8 +153,6 @@ impl<'a> OpenResponse<'a> {
 	}
 }
 
-response_send_funcs!(OpenResponse<'_>);
-
 impl fmt::Debug for OpenResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("OpenResponse")
@@ -164,14 +162,25 @@ impl fmt::Debug for OpenResponse<'_> {
 	}
 }
 
-impl OpenResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_sized(&self.raw)
+impl server::sealed::Sealed for OpenResponse<'_> {}
+
+impl server::CuseResponse for OpenResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::CuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::sized(header, &self.raw)
+	}
+}
+
+impl server::FuseResponse for OpenResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::sized(header, &self.raw)
 	}
 }
 

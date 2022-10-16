@@ -60,13 +60,12 @@ impl GetxattrRequest<'_> {
 	}
 }
 
-request_try_from! { GetxattrRequest : fuse }
+impl server::sealed::Sealed for GetxattrRequest<'_> {}
 
-impl decode::Sealed for GetxattrRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for GetxattrRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for GetxattrRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_GETXATTR)?;
@@ -105,7 +104,8 @@ pub struct GetxattrResponse<'a> {
 
 enum GetxattrOutput<'a> {
 	Value(&'a xattr::Value),
-	Size(usize),
+	Size(fuse_kernel::fuse_getxattr_out),
+	ErrTooBig(usize),
 }
 
 impl<'a> GetxattrResponse<'a> {
@@ -120,13 +120,18 @@ impl<'a> GetxattrResponse<'a> {
 	#[inline]
 	#[must_use]
 	pub fn with_value_size(value_size: usize) -> GetxattrResponse<'a> {
+		if let Some(size_u32) = check_value_size(value_size) {
+			let output = GetxattrOutput::Size(fuse_kernel::fuse_getxattr_out {
+				size: size_u32,
+				..fuse_kernel::fuse_getxattr_out::zeroed()
+			});
+			return GetxattrResponse { output };
+		}
 		GetxattrResponse {
-			output: GetxattrOutput::Size(value_size),
+			output: GetxattrOutput::ErrTooBig(value_size),
 		}
 	}
 }
-
-response_send_funcs!(GetxattrResponse<'_>);
 
 impl fmt::Debug for GetxattrResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -135,7 +140,10 @@ impl fmt::Debug for GetxattrResponse<'_> {
 			GetxattrOutput::Value(value) => {
 				dbg.field("value", &value.as_bytes());
 			},
-			GetxattrOutput::Size(size) => {
+			GetxattrOutput::Size(out) => {
+				dbg.field("size", &out.size);
+			},
+			GetxattrOutput::ErrTooBig(size) => {
 				dbg.field("size", &size);
 			},
 		}
@@ -143,38 +151,32 @@ impl fmt::Debug for GetxattrResponse<'_> {
 	}
 }
 
-impl GetxattrResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		match self.output {
-			GetxattrOutput::Value(value) => {
-				enc.encode_bytes(value.as_bytes())
-			},
-			GetxattrOutput::Size(size) => match check_value_size(size) {
-				Ok(size_u32) => {
-					enc.encode_sized(&fuse_kernel::fuse_getxattr_out {
-						size: size_u32,
-						..fuse_kernel::fuse_getxattr_out::zeroed()
-					})
-				},
-				Err(err) => enc.encode_error(err),
-			},
+impl server::sealed::Sealed for GetxattrResponse<'_> {}
+
+impl server::FuseResponse for GetxattrResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		use GetxattrOutput as Out;
+		match &self.output {
+			Out::Value(value) => encode::bytes(header, value.as_bytes()),
+			Out::Size(out) => encode::sized(header, out),
+			Out::ErrTooBig(_) => encode::error(header, crate::Error::E2BIG),
 		}
 	}
 }
 
 #[inline]
-fn check_value_size(value_size: usize) -> Result<u32, crate::Error> {
+#[must_use]
+fn check_value_size(value_size: usize) -> Option<u32> {
 	if let Some(max_len) = xattr::Value::MAX_LEN {
 		if value_size > max_len {
-			return Err(crate::Error::E2BIG);
+			return None;
 		}
 	}
-	u32::try_from(value_size).map_err(|_| crate::Error::E2BIG)
+	u32::try_from(value_size).ok()
 }
 
 // }}}

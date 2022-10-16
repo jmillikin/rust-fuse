@@ -102,47 +102,6 @@ impl MessageBuilder {
 	}
 }
 
-pub struct FakeSocket {
-	write: core::cell::RefCell<Option<Vec<u8>>>,
-}
-
-impl FakeSocket {
-	pub fn new() -> Self {
-		Self {
-			write: core::cell::RefCell::new(None),
-		}
-	}
-
-	pub fn expect_write(self) -> Vec<u8> {
-		match self.write.into_inner() {
-			Some(w) => w,
-			None => panic!("expected exactly one write to FakeSocket"),
-		}
-	}
-}
-
-impl fuse::server::io::Socket for FakeSocket {
-	type Error = std::io::Error;
-
-	fn recv(
-		&self,
-		_buf: &mut [u8],
-	) -> Result<usize, fuse::server::io::RecvError<Self::Error>> {
-		unimplemented!()
-	}
-
-	fn send(
-		&self,
-		buf: fuse::io::SendBuf,
-	) -> Result<(), fuse::server::io::SendError<Self::Error>> {
-		if self.write.borrow().is_some() {
-			panic!("expected exactly one write to FakeSocket");
-		}
-		self.write.replace(Some(buf.to_vec().unwrap()));
-		Ok(())
-	}
-}
-
 #[macro_export]
 macro_rules! decode_request {
 	($t:ty, $buf: ident) => {
@@ -150,21 +109,24 @@ macro_rules! decode_request {
 	};
 	($t:ty, $buf: ident, $opts:tt $(,)?) => {{
 		use fuse::server;
-		use fuse::server::decode::FuseRequest;
+		use fuse::server::FuseRequest;
+		use fuse::server::FuseRequestOptions;
 
 		use $crate::DecodeRequestOpts;
 
 		let opts = $crate::decode_request_opts!($opts);
 		let request_len = $buf.as_slice().len();
-		let protocol_version = fuse::Version::new(
+
+		let mut init = fuse::FuseInitResponse::new();
+		init.set_version(fuse::Version::new(
 			opts.protocol_version.0,
 			opts.protocol_version.1,
-		);
-		let fuse_request = server::FuseRequestBuilder::new()
-			.version(protocol_version)
-			.build($buf.as_aligned_slice().truncate(request_len))
-			.unwrap();
-		<$t>::from_fuse_request(&fuse_request).unwrap()
+		));
+		let req_opts = FuseRequestOptions::from_init_response(&init);
+
+		let req_buf = $buf.as_aligned_slice().truncate(request_len);
+		let request = server::Request::new(req_buf).unwrap();
+		<$t>::from_request(request, req_opts).unwrap()
 	}};
 }
 
@@ -194,27 +156,24 @@ macro_rules! encode_response {
 		$crate::encode_response!($response, {})
 	};
 	($response:expr, $opts:tt $(,)?) => {{
+		use fuse::server::FuseRequest;
+		use fuse::server::FuseResponse;
+		use fuse::server::FuseResponseOptions;
 		use $crate::EncodeRequestOpts;
 
 		let opts = $crate::encode_request_opts!($opts);
 
-		let request_buf = $crate::MessageBuilder::new()
-			.set_header(|h| {})
-			.build_aligned();
-
-		let protocol_version = fuse::Version::new(
+		let mut init = fuse::FuseInitResponse::new();
+		init.set_version(fuse::Version::new(
 			opts.protocol_version.0,
 			opts.protocol_version.1,
-		);
-		let response_ctx = fuse::server::FuseRequestBuilder::new()
-			.version(protocol_version)
-			.build(request_buf.as_aligned_slice())
-			.unwrap()
-			.response_context();
+		));
+		let resp_opts = FuseResponseOptions::from_init_response(&init);
 
-		let socket = $crate::FakeSocket::new();
-		$response.send(&socket, &response_ctx).unwrap();
-		socket.expect_write()
+		let request_id = core::num::NonZeroU64::new(0xAABBCCDD).unwrap();
+		let mut resp_header = fuse::ResponseHeader::new(request_id);
+		let response = $response.to_response(&mut resp_header, resp_opts);
+		fuse::io::SendBuf::from(response).to_vec().unwrap()
 	}};
 }
 

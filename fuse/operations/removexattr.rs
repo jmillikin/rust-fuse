@@ -51,13 +51,12 @@ impl RemovexattrRequest<'_> {
 	}
 }
 
-request_try_from! { RemovexattrRequest : fuse }
+impl server::sealed::Sealed for RemovexattrRequest<'_> {}
 
-impl decode::Sealed for RemovexattrRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for RemovexattrRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for RemovexattrRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_REMOVEXATTR)?;
@@ -102,22 +101,21 @@ impl<'a> RemovexattrResponse<'a> {
 	}
 }
 
-response_send_funcs!(RemovexattrResponse<'_>);
-
 impl fmt::Debug for RemovexattrResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("RemovexattrResponse").finish()
 	}
 }
 
-impl RemovexattrResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_header_only()
+impl server::sealed::Sealed for RemovexattrResponse<'_> {}
+
+impl server::FuseResponse for RemovexattrResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::header_only(header)
 	}
 }
 

@@ -23,7 +23,6 @@ use core::slice;
 use crate::internal::fuse_kernel;
 use crate::node;
 use crate::server;
-use crate::server::decode;
 
 // ForgetRequest {{{
 
@@ -67,13 +66,12 @@ impl<'a> ForgetRequest<'a> {
 	}
 }
 
-request_try_from! { ForgetRequest : fuse }
+impl server::sealed::Sealed for ForgetRequest<'_> {}
 
-impl decode::Sealed for ForgetRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for ForgetRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for ForgetRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		let header = dec.header();

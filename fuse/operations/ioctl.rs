@@ -83,31 +83,32 @@ impl<'a> IoctlRequest<'a> {
 	}
 }
 
-request_try_from! { IoctlRequest : cuse fuse }
+impl server::sealed::Sealed for IoctlRequest<'_> {}
 
-impl decode::Sealed for IoctlRequest<'_> {}
-
-impl<'a> decode::CuseRequest<'a> for IoctlRequest<'a> {
-	fn from_cuse_request(
-		request: &server::CuseRequest<'a>,
+impl<'a> server::CuseRequest<'a> for IoctlRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::CuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
-		Self::decode(request.decoder(), true)
+		Self::decode(request, true)
 	}
 }
 
-impl<'a> decode::FuseRequest<'a> for IoctlRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for IoctlRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
-		Self::decode(request.decoder(), false)
+		Self::decode(request, false)
 	}
 }
 
 impl<'a> IoctlRequest<'a> {
 	fn decode(
-		mut dec: decode::RequestDecoder<'a>,
+		request: server::Request<'a>,
 		is_cuse: bool,
 	) -> Result<Self, server::RequestError> {
+		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_IOCTL)?;
 
 		let header = dec.header();
@@ -326,7 +327,12 @@ impl<'a> IoctlResponse<'a> {
 	#[must_use]
 	pub fn new_retry(retry: IoctlRetry<'a>) -> IoctlResponse<'a> {
 		Self {
-			raw: fuse_kernel::fuse_ioctl_out::zeroed(),
+			raw: fuse_kernel::fuse_ioctl_out {
+				result: 0,
+				flags: fuse_kernel::FUSE_IOCTL_RETRY,
+				in_iovs: retry.input_slices.len() as u32,
+				out_iovs: retry.output_slices.len() as u32,
+			},
 			output: IoctlResponseOutput::Retry(
 				retry.input_slices,
 				retry.output_slices,
@@ -345,8 +351,6 @@ impl<'a> IoctlResponse<'a> {
 		self.set_result = true;
 	}
 }
-
-response_send_funcs!(IoctlResponse<'_>);
 
 impl fmt::Debug for IoctlResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -373,48 +377,53 @@ impl fmt::Debug for IoctlResponse<'_> {
 	}
 }
 
-impl IoctlResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-
-		fn raw_bytes<'a>(raw: &'a fuse_kernel::fuse_ioctl_out) -> &'a [u8] {
-			unsafe {
-				core::slice::from_raw_parts(
-					(raw as *const fuse_kernel::fuse_ioctl_out).cast::<u8>(),
-					size_of::<fuse_kernel::fuse_ioctl_out>(),
-				)
-			}
-		}
-
+impl<'a> IoctlResponse<'a> {
+	fn encode(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+	) -> server::Response<'a> {
 		match self.output {
 			IoctlResponseOutput::Bytes(output) => {
-				enc.encode_bytes_2(raw_bytes(&self.raw), output)
+				encode::sized_bytes(header, &self.raw, output)
 			},
 			IoctlResponseOutput::Retry(input_slices, output_slices) => {
-				let mut raw = self.raw;
-				raw.flags = fuse_kernel::FUSE_IOCTL_RETRY;
-				raw.in_iovs = input_slices.len() as u32;
-				raw.out_iovs = output_slices.len() as u32;
-
-				let bytes_2: &[u8] = unsafe {
+				let bytes_2: &'a [u8] = unsafe {
 					core::slice::from_raw_parts(
 						input_slices.as_ptr().cast::<u8>(),
 						size_of::<IoctlSlice>() * input_slices.len(),
 					)
 				};
-				let bytes_3: &[u8] = unsafe {
+				let bytes_3: &'a [u8] = unsafe {
 					core::slice::from_raw_parts(
 						output_slices.as_ptr().cast::<u8>(),
 						size_of::<IoctlSlice>() * output_slices.len(),
 					)
 				};
-				enc.encode_bytes_4(raw_bytes(&raw), bytes_2, bytes_3, b"")
+				encode::sized_bytes2(header, &self.raw, bytes_2, bytes_3)
 			},
 		}
+	}
+}
+
+impl server::sealed::Sealed for IoctlResponse<'_> {}
+
+impl server::CuseResponse for IoctlResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::CuseResponseOptions,
+	) -> server::Response<'a> {
+		self.encode(header)
+	}
+}
+
+impl server::FuseResponse for IoctlResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		self.encode(header)
 	}
 }
 

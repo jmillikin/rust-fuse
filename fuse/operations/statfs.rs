@@ -18,7 +18,6 @@
 
 use core::fmt;
 use core::marker::PhantomData;
-use core::slice;
 
 use crate::internal::fuse_kernel;
 use crate::node;
@@ -44,13 +43,12 @@ impl StatfsRequest<'_> {
 	}
 }
 
-request_try_from! { StatfsRequest : fuse }
+impl server::sealed::Sealed for StatfsRequest<'_> {}
 
-impl decode::Sealed for StatfsRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for StatfsRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for StatfsRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_STATFS)?;
@@ -125,8 +123,6 @@ impl<'a> StatfsResponse<'a> {
 	}
 }
 
-response_send_funcs!(StatfsResponse<'_>);
-
 impl fmt::Debug for StatfsResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("StatfsResponse")
@@ -142,24 +138,33 @@ impl fmt::Debug for StatfsResponse<'_> {
 	}
 }
 
-impl StatfsResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		if ctx.version_minor < 4 {
-			let buf: &[u8] = unsafe {
-				let raw_ptr = &self.raw as *const fuse_kernel::fuse_statfs_out;
-				slice::from_raw_parts(
-					raw_ptr.cast::<u8>(),
-					fuse_kernel::FUSE_COMPAT_STATFS_SIZE,
-				)
-			};
-			return enc.encode_bytes(buf);
+impl server::sealed::Sealed for StatfsResponse<'_> {}
+
+#[repr(C)]
+struct fuse_statfs_out_v7p1 {
+	blocks: u64,
+	bfree: u64,
+	bavail: u64,
+	files: u64,
+	ffree: u64,
+	bsize: u32,
+	namelen: u32,
+}
+
+impl server::FuseResponse for StatfsResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		if options.version_minor() >= 4 {
+			return encode::sized(header, &self.raw);
 		}
-		enc.encode_sized(&self.raw)
+
+		let raw_ptr = &self.raw as *const fuse_kernel::fuse_statfs_out;
+		encode::sized(header, unsafe {
+			&*(raw_ptr.cast::<fuse_statfs_out_v7p1>())
+		})
 	}
 }
 

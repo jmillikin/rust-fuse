@@ -138,13 +138,12 @@ impl SetattrRequest<'_> {
 	}
 }
 
-request_try_from! { SetattrRequest : fuse }
+impl server::sealed::Sealed for SetattrRequest<'_> {}
 
-impl decode::Sealed for SetattrRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for SetattrRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for SetattrRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_SETATTR)?;
@@ -232,8 +231,6 @@ impl<'a> SetattrResponse<'a> {
 	}
 }
 
-response_send_funcs!(SetattrResponse<'_>);
-
 impl fmt::Debug for SetattrResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("SetattrResponse")
@@ -243,17 +240,18 @@ impl fmt::Debug for SetattrResponse<'_> {
 	}
 }
 
-impl SetattrResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		if ctx.version_minor >= 9 {
-			return enc.encode_sized(self.attr_out.as_v7p9());
+impl server::sealed::Sealed for SetattrResponse<'_> {}
+
+impl server::FuseResponse for SetattrResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		if options.version_minor() >= 9 {
+			return encode::sized(header, self.attr_out.as_v7p9());
 		}
-		enc.encode_sized(self.attr_out.as_v7p1())
+		encode::sized(header, self.attr_out.as_v7p1())
 	}
 }
 

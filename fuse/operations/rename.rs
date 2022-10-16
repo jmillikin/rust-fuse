@@ -67,13 +67,12 @@ impl RenameRequest<'_> {
 	}
 }
 
-request_try_from! { RenameRequest : fuse }
+impl server::sealed::Sealed for RenameRequest<'_> {}
 
-impl decode::Sealed for RenameRequest<'_> {}
-
-impl<'a> decode::FuseRequest<'a> for RenameRequest<'a> {
-	fn from_fuse_request(
-		request: &server::FuseRequest<'a>,
+impl<'a> server::FuseRequest<'a> for RenameRequest<'a> {
+	fn from_request(
+		request: server::Request<'a>,
+		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		let header = dec.header();
@@ -134,22 +133,21 @@ impl<'a> RenameResponse<'a> {
 	}
 }
 
-response_send_funcs!(RenameResponse<'_>);
-
 impl fmt::Debug for RenameResponse<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("RenameResponse").finish()
 	}
 }
 
-impl RenameResponse<'_> {
-	fn encode<S: encode::SendOnce>(
-		&self,
-		send: S,
-		ctx: &server::ResponseContext,
-	) -> S::Result {
-		let enc = encode::ReplyEncoder::new(send, ctx.request_id);
-		enc.encode_header_only()
+impl server::sealed::Sealed for RenameResponse<'_> {}
+
+impl server::FuseResponse for RenameResponse<'_> {
+	fn to_response<'a>(
+		&'a self,
+		header: &'a mut crate::ResponseHeader,
+		_options: server::FuseResponseOptions,
+	) -> server::Response<'a> {
+		encode::header_only(header)
 	}
 }
 
