@@ -443,6 +443,31 @@ impl FuseResponseOptions {
 
 // }}}
 
+// Hooks {{{
+
+/// Optional hooks for observing server events.
+#[allow(unused_variables)]
+pub trait Hooks {
+	/// Called for each [`Request`] received by the server.
+	fn request(&self, request: Request) {}
+
+	/// Called when decoding a [`Request`] as an operation-specific type fails.
+	fn request_error(&self, request: Request, error: RequestError) {}
+
+	/// Called when a [`Request`] is received with an unknown [`Opcode`].
+	///
+	/// This might happen when the request's `Opcode` isn't recognized by
+	/// the library, or when a FUSE-specific request is sent to a CUSE server.
+	///
+	/// [`Opcode`]: crate::Opcode
+	fn unknown_opcode(&self, request: Request) {}
+
+	/// Called when a [`Request`] is received for an unimplemented operation.
+	fn unimplemented(&self, request: Request) {}
+}
+
+// }}}
+
 pub fn cuse_init<'a, S: io::CuseSocket>(
 	socket: &mut S,
 	mut init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse<'a>,
@@ -629,18 +654,3 @@ pub async fn send_error_async<S: io::AsyncSocket>(
 	let mut response_header = crate::ResponseHeader::new(request_id);
 	socket.send(encode::error(&mut response_header, error).into()).await
 }
-
-// Hooks {{{
-
-#[allow(unused_variables)]
-pub trait Hooks {
-	fn request(&self, header: &crate::RequestHeader) {}
-
-	fn unknown_request(&self, request: Request) {}
-
-	fn unhandled_request(&self, header: &crate::RequestHeader) {}
-
-	fn request_error(&self, header: &crate::RequestHeader, err: RequestError) {}
-}
-
-// }}}
