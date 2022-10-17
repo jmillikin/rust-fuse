@@ -108,6 +108,8 @@ mod errno {
 	use super::{os_errno, Error};
 
 	pub(super) const E2BIG: Error = Error::from_errno(os_errno::E2BIG);
+	pub(super) const EAGAIN: Error = Error::from_errno(os_errno::EAGAIN);
+	pub(super) const EINTR: Error = Error::from_errno(os_errno::EINTR);
 	pub(super) const EINVAL: Error = Error::from_errno(os_errno::EINVAL);
 	pub(super) const ENOENT: Error = Error::from_errno(os_errno::ENOENT);
 	pub(super) const ENOSYS: Error = Error::from_errno(os_errno::ENOSYS);
@@ -134,6 +136,14 @@ macro_rules! enodata_or_enoattr {
 impl Error {
 	pub(crate) const E2BIG: Error = errno::E2BIG;
 
+	/// An operation was interrupted.
+	///
+	/// This error can be returned from an operation to signal that it was
+	/// interrupted by a `FUSE_INTERRUPT` request.
+	///
+	///  This error maps to `EINTR`.
+	pub const INTERRUPTED: Error = errno::EINTR;
+
 	/// The client specified an invalid argument.
 	///
 	/// This error maps to `EINVAL`.
@@ -153,6 +163,11 @@ impl Error {
 	///
 	/// This error maps to `EPROTO`.
 	pub const PROTOCOL_ERROR: Error = errno::EPROTO;
+
+	/// The requested operation is temporarily unavailable.
+	///
+	/// This error maps to `EAGAIN`.
+	pub const UNAVAILABLE: Error = errno::EAGAIN;
 
 	/// The requested operation is not implemented in this server.
 	///

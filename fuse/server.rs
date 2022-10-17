@@ -84,6 +84,7 @@ impl<E> From<io::SendError<E>> for ServerError<E> {
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum RequestError {
+	InterruptMissingRequestId,
 	LockError(lock::LockError),
 	MissingNodeId,
 	MissingRequestId,

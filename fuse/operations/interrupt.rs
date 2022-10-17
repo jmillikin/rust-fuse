@@ -17,6 +17,7 @@
 //! Implements the `FUSE_INTERRUPT` operation.
 
 use core::fmt;
+use core::num;
 
 use crate::internal::fuse_kernel;
 use crate::server;
@@ -33,8 +34,8 @@ pub struct InterruptRequest<'a> {
 
 impl InterruptRequest<'_> {
 	#[must_use]
-	pub fn request_id(&self) -> u64 {
-		self.body.unique
+	pub fn request_id(&self) -> num::NonZeroU64 {
+		unsafe { num::NonZeroU64::new_unchecked(self.body.unique) }
 	}
 }
 
@@ -64,7 +65,10 @@ impl<'a> InterruptRequest<'a> {
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		dec.expect_opcode(fuse_kernel::FUSE_INTERRUPT)?;
-		let body = dec.next_sized()?;
+		let body: &fuse_kernel::fuse_interrupt_in = dec.next_sized()?;
+		if body.unique == 0 {
+			return Err(server::RequestError::InterruptMissingRequestId);
+		}
 		Ok(Self { body })
 	}
 }
