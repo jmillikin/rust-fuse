@@ -14,16 +14,12 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-// use core::ffi::CStr;
+use core::ffi;
 use core::fmt;
 use core::fmt::Write;
 
-#[cfg(any(doc, feature = "std"))]
-use std::ffi::CStr;
-
-#[cfg(feature = "std")]
-const CSTR_FUSE: &CStr = unsafe {
-	CStr::from_bytes_with_nul_unchecked(b"fuse\0")
+const CSTR_FUSE: &ffi::CStr = unsafe {
+	ffi::CStr::from_bytes_with_nul_unchecked(b"fuse\0")
 };
 
 // MountOptions {{{
@@ -33,16 +29,13 @@ pub struct MountOptions<'a> {
 	allow_other: bool,
 	block_size: Option<u32>,
 	default_permissions: bool,
-	#[cfg(feature = "std")]
-	fs_subtype: Option<&'a CStr>,
-	#[cfg(feature = "std")]
-	fs_type: Option<&'a CStr>,
+	fs_subtype: Option<&'a ffi::CStr>,
+	fs_type: Option<&'a ffi::CStr>,
 	fuse_device_fd: Option<u32>,
 	group_id: Option<u32>,
 	max_read: Option<u32>,
 	root_mode: Option<u32>,
-	#[cfg(feature = "std")]
-	source: Option<&'a CStr>,
+	source: Option<&'a ffi::CStr>,
 	user_id: Option<u32>,
 	_no_std: core::marker::PhantomData<&'a ()>,
 }
@@ -54,15 +47,12 @@ impl<'a> MountOptions<'a> {
 			allow_other: false,
 			block_size: None,
 			default_permissions: false,
-			#[cfg(feature = "std")]
 			fs_subtype: None,
-			#[cfg(feature = "std")]
 			fs_type: None,
 			fuse_device_fd: None,
 			group_id: None,
 			max_read: None,
 			root_mode: None,
-			#[cfg(feature = "std")]
 			source: None,
 			user_id: None,
 			_no_std: core::marker::PhantomData,
@@ -96,25 +86,21 @@ impl<'a> MountOptions<'a> {
 		self.default_permissions = default_permissions;
 	}
 
-	#[cfg(any(doc, feature = "std"))]
 	#[must_use]
-	pub fn fs_type(&self) -> &'a CStr {
+	pub fn fs_type(&self) -> &'a ffi::CStr {
 		self.fs_type.unwrap_or(CSTR_FUSE)
 	}
 
-	#[cfg(any(doc, feature = "std"))]
-	pub fn set_fs_type(&mut self, fs_type: Option<&'a CStr>) {
+	pub fn set_fs_type(&mut self, fs_type: Option<&'a ffi::CStr>) {
 		self.fs_type = fs_type;
 	}
 
-	#[cfg(any(doc, feature = "std"))]
 	#[must_use]
-	pub fn fs_subtype(&self) -> Option<&'a CStr> {
+	pub fn fs_subtype(&self) -> Option<&'a ffi::CStr> {
 		self.fs_subtype
 	}
 
-	#[cfg(any(doc, feature = "std"))]
-	pub fn set_fs_subtype(&mut self, fs_subtype: Option<&'a CStr>) {
+	pub fn set_fs_subtype(&mut self, fs_subtype: Option<&'a ffi::CStr>) {
 		self.fs_subtype = fs_subtype;
 	}
 
@@ -154,14 +140,12 @@ impl<'a> MountOptions<'a> {
 		self.root_mode = root_mode;
 	}
 
-	#[cfg(any(doc, feature = "std"))]
 	#[must_use]
-	pub fn source(&self) -> &'a CStr {
+	pub fn source(&self) -> &'a ffi::CStr {
 		self.source.unwrap_or(CSTR_FUSE)
 	}
 
-	#[cfg(any(doc, feature = "std"))]
-	pub fn set_source(&mut self, source: Option<&'a CStr>) {
+	pub fn set_source(&mut self, source: Option<&'a ffi::CStr>) {
 		self.source = source;
 	}
 
@@ -181,7 +165,7 @@ impl<'a> MountOptions<'a> {
 
 #[derive(Copy, Clone)]
 pub struct MountData<'a> {
-	buf: &'a [u8],
+	buf: &'a ffi::CStr,
 }
 
 impl<'a> MountData<'a> {
@@ -192,18 +176,16 @@ impl<'a> MountData<'a> {
 			return None;
 		}
 		let count = w.count;
-		Some(Self { buf: &buf[..count] })
+
+		let buf_cstr = unsafe {
+			ffi::CStr::from_bytes_with_nul_unchecked(&buf[..count])
+		};
+		Some(Self { buf: buf_cstr })
 	}
 
 	#[must_use]
-	pub fn as_bytes_with_nul(&self) -> &'a [u8] {
+	pub fn as_cstr(&self) -> &'a ffi::CStr {
 		self.buf
-	}
-
-	#[cfg(any(doc, feature = "std"))]
-	#[must_use]
-	pub fn as_cstr(&self) -> &'a CStr {
-		unsafe { CStr::from_bytes_with_nul_unchecked(self.buf) }
 	}
 }
 
@@ -242,7 +224,6 @@ fn write_mount_data(w: &mut BufWriter, opts: &MountOptions) -> fmt::Result {
 		write!(w, "{}rootmode={:o}", sep, root_mode)?;
 		sep = comma;
 	}
-	#[cfg(feature = "std")]
 	if let Some(fs_subtype) = opts.fs_subtype {
 		if !cstr_is_empty(fs_subtype) {
 			write!(w, "{}subtype=", sep)?;
@@ -280,8 +261,7 @@ impl BufWriter<'_> {
 		Ok(())
 	}
 
-	#[cfg(feature = "std")]
-	fn write_cstr(&mut self, s: &CStr) -> fmt::Result {
+	fn write_cstr(&mut self, s: &ffi::CStr) -> fmt::Result {
 		let b = s.to_bytes();
 		if b.contains(&b',') {
 			return Err(fmt::Error);
@@ -298,7 +278,7 @@ impl fmt::Write for BufWriter<'_> {
 
 // }}}
 
-#[cfg(feature = "std")]
-fn cstr_is_empty(s: &CStr) -> bool {
+// https://github.com/rust-lang/rust/issues/102444
+fn cstr_is_empty(s: &ffi::CStr) -> bool {
 	unsafe { s.as_ptr().read() == 0 }
 }

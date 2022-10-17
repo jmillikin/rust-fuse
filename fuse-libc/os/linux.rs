@@ -14,8 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-// use core::ffi::CStr;
-use std::ffi::CStr;
+use core::ffi;
 
 #[cfg(target_os = "linux")]
 use fuse::os::linux as fuse_os_linux;
@@ -41,17 +40,17 @@ const PAGE_SIZE: usize = 4096;
 #[derive(Copy, Clone)]
 pub struct MountOptions<'a> {
 	opts: fuse_os_linux::MountOptions<'a>,
-	dev_fuse: Option<&'a CStr>,
+	dev_fuse: Option<&'a ffi::CStr>,
 	flags: u32,
 }
 
 impl<'a> MountOptions<'a> {
 	#[must_use]
-	pub fn dev_fuse(&self) -> &'a CStr {
+	pub fn dev_fuse(&self) -> &'a ffi::CStr {
 		self.dev_fuse.unwrap_or(crate::DEV_FUSE)
 	}
 
-	pub fn set_dev_fuse(&mut self, dev_fuse: Option<&'a CStr>) {
+	pub fn set_dev_fuse(&mut self, dev_fuse: Option<&'a ffi::CStr>) {
 		self.dev_fuse = dev_fuse;
 	}
 
@@ -76,7 +75,7 @@ impl<'a> From<fuse_os_linux::MountOptions<'a>> for MountOptions<'a> {
 }
 
 pub fn mount<'a>(
-	target: &CStr,
+	target: &ffi::CStr,
 	options: impl Into<MountOptions<'a>>,
 ) -> Result<FuseServerSocket, LibcError> {
 	use fuse::os::linux::MountData;
@@ -108,7 +107,7 @@ pub fn mount<'a>(
 			target.as_ptr(),
 			opts.fs_type().as_ptr(),
 			options.flags as libc::c_ulong,
-			mount_data.as_bytes_with_nul().as_ptr().cast::<libc::c_void>(),
+			mount_data.as_cstr().as_ptr().cast::<libc::c_void>(),
 		)
 	};
 	if rc != 0 {
@@ -117,7 +116,7 @@ pub fn mount<'a>(
 	Ok(socket)
 }
 
-fn get_root_mode(target: &CStr) -> Result<u32, LibcError> {
+fn get_root_mode(target: &ffi::CStr) -> Result<u32, LibcError> {
 	let mut statx_buf: libc::statx = unsafe { core::mem::zeroed() };
 	let rc = unsafe {
 		libc::statx(

@@ -14,9 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-// use core::ffi::CStr;
-use std::ffi::CStr;
-
+use core::ffi;
 use core::marker::PhantomData;
 
 use linux_errno::Error;
@@ -48,7 +46,7 @@ struct open_how {
 
 pub(crate) unsafe fn open(
 	dir_fd: i32,
-	filename: &CStr,
+	filename: &ffi::CStr,
 	flags: OpenFlag,
 	mode: u32,
 ) -> Result<i32, Error> {
@@ -137,9 +135,9 @@ pub(crate) fn getgid() -> u32 {
 }
 
 pub(crate) unsafe fn mount(
-	source: &CStr,
-	target: &CStr,
-	fstype: &CStr,
+	source: &ffi::CStr,
+	target: &ffi::CStr,
+	fstype: &ffi::CStr,
 	mountflags: u32,
 	data: &[u8],
 ) -> Result<(), Error> {
@@ -189,7 +187,7 @@ pub(crate) const STATX_MODE: u32 = 1 << 1;
 
 pub(crate) unsafe fn statx(
 	dir_fd: i32,
-	filename: &CStr,
+	filename: &ffi::CStr,
 	flags: u32,
 	mask: u32,
 ) -> Result<kernel_statx, Error> {

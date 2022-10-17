@@ -16,10 +16,7 @@
 
 //! Implements the `FUSE_READLINK` operation.
 
-// use core::ffi::CStr;
-#[cfg(feature = "std")]
-use std::ffi::CStr;
-
+use core::ffi;
 use core::fmt;
 use core::marker::PhantomData;
 
@@ -85,9 +82,8 @@ pub struct ReadlinkResponse<'a> {
 }
 
 impl<'a> ReadlinkResponse<'a> {
-	#[cfg(feature = "std")]
 	#[must_use]
-	pub fn new(target: &'a CStr) -> ReadlinkResponse<'a> {
+	pub fn new(target: &'a ffi::CStr) -> ReadlinkResponse<'a> {
 		Self { target: target.to_bytes() }
 	}
 

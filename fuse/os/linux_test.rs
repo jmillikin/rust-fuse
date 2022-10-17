@@ -14,7 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#[cfg(feature = "std")]
 use std::ffi::{CStr, CString};
 
 mod linux;
@@ -48,7 +47,6 @@ fn opt_default_permissions() {
 	assert_eq!(opts.default_permissions(), true);
 }
 
-#[cfg(feature = "std")]
 #[test]
 fn opt_fs_subtype() {
 	let mut opts = MountOptions::new();
@@ -59,7 +57,6 @@ fn opt_fs_subtype() {
 	assert_eq!(opts.fs_subtype(), Some(fs_subtype.as_ref()));
 }
 
-#[cfg(feature = "std")]
 #[test]
 fn opt_fs_type() {
 	let mut opts = MountOptions::new();
@@ -107,7 +104,6 @@ fn opt_root_mode() {
 	assert_eq!(opts.root_mode(), Some(123u32));
 }
 
-#[cfg(feature = "std")]
 #[test]
 fn opt_source() {
 	let mut opts = MountOptions::new();
@@ -130,7 +126,6 @@ fn opt_user_id() {
 
 #[test]
 fn mount_data() {
-	#[cfg(feature = "std")]
 	let fs_subtype = CString::new("rust_fuse_subtype").unwrap();
 
 	let mut opts = MountOptions::new();
@@ -138,7 +133,6 @@ fn mount_data() {
 	opts.set_allow_other(true);
 	opts.set_block_size(Some(10));
 	opts.set_default_permissions(true);
-	#[cfg(feature = "std")]
 	opts.set_fs_subtype(Some(&fs_subtype));
 	opts.set_fuse_device_fd(Some(20));
 	opts.set_group_id(Some(30));
@@ -149,7 +143,6 @@ fn mount_data() {
 	let mut buf = [0u8; 512];
 	let mount_data = MountData::new(&mut buf, &opts).unwrap();
 
-	#[cfg(feature = "std")]
 	let expect = concat!(
 		"fd=20,",
 		"allow_other,",
@@ -162,23 +155,8 @@ fn mount_data() {
 		"user_id=60\0",
 	).as_bytes();
 
-	#[cfg(not(feature = "std"))]
-	let expect = concat!(
-		"fd=20,",
-		"allow_other,",
-		"blksize=10,",
-		"default_permissions,",
-		"group_id=30,",
-		"max_read=40,",
-		"rootmode=62,",
-		"user_id=60\0",
-	).as_bytes();
-
-	#[cfg(feature = "std")]
 	let expect_cstr = CStr::from_bytes_with_nul(expect).unwrap();
-	#[cfg(feature = "std")]
 	assert_eq!(mount_data.as_cstr(), expect_cstr);
-	assert_eq!(mount_data.as_bytes_with_nul(), expect);
 }
 
 #[test]
@@ -187,7 +165,7 @@ fn mount_data_empty() {
 	let mut buf = [0u8; 512];
 	let mount_data = MountData::new(&mut buf, &opts).unwrap();
 
-	assert_eq!(mount_data.as_bytes_with_nul(), b"\0");
+	assert_eq!(mount_data.as_cstr().to_bytes_with_nul(), b"\0");
 }
 
 #[test]
@@ -209,11 +187,13 @@ fn mount_data_small_buf() {
 		let mut buf = [0u8; 6];
 		let mount_data = MountData::new(&mut buf, &opts);
 		assert!(mount_data.is_some());
-		assert_eq!(mount_data.unwrap().as_bytes_with_nul(), b"fd=20\0");
+		assert_eq!(
+			mount_data.unwrap().as_cstr().to_bytes_with_nul(),
+			b"fd=20\0",
+		);
 	}
 }
 
-#[cfg(feature = "std")]
 #[test]
 fn mount_data_ignore_empty_subtype() {
 	let empty_subtype = CString::new("").unwrap();
@@ -223,10 +203,9 @@ fn mount_data_ignore_empty_subtype() {
 
 	let mut buf = [0u8; 512];
 	let mount_data = MountData::new(&mut buf, &opts).unwrap();
-	assert_eq!(mount_data.as_bytes_with_nul(), b"\0");
+	assert_eq!(mount_data.as_cstr().to_bytes_with_nul(), b"\0");
 }
 
-#[cfg(feature = "std")]
 #[test]
 fn mount_data_reject_subtype_with_comma() {
 	let fs_subtype = CString::new("bad,subtype").unwrap();
@@ -239,7 +218,6 @@ fn mount_data_reject_subtype_with_comma() {
 	assert!(mount_data.is_none());
 }
 
-#[cfg(feature = "std")]
 #[test]
 fn mount_data_no_source_or_fs_type() {
 	let fs_type = CString::new("rust_fuse_type").unwrap();
@@ -251,5 +229,5 @@ fn mount_data_no_source_or_fs_type() {
 
 	let mut buf = [0u8; 512];
 	let mount_data = MountData::new(&mut buf, &opts).unwrap();
-	assert_eq!(mount_data.as_bytes_with_nul(), b"\0");
+	assert_eq!(mount_data.as_cstr().to_bytes_with_nul(), b"\0");
 }

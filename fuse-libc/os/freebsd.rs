@@ -14,8 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-// use core::ffi::CStr;
-use std::ffi::CStr;
+use core::ffi;
 
 #[cfg(target_os = "freebsd")]
 use fuse::os::freebsd as fuse_os_freebsd;
@@ -59,7 +58,7 @@ impl<'a> From<fuse_os_freebsd::MountOptions<'a>> for MountOptions<'a> {
 }
 
 pub fn mount<'a>(
-	target: &CStr,
+	target: &ffi::CStr,
 	options: impl Into<MountOptions<'a>>,
 ) -> Result<FuseServerSocket, LibcError> {
 	let options = options.into();

@@ -15,8 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use core::mem;
-// use core::ffi::CStr;
-use std::ffi::CStr;
+use core::ffi;
 
 use fuse::io::SendBuf;
 use fuse::server;
@@ -150,7 +149,7 @@ impl CuseServerSocket {
 		Self::open(crate::DEV_CUSE)
 	}
 
-	pub fn open(dev_cuse: &CStr) -> Result<CuseServerSocket, LibcError> {
+	pub fn open(dev_cuse: &ffi::CStr) -> Result<CuseServerSocket, LibcError> {
 		let path_ptr = dev_cuse.as_ptr().cast::<libc::c_char>();
 		let open_rc = unsafe {
 			libc::open(path_ptr, libc::O_RDWR | libc::O_CLOEXEC)
@@ -191,7 +190,7 @@ impl FuseServerSocket {
 		Self::open(crate::DEV_FUSE)
 	}
 
-	pub fn open(dev_fuse: &CStr) -> Result<FuseServerSocket, LibcError> {
+	pub fn open(dev_fuse: &ffi::CStr) -> Result<FuseServerSocket, LibcError> {
 		let path_ptr = dev_fuse.as_ptr().cast::<libc::c_char>();
 		let open_rc = unsafe {
 			libc::open(path_ptr, libc::O_RDWR | libc::O_CLOEXEC)

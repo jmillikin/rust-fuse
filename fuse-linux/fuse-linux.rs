@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#![no_std]
+
 #![warn(
 	// API hygiene
 	clippy::exhaustive_enums,
@@ -43,8 +45,7 @@
 	clippy::print_stdout,
 )]
 
-// use core::ffi::CStr;
-use std::ffi::CStr;
+use core::ffi;
 
 #[cfg(target_os = "linux")]
 use fuse::os::linux as fuse_os_linux;
@@ -70,27 +71,27 @@ const DEFAULT_FLAGS: u32 = MS_NOSUID | MS_NODEV;
 // be fine.
 const PAGE_SIZE: usize = 4096;
 
-const DEV_CUSE: &CStr = unsafe {
-	CStr::from_bytes_with_nul_unchecked(b"/dev/cuse\0")
+const DEV_CUSE: &ffi::CStr = unsafe {
+	ffi::CStr::from_bytes_with_nul_unchecked(b"/dev/cuse\0")
 };
-const DEV_FUSE: &CStr = unsafe {
-	CStr::from_bytes_with_nul_unchecked(b"/dev/fuse\0")
+const DEV_FUSE: &ffi::CStr = unsafe {
+	ffi::CStr::from_bytes_with_nul_unchecked(b"/dev/fuse\0")
 };
 
 #[derive(Copy, Clone)]
 pub struct MountOptions<'a> {
 	opts: fuse_os_linux::MountOptions<'a>,
-	dev_fuse: Option<&'a CStr>,
+	dev_fuse: Option<&'a ffi::CStr>,
 	flags: u32,
 }
 
 impl<'a> MountOptions<'a> {
 	#[must_use]
-	pub fn dev_fuse(&self) -> &'a CStr {
+	pub fn dev_fuse(&self) -> &'a ffi::CStr {
 		self.dev_fuse.unwrap_or(DEV_FUSE)
 	}
 
-	pub fn set_dev_fuse(&mut self, dev_fuse: Option<&'a CStr>) {
+	pub fn set_dev_fuse(&mut self, dev_fuse: Option<&'a ffi::CStr>) {
 		self.dev_fuse = dev_fuse;
 	}
 
@@ -115,7 +116,7 @@ impl<'a> From<fuse_os_linux::MountOptions<'a>> for MountOptions<'a> {
 }
 
 pub fn mount<'a>(
-	target: &CStr,
+	target: &ffi::CStr,
 	options: impl Into<MountOptions<'a>>,
 ) -> Result<FuseServerSocket, linux_errno::Error> {
 	use fuse::os::linux::MountData;
@@ -147,13 +148,13 @@ pub fn mount<'a>(
 			target,
 			opts.fs_type(),
 			options.flags,
-			mount_data.as_bytes_with_nul(),
+			mount_data.as_cstr().to_bytes_with_nul(),
 		)?;
 	}
 	Ok(socket)
 }
 
-fn get_root_mode(target: &CStr) -> Result<u32, linux_errno::Error> {
+fn get_root_mode(target: &ffi::CStr) -> Result<u32, linux_errno::Error> {
 	let statx = unsafe {
 		sys::statx(sys::AT_FDCWD, target, 0, sys::STATX_MODE)?
 	};

@@ -14,18 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-// use core::ffi::CStr;
-
-#[cfg(any(doc, feature = "std"))]
-use std::ffi::CStr;
+use core::ffi;
 
 // MountOptions {{{
 
 #[derive(Copy, Clone)]
 pub struct MountOptions<'a> {
 	default_permissions: bool,
-	#[cfg(feature = "std")]
-	fs_subtype: Option<&'a CStr>,
+	fs_subtype: Option<&'a ffi::CStr>,
 }
 
 impl<'a> MountOptions<'a> {
@@ -33,7 +29,6 @@ impl<'a> MountOptions<'a> {
 	pub fn new() -> Self {
 		MountOptions {
 			default_permissions: false,
-			#[cfg(feature = "std")]
 			fs_subtype: None,
 		}
 	}
@@ -47,14 +42,12 @@ impl<'a> MountOptions<'a> {
 		self.default_permissions = default_permissions;
 	}
 
-	#[cfg(any(doc, feature = "std"))]
 	#[must_use]
-	pub fn fs_subtype(&self) -> Option<&'a CStr> {
+	pub fn fs_subtype(&self) -> Option<&'a ffi::CStr> {
 		self.fs_subtype
 	}
 
-	#[cfg(any(doc, feature = "std"))]
-	pub fn set_fs_subtype(&mut self, fs_subtype: Option<&'a CStr>) {
+	pub fn set_fs_subtype(&mut self, fs_subtype: Option<&'a ffi::CStr>) {
 		self.fs_subtype = fs_subtype;
 	}
 }

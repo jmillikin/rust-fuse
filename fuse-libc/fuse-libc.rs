@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//#![cfg_attr(not(any(doc, feature = "std")), no_std)]
+#![cfg_attr(not(any(doc, feature = "std")), no_std)]
 
 #![warn(
 	// API hygiene
@@ -45,8 +45,7 @@
 	clippy::print_stdout,
 )]
 
-// use core::ffi::CStr;
-use std::ffi::CStr;
+use core::ffi;
 
 mod io {
 	pub(crate) mod iovec;
@@ -70,10 +69,10 @@ pub mod os {
 }
 
 #[cfg(not(target_os = "freebsd"))]
-const DEV_CUSE: &CStr = unsafe {
-	CStr::from_bytes_with_nul_unchecked(b"/dev/cuse\0")
+const DEV_CUSE: &ffi::CStr = unsafe {
+	ffi::CStr::from_bytes_with_nul_unchecked(b"/dev/cuse\0")
 };
 
-const DEV_FUSE: &CStr = unsafe {
-	CStr::from_bytes_with_nul_unchecked(b"/dev/fuse\0")
+const DEV_FUSE: &ffi::CStr = unsafe {
+	ffi::CStr::from_bytes_with_nul_unchecked(b"/dev/fuse\0")
 };
