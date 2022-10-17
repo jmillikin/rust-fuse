@@ -172,29 +172,64 @@ where
 
 // }}}
 
-// FuseResult {{{
+// SendResult {{{
 
-mod sealed {
-	pub struct Sent<T: ?Sized> {
-		pub(super) _phantom: core::marker::PhantomData<fn(&T)>,
-	}
+pub type FuseResult<R, E> = SendResult<R, E>;
+
+/// The result of sending a FUSE response.
+///
+/// Semantically this is a `Result<(), fuse::server::io::SendError<E>>`, but it
+/// also serves as a marker to ensure that a FUSE handler can't return without
+/// sending a response.
+#[must_use]
+pub struct SendResult<R, E> {
+	_phantom: core::marker::PhantomData<fn(&R)>,
+	error: Result<(), io::SendError<E>>,
 }
 
-pub type FuseResult<R, E> = Result<sealed::Sent<R>, io::SendError<E>>;
+impl<R, E> SendResult<R, E> {
+	/// Returns `true` if the response was sent successfully.
+	#[inline]
+	#[must_use]
+	pub fn is_ok(&self) -> bool {
+		self.error.is_ok()
+	}
+
+	/// Returns `true` if the response was rejected by the client.
+	#[inline]
+	#[must_use]
+	pub fn is_err(&self) -> bool {
+		self.error.is_err()
+	}
+
+	/// Returns the underlying error if the response was rejected by the client.
+	#[inline]
+	#[must_use]
+	pub fn err(&self) -> Option<&io::SendError<E>> {
+		match self.error {
+			Ok(_) => None,
+			Err(ref err) => Some(err),
+		}
+	}
+}
 
 // }}}
 
 // Call {{{
 
+/// Represents a single call to an RPC-style FUSE handler.
 pub struct Call<'a, S> {
 	socket: &'a S,
 	header: &'a crate::RequestHeader,
 	response_opts: server::FuseResponseOptions,
-	sent_reply: &'a mut bool,
 	hooks: Option<&'a dyn server::Hooks>,
 }
 
 impl<S> Call<'_, S> {
+	/// Returns the header of the underlying [`Request`].
+	///
+	/// [`Request`]: server::Request
+	#[inline]
 	#[must_use]
 	pub fn header(&self) -> &crate::RequestHeader {
 		self.header
@@ -202,36 +237,54 @@ impl<S> Call<'_, S> {
 }
 
 impl<S: FuseSocket> Call<'_, S> {
+	/// Sends a successful response to the FUSE client.
 	pub fn respond_ok<R: server::FuseResponse>(
 		self,
 		response: &R,
-	) -> FuseResult<R, S::Error> {
+	) -> SendResult<R, S::Error> {
 		let mut response_header = crate::ResponseHeader::new(
 			self.header.request_id(),
 		);
-		self.socket.send(response.to_response(
+		let error = self.socket.send(response.to_response(
 			&mut response_header,
 			self.response_opts,
-		).into())?;
-		*self.sent_reply = true;
-		Ok(sealed::Sent {
+		).into());
+		if let Err(ref err) = error {
+			self.response_rejected(err);
+		}
+		SendResult {
 			_phantom: core::marker::PhantomData,
-		})
+			error,
+		}
 	}
 
+	/// Sends an error response to the FUSE client.
 	pub fn respond_err<R>(
 		self,
 		error: impl Into<crate::Error>,
-	) -> FuseResult<R, S::Error> {
+	) -> SendResult<R, S::Error> {
 		let request_id = self.header.request_id();
-		server::send_error(self.socket, request_id, error.into())?;
-		*self.sent_reply = true;
-		Ok(sealed::Sent {
+		let error = server::send_error(self.socket, request_id, error.into());
+		SendResult {
 			_phantom: core::marker::PhantomData,
-		})
+			error,
+		}
 	}
 
-	fn unimplemented<R>(self) -> FuseResult<R, S::Error> {
+	#[cold]
+	fn response_rejected(self, err: &io::SendError<S::Error>) {
+		if let io::SendError::NotFound(_) = err {
+			return;
+		}
+		let request_id = self.header.request_id();
+		let _ = server::send_error(
+			self.socket,
+			request_id,
+			crate::Error::PROTOCOL_ERROR,
+		);
+	}
+
+	fn unimplemented<R>(self) -> SendResult<R, S::Error> {
 		if let Some(hooks) = self.hooks {
 			hooks.unhandled_request(self.header);
 		}
@@ -295,13 +348,11 @@ impl<S: FuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 	fn new_call<'a>(
 		&'a self,
 		header: &'a crate::RequestHeader,
-		sent_reply: &'a mut bool,
 	) -> Call<'a, S> {
 		Call {
 			socket: self.socket,
 			header,
 			response_opts: self.response_options,
-			sent_reply,
 			hooks: self.hooks,
 		}
 	}
@@ -314,17 +365,9 @@ impl<S: FuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 		use crate::server::FuseRequest;
 
 		let header = request.header();
-		let mut sent_reply = false;
-		let call = self.new_call(header, &mut sent_reply);
+		let call = self.new_call(header);
 		match FuseRequest::from_request(request, self.request_options) {
-			Ok(request) => {
-				let handler_result = self.handlers.read(call, &request);
-				if !sent_reply {
-					self.err_no_response(header);
-				}
-				handler_result?;
-				Ok(())
-			},
+			Ok(request) => self.handlers.read(call, &request).error,
 			Err(err) => self.on_request_error(header, err),
 		}
 	}
@@ -337,17 +380,9 @@ impl<S: FuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 		use crate::server::FuseRequest;
 
 		let header = request.header();
-		let mut sent_reply = false;
-		let call = self.new_call(header, &mut sent_reply);
+		let call = self.new_call(header);
 		match FuseRequest::from_request(request, self.request_options) {
-			Ok(request) => {
-				let handler_result = self.handlers.write(call, &request);
-				if !sent_reply {
-					self.err_no_response(header);
-				}
-				handler_result?;
-				Ok(())
-			},
+			Ok(request) => self.handlers.write(call, &request).error,
 			Err(err) => self.on_request_error(header, err),
 		}
 	}
@@ -361,20 +396,12 @@ impl<S: FuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 		use crate::Opcode as Op;
 
 		let header = request.header();
-		let mut sent_reply = false;
-		let call = self.new_call(header, &mut sent_reply);
+		let call = self.new_call(header);
 
 		macro_rules! do_dispatch {
 			($handler:tt) => {{
 				match FuseRequest::from_request(request, self.request_options) {
-					Ok(request) => {
-						let handler_result = self.handlers.$handler(call, &request);
-						if !sent_reply {
-							self.err_no_response(header);
-						}
-						handler_result?;
-						Ok(())
-					},
+					Ok(request) => self.handlers.$handler(call, &request).error,
 					Err(err) => self.on_request_error(header, err),
 				}
 			}};
@@ -447,14 +474,17 @@ impl<S: FuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 		header: &crate::RequestHeader,
 		err: server::RequestError,
 	) -> Result<(), io::SendError<S::Error>> {
+		use crate::Error;
+		use server::RequestError;
+
 		if let Some(hooks) = self.hooks {
 			hooks.request_error(header, err);
 		}
-		server::send_error(
-			self.socket,
-			header.request_id(),
-			crate::Error::INVALID_REQUEST,
-		)
+		server::send_error(self.socket, header.request_id(), match err {
+			RequestError::UnexpectedEof => Error::PROTOCOL_ERROR,
+			RequestError::MissingRequestId =>  Error::PROTOCOL_ERROR,
+			_ =>  Error::INVALID_ARGUMENT,
+		})
 	}
 
 	#[cold]
@@ -473,16 +503,6 @@ impl<S: FuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 			header.request_id(),
 			crate::Error::UNIMPLEMENTED,
 		)
-	}
-
-	#[cold]
-	#[inline(never)]
-	fn err_no_response(&self, header: &crate::RequestHeader) {
-		let _ = server::send_error(
-			self.socket,
-			header.request_id(),
-			crate::Error::INVALID_REQUEST,
-		);
 	}
 }
 
@@ -510,7 +530,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::AccessRequest,
-	) -> FuseResult<operations::AccessResponse, S::Error> {
+	) -> SendResult<operations::AccessResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -518,7 +538,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::BmapRequest,
-	) -> FuseResult<operations::BmapResponse, S::Error> {
+	) -> SendResult<operations::BmapResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -526,7 +546,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::CopyFileRangeRequest,
-	) -> FuseResult<operations::CopyFileRangeResponse, S::Error> {
+	) -> SendResult<operations::CopyFileRangeResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -534,7 +554,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::CreateRequest,
-	) -> FuseResult<operations::CreateResponse, S::Error> {
+	) -> SendResult<operations::CreateResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -542,7 +562,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::DestroyRequest,
-	) -> FuseResult<operations::DestroyResponse, S::Error> {
+	) -> SendResult<operations::DestroyResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -550,7 +570,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::FallocateRequest,
-	) -> FuseResult<operations::FallocateResponse, S::Error> {
+	) -> SendResult<operations::FallocateResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -558,7 +578,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::FlushRequest,
-	) -> FuseResult<operations::FlushResponse, S::Error> {
+	) -> SendResult<operations::FlushResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -572,7 +592,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::FsyncRequest,
-	) -> FuseResult<operations::FsyncResponse, S::Error> {
+	) -> SendResult<operations::FsyncResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -580,7 +600,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::FsyncdirRequest,
-	) -> FuseResult<operations::FsyncdirResponse, S::Error> {
+	) -> SendResult<operations::FsyncdirResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -588,7 +608,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::GetattrRequest,
-	) -> FuseResult<operations::GetattrResponse, S::Error> {
+	) -> SendResult<operations::GetattrResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -596,7 +616,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::GetlkRequest,
-	) -> FuseResult<operations::GetlkResponse, S::Error> {
+	) -> SendResult<operations::GetlkResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -604,7 +624,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::GetxattrRequest,
-	) -> FuseResult<operations::GetxattrResponse, S::Error> {
+	) -> SendResult<operations::GetxattrResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -622,7 +642,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::IoctlRequest,
-	) -> FuseResult<operations::IoctlResponse, S::Error> {
+	) -> SendResult<operations::IoctlResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -630,7 +650,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::LinkRequest,
-	) -> FuseResult<operations::LinkResponse, S::Error> {
+	) -> SendResult<operations::LinkResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -638,7 +658,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::ListxattrRequest,
-	) -> FuseResult<operations::ListxattrResponse, S::Error> {
+	) -> SendResult<operations::ListxattrResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -646,7 +666,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::LookupRequest,
-	) -> FuseResult<operations::LookupResponse, S::Error> {
+	) -> SendResult<operations::LookupResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -654,7 +674,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::LseekRequest,
-	) -> FuseResult<operations::LseekResponse, S::Error> {
+	) -> SendResult<operations::LseekResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -662,7 +682,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::MkdirRequest,
-	) -> FuseResult<operations::MkdirResponse, S::Error> {
+	) -> SendResult<operations::MkdirResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -670,7 +690,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::MknodRequest,
-	) -> FuseResult<operations::MknodResponse, S::Error> {
+	) -> SendResult<operations::MknodResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -678,7 +698,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::OpenRequest,
-	) -> FuseResult<operations::OpenResponse, S::Error> {
+	) -> SendResult<operations::OpenResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -686,7 +706,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::OpendirRequest,
-	) -> FuseResult<operations::OpendirResponse, S::Error> {
+	) -> SendResult<operations::OpendirResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -694,7 +714,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::PollRequest,
-	) -> FuseResult<operations::PollResponse, S::Error> {
+	) -> SendResult<operations::PollResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -702,7 +722,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::ReadRequest,
-	) -> FuseResult<operations::ReadResponse, S::Error> {
+	) -> SendResult<operations::ReadResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -710,7 +730,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::ReaddirRequest,
-	) -> FuseResult<operations::ReaddirResponse, S::Error> {
+	) -> SendResult<operations::ReaddirResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -718,7 +738,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::ReaddirplusRequest,
-	) -> FuseResult<operations::ReaddirplusResponse, S::Error> {
+	) -> SendResult<operations::ReaddirplusResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -726,7 +746,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::ReadlinkRequest,
-	) -> FuseResult<operations::ReadlinkResponse, S::Error> {
+	) -> SendResult<operations::ReadlinkResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -734,7 +754,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::ReleaseRequest,
-	) -> FuseResult<operations::ReleaseResponse, S::Error> {
+	) -> SendResult<operations::ReleaseResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -742,7 +762,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::ReleasedirRequest,
-	) -> FuseResult<operations::ReleasedirResponse, S::Error> {
+	) -> SendResult<operations::ReleasedirResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -750,7 +770,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::RemovexattrRequest,
-	) -> FuseResult<operations::RemovexattrResponse, S::Error> {
+	) -> SendResult<operations::RemovexattrResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -758,7 +778,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::RenameRequest,
-	) -> FuseResult<operations::RenameResponse, S::Error> {
+	) -> SendResult<operations::RenameResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -766,7 +786,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::RmdirRequest,
-	) -> FuseResult<operations::RmdirResponse, S::Error> {
+	) -> SendResult<operations::RmdirResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -774,7 +794,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::SetattrRequest,
-	) -> FuseResult<operations::SetattrResponse, S::Error> {
+	) -> SendResult<operations::SetattrResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -782,7 +802,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::SetlkRequest,
-	) -> FuseResult<operations::SetlkResponse, S::Error> {
+	) -> SendResult<operations::SetlkResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -790,7 +810,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::SetxattrRequest,
-	) -> FuseResult<operations::SetxattrResponse, S::Error> {
+	) -> SendResult<operations::SetxattrResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -798,7 +818,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::StatfsRequest,
-	) -> FuseResult<operations::StatfsResponse, S::Error> {
+	) -> SendResult<operations::StatfsResponse, S::Error> {
 		#[cfg(not(target_os = "freebsd"))]
 		{
 			call.unimplemented()
@@ -818,7 +838,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::SymlinkRequest,
-	) -> FuseResult<operations::SymlinkResponse, S::Error> {
+	) -> SendResult<operations::SymlinkResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -826,7 +846,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::SyncfsRequest,
-	) -> FuseResult<operations::SyncfsResponse, S::Error> {
+	) -> SendResult<operations::SyncfsResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -834,7 +854,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::UnlinkRequest,
-	) -> FuseResult<operations::UnlinkResponse, S::Error> {
+	) -> SendResult<operations::UnlinkResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -842,7 +862,7 @@ pub trait Handlers<S: FuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::WriteRequest,
-	) -> FuseResult<operations::WriteResponse, S::Error> {
+	) -> SendResult<operations::WriteResponse, S::Error> {
 		call.unimplemented()
 	}
 }

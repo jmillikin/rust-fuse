@@ -196,29 +196,64 @@ where
 
 // }}}
 
-// CuseResult {{{
+// SendResult {{{
 
-mod sealed {
-	pub struct Sent<T: ?Sized> {
-		pub(super) _phantom: core::marker::PhantomData<fn(&T)>,
-	}
+pub type CuseResult<R, E> = SendResult<R, E>;
+
+/// The result of sending a CUSE response.
+///
+/// Semantically this is a `Result<(), fuse::server::io::SendError<E>>`, but it
+/// also serves as a marker to ensure that a CUSE handler can't return without
+/// sending a response.
+#[must_use]
+pub struct SendResult<R, E> {
+	_phantom: core::marker::PhantomData<fn(&R)>,
+	error: Result<(), io::SendError<E>>,
 }
 
-pub type CuseResult<R, E> = Result<sealed::Sent<R>, io::SendError<E>>;
+impl<R, E> SendResult<R, E> {
+	/// Returns `true` if the response was sent successfully.
+	#[inline]
+	#[must_use]
+	pub fn is_ok(&self) -> bool {
+		self.error.is_ok()
+	}
+
+	/// Returns `true` if the response was rejected by the client.
+	#[inline]
+	#[must_use]
+	pub fn is_err(&self) -> bool {
+		self.error.is_err()
+	}
+
+	/// Returns the underlying error if the response was rejected by the client.
+	#[inline]
+	#[must_use]
+	pub fn err(&self) -> Option<&io::SendError<E>> {
+		match self.error {
+			Ok(_) => None,
+			Err(ref err) => Some(err),
+		}
+	}
+}
 
 // }}}
 
 // Call {{{
 
+/// Represents a single call to an RPC-style CUSE handler.
 pub struct Call<'a, S> {
 	socket: &'a S,
 	header: &'a crate::RequestHeader,
 	response_opts: server::CuseResponseOptions,
-	sent_reply: &'a mut bool,
 	hooks: Option<&'a dyn server::Hooks>,
 }
 
 impl<S> Call<'_, S> {
+	/// Returns the header of the underlying [`Request`].
+	///
+	/// [`Request`]: server::Request
+	#[inline]
 	#[must_use]
 	pub fn header(&self) -> &crate::RequestHeader {
 		self.header
@@ -226,36 +261,54 @@ impl<S> Call<'_, S> {
 }
 
 impl<S: CuseSocket> Call<'_, S> {
+	/// Sends a successful response to the CUSE client.
 	pub fn respond_ok<R: server::CuseResponse>(
 		self,
 		response: &R,
-	) -> CuseResult<R, S::Error> {
+	) -> SendResult<R, S::Error> {
 		let mut response_header = crate::ResponseHeader::new(
 			self.header.request_id(),
 		);
-		self.socket.send(response.to_response(
+		let error = self.socket.send(response.to_response(
 			&mut response_header,
 			self.response_opts,
-		).into())?;
-		*self.sent_reply = true;
-		Ok(sealed::Sent {
+		).into());
+		if let Err(ref err) = error {
+			self.response_rejected(err);
+		}
+		SendResult {
 			_phantom: core::marker::PhantomData,
-		})
+			error,
+		}
 	}
 
+	/// Sends an error response to the CUSE client.
 	pub fn respond_err<R>(
 		self,
 		error: impl Into<crate::Error>,
-	) -> CuseResult<R, S::Error> {
+	) -> SendResult<R, S::Error> {
 		let request_id = self.header.request_id();
-		server::send_error(self.socket, request_id, error.into())?;
-		*self.sent_reply = true;
-		Ok(sealed::Sent {
+		let error = server::send_error(self.socket, request_id, error.into());
+		SendResult {
 			_phantom: core::marker::PhantomData,
-		})
+			error,
+		}
 	}
 
-	fn unimplemented<R>(self) -> CuseResult<R, S::Error> {
+	#[cold]
+	fn response_rejected(self, err: &io::SendError<S::Error>) {
+		if let io::SendError::NotFound(_) = err {
+			return;
+		}
+		let request_id = self.header.request_id();
+		let _ = server::send_error(
+			self.socket,
+			request_id,
+			crate::Error::PROTOCOL_ERROR,
+		);
+	}
+
+	fn unimplemented<R>(self) -> SendResult<R, S::Error> {
 		if let Some(hooks) = self.hooks {
 			hooks.unhandled_request(self.header);
 		}
@@ -319,13 +372,11 @@ impl<S: CuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 	fn new_call<'a>(
 		&'a self,
 		header: &'a crate::RequestHeader,
-		sent_reply: &'a mut bool,
 	) -> Call<'a, S> {
 		Call {
 			socket: self.socket,
 			header,
 			response_opts: self.response_options,
-			sent_reply,
 			hooks: self.hooks,
 		}
 	}
@@ -338,17 +389,9 @@ impl<S: CuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 		use crate::server::CuseRequest;
 
 		let header = request.header();
-		let mut sent_reply = false;
-		let call = self.new_call(header, &mut sent_reply);
+		let call = self.new_call(header);
 		match CuseRequest::from_request(request, self.request_options) {
-			Ok(request) => {
-				let handler_result = self.handlers.read(call, &request);
-				if !sent_reply {
-					self.err_no_response(header);
-				}
-				handler_result?;
-				Ok(())
-			},
+			Ok(request) => self.handlers.read(call, &request).error,
 			Err(err) => self.on_request_error(header, err),
 		}
 	}
@@ -361,17 +404,9 @@ impl<S: CuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 		use crate::server::CuseRequest;
 
 		let header = request.header();
-		let mut sent_reply = false;
-		let call = self.new_call(header, &mut sent_reply);
+		let call = self.new_call(header);
 		match CuseRequest::from_request(request, self.request_options) {
-			Ok(request) => {
-				let handler_result = self.handlers.write(call, &request);
-				if !sent_reply {
-					self.err_no_response(header);
-				}
-				handler_result?;
-				Ok(())
-			},
+			Ok(request) => self.handlers.write(call, &request).error,
 			Err(err) => self.on_request_error(header, err),
 		}
 	}
@@ -385,20 +420,12 @@ impl<S: CuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 		use crate::Opcode as Op;
 
 		let header = request.header();
-		let mut sent_reply = false;
-		let call = self.new_call(header, &mut sent_reply);
+		let call = self.new_call(header);
 
 		macro_rules! do_dispatch {
 			($handler:tt) => {{
 				match CuseRequest::from_request(request, self.request_options) {
-					Ok(request) => {
-						let handler_result = self.handlers.$handler(call, &request);
-						if !sent_reply {
-							self.err_no_response(header);
-						}
-						handler_result?;
-						Ok(())
-					},
+					Ok(request) => self.handlers.$handler(call, &request).error,
 					Err(err) => self.on_request_error(header, err),
 				}
 			}};
@@ -431,14 +458,17 @@ impl<S: CuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 		header: &crate::RequestHeader,
 		err: server::RequestError,
 	) -> Result<(), io::SendError<S::Error>> {
+		use crate::Error;
+		use server::RequestError;
+
 		if let Some(hooks) = self.hooks {
 			hooks.request_error(header, err);
 		}
-		server::send_error(
-			self.socket,
-			header.request_id(),
-			crate::Error::INVALID_REQUEST,
-		)
+		server::send_error(self.socket, header.request_id(), match err {
+			RequestError::UnexpectedEof => Error::PROTOCOL_ERROR,
+			RequestError::MissingRequestId =>  Error::PROTOCOL_ERROR,
+			_ =>  Error::INVALID_ARGUMENT,
+		})
 	}
 
 	#[cold]
@@ -458,16 +488,6 @@ impl<S: CuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 			crate::Error::UNIMPLEMENTED,
 		)
 	}
-
-	#[cold]
-	#[inline(never)]
-	fn err_no_response(&self, header: &crate::RequestHeader) {
-		let _ = server::send_error(
-			self.socket,
-			header.request_id(),
-			crate::Error::INVALID_REQUEST,
-		);
-	}
 }
 
 // }}}
@@ -481,7 +501,7 @@ pub trait Handlers<S: CuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::FlushRequest,
-	) -> CuseResult<operations::FlushResponse, S::Error> {
+	) -> SendResult<operations::FlushResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -489,7 +509,7 @@ pub trait Handlers<S: CuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::FsyncRequest,
-	) -> CuseResult<operations::FsyncResponse, S::Error> {
+	) -> SendResult<operations::FsyncResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -507,7 +527,7 @@ pub trait Handlers<S: CuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::IoctlRequest,
-	) -> CuseResult<operations::IoctlResponse, S::Error> {
+	) -> SendResult<operations::IoctlResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -515,7 +535,7 @@ pub trait Handlers<S: CuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::OpenRequest,
-	) -> CuseResult<operations::OpenResponse, S::Error> {
+	) -> SendResult<operations::OpenResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -523,7 +543,7 @@ pub trait Handlers<S: CuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::PollRequest,
-	) -> CuseResult<operations::PollResponse, S::Error> {
+	) -> SendResult<operations::PollResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -531,7 +551,7 @@ pub trait Handlers<S: CuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::ReadRequest,
-	) -> CuseResult<operations::ReadResponse, S::Error> {
+	) -> SendResult<operations::ReadResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -539,7 +559,7 @@ pub trait Handlers<S: CuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::ReleaseRequest,
-	) -> CuseResult<operations::ReleaseResponse, S::Error> {
+	) -> SendResult<operations::ReleaseResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -547,7 +567,7 @@ pub trait Handlers<S: CuseSocket> {
 		&self,
 		call: Call<S>,
 		request: &operations::WriteRequest,
-	) -> CuseResult<operations::WriteResponse, S::Error> {
+	) -> SendResult<operations::WriteResponse, S::Error> {
 		call.unimplemented()
 	}
 }

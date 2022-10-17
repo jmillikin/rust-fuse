@@ -149,6 +149,11 @@ impl Error {
 	/// This error maps to `EOVERFLOW`.
 	pub const OVERFLOW: Error = errno::EOVERFLOW;
 
+	/// A message that violates the FUSE protocol was sent or received.
+	///
+	/// This error maps to `EPROTO`.
+	pub const PROTOCOL_ERROR: Error = errno::EPROTO;
+
 	/// The requested operation is not implemented in this server.
 	///
 	/// This error maps to `ENOSYS`.
@@ -159,9 +164,4 @@ impl Error {
 	/// This error maps to either `ENODATA` or `ENOATTR`, depending on the
 	/// target platform.
 	pub const XATTR_NOT_FOUND: Error = enodata_or_enoattr!();
-
-	/// An invalid FUSE request was received from the client.
-	///
-	/// This error maps to `EPROTO`.
-	pub const INVALID_REQUEST: Error = errno::EPROTO;
 }
