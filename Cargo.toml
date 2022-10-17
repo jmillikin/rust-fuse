@@ -1,5 +1,7 @@
 [workspace]
 members = [
 	"fuse",
+	"fuse-libc",
+	"fuse-linux",
 	"examples/helloworld",
 ]
