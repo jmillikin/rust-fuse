@@ -14,9 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::cell;
 use core::cmp;
-use core::fmt;
 use core::mem;
 use core::num;
 
@@ -445,63 +443,6 @@ impl FuseResponseOptions {
 
 // }}}
 
-// UnknownRequest {{{
-
-pub struct UnknownRequest<'a> {
-	header: &'a crate::RequestHeader,
-	body: cell::RefCell<UnknownBody<'a>>,
-}
-
-enum UnknownBody<'a> {
-	Raw(Request<'a>),
-	Parsed(Result<&'a [u8], RequestError>),
-}
-
-impl<'a> UnknownRequest<'a> {
-	#[must_use]
-	pub fn from_request(request: Request<'a>) -> Self {
-		Self {
-			header: request.header(),
-			body: cell::RefCell::new(UnknownBody::Raw(request)),
-		}
-	}
-
-	#[must_use]
-	pub fn header(&self) -> &crate::RequestHeader {
-		self.header
-	}
-
-	pub fn body(&self) -> Result<&'a [u8], RequestError> {
-		let mut result: Result<&'a [u8], RequestError> = Ok(&[]);
-		const HEADER_LEN: usize = mem::size_of::<fuse_kernel::fuse_in_header>();
-		self.body.replace_with(|body| match body {
-			UnknownBody::Raw(request) => {
-				let body_offset = HEADER_LEN as u32;
-				let request_len = self.header.request_len().get();
-				let mut dec = request.decoder();
-				result = dec.next_bytes(request_len - body_offset);
-				UnknownBody::Parsed(result)
-			},
-			UnknownBody::Parsed(r) => {
-				result = *r;
-				UnknownBody::Parsed(*r)
-			},
-		});
-		result
-	}
-}
-
-impl fmt::Debug for UnknownRequest<'_> {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("UnknownRequest")
-			.field("header", &self.header())
-			.field("body", &format_args!("{:?}", self.body()))
-			.finish()
-	}
-}
-
-// }}}
-
 pub fn cuse_init<'a, S: io::CuseSocket>(
 	socket: &mut S,
 	mut init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse<'a>,
@@ -695,7 +636,7 @@ pub async fn send_error_async<S: io::AsyncSocket>(
 pub trait Hooks {
 	fn request(&self, header: &crate::RequestHeader) {}
 
-	fn unknown_request(&self, request: &UnknownRequest) {}
+	fn unknown_request(&self, request: Request) {}
 
 	fn unhandled_request(&self, header: &crate::RequestHeader) {}
 

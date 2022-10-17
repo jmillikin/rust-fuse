@@ -477,8 +477,7 @@ impl<S: CuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 		request: server::Request,
 	) -> Result<(), io::SendError<S::Error>> {
 		if let Some(hooks) = self.hooks {
-			let req = server::UnknownRequest::from_request(request);
-			hooks.unknown_request(&req);
+			hooks.unknown_request(request);
 		}
 		server::send_error(
 			self.socket,
