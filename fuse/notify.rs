@@ -23,6 +23,8 @@ use crate::internal::fuse_kernel;
 use crate::node;
 use crate::server::encode;
 use crate::server::io;
+#[cfg(feature = "unstable_async")]
+use crate::server_async;
 
 // FuseNotification {{{
 
@@ -43,7 +45,8 @@ impl FuseNotification<'_> {
 		socket.send(self.encode(&mut header))
 	}
 
-	pub async fn send_async<S: io::AsyncSocket>(
+	#[cfg(feature = "unstable_async")]
+	pub async fn send_async<S: server_async::io::Socket>(
 		&self,
 		socket: &S,
 	) -> Result<(), io::SendError<S::Error>> {

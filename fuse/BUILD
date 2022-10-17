@@ -14,6 +14,7 @@ rust_library(
         "//fuse/operations:srcs",
         "//fuse/os:srcs",
         "//fuse/server:srcs",
+        "//fuse/server_async:srcs",
     ],
     crate_features = ["std"],
     edition = "2018",

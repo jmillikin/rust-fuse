@@ -1,4 +1,4 @@
-// Copyright 2021 John Millikin and the rust-fuse contributors.
+// Copyright 2022 John Millikin and the rust-fuse contributors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,26 +16,23 @@
 
 use crate::io::SendBuf;
 
-#[non_exhaustive]
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum RecvError<IoError> {
-	ConnectionClosed(IoError),
-	Other(IoError),
-}
-
-#[non_exhaustive]
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum SendError<IoError> {
-	NotFound(IoError),
-	Other(IoError),
-}
+pub use crate::server::io::{
+	RecvError,
+	SendError,
+};
 
 pub trait Socket {
 	type Error;
 
-	fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<Self::Error>>;
+	async fn recv(
+		&self,
+		buf: &mut [u8],
+	) -> Result<usize, RecvError<Self::Error>>;
 
-	fn send(&self, buf: SendBuf) -> Result<(), SendError<Self::Error>>;
+	async fn send(
+		&self,
+		buf: SendBuf<'_>,
+	) -> Result<(), SendError<Self::Error>>;
 }
 
 pub trait CuseSocket: Socket {}
@@ -45,17 +42,16 @@ pub trait FuseSocket: Socket {}
 impl<S: Socket> Socket for &S {
 	type Error = S::Error;
 
-	fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<S::Error>> {
-		(*self).recv(buf)
+	async fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<S::Error>> {
+		(*self).recv(buf).await
 	}
 
-	fn send(&self, buf: SendBuf) -> Result<(), SendError<S::Error>> {
-		(*self).send(buf)
+	async fn send(&self, buf: SendBuf<'_>) -> Result<(), SendError<S::Error>> {
+		(*self).send(buf).await
 	}
 }
 
 impl<S: CuseSocket> CuseSocket for &S {}
-
 impl<S: FuseSocket> FuseSocket for &S {}
 
 #[cfg(feature = "std")]
@@ -68,12 +64,18 @@ mod std_impls {
 	impl<S: Socket> Socket for Arc<S> {
 		type Error = S::Error;
 
-		fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<S::Error>> {
-			Arc::as_ref(self).recv(buf)
+		async fn recv(
+			&self,
+			buf: &mut [u8],
+		) -> Result<usize, RecvError<S::Error>> {
+			Arc::as_ref(self).recv(buf).await
 		}
 
-		fn send(&self, buf: SendBuf) -> Result<(), SendError<S::Error>> {
-			Arc::as_ref(self).send(buf)
+		async fn send(
+			&self,
+			buf: SendBuf<'_>,
+		) -> Result<(), SendError<S::Error>> {
+			Arc::as_ref(self).send(buf).await
 		}
 	}
 
@@ -83,12 +85,18 @@ mod std_impls {
 	impl<S: Socket> Socket for Box<S> {
 		type Error = S::Error;
 
-		fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<S::Error>> {
-			Box::as_ref(self).recv(buf)
+		async fn recv(
+			&self,
+			buf: &mut [u8],
+		) -> Result<usize, RecvError<S::Error>> {
+			Box::as_ref(self).recv(buf).await
 		}
 
-		fn send(&self, buf: SendBuf) -> Result<(), SendError<S::Error>> {
-			Box::as_ref(self).send(buf)
+		async fn send(
+			&self,
+			buf: SendBuf<'_>,
+		) -> Result<(), SendError<S::Error>> {
+			Box::as_ref(self).send(buf).await
 		}
 	}
 
@@ -98,12 +106,18 @@ mod std_impls {
 	impl<S: Socket> Socket for Rc<S> {
 		type Error = S::Error;
 
-		fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<S::Error>> {
-			Rc::as_ref(self).recv(buf)
+		async fn recv(
+			&self,
+			buf: &mut [u8],
+		) -> Result<usize, RecvError<S::Error>> {
+			Rc::as_ref(self).recv(buf).await
 		}
 
-		fn send(&self, buf: SendBuf) -> Result<(), SendError<S::Error>> {
-			Rc::as_ref(self).send(buf)
+		async fn send(
+			&self,
+			buf: SendBuf<'_>,
+		) -> Result<(), SendError<S::Error>> {
+			Rc::as_ref(self).send(buf).await
 		}
 	}
 

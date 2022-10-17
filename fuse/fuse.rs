@@ -16,6 +16,8 @@
 
 #![cfg_attr(not(any(doc, feature = "std")), no_std)]
 
+#![cfg_attr(feature = "unstable_async", feature(async_fn_in_trait))]
+
 #![allow(
 	clippy::collapsible_if,
 	clippy::len_without_is_empty,
@@ -68,6 +70,8 @@ pub mod notify;
 pub mod operations;
 pub mod os;
 pub mod server;
+#[cfg(feature = "unstable_async")]
+pub mod server_async;
 pub mod xattr;
 
 pub use self::error::Error;

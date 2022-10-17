@@ -488,27 +488,7 @@ pub fn cuse_init<'a, S: io::CuseSocket>(
 	}
 }
 
-pub async fn cuse_init_async<'a, S: io::AsyncCuseSocket>(
-	socket: &mut S,
-	mut init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse<'a>,
-) -> Result<CuseInitResponse<'a>, ServerError<S::Error>> {
-	let mut buf = crate::io::MinReadBuffer::new();
-
-	loop {
-		let recv_len = socket.recv(buf.as_slice_mut()).await?;
-		let request = Request::new(buf.as_aligned_slice().truncate(recv_len))?;
-		let init_req = CuseInitRequest::from_request(request)?;
-		let (response, ok) = cuse_handshake(&init_req, &mut init_fn)?;
-		let request_id = request.header().request_id();
-		let mut header = crate::ResponseHeader::new(request_id);
-		socket.send(response.to_response(&mut header).into()).await?;
-		if ok {
-			return Ok(response);
-		}
-	}
-}
-
-fn cuse_handshake<'a, E>(
+pub(crate) fn cuse_handshake<'a, E>(
 	request: &CuseInitRequest,
 	init_fn: &mut impl FnMut(&CuseInitRequest) -> CuseInitResponse<'a>,
 ) -> Result<(CuseInitResponse<'a>, bool), ServerError<E>> {
@@ -546,27 +526,7 @@ pub fn fuse_init<S: io::FuseSocket>(
 	}
 }
 
-pub async fn fuse_init_async<S: io::AsyncFuseSocket>(
-	socket: &mut S,
-	mut init_fn: impl FnMut(&FuseInitRequest) -> FuseInitResponse,
-) -> Result<FuseInitResponse, ServerError<S::Error>> {
-	let mut buf = crate::io::MinReadBuffer::new();
-
-	loop {
-		let recv_len = socket.recv(buf.as_slice_mut()).await?;
-		let request = Request::new(buf.as_aligned_slice().truncate(recv_len))?;
-		let init_req = FuseInitRequest::from_request(request)?;
-		let (response, ok) = fuse_handshake(&init_req, &mut init_fn)?;
-		let request_id = request.header().request_id();
-		let mut header = crate::ResponseHeader::new(request_id);
-		socket.send(response.to_response(&mut header).into()).await?;
-		if ok {
-			return Ok(response);
-		}
-	}
-}
-
-fn fuse_handshake<E>(
+pub(crate) fn fuse_handshake<E>(
 	request: &FuseInitRequest,
 	init_fn: &mut impl FnMut(&FuseInitRequest) -> FuseInitResponse,
 ) -> Result<(FuseInitResponse, bool), ServerError<E>> {
@@ -613,24 +573,6 @@ pub fn recv<'a, S: io::Socket>(
 	Ok(Some(Request::new(recv_buf.into())?))
 }
 
-/// Receive a CUSE or FUSE request from an [`AsyncSocket`].
-///
-/// Returns `Ok(None)` if the socket's connection has been closed.
-///
-/// [`AsyncSocket`]: io::AsyncSocket
-pub async fn recv_async<'a, S: io::AsyncSocket>(
-	socket: &S,
-	mut buf: crate::io::AlignedSliceMut<'a>,
-) -> Result<Option<Request<'a>>, ServerError<S::Error>> {
-	let recv_len = match socket.recv(buf.get_mut()).await {
-		Ok(len) => len,
-		Err(io::RecvError::ConnectionClosed(_)) => return Ok(None),
-		Err(err) => return Err(err.into()),
-	};
-	let recv_buf = buf.truncate(recv_len);
-	Ok(Some(Request::new(recv_buf.into())?))
-}
-
 /// Send an error response to a [`Socket`].
 ///
 /// [`Socket`]: io::Socket
@@ -641,16 +583,4 @@ pub fn send_error<S: io::Socket>(
 ) -> Result<(), io::SendError<S::Error>> {
 	let mut response_header = crate::ResponseHeader::new(request_id);
 	socket.send(encode::error(&mut response_header, error).into())
-}
-
-/// Send an error response to an [`AsyncSocket`].
-///
-/// [`AsyncSocket`]: io::AsyncSocket
-pub async fn send_error_async<S: io::AsyncSocket>(
-	socket: &S,
-	request_id: num::NonZeroU64,
-	error: crate::Error,
-) -> Result<(), io::SendError<S::Error>> {
-	let mut response_header = crate::ResponseHeader::new(request_id);
-	socket.send(encode::error(&mut response_header, error).into()).await
 }
