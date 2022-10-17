@@ -39,6 +39,9 @@
 	clippy::unimplemented,
 	clippy::unwrap_used,
 
+	// no_std hygiene
+	clippy::std_instead_of_core,
+
 	// Explicit casts
 	clippy::fn_to_numeric_cast_any,
 	clippy::ptr_as_ptr,
@@ -408,6 +411,7 @@ impl UnixTime {
 	#[cfg(any(feature = "std", doc))]
 	#[must_use]
 	pub fn to_system_time(&self) -> Option<std::time::SystemTime> {
+		#![allow(clippy::std_instead_of_core)]
 		use std::time::{Duration, SystemTime};
 
 		if self.seconds == 0 && self.nanos == 0 {

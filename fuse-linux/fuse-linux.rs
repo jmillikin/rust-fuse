@@ -28,6 +28,9 @@
 	clippy::unimplemented,
 	clippy::unwrap_used,
 
+	// no_std hygiene
+	clippy::std_instead_of_core,
+
 	// Explicit casts
 	clippy::fn_to_numeric_cast_any,
 	clippy::ptr_as_ptr,

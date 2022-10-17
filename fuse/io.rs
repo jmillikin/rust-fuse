@@ -347,7 +347,7 @@ impl<'a> SendBuf<'a> {
 		if self.chunks_len <= SendBuf::MAX_CHUNKS_LEN {
 			return self.chunks_len;
 		}
-		unsafe { std::hint::unreachable_unchecked() }
+		unsafe { core::hint::unreachable_unchecked() }
 	}
 
 	/// Returns the number of bytes within this `SendBuf`.
