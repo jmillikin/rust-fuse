@@ -57,7 +57,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::BmapRequest,
-	) -> fuse_rpc::FuseResult<fuse::BmapResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::BmapResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut resp = fuse::BmapResponse::new();
@@ -69,7 +69,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::LookupRequest,
-	) -> fuse_rpc::FuseResult<fuse::LookupResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::LookupResponse, S::Error> {
 		if !request.parent_id().is_root() {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
@@ -92,7 +92,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::OpenRequest,
-	) -> fuse_rpc::FuseResult<fuse::OpenResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::OpenResponse, S::Error> {
 		if request.node_id().get() != 2 {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
@@ -105,7 +105,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		_request: &fuse::ReleaseRequest,
-	) -> fuse_rpc::FuseResult<fuse::ReleaseResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::ReleaseResponse, S::Error> {
 		let resp = fuse::ReleaseResponse::new();
 		call.respond_ok(&resp)
 	}

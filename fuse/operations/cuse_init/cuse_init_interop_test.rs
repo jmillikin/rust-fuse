@@ -36,7 +36,7 @@ impl<S: cuse_rpc::CuseSocket> cuse_rpc::Handlers<S> for TestCharDev {
 		&self,
 		call: cuse_rpc::Call<S>,
 		request: &fuse::OpenRequest,
-	) -> cuse_rpc::CuseResult<fuse::OpenResponse, S::Error> {
+	) -> cuse_rpc::SendResult<fuse::OpenResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut resp = fuse::OpenResponse::new();
@@ -48,7 +48,7 @@ impl<S: cuse_rpc::CuseSocket> cuse_rpc::Handlers<S> for TestCharDev {
 		&self,
 		call: cuse_rpc::Call<S>,
 		request: &fuse::ReadRequest,
-	) -> cuse_rpc::CuseResult<fuse::ReadResponse, S::Error> {
+	) -> cuse_rpc::SendResult<fuse::ReadResponse, S::Error> {
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the lock owner, which is non-deterministic.
@@ -70,7 +70,7 @@ impl<S: cuse_rpc::CuseSocket> cuse_rpc::Handlers<S> for TestCharDev {
 		&self,
 		call: cuse_rpc::Call<S>,
 		request: &fuse::ReleaseRequest,
-	) -> cuse_rpc::CuseResult<fuse::ReleaseResponse, S::Error> {
+	) -> cuse_rpc::SendResult<fuse::ReleaseResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let resp = fuse::ReleaseResponse::new();
@@ -81,7 +81,7 @@ impl<S: cuse_rpc::CuseSocket> cuse_rpc::Handlers<S> for TestCharDev {
 		&self,
 		call: cuse_rpc::Call<S>,
 		request: &fuse::WriteRequest,
-	) -> cuse_rpc::CuseResult<fuse::WriteResponse, S::Error> {
+	) -> cuse_rpc::SendResult<fuse::WriteResponse, S::Error> {
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the lock owner, which is non-deterministic.

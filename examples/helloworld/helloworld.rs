@@ -50,7 +50,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for HelloWorldFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::LookupRequest,
-	) -> fuse_rpc::FuseResult<fuse::LookupResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::LookupResponse, S::Error> {
 		if !request.parent_id().is_root() {
 			return call.respond_err(fuse::Error::NOT_FOUND);
 		}
@@ -70,7 +70,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for HelloWorldFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::GetattrRequest,
-	) -> fuse_rpc::FuseResult<fuse::GetattrResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::GetattrResponse, S::Error> {
 		let mut attr = node::Attributes::new(request.node_id());
 
 		if request.node_id().is_root() {
@@ -95,7 +95,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for HelloWorldFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::OpenRequest,
-	) -> fuse_rpc::FuseResult<fuse::OpenResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::OpenResponse, S::Error> {
 		if request.node_id() != HELLO_TXT.node_id() {
 			return call.respond_err(fuse::Error::NOT_FOUND);
 		}
@@ -109,7 +109,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for HelloWorldFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::ReadRequest,
-	) -> fuse_rpc::FuseResult<fuse::ReadResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::ReadResponse, S::Error> {
 		if request.handle() != 1001 {
 			return call.respond_err(fuse::Error::INVALID_ARGUMENT);
 		}
@@ -122,7 +122,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for HelloWorldFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::OpendirRequest,
-	) -> fuse_rpc::FuseResult<fuse::OpendirResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::OpendirResponse, S::Error> {
 		if !request.node_id().is_root() {
 			return call.respond_err(fuse::Error::NOT_FOUND);
 		}
@@ -136,7 +136,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for HelloWorldFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::ReaddirRequest,
-	) -> fuse_rpc::FuseResult<fuse::ReaddirResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::ReaddirResponse, S::Error> {
 		if request.handle() != 1002 {
 			return call.respond_err(fuse::Error::INVALID_ARGUMENT);
 		}
@@ -165,7 +165,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for HelloWorldFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::ReleasedirRequest,
-	) -> fuse_rpc::FuseResult<fuse::ReleasedirResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::ReleasedirResponse, S::Error> {
 		if request.handle() != 1002 {
 			return call.respond_err(fuse::Error::INVALID_ARGUMENT);
 		}

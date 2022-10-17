@@ -198,8 +198,6 @@ where
 
 // SendResult {{{
 
-pub type CuseResult<R, E> = SendResult<R, E>;
-
 /// The result of sending a CUSE response.
 ///
 /// Semantically this is a `Result<(), fuse::server::io::SendError<E>>`, but it

@@ -40,7 +40,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::LookupRequest,
-	) -> fuse_rpc::FuseResult<fuse::LookupResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::LookupResponse, S::Error> {
 		if !request.parent_id().is_root() {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
@@ -63,7 +63,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		_request: &fuse::OpendirRequest,
-	) -> fuse_rpc::FuseResult<fuse::OpendirResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::OpendirResponse, S::Error> {
 		let mut resp = fuse::OpendirResponse::new();
 		resp.set_handle(12345);
 		call.respond_ok(&resp)
@@ -73,7 +73,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::ReaddirRequest,
-	) -> fuse_rpc::FuseResult<fuse::ReaddirResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::ReaddirResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut offset: u64 = match request.offset() {
@@ -127,7 +127,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		_request: &fuse::ReleasedirRequest,
-	) -> fuse_rpc::FuseResult<fuse::ReleasedirResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::ReleasedirResponse, S::Error> {
 		let resp = fuse::ReleasedirResponse::new();
 		call.respond_ok(&resp)
 	}

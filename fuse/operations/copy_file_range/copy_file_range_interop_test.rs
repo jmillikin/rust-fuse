@@ -39,7 +39,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::CopyFileRangeRequest,
-	) -> fuse_rpc::FuseResult<fuse::CopyFileRangeResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::CopyFileRangeResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut resp = fuse::CopyFileRangeResponse::new();
@@ -51,7 +51,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::LookupRequest,
-	) -> fuse_rpc::FuseResult<fuse::LookupResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::LookupResponse, S::Error> {
 		if !request.parent_id().is_root() {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
@@ -81,7 +81,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::OpenRequest,
-	) -> fuse_rpc::FuseResult<fuse::OpenResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::OpenResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut resp = fuse::OpenResponse::new();
@@ -99,7 +99,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::ReleaseRequest,
-	) -> fuse_rpc::FuseResult<fuse::ReleaseResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::ReleaseResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let resp = fuse::ReleaseResponse::new();

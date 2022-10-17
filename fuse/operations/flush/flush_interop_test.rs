@@ -39,7 +39,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::LookupRequest,
-	) -> fuse_rpc::FuseResult<fuse::LookupResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::LookupResponse, S::Error> {
 		if !request.parent_id().is_root() {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
@@ -68,7 +68,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::OpenRequest,
-	) -> fuse_rpc::FuseResult<fuse::OpenResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::OpenResponse, S::Error> {
 		let mut resp = fuse::OpenResponse::new();
 		if request.node_id() == node::Id::new(2).unwrap() {
 			resp.set_handle(1002);
@@ -82,7 +82,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::FlushRequest,
-	) -> fuse_rpc::FuseResult<fuse::FlushResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::FlushResponse, S::Error> {
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the lock owner, which is non-deterministic.

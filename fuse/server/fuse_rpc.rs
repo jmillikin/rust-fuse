@@ -174,8 +174,6 @@ where
 
 // SendResult {{{
 
-pub type FuseResult<R, E> = SendResult<R, E>;
-
 /// The result of sending a FUSE response.
 ///
 /// Semantically this is a `Result<(), fuse::server::io::SendError<E>>`, but it

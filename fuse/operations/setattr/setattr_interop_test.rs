@@ -38,7 +38,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::LookupRequest,
-	) -> fuse_rpc::FuseResult<fuse::LookupResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::LookupResponse, S::Error> {
 		if !request.parent_id().is_root() {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
@@ -61,7 +61,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::GetattrRequest,
-	) -> fuse_rpc::FuseResult<fuse::GetattrResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::GetattrResponse, S::Error> {
 		let mut attr = node::Attributes::new(request.node_id());
 
 		if request.node_id().is_root() {
@@ -85,7 +85,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::OpenRequest,
-	) -> fuse_rpc::FuseResult<fuse::OpenResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::OpenResponse, S::Error> {
 		let mut resp = fuse::OpenResponse::new();
 		if request.node_id() == node::Id::new(2).unwrap() {
 			resp.set_handle(1002);
@@ -98,7 +98,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		&self,
 		call: fuse_rpc::Call<S>,
 		request: &fuse::SetattrRequest,
-	) -> fuse_rpc::FuseResult<fuse::SetattrResponse, S::Error> {
+	) -> fuse_rpc::SendResult<fuse::SetattrResponse, S::Error> {
 		println!("{:#?}", request);
 
 		let mut request_str = format!("{:#?}", request);

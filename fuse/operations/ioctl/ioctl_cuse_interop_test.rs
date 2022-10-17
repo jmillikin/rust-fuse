@@ -42,7 +42,7 @@ impl<S: cuse_rpc::CuseSocket> cuse_rpc::Handlers<S> for TestCharDev {
 		&self,
 		call: cuse_rpc::Call<S>,
 		request: &fuse::IoctlRequest,
-	) -> cuse_rpc::CuseResult<fuse::IoctlResponse, S::Error> {
+	) -> cuse_rpc::SendResult<fuse::IoctlResponse, S::Error> {
 		println!("{:#?}", request);
 
 		let mut request_str = format!("{:#?}", request);
@@ -105,7 +105,7 @@ impl<S: cuse_rpc::CuseSocket> cuse_rpc::Handlers<S> for TestCharDev {
 		&self,
 		call: cuse_rpc::Call<S>,
 		_request: &fuse::OpenRequest,
-	) -> cuse_rpc::CuseResult<fuse::OpenResponse, S::Error> {
+	) -> cuse_rpc::SendResult<fuse::OpenResponse, S::Error> {
 		let mut resp = fuse::OpenResponse::new();
 		resp.set_handle(1002);
 		call.respond_ok(&resp)

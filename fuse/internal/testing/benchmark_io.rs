@@ -51,7 +51,7 @@ impl fuse_rpc::Handlers<FakeSocket> for FakeHandlers {
 		&self,
 		call: fuse_rpc::Call<FakeSocket>,
 		_request: &fuse::ReadRequest,
-	) -> fuse_rpc::FuseResult<fuse::ReadResponse, std::io::Error> {
+	) -> fuse_rpc::SendResult<fuse::ReadResponse, std::io::Error> {
 		let resp = fuse::ReadResponse::from_bytes(&[0u8; 4096]);
 		call.respond_ok(&resp)
 	}
@@ -60,7 +60,7 @@ impl fuse_rpc::Handlers<FakeSocket> for FakeHandlers {
 		&self,
 		call: fuse_rpc::Call<FakeSocket>,
 		request: &fuse::WriteRequest,
-	) -> fuse_rpc::FuseResult<fuse::WriteResponse, std::io::Error> {
+	) -> fuse_rpc::SendResult<fuse::WriteResponse, std::io::Error> {
 		let mut resp = fuse::WriteResponse::new();
 		resp.set_size(request.value().len() as u32);
 		call.respond_ok(&resp)
