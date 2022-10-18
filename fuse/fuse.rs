@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! An implementation of the FUSE protocol in Rust.
+
 #![cfg_attr(not(any(doc, feature = "std")), no_std)]
 
 #![cfg_attr(feature = "unstable_async", feature(async_fn_in_trait))]
@@ -41,6 +43,10 @@
 
 	// no_std hygiene
 	clippy::std_instead_of_core,
+
+	// Documentation coverage
+	missing_docs,
+	clippy::missing_panics_doc,
 
 	// Explicit casts
 	clippy::fn_to_numeric_cast_any,
@@ -273,21 +279,6 @@ pub type SetxattrFlags = u32;
 /// OS-specific event types used with `poll()`.
 pub type PollEvents = u32;
 
-// PollHandle {{{
-
-#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct PollHandle {
-	bits: u64,
-}
-
-impl core::fmt::Debug for PollHandle {
-	fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
-		self.bits.fmt(fmt)
-	}
-}
-
-// }}}
-
 // ProcessId {{{
 
 /// Represents a process that initiated a FUSE request.
@@ -461,18 +452,21 @@ impl Version {
 		minor: internal::fuse_kernel::FUSE_KERNEL_MINOR_VERSION,
 	};
 
+	/// Create a new `Version` with the given major and minor version numbers.
 	#[inline]
 	#[must_use]
 	pub const fn new(major: u32, minor: u32) -> Version {
 		Version { major, minor }
 	}
 
+	/// Return the versions's major version number.
 	#[inline]
 	#[must_use]
 	pub const fn major(&self) -> u32 {
 		self.major
 	}
 
+	/// Return the versions's major version number.
 	#[inline]
 	#[must_use]
 	pub const fn minor(&self) -> u32 {
@@ -484,6 +478,7 @@ impl Version {
 
 // Opcode {{{
 
+/// FUSE operation type codes.
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Opcode {
 	bits: u32,
@@ -504,6 +499,7 @@ macro_rules! export_opcodes {
 				};
 			)+
 		}
+		#[allow(missing_docs)] // TODO
 		impl Opcode {
 			$(
 				$(#[$meta])*

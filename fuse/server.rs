@@ -47,7 +47,7 @@ pub(crate) mod sealed {
 
 // ServerError {{{
 
-/// Errors that may be encountered when serving.
+/// Errors that may be encountered by a CUSE or FUSE server.
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ServerError<IoError> {

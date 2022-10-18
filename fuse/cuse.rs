@@ -187,7 +187,12 @@ impl PartialEq<DeviceName> for [u8] {
 
 // DeviceNumber {{{
 
-/// A (major, minor) Unix device number.
+/// A Unix device number.
+///
+/// Device numbers are a tuple of the "major" and "minor" numbers. The exact
+/// semantics of these values are platform-specific, but in general the major
+/// number identifies a category of device driver and the minor number
+/// identifies a specific device.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct DeviceNumber {
 	major: u32,
@@ -195,18 +200,21 @@ pub struct DeviceNumber {
 }
 
 impl DeviceNumber {
+	/// Create a new `DeviceNumber` with the given major and minor numbers.
 	#[inline]
 	#[must_use]
 	pub const fn new(major: u32, minor: u32) -> DeviceNumber {
 		Self { major, minor }
 	}
 
+	/// Return the device number's major number.
 	#[inline]
 	#[must_use]
 	pub const fn major(&self) -> u32 {
 		self.major
 	}
 
+	/// Return the device number's minor number.
 	#[inline]
 	#[must_use]
 	pub const fn minor(&self) -> u32 {

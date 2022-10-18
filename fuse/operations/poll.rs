@@ -26,6 +26,21 @@ use crate::server;
 use crate::server::decode;
 use crate::server::encode;
 
+// PollHandle {{{
+
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct PollHandle {
+	pub(crate) bits: u64,
+}
+
+impl fmt::Debug for PollHandle {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		self.bits.fmt(fmt)
+	}
+}
+
+// }}}
+
 // PollRequest {{{
 
 /// Request type for `FUSE_POLL`.

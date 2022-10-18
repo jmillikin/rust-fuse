@@ -31,6 +31,7 @@ pub use crate::server::io::CuseSocket;
 
 // ServerBuilder {{{
 
+#[allow(missing_docs)] // TODO
 pub struct ServerBuilder<S, H> {
 	socket: S,
 	handlers: H,
@@ -47,6 +48,7 @@ struct ServerOptions {
 	flags: CuseInitFlags,
 }
 
+#[allow(missing_docs)] // TODO
 impl<S, H> ServerBuilder<S, H> {
 	#[must_use]
 	pub fn new(socket: S, handlers: H) -> Self {
@@ -96,6 +98,7 @@ impl<S, H> ServerBuilder<S, H> {
 	}
 }
 
+#[allow(missing_docs)] // TODO
 impl<S: CuseSocket, H> ServerBuilder<S, H> {
 	pub fn cuse_init(
 		self,
@@ -498,9 +501,28 @@ impl<S: CuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 
 // Handlers {{{
 
-/// User-provided handlers for CUSE operations.
+/// RPC-style handlers for CUSE operations.
+///
+/// These handlers receive an operation-specific request value and a [`Call`]
+/// containing metadata about the request. The call must be used to respond
+/// by sending either an operation-specific response value or an error.
+///
+/// The default implementation for most handlers is to respond with
+/// [`Error::UNIMPLEMENTED`]. If the [`Dispatcher`] has server hooks set, the
+/// [`Hooks::unimplemented`] method will be called for each request received
+/// by the default handler.
+///
+/// [`Error::UNIMPLEMENTED`]: crate::Error::UNIMPLEMENTED
+/// [`Hooks::unimplemented`]: server::Hooks::unimplemented
 #[allow(unused_variables)]
 pub trait Handlers<S: CuseSocket> {
+	/// Request handler for [`FUSE_FLUSH`].
+	///
+	/// See the [`fuse::operations::flush`] module for an overview of the
+	/// `FUSE_FLUSH` operation.
+	///
+	/// [`FUSE_FLUSH`]: crate::Opcode::FUSE_FLUSH
+	/// [`fuse::operations::flush`]: crate::operations::flush
 	fn flush(
 		&self,
 		call: Call<S>,
@@ -509,6 +531,13 @@ pub trait Handlers<S: CuseSocket> {
 		call.unimplemented()
 	}
 
+	/// Request handler for [`FUSE_FSYNC`].
+	///
+	/// See the [`fuse::operations::fsync`] module for an overview of the
+	/// `FUSE_FSYNC` operation.
+	///
+	/// [`FUSE_FSYNC`]: crate::Opcode::FUSE_FSYNC
+	/// [`fuse::operations::fsync`]: crate::operations::fsync
 	fn fsync(
 		&self,
 		call: Call<S>,
@@ -517,6 +546,13 @@ pub trait Handlers<S: CuseSocket> {
 		call.unimplemented()
 	}
 
+	/// Request handler for [`FUSE_INTERRUPT`].
+	///
+	/// See the [`fuse::operations::interrupt`] module for an overview of the
+	/// `FUSE_INTERRUPT` operation.
+	///
+	/// [`FUSE_INTERRUPT`]: crate::Opcode::FUSE_INTERRUPT
+	/// [`fuse::operations::interrupt`]: crate::operations::interrupt
 	fn interrupt(
 		&self,
 		call: Call<S>,
@@ -527,6 +563,13 @@ pub trait Handlers<S: CuseSocket> {
 		}
 	}
 
+	/// Request handler for [`FUSE_IOCTL`].
+	///
+	/// See the [`fuse::operations::ioctl`] module for an overview of the
+	/// `FUSE_IOCTL` operation.
+	///
+	/// [`FUSE_IOCTL`]: crate::Opcode::FUSE_IOCTL
+	/// [`fuse::operations::ioctl`]: crate::operations::ioctl
 	fn ioctl(
 		&self,
 		call: Call<S>,
@@ -535,6 +578,13 @@ pub trait Handlers<S: CuseSocket> {
 		call.unimplemented()
 	}
 
+	/// Request handler for [`FUSE_OPEN`].
+	///
+	/// See the [`fuse::operations::open`] module for an overview of the
+	/// `FUSE_OPEN` operation.
+	///
+	/// [`FUSE_OPEN`]: crate::Opcode::FUSE_OPEN
+	/// [`fuse::operations::open`]: crate::operations::open
 	fn open(
 		&self,
 		call: Call<S>,
@@ -543,6 +593,13 @@ pub trait Handlers<S: CuseSocket> {
 		call.unimplemented()
 	}
 
+	/// Request handler for [`FUSE_POLL`].
+	///
+	/// See the [`fuse::operations::poll`] module for an overview of the
+	/// `FUSE_POLL` operation.
+	///
+	/// [`FUSE_POLL`]: crate::Opcode::FUSE_POLL
+	/// [`fuse::operations::poll`]: crate::operations::poll
 	fn poll(
 		&self,
 		call: Call<S>,
@@ -551,6 +608,13 @@ pub trait Handlers<S: CuseSocket> {
 		call.unimplemented()
 	}
 
+	/// Request handler for [`FUSE_READ`].
+	///
+	/// See the [`fuse::operations::read`] module for an overview of the
+	/// `FUSE_READ` operation.
+	///
+	/// [`FUSE_READ`]: crate::Opcode::FUSE_READ
+	/// [`fuse::operations::read`]: crate::operations::read
 	fn read(
 		&self,
 		call: Call<S>,
@@ -559,6 +623,13 @@ pub trait Handlers<S: CuseSocket> {
 		call.unimplemented()
 	}
 
+	/// Request handler for [`FUSE_RELEASE`].
+	///
+	/// See the [`fuse::operations::release`] module for an overview of the
+	/// `FUSE_RELEASE` operation.
+	///
+	/// [`FUSE_RELEASE`]: crate::Opcode::FUSE_RELEASE
+	/// [`fuse::operations::release`]: crate::operations::release
 	fn release(
 		&self,
 		call: Call<S>,
@@ -567,6 +638,13 @@ pub trait Handlers<S: CuseSocket> {
 		call.unimplemented()
 	}
 
+	/// Request handler for [`FUSE_WRITE`].
+	///
+	/// See the [`fuse::operations::write`] module for an overview of the
+	/// `FUSE_WRITE` operation.
+	///
+	/// [`FUSE_WRITE`]: crate::Opcode::FUSE_WRITE
+	/// [`fuse::operations::write`]: crate::operations::write
 	fn write(
 		&self,
 		call: Call<S>,

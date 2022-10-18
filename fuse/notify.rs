@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#![allow(missing_docs)] // TODO
+
 use core::convert::TryInto;
 use core::fmt;
 use core::mem;
@@ -21,6 +23,7 @@ use core::num;
 
 use crate::internal::fuse_kernel;
 use crate::node;
+use crate::operations::poll;
 use crate::server::encode;
 use crate::server::io;
 #[cfg(feature = "unstable_async")]
@@ -300,7 +303,7 @@ pub struct Poll {
 
 impl Poll {
 	#[must_use]
-	pub fn new(poll_handle: crate::PollHandle) -> Poll {
+	pub fn new(poll_handle: poll::PollHandle) -> Poll {
 		Self {
 			raw: fuse_kernel::fuse_notify_poll_wakeup_out {
 				kh: poll_handle.bits,
@@ -309,8 +312,8 @@ impl Poll {
 	}
 
 	#[must_use]
-	pub fn poll_handle(&self) -> crate::PollHandle {
-		crate::PollHandle { bits: self.raw.kh }
+	pub fn poll_handle(&self) -> poll::PollHandle {
+		poll::PollHandle { bits: self.raw.kh }
 	}
 }
 

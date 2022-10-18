@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#![allow(missing_docs)] // TODO
+
 pub mod access;
 #[doc(inline)]
 pub use self::access::*;

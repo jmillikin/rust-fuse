@@ -449,6 +449,7 @@ impl Type {
 		Type::from_bits(mode.type_bits() >> 12)
 	}
 
+	/// Returns the type encoded as a Unix file mode.
 	#[inline]
 	#[must_use]
 	pub const fn as_mode(self) -> Mode {
