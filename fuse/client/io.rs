@@ -14,7 +14,20 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Client-specific I/O types.
+
+/// Errors that may be encountered when receiving a response.
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum ResponseError {
+pub enum RecvError<IoError> {
+	/// The socket encountered an error not otherwise specified.
+	Other(IoError),
+}
+
+/// Errors that may be encountered when sending a request.
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum SendError<IoError> {
+	/// The socket encountered an error not otherwise specified.
+	Other(IoError),
 }
