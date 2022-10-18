@@ -36,8 +36,8 @@ struct TestFS {
 const FIBMAP: i32 = 1; // IO(0x00,1)
 
 impl interop_testutil::TestFS for TestFS {
-	fn mount_fs_type(&self) -> ffi::CString {
-		ffi::CString::new("fuseblk").unwrap()
+	fn mount_type(&self) -> &'static fuse::os::linux::MountType {
+		fuse::os::linux::MountType::FUSEBLK
 	}
 
 	fn mount_source(&self) -> ffi::CString {

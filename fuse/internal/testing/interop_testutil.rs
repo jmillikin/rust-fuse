@@ -77,14 +77,16 @@ pub trait TestFS: fuse_rpc::Handlers<DevFuse> {
 	) {
 	}
 
-	fn mount_fs_type(&self) -> ffi::CString {
-		ffi::CString::new("fuse").unwrap()
-	}
-
-	fn mount_fs_subtype(&self) -> ffi::CString {
+	fn mount_subtype(&self) -> ffi::CString {
 		ffi::CString::new("rust_fuse_test").unwrap()
 	}
 
+	#[cfg(target_os = "linux")]
+	fn mount_type(&self) -> &'static fuse::os::linux::MountType {
+		fuse::os::linux::MountType::FUSE
+	}
+
+	#[cfg(target_os = "linux")]
 	fn mount_source(&self) -> ffi::CString {
 		ffi::CString::new("rust_fuse_test").unwrap()
 	}
@@ -133,11 +135,14 @@ pub fn fuse_interop_test<H: TestFS + Send + 'static>(
 		let mut mount_options = fuse::os::linux::MountOptions::new();
 
 		let mount_source = handlers.mount_source();
-		let mount_fs_type = handlers.mount_fs_type();
-		let mount_fs_subtype = handlers.mount_fs_subtype();
-		mount_options.set_source(Some(&mount_source));
-		mount_options.set_fs_type(Some(&mount_fs_type));
-		mount_options.set_fs_subtype(Some(&mount_fs_subtype));
+		let mount_subtype = handlers.mount_subtype();
+		mount_options.set_mount_source(
+			fuse::os::linux::MountSource::new(&mount_source).unwrap(),
+		);
+		mount_options.set_mount_type(handlers.mount_type());
+		mount_options.set_subtype(Some(
+			fuse::os::linux::FuseSubtype::new(&mount_subtype).unwrap(),
+		));
 
 		handlers.linux_mount_options(&mut mount_options);
 
@@ -148,8 +153,10 @@ pub fn fuse_interop_test<H: TestFS + Send + 'static>(
 	{
 		let mut mount_options = fuse::os::freebsd::MountOptions::new();
 
-		let mount_fs_subtype = handlers.mount_fs_subtype();
-		mount_options.set_fs_subtype(Some(&mount_fs_subtype));
+		let mount_subtype = handlers.mount_subtype();
+		mount_options.set_subtype(Some(
+			fuse::os::freebsd::FuseSubtype::new(&mount_subtype).unwrap(),
+		));
 
 		handlers.freebsd_mount_options(&mut mount_options);
 

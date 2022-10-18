@@ -16,6 +16,7 @@
 
 use core::ffi;
 
+use fuse::node;
 #[cfg(target_os = "linux")]
 use fuse::os::linux as fuse_os_linux;
 
@@ -78,7 +79,7 @@ pub fn mount<'a>(
 	target: &ffi::CStr,
 	options: impl Into<MountOptions<'a>>,
 ) -> Result<FuseServerSocket, LibcError> {
-	use fuse::os::linux::MountData;
+	use fuse::os::linux::mount_data;
 
 	let options = options.into();
 	let mut opts = options.opts;
@@ -96,18 +97,18 @@ pub fn mount<'a>(
 	opts.set_fuse_device_fd(Some(socket.fuse_device_fd()));
 
 	let mut mount_data_buf = [0u8; PAGE_SIZE];
-	let mount_data = match MountData::new(&mut mount_data_buf, &opts) {
+	let mount_data = match mount_data(&opts, &mut mount_data_buf) {
 		Some(mount_data) => mount_data,
 		_ => return Err(LibcError::from_raw_os_error(libc::EINVAL)),
 	};
 
 	let rc = unsafe {
 		libc::mount(
-			opts.source().as_ptr(),
+			opts.mount_source().as_cstr().as_ptr(),
 			target.as_ptr(),
-			opts.fs_type().as_ptr(),
+			opts.mount_type().as_cstr().as_ptr(),
 			options.flags as libc::c_ulong,
-			mount_data.as_cstr().as_ptr().cast::<libc::c_void>(),
+			mount_data.as_ptr().cast(),
 		)
 	};
 	if rc != 0 {
@@ -116,7 +117,7 @@ pub fn mount<'a>(
 	Ok(socket)
 }
 
-fn get_root_mode(target: &ffi::CStr) -> Result<u32, LibcError> {
+fn get_root_mode(target: &ffi::CStr) -> Result<node::Mode, LibcError> {
 	let mut statx_buf: libc::statx = unsafe { core::mem::zeroed() };
 	let rc = unsafe {
 		libc::statx(
@@ -130,5 +131,5 @@ fn get_root_mode(target: &ffi::CStr) -> Result<u32, LibcError> {
 	if rc != 0 {
 		return Err(LibcError::last_os_error());
 	}
-	Ok(u32::from(statx_buf.stx_mode))
+	Ok(node::Mode::new(u32::from(statx_buf.stx_mode)))
 }

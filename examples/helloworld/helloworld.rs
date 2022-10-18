@@ -192,18 +192,24 @@ fn main() {
 
 	let handlers = HelloWorldFS {};
 
-	let fs_source = CString::new("helloworld").unwrap();
-	let fs_subtype = CString::new("helloworld").unwrap();
 
 	let dev_fuse;
 
 	#[cfg(target_os = "linux")]
 	{
+		use fuse::os::linux::FuseSubtype;
+		use fuse::os::linux::MountSource;
 		use fuse_libc::os::linux as fuse_libc;
 
+		let fs_source = CString::new("helloworld").unwrap();
+		let fs_source = MountSource::new(&fs_source).unwrap();
+
+		let fs_subtype = CString::new("helloworld").unwrap();
+		let fs_subtype = FuseSubtype::new(&fs_subtype).unwrap();
+
 		let mut mount_options = fuse::os::linux::MountOptions::new();
-		mount_options.set_source(Some(&fs_source));
-		mount_options.set_fs_subtype(Some(&fs_subtype));
+		mount_options.set_mount_source(fs_source);
+		mount_options.set_subtype(Some(fs_subtype));
 		mount_options.set_user_id(Some(getuid()));
 		mount_options.set_group_id(Some(getgid()));
 		dev_fuse = fuse_libc::mount(&mount_target_cstr, mount_options)
@@ -212,10 +218,14 @@ fn main() {
 
 	#[cfg(target_os = "freebsd")]
 	{
+		use fuse::os::freebsd::FuseSubtype;
 		use fuse_libc::os::freebsd as fuse_libc;
 
+		let fs_subtype = CString::new("helloworld").unwrap();
+		let fs_subtype = FuseSubtype::new(&fs_subtype).unwrap();
+
 		let mut mount_options = fuse::os::freebsd::MountOptions::new();
-		mount_options.set_fs_subtype(Some(&fs_subtype));
+		mount_options.set_subtype(Some(fs_subtype));
 		dev_fuse = fuse_libc::mount(&mount_target_cstr, mount_options)
 			.unwrap();
 	}

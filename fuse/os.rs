@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! OS-specific functionality.
+
 #[cfg(any(doc, target_os = "freebsd"))]
 pub mod freebsd;
 

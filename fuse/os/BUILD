@@ -15,20 +15,7 @@ rust_test(
         "linux.rs",
         "linux_test.rs",
     ],
-    crate_features = ["std"],
-    edition = "2018",
-    target_compatible_with = [
-        "@platforms//os:linux",
-    ],
-)
-
-rust_test(
-    name = "linux_test_nostd",
-    srcs = [
-        "linux.rs",
-        "linux_test.rs",
-    ],
-    crate_root = "linux_test.rs",
+    crate = "//fuse",
     edition = "2018",
     target_compatible_with = [
         "@platforms//os:linux",

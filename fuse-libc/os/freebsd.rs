@@ -101,9 +101,10 @@ pub fn mount<'a>(
 		iovecs_len += 2;
 	}
 
-	if let Some(subtype) = opts.fs_subtype() {
+	if let Some(subtype) = opts.subtype() {
+		let subtype_bytes = subtype.as_cstr().to_bytes_with_nul();
 		iovecs[iovecs_len] = IoVec::global(b"subtype=\0");
-		iovecs[iovecs_len + 1] = IoVec::borrow(subtype.to_bytes_with_nul());
+		iovecs[iovecs_len + 1] = IoVec::borrow(subtype_bytes);
 		iovecs_len += 2;
 	}
 
