@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! RPC-style CUSE servers.
+
 use crate::cuse;
 use crate::operations;
 use crate::operations::cuse_init::{
@@ -149,6 +151,10 @@ impl ServerOptions {
 
 // Server {{{
 
+/// An RPC-style CUSE device server.
+///
+/// Maintains ownership of a [`CuseSocket`] and a set of [`Handlers`]. Each
+/// incoming request from the socket will be routed to the appropriate handler.
 pub struct Server<S, H> {
 	socket: S,
 	handlers: H,
@@ -164,6 +170,9 @@ where
 	S: CuseSocket,
 	H: Handlers<S>,
 {
+	/// Serve CUSE requests from the socket in a loop.
+	///
+	/// Returns `Ok(())` when the device is cleanly removed by external action.
 	pub fn serve(&self) -> Result<(), ServerError<S::Error>> {
 		let mut buf = crate::io::MinReadBuffer::new();
 
@@ -318,6 +327,7 @@ impl<S: CuseSocket> Call<'_, S> {
 
 // Dispatcher {{{
 
+/// Helper for dispatching CUSE requests to handlers.
 pub struct Dispatcher<'a, S, H> {
 	socket: &'a S,
 	handlers: &'a H,
@@ -327,6 +337,7 @@ pub struct Dispatcher<'a, S, H> {
 }
 
 impl<'a, S, H> Dispatcher<'a, S, H> {
+	/// Create a new `Dispatcher` with the given socket, handlers, and options.
 	pub fn new(
 		socket: &'a S,
 		handlers: &'a H,
@@ -342,12 +353,14 @@ impl<'a, S, H> Dispatcher<'a, S, H> {
 		}
 	}
 
+	/// Set optioal hooks for observing dispatch events.
 	pub fn set_hooks(&mut self, hooks: &'a dyn server::Hooks) {
 		self.hooks = Some(hooks);
 	}
 }
 
 impl<S: CuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
+	/// Dispatch a single CUSE request.
 	pub fn dispatch(
 		&self,
 		request: server::Request,
@@ -459,7 +472,7 @@ impl<S: CuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 		let request_id = request.header().request_id();
 		server::send_error(self.socket, request_id, match err {
 			RequestError::UnexpectedEof => Error::PROTOCOL_ERROR,
-			RequestError::MissingRequestId =>  Error::PROTOCOL_ERROR,
+			RequestError::InvalidRequestId =>  Error::PROTOCOL_ERROR,
 			_ =>  Error::INVALID_ARGUMENT,
 		})
 	}

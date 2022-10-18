@@ -67,7 +67,7 @@ impl<'a> InterruptRequest<'a> {
 		dec.expect_opcode(fuse_kernel::FUSE_INTERRUPT)?;
 		let body: &fuse_kernel::fuse_interrupt_in = dec.next_sized()?;
 		if body.unique == 0 {
-			return Err(server::RequestError::InterruptMissingRequestId);
+			return Err(server::RequestError::MissingRequestId);
 		}
 		Ok(Self { body })
 	}

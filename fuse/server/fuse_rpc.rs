@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! RPC-style FUSE servers.
+
 use crate::operations;
 use crate::operations::fuse_init::{
 	FuseInitFlags,
@@ -125,6 +127,10 @@ impl ServerOptions {
 
 // Server {{{
 
+/// An RPC-style FUSE filesystem server.
+///
+/// Maintains ownership of a [`FuseSocket`] and a set of [`Handlers`]. Each
+/// incoming request from the socket will be routed to the appropriate handler.
 pub struct Server<S, H> {
 	socket: S,
 	handlers: H,
@@ -140,6 +146,10 @@ where
 	S: FuseSocket,
 	H: Handlers<S>,
 {
+	/// Serve FUSE requests from the socket in a loop.
+	///
+	/// Returns `Ok(())` when the filesystem is cleanly shut down by external
+	/// action, such as the user running `fusermount -u`.
 	pub fn serve(&self) -> Result<(), ServerError<S::Error>> {
 		let mut buf = crate::io::MinReadBuffer::new();
 
@@ -294,6 +304,7 @@ impl<S: FuseSocket> Call<'_, S> {
 
 // Dispatcher {{{
 
+/// Helper for dispatching FUSE requests to handlers.
 pub struct Dispatcher<'a, S, H> {
 	socket: &'a S,
 	handlers: &'a H,
@@ -303,6 +314,7 @@ pub struct Dispatcher<'a, S, H> {
 }
 
 impl<'a, S, H> Dispatcher<'a, S, H> {
+	/// Create a new `Dispatcher` with the given socket, handlers, and options.
 	pub fn new(
 		socket: &'a S,
 		handlers: &'a H,
@@ -318,12 +330,14 @@ impl<'a, S, H> Dispatcher<'a, S, H> {
 		}
 	}
 
+	/// Set optioal hooks for observing dispatch events.
 	pub fn set_hooks(&mut self, hooks: &'a dyn server::Hooks) {
 		self.hooks = Some(hooks);
 	}
 }
 
 impl<S: FuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
+	/// Dispatch a single FUSE request.
 	pub fn dispatch(
 		&self,
 		request: server::Request,
@@ -475,7 +489,7 @@ impl<S: FuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 		let request_id = request.header().request_id();
 		server::send_error(self.socket, request_id, match err {
 			RequestError::UnexpectedEof => Error::PROTOCOL_ERROR,
-			RequestError::MissingRequestId =>  Error::PROTOCOL_ERROR,
+			RequestError::InvalidRequestId =>  Error::PROTOCOL_ERROR,
 			_ =>  Error::INVALID_ARGUMENT,
 		})
 	}

@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! CUSE and FUSE servers.
+
 use core::cmp;
 use core::mem;
 use core::num;
@@ -45,11 +47,17 @@ pub(crate) mod sealed {
 
 // ServerError {{{
 
+/// Errors that may be encountered when serving.
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ServerError<IoError> {
+	/// An invalid request was received from the client.
 	RequestError(RequestError),
+
+	/// The socket encountered an I/O error when receiving the next request.
 	RecvError(IoError),
+
+	/// The socket encountered an I/O error when sending a response.
 	SendError(IoError),
 }
 
@@ -81,19 +89,57 @@ impl<E> From<io::SendError<E>> for ServerError<E> {
 
 // RequestError {{{
 
+/// Errors describing why a request is invalid.
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum RequestError {
-	InterruptMissingRequestId,
+	/// The request contains an invalid [`Lock`].
+	///
+	/// [`Lock`]: crate::lock::Lock
 	LockError(lock::LockError),
+
+	/// The request is missing one or mode node IDs.
+	///
+	/// For most requests this will mean that the [`RequestHeader::node_id`]
+	/// is `None`, but some request types have additional required node IDs
+	/// in the request body.
+	///
+	/// [`RequestHeader::node_id`]: crate::RequestHeader::node_id
 	MissingNodeId,
+
+	/// The request is a `FUSE_INTERRUPT` with a missing request ID.
 	MissingRequestId,
+
+	/// The request contains an invalid [`node::Name`].
 	NodeNameError(node::NameError),
-	OpcodeMismatch,
-	TimestampNanosOverflow,
-	UnexpectedEof,
+
+	/// The request contains a timestamp with too many nanoseconds.
+	TimestampOverflow,
+
+	/// The request contains an invalid [`xattr::Name`].
+	///
+	/// [`xattr::Name`]: crate::xattr::Name
 	XattrNameError(xattr::NameError),
+
+	/// The request contains an invalid [`xattr::Value`].
+	///
+	/// [`xattr::Value`]: crate::xattr::Value
 	XattrValueError(xattr::ValueError),
+
+	// Errors indicating a programming error in the client.
+
+	/// The request header's request ID is zero.
+	InvalidRequestId,
+
+	/// The request buffer contains an incomplete request.
+	UnexpectedEof,
+
+	// Errors indicating a programming error in the server.
+
+	/// Attempted to decode a request as the wrong type.
+	///
+	/// This error indicates a programming error in the server.
+	OpcodeMismatch,
 }
 
 impl From<lock::LockError> for RequestError {
@@ -142,10 +188,11 @@ impl<'a> Request<'a> {
 	///
 	/// # Errors
 	///
-	/// Returns an error if:
-	/// * The slice isn't large enough to contain a [`RequestHeader`].
-	/// * The header's request length is larger than the slice.
-	/// * The header's request ID is zero.
+	/// Returns `UnexpectedEof` if the slice isn't large enough to contain a
+	/// [`RequestHeader`], or if the header's request length is larger than
+	/// the slice.
+	///
+	/// Returns `InvalidRequestId` if the header's request ID is zero.
 	///
 	/// [`AlignedSlice`]: crate::io::AlignedSlice
 	/// [`RequestHeader`]: crate::RequestHeader
@@ -162,7 +209,7 @@ impl<'a> Request<'a> {
 		let header = unsafe { &*header_ptr };
 
 		if header.unique == 0 {
-			return Err(RequestError::MissingRequestId);
+			return Err(RequestError::InvalidRequestId);
 		}
 
 		let buf_len: u32;
@@ -469,10 +516,20 @@ pub trait Hooks {
 
 // }}}
 
-pub fn cuse_init<'a, S: io::CuseSocket>(
+/// Perform a CUSE session handshake.
+///
+/// When a CUSE session is being established the client will send a
+/// [`CuseInitRequest`] and the server responds with a [`CuseInitResponse`].
+///
+/// The response specifies the name and device number of the CUSE device that
+/// will be created for this server.
+pub fn cuse_init<'a, F, S: io::CuseSocket>(
 	socket: &mut S,
-	mut init_fn: impl FnMut(&CuseInitRequest) -> CuseInitResponse<'a>,
-) -> Result<CuseInitResponse<'a>, ServerError<S::Error>> {
+	mut init_fn: F,
+) -> Result<CuseInitResponse<'a>, ServerError<S::Error>>
+where
+	F: FnMut(&CuseInitRequest) -> CuseInitResponse<'a>
+{
 	let mut buf = crate::io::MinReadBuffer::new();
 
 	loop {
@@ -489,10 +546,13 @@ pub fn cuse_init<'a, S: io::CuseSocket>(
 	}
 }
 
-pub(crate) fn cuse_handshake<'a, E>(
+pub(crate) fn cuse_handshake<'a, E, F>(
 	request: &CuseInitRequest,
-	init_fn: &mut impl FnMut(&CuseInitRequest) -> CuseInitResponse<'a>,
-) -> Result<(CuseInitResponse<'a>, bool), ServerError<E>> {
+	init_fn: &mut F,
+) -> Result<(CuseInitResponse<'a>, bool), ServerError<E>>
+where
+	F: FnMut(&CuseInitRequest) -> CuseInitResponse<'a>
+{
 	match negotiate_version(request.version()) {
 		Some(version) => {
 			let mut response = init_fn(request);
@@ -507,10 +567,20 @@ pub(crate) fn cuse_handshake<'a, E>(
 	}
 }
 
-pub fn fuse_init<S: io::FuseSocket>(
+/// Perform a FUSE session handshake.
+///
+/// When a FUSE session is being established the client will send a
+/// [`FuseInitRequest`] and the server responds with a [`FuseInitResponse`].
+///
+/// The response specifies tunable parameters and optional features of the
+/// filesystem server.
+pub fn fuse_init<F, S: io::FuseSocket>(
 	socket: &mut S,
-	mut init_fn: impl FnMut(&FuseInitRequest) -> FuseInitResponse,
-) -> Result<FuseInitResponse, ServerError<S::Error>> {
+	mut init_fn: F,
+) -> Result<FuseInitResponse, ServerError<S::Error>>
+where
+	F: FnMut(&FuseInitRequest) -> FuseInitResponse,
+{
 	let mut buf = crate::io::MinReadBuffer::new();
 
 	loop {
@@ -527,10 +597,13 @@ pub fn fuse_init<S: io::FuseSocket>(
 	}
 }
 
-pub(crate) fn fuse_handshake<E>(
+pub(crate) fn fuse_handshake<E, F>(
 	request: &FuseInitRequest,
-	init_fn: &mut impl FnMut(&FuseInitRequest) -> FuseInitResponse,
-) -> Result<(FuseInitResponse, bool), ServerError<E>> {
+	init_fn: &mut F,
+) -> Result<(FuseInitResponse, bool), ServerError<E>>
+where
+	F: FnMut(&FuseInitRequest) -> FuseInitResponse,
+{
 	match negotiate_version(request.version()) {
 		Some(version) => {
 			let mut response = init_fn(request);
