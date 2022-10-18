@@ -17,7 +17,6 @@
 //! Implements the `FUSE_WRITE` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::compat;
 use crate::internal::debug;
@@ -159,16 +158,14 @@ impl fmt::Debug for WriteRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_WRITE` operation.
-pub struct WriteResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct WriteResponse {
 	raw: fuse_kernel::fuse_write_out,
 }
 
-impl<'a> WriteResponse<'a> {
+impl WriteResponse {
 	#[must_use]
-	pub fn new() -> WriteResponse<'a> {
+	pub fn new() -> WriteResponse {
 		Self {
-			phantom: PhantomData,
 			raw: fuse_kernel::fuse_write_out {
 				size: 0,
 				padding: 0,
@@ -181,7 +178,7 @@ impl<'a> WriteResponse<'a> {
 	}
 }
 
-impl fmt::Debug for WriteResponse<'_> {
+impl fmt::Debug for WriteResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("WriteResponse")
 			.field("size", &self.raw.size)
@@ -189,9 +186,9 @@ impl fmt::Debug for WriteResponse<'_> {
 	}
 }
 
-impl server::sealed::Sealed for WriteResponse<'_> {}
+impl server::sealed::Sealed for WriteResponse {}
 
-impl server::CuseResponse for WriteResponse<'_> {
+impl server::CuseResponse for WriteResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,
@@ -201,7 +198,7 @@ impl server::CuseResponse for WriteResponse<'_> {
 	}
 }
 
-impl server::FuseResponse for WriteResponse<'_> {
+impl server::FuseResponse for WriteResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

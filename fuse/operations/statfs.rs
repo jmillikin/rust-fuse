@@ -76,16 +76,14 @@ impl fmt::Debug for StatfsRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_STATFS` operation.
-pub struct StatfsResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct StatfsResponse {
 	raw: fuse_kernel::fuse_statfs_out,
 }
 
-impl<'a> StatfsResponse<'a> {
+impl StatfsResponse {
 	#[must_use]
-	pub fn new() -> StatfsResponse<'a> {
+	pub fn new() -> StatfsResponse {
 		Self {
-			phantom: PhantomData,
 			raw: fuse_kernel::fuse_statfs_out::zeroed(),
 		}
 	}
@@ -123,7 +121,7 @@ impl<'a> StatfsResponse<'a> {
 	}
 }
 
-impl fmt::Debug for StatfsResponse<'_> {
+impl fmt::Debug for StatfsResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("StatfsResponse")
 			.field("block_count", &self.raw.st.blocks)
@@ -138,7 +136,7 @@ impl fmt::Debug for StatfsResponse<'_> {
 	}
 }
 
-impl server::sealed::Sealed for StatfsResponse<'_> {}
+impl server::sealed::Sealed for StatfsResponse {}
 
 #[repr(C)]
 struct fuse_statfs_out_v7p1 {
@@ -151,7 +149,7 @@ struct fuse_statfs_out_v7p1 {
 	namelen: u32,
 }
 
-impl server::FuseResponse for StatfsResponse<'_> {
+impl server::FuseResponse for StatfsResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

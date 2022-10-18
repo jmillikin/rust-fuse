@@ -17,7 +17,6 @@
 //! Implements the `FUSE_CREATE` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::compat;
 use crate::internal::debug;
@@ -131,18 +130,16 @@ impl fmt::Debug for CreateRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_CREATE` operation.
-pub struct CreateResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct CreateResponse {
 	entry: node::Entry,
 	open_out: fuse_kernel::fuse_open_out,
 }
 
-impl<'a> CreateResponse<'a> {
+impl CreateResponse {
 	#[inline]
 	#[must_use]
-	pub fn new(entry: node::Entry) -> CreateResponse<'a> {
+	pub fn new(entry: node::Entry) -> CreateResponse {
 		Self {
-			phantom: PhantomData,
 			entry,
 			open_out: fuse_kernel::fuse_open_out::zeroed(),
 		}
@@ -190,7 +187,7 @@ impl<'a> CreateResponse<'a> {
 	}
 }
 
-impl fmt::Debug for CreateResponse<'_> {
+impl fmt::Debug for CreateResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("CreateResponse")
 			.field("entry", &self.entry())
@@ -200,9 +197,9 @@ impl fmt::Debug for CreateResponse<'_> {
 	}
 }
 
-impl server::sealed::Sealed for CreateResponse<'_> {}
+impl server::sealed::Sealed for CreateResponse {}
 
-impl server::FuseResponse for CreateResponse<'_> {
+impl server::FuseResponse for CreateResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

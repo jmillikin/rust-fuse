@@ -84,28 +84,26 @@ impl fmt::Debug for AccessRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_ACCESS` operation.
-pub struct AccessResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct AccessResponse {
+	_priv: (),
 }
 
-impl<'a> AccessResponse<'a> {
+impl AccessResponse {
 	#[must_use]
-	pub fn new() -> AccessResponse<'a> {
-		Self {
-			phantom: PhantomData,
-		}
+	pub fn new() -> AccessResponse {
+		Self { _priv: () }
 	}
 }
 
-impl fmt::Debug for AccessResponse<'_> {
+impl fmt::Debug for AccessResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("AccessResponse").finish()
 	}
 }
 
-impl server::sealed::Sealed for AccessResponse<'_> {}
+impl server::sealed::Sealed for AccessResponse {}
 
-impl server::FuseResponse for AccessResponse<'_> {
+impl server::FuseResponse for AccessResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

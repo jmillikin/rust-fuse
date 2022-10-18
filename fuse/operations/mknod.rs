@@ -17,7 +17,6 @@
 //! Implements the `FUSE_MKNOD` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::compat;
 use crate::internal::fuse_kernel;
@@ -123,18 +122,14 @@ impl fmt::Debug for MknodRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_MKNOD` operation.
-pub struct MknodResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct MknodResponse {
 	entry: node::Entry,
 }
 
-impl<'a> MknodResponse<'a> {
+impl MknodResponse {
 	#[must_use]
-	pub fn new(entry: node::Entry) -> MknodResponse<'a> {
-		Self {
-			phantom: PhantomData,
-			entry,
-		}
+	pub fn new(entry: node::Entry) -> MknodResponse {
+		Self { entry }
 	}
 
 	#[inline]
@@ -150,7 +145,7 @@ impl<'a> MknodResponse<'a> {
 	}
 }
 
-impl fmt::Debug for MknodResponse<'_> {
+impl fmt::Debug for MknodResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("MknodResponse")
 			.field("entry", &self.entry())
@@ -158,9 +153,9 @@ impl fmt::Debug for MknodResponse<'_> {
 	}
 }
 
-impl server::sealed::Sealed for MknodResponse<'_> {}
+impl server::sealed::Sealed for MknodResponse {}
 
-impl server::FuseResponse for MknodResponse<'_> {
+impl server::FuseResponse for MknodResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

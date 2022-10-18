@@ -18,7 +18,6 @@
 
 use core::cmp;
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::fuse_kernel;
 use crate::lock;
@@ -112,16 +111,15 @@ impl fmt::Debug for GetlkRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_GETLK` operation.
-pub struct GetlkResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct GetlkResponse {
 	lock: Option<lock::Lock>,
 	raw: fuse_kernel::fuse_lk_out,
 }
 
-impl<'a> GetlkResponse<'a> {
+impl GetlkResponse {
 	#[inline]
 	#[must_use]
-	pub fn new(lock: Option<lock::Lock>) -> GetlkResponse<'a> {
+	pub fn new(lock: Option<lock::Lock>) -> GetlkResponse {
 		let fuse_lock = match &lock {
 			None => fuse_kernel::fuse_file_lock {
 				r#type: lock::F_UNLCK,
@@ -147,7 +145,6 @@ impl<'a> GetlkResponse<'a> {
 		};
 
 		Self {
-			phantom: PhantomData,
 			lock,
 			raw: fuse_kernel::fuse_lk_out { lk: fuse_lock },
 		}
@@ -160,7 +157,7 @@ impl<'a> GetlkResponse<'a> {
 	}
 }
 
-impl fmt::Debug for GetlkResponse<'_> {
+impl fmt::Debug for GetlkResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("GetlkResponse")
 			.field("lock", &self.lock())
@@ -168,9 +165,9 @@ impl fmt::Debug for GetlkResponse<'_> {
 	}
 }
 
-impl server::sealed::Sealed for GetlkResponse<'_> {}
+impl server::sealed::Sealed for GetlkResponse {}
 
-impl server::FuseResponse for GetlkResponse<'_> {
+impl server::FuseResponse for GetlkResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

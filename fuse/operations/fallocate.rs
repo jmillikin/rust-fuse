@@ -17,7 +17,6 @@
 //! Implements the `FUSE_FALLOCATE` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::debug;
 use crate::internal::fuse_kernel;
@@ -101,28 +100,26 @@ impl fmt::Debug for FallocateRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_FALLOCATE` operation.
-pub struct FallocateResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct FallocateResponse {
+	_priv: (),
 }
 
-impl<'a> FallocateResponse<'a> {
+impl FallocateResponse {
 	#[must_use]
-	pub fn new() -> FallocateResponse<'a> {
-		Self {
-			phantom: PhantomData,
-		}
+	pub fn new() -> FallocateResponse {
+		Self { _priv: () }
 	}
 }
 
-impl fmt::Debug for FallocateResponse<'_> {
+impl fmt::Debug for FallocateResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("FallocateResponse").finish()
 	}
 }
 
-impl server::sealed::Sealed for FallocateResponse<'_> {}
+impl server::sealed::Sealed for FallocateResponse {}
 
-impl server::FuseResponse for FallocateResponse<'_> {
+impl server::FuseResponse for FallocateResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

@@ -17,7 +17,6 @@
 //! Implements the `FUSE_OPENDIR` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::debug;
 use crate::internal::fuse_kernel;
@@ -91,16 +90,14 @@ impl fmt::Debug for OpendirRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_OPENDIR` operation.
-pub struct OpendirResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct OpendirResponse {
 	raw: fuse_kernel::fuse_open_out,
 }
 
-impl<'a> OpendirResponse<'a> {
+impl OpendirResponse {
 	#[must_use]
-	pub fn new() -> OpendirResponse<'a> {
+	pub fn new() -> OpendirResponse {
 		Self {
-			phantom: PhantomData,
 			raw: fuse_kernel::fuse_open_out::zeroed(),
 		}
 	}
@@ -133,7 +130,7 @@ impl<'a> OpendirResponse<'a> {
 	}
 }
 
-impl fmt::Debug for OpendirResponse<'_> {
+impl fmt::Debug for OpendirResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("OpendirResponse")
 			.field("handle", &self.handle())
@@ -142,9 +139,9 @@ impl fmt::Debug for OpendirResponse<'_> {
 	}
 }
 
-impl server::sealed::Sealed for OpendirResponse<'_> {}
+impl server::sealed::Sealed for OpendirResponse {}
 
-impl server::FuseResponse for OpendirResponse<'_> {
+impl server::FuseResponse for OpendirResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

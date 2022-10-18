@@ -17,7 +17,6 @@
 //! Implements the `FUSE_SYMLINK` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::debug;
 use crate::internal::fuse_kernel;
@@ -92,18 +91,14 @@ impl fmt::Debug for SymlinkRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_SYMLINK` operation.
-pub struct SymlinkResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct SymlinkResponse {
 	entry: node::Entry,
 }
 
-impl<'a> SymlinkResponse<'a> {
+impl SymlinkResponse {
 	#[must_use]
-	pub fn new(entry: node::Entry) -> SymlinkResponse<'a> {
-		Self {
-			phantom: PhantomData,
-			entry,
-		}
+	pub fn new(entry: node::Entry) -> SymlinkResponse {
+		Self { entry }
 	}
 
 	#[inline]
@@ -119,7 +114,7 @@ impl<'a> SymlinkResponse<'a> {
 	}
 }
 
-impl fmt::Debug for SymlinkResponse<'_> {
+impl fmt::Debug for SymlinkResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("SymlinkResponse")
 			.field("entry", &self.entry())
@@ -127,9 +122,9 @@ impl fmt::Debug for SymlinkResponse<'_> {
 	}
 }
 
-impl server::sealed::Sealed for SymlinkResponse<'_> {}
+impl server::sealed::Sealed for SymlinkResponse {}
 
-impl server::FuseResponse for SymlinkResponse<'_> {
+impl server::FuseResponse for SymlinkResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

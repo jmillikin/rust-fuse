@@ -17,7 +17,6 @@
 //! Implements the `FUSE_RMDIR` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::fuse_kernel;
 use crate::node;
@@ -73,28 +72,26 @@ impl<'a> server::FuseRequest<'a> for RmdirRequest<'a> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_RMDIR` operation.
-pub struct RmdirResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct RmdirResponse {
+	_priv: (),
 }
 
-impl<'a> RmdirResponse<'a> {
+impl RmdirResponse {
 	#[must_use]
-	pub fn new() -> RmdirResponse<'a> {
-		Self {
-			phantom: PhantomData,
-		}
+	pub fn new() -> RmdirResponse {
+		Self { _priv: () }
 	}
 }
 
-impl fmt::Debug for RmdirResponse<'_> {
+impl fmt::Debug for RmdirResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("RmdirResponse").finish()
 	}
 }
 
-impl server::sealed::Sealed for RmdirResponse<'_> {}
+impl server::sealed::Sealed for RmdirResponse {}
 
-impl server::FuseResponse for RmdirResponse<'_> {
+impl server::FuseResponse for RmdirResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

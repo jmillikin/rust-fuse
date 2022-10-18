@@ -62,28 +62,26 @@ impl fmt::Debug for DestroyRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_DESTROY` operation.
-pub struct DestroyResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct DestroyResponse {
+	_priv: (),
 }
 
-impl<'a> DestroyResponse<'a> {
+impl DestroyResponse {
 	#[must_use]
-	pub fn new() -> DestroyResponse<'a> {
-		Self {
-			phantom: PhantomData,
-		}
+	pub fn new() -> DestroyResponse {
+		Self { _priv: () }
 	}
 }
 
-impl fmt::Debug for DestroyResponse<'_> {
+impl fmt::Debug for DestroyResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("DestroyResponse").finish()
 	}
 }
 
-impl server::sealed::Sealed for DestroyResponse<'_> {}
+impl server::sealed::Sealed for DestroyResponse {}
 
-impl server::FuseResponse for DestroyResponse<'_> {
+impl server::FuseResponse for DestroyResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

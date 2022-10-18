@@ -110,28 +110,28 @@ impl fmt::Debug for FsyncRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_FSYNC` operation.
-pub struct FsyncResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct FsyncResponse {
+	phantom: PhantomData<()>,
 }
 
-impl<'a> FsyncResponse<'a> {
+impl FsyncResponse {
 	#[must_use]
-	pub fn new() -> FsyncResponse<'a> {
+	pub fn new() -> FsyncResponse {
 		Self {
 			phantom: PhantomData,
 		}
 	}
 }
 
-impl fmt::Debug for FsyncResponse<'_> {
+impl fmt::Debug for FsyncResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("FsyncResponse").finish()
 	}
 }
 
-impl server::sealed::Sealed for FsyncResponse<'_> {}
+impl server::sealed::Sealed for FsyncResponse {}
 
-impl server::CuseResponse for FsyncResponse<'_> {
+impl server::CuseResponse for FsyncResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,
@@ -141,7 +141,7 @@ impl server::CuseResponse for FsyncResponse<'_> {
 	}
 }
 
-impl server::FuseResponse for FsyncResponse<'_> {
+impl server::FuseResponse for FsyncResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

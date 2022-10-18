@@ -17,7 +17,6 @@
 //! Implements the `FUSE_COPY_FILE_RANGE` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::fuse_kernel;
 use crate::node;
@@ -124,16 +123,14 @@ impl fmt::Debug for CopyFileRangeRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_COPY_FILE_RANGE` operation.
-pub struct CopyFileRangeResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct CopyFileRangeResponse {
 	raw: fuse_kernel::fuse_write_out,
 }
 
-impl<'a> CopyFileRangeResponse<'a> {
+impl CopyFileRangeResponse {
 	#[must_use]
-	pub fn new() -> CopyFileRangeResponse<'a> {
+	pub fn new() -> CopyFileRangeResponse {
 		Self {
-			phantom: PhantomData,
 			raw: fuse_kernel::fuse_write_out {
 				size: 0,
 				padding: 0,
@@ -146,7 +143,7 @@ impl<'a> CopyFileRangeResponse<'a> {
 	}
 }
 
-impl fmt::Debug for CopyFileRangeResponse<'_> {
+impl fmt::Debug for CopyFileRangeResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("CopyFileRangeResponse")
 			.field("size", &self.raw.size)
@@ -154,9 +151,9 @@ impl fmt::Debug for CopyFileRangeResponse<'_> {
 	}
 }
 
-impl server::sealed::Sealed for CopyFileRangeResponse<'_> {}
+impl server::sealed::Sealed for CopyFileRangeResponse {}
 
-impl server::FuseResponse for CopyFileRangeResponse<'_> {
+impl server::FuseResponse for CopyFileRangeResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

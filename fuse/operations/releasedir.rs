@@ -17,7 +17,6 @@
 //! Implements the `FUSE_RELEASEDIR` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::compat;
 use crate::internal::debug;
@@ -113,28 +112,26 @@ impl fmt::Debug for ReleasedirRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_RELEASEDIR` operation.
-pub struct ReleasedirResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct ReleasedirResponse {
+	_priv: (),
 }
 
-impl<'a> ReleasedirResponse<'a> {
+impl ReleasedirResponse {
 	#[must_use]
-	pub fn new() -> ReleasedirResponse<'a> {
-		Self {
-			phantom: PhantomData,
-		}
+	pub fn new() -> ReleasedirResponse {
+		Self { _priv: () }
 	}
 }
 
-impl fmt::Debug for ReleasedirResponse<'_> {
+impl fmt::Debug for ReleasedirResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("ReleasedirResponse").finish()
 	}
 }
 
-impl server::sealed::Sealed for ReleasedirResponse<'_> {}
+impl server::sealed::Sealed for ReleasedirResponse {}
 
-impl server::FuseResponse for ReleasedirResponse<'_> {
+impl server::FuseResponse for ReleasedirResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

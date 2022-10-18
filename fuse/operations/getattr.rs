@@ -17,7 +17,6 @@
 //! Implements the `FUSE_GETATTR` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 use core::time;
 
 use crate::internal::compat;
@@ -96,17 +95,15 @@ impl fmt::Debug for GetattrRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_GETATTR` operation.
-pub struct GetattrResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct GetattrResponse {
 	attr_out: node::FuseAttrOut,
 }
 
-impl<'a> GetattrResponse<'a> {
+impl GetattrResponse {
 	#[inline]
 	#[must_use]
-	pub fn new(attributes: node::Attributes) -> GetattrResponse<'a> {
+	pub fn new(attributes: node::Attributes) -> GetattrResponse {
 		Self {
-			phantom: PhantomData,
 			attr_out: node::FuseAttrOut::new(attributes),
 		}
 	}
@@ -135,7 +132,7 @@ impl<'a> GetattrResponse<'a> {
 	}
 }
 
-impl fmt::Debug for GetattrResponse<'_> {
+impl fmt::Debug for GetattrResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("GetattrResponse")
 			.field("attributes", self.attributes())
@@ -144,9 +141,9 @@ impl fmt::Debug for GetattrResponse<'_> {
 	}
 }
 
-impl server::sealed::Sealed for GetattrResponse<'_> {}
+impl server::sealed::Sealed for GetattrResponse {}
 
-impl server::FuseResponse for GetattrResponse<'_> {
+impl server::FuseResponse for GetattrResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

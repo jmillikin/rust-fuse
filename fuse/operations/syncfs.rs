@@ -64,28 +64,26 @@ impl fmt::Debug for SyncfsRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_SYNCFS` operation.
-pub struct SyncfsResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct SyncfsResponse {
+	_priv: (),
 }
 
-impl<'a> SyncfsResponse<'a> {
+impl SyncfsResponse {
 	#[must_use]
-	pub fn new() -> SyncfsResponse<'a> {
-		Self {
-			phantom: PhantomData,
-		}
+	pub fn new() -> SyncfsResponse {
+		Self { _priv: () }
 	}
 }
 
-impl fmt::Debug for SyncfsResponse<'_> {
+impl fmt::Debug for SyncfsResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("SyncfsResponse").finish()
 	}
 }
 
-impl server::sealed::Sealed for SyncfsResponse<'_> {}
+impl server::sealed::Sealed for SyncfsResponse {}
 
-impl server::FuseResponse for SyncfsResponse<'_> {
+impl server::FuseResponse for SyncfsResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

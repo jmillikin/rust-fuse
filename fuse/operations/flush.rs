@@ -118,28 +118,28 @@ impl fmt::Debug for FlushRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_FLUSH` operation.
-pub struct FlushResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct FlushResponse {
+	phantom: PhantomData<()>,
 }
 
-impl<'a> FlushResponse<'a> {
+impl FlushResponse {
 	#[must_use]
-	pub fn new() -> FlushResponse<'a> {
+	pub fn new() -> FlushResponse {
 		Self {
 			phantom: PhantomData,
 		}
 	}
 }
 
-impl fmt::Debug for FlushResponse<'_> {
+impl fmt::Debug for FlushResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("FlushResponse").finish()
 	}
 }
 
-impl server::sealed::Sealed for FlushResponse<'_> {}
+impl server::sealed::Sealed for FlushResponse {}
 
-impl server::CuseResponse for FlushResponse<'_> {
+impl server::CuseResponse for FlushResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,
@@ -149,7 +149,7 @@ impl server::CuseResponse for FlushResponse<'_> {
 	}
 }
 
-impl server::FuseResponse for FlushResponse<'_> {
+impl server::FuseResponse for FlushResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

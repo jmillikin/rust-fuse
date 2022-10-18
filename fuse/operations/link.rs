@@ -17,7 +17,6 @@
 //! Implements the `FUSE_LINK` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::fuse_kernel;
 use crate::node;
@@ -83,19 +82,15 @@ impl<'a> server::FuseRequest<'a> for LinkRequest<'a> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_LINK` operation.
-pub struct LinkResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct LinkResponse {
 	entry: node::Entry,
 }
 
-impl<'a> LinkResponse<'a> {
+impl LinkResponse {
 	#[inline]
 	#[must_use]
-	pub fn new(entry: node::Entry) -> LinkResponse<'a> {
-		Self {
-			phantom: PhantomData,
-			entry,
-		}
+	pub fn new(entry: node::Entry) -> LinkResponse {
+		Self { entry }
 	}
 
 	#[inline]
@@ -111,7 +106,7 @@ impl<'a> LinkResponse<'a> {
 	}
 }
 
-impl fmt::Debug for LinkResponse<'_> {
+impl fmt::Debug for LinkResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("LinkResponse")
 			.field("entry", &self.entry())
@@ -119,9 +114,9 @@ impl fmt::Debug for LinkResponse<'_> {
 	}
 }
 
-impl server::sealed::Sealed for LinkResponse<'_> {}
+impl server::sealed::Sealed for LinkResponse {}
 
-impl server::FuseResponse for LinkResponse<'_> {
+impl server::FuseResponse for LinkResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

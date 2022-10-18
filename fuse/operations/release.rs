@@ -17,7 +17,6 @@
 //! Implements the `FUSE_RELEASE` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::compat;
 use crate::internal::debug;
@@ -133,28 +132,26 @@ impl fmt::Debug for ReleaseRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_RELEASE` operation.
-pub struct ReleaseResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct ReleaseResponse {
+	_priv: (),
 }
 
-impl<'a> ReleaseResponse<'a> {
+impl ReleaseResponse {
 	#[must_use]
-	pub fn new() -> ReleaseResponse<'a> {
-		Self {
-			phantom: PhantomData,
-		}
+	pub fn new() -> ReleaseResponse {
+		Self { _priv: () }
 	}
 }
 
-impl fmt::Debug for ReleaseResponse<'_> {
+impl fmt::Debug for ReleaseResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("ReleaseResponse").finish()
 	}
 }
 
-impl server::sealed::Sealed for ReleaseResponse<'_> {}
+impl server::sealed::Sealed for ReleaseResponse {}
 
-impl server::CuseResponse for ReleaseResponse<'_> {
+impl server::CuseResponse for ReleaseResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,
@@ -164,7 +161,7 @@ impl server::CuseResponse for ReleaseResponse<'_> {
 	}
 }
 
-impl server::FuseResponse for ReleaseResponse<'_> {
+impl server::FuseResponse for ReleaseResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

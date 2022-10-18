@@ -17,7 +17,6 @@
 //! Implements the `FUSE_POLL` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::debug;
 use crate::internal::fuse_kernel;
@@ -129,16 +128,14 @@ impl fmt::Debug for PollRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_COPY_FILE_RANGE` operation.
-pub struct PollResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct PollResponse {
 	raw: fuse_kernel::fuse_poll_out,
 }
 
-impl<'a> PollResponse<'a> {
+impl PollResponse {
 	#[must_use]
-	pub fn new() -> PollResponse<'a> {
+	pub fn new() -> PollResponse {
 		Self {
-			phantom: PhantomData,
 			raw: fuse_kernel::fuse_poll_out::zeroed(),
 		}
 	}
@@ -153,7 +150,7 @@ impl<'a> PollResponse<'a> {
 	}
 }
 
-impl fmt::Debug for PollResponse<'_> {
+impl fmt::Debug for PollResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("PollResponse")
 			.field("poll_events", &debug::hex_u32(self.poll_events()))
@@ -161,9 +158,9 @@ impl fmt::Debug for PollResponse<'_> {
 	}
 }
 
-impl server::sealed::Sealed for PollResponse<'_> {}
+impl server::sealed::Sealed for PollResponse {}
 
-impl server::CuseResponse for PollResponse<'_> {
+impl server::CuseResponse for PollResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,
@@ -173,7 +170,7 @@ impl server::CuseResponse for PollResponse<'_> {
 	}
 }
 
-impl server::FuseResponse for PollResponse<'_> {
+impl server::FuseResponse for PollResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

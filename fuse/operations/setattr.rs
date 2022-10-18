@@ -17,7 +17,6 @@
 //! Implements the `FUSE_SETATTR` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 use core::time;
 
 use crate::internal::fuse_kernel;
@@ -192,17 +191,15 @@ impl fmt::Debug for SetattrRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_SETATTR` operation.
-pub struct SetattrResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct SetattrResponse {
 	attr_out: node::FuseAttrOut,
 }
 
-impl<'a> SetattrResponse<'a> {
+impl SetattrResponse {
 	#[inline]
 	#[must_use]
-	pub fn new(attributes: node::Attributes) -> SetattrResponse<'a> {
+	pub fn new(attributes: node::Attributes) -> SetattrResponse {
 		Self {
-			phantom: PhantomData,
 			attr_out: node::FuseAttrOut::new(attributes),
 		}
 	}
@@ -231,7 +228,7 @@ impl<'a> SetattrResponse<'a> {
 	}
 }
 
-impl fmt::Debug for SetattrResponse<'_> {
+impl fmt::Debug for SetattrResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("SetattrResponse")
 			.field("attributes", self.attributes())
@@ -240,9 +237,9 @@ impl fmt::Debug for SetattrResponse<'_> {
 	}
 }
 
-impl server::sealed::Sealed for SetattrResponse<'_> {}
+impl server::sealed::Sealed for SetattrResponse {}
 
-impl server::FuseResponse for SetattrResponse<'_> {
+impl server::FuseResponse for SetattrResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

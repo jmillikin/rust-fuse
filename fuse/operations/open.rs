@@ -17,7 +17,6 @@
 //! Implements the `FUSE_OPEN` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::debug;
 use crate::internal::fuse_kernel;
@@ -111,16 +110,14 @@ impl fmt::Debug for OpenRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_OPEN` operation.
-pub struct OpenResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct OpenResponse {
 	raw: fuse_kernel::fuse_open_out,
 }
 
-impl<'a> OpenResponse<'a> {
+impl OpenResponse {
 	#[must_use]
-	pub fn new() -> OpenResponse<'a> {
+	pub fn new() -> OpenResponse {
 		Self {
-			phantom: PhantomData,
 			raw: fuse_kernel::fuse_open_out::zeroed(),
 		}
 	}
@@ -153,7 +150,7 @@ impl<'a> OpenResponse<'a> {
 	}
 }
 
-impl fmt::Debug for OpenResponse<'_> {
+impl fmt::Debug for OpenResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("OpenResponse")
 			.field("handle", &self.handle())
@@ -162,9 +159,9 @@ impl fmt::Debug for OpenResponse<'_> {
 	}
 }
 
-impl server::sealed::Sealed for OpenResponse<'_> {}
+impl server::sealed::Sealed for OpenResponse {}
 
-impl server::CuseResponse for OpenResponse<'_> {
+impl server::CuseResponse for OpenResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,
@@ -174,7 +171,7 @@ impl server::CuseResponse for OpenResponse<'_> {
 	}
 }
 
-impl server::FuseResponse for OpenResponse<'_> {
+impl server::FuseResponse for OpenResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

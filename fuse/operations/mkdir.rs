@@ -17,7 +17,6 @@
 //! Implements the `FUSE_MKDIR` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::fuse_kernel;
 use crate::node;
@@ -98,19 +97,15 @@ impl fmt::Debug for MkdirRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_MKDIR` operation.
-pub struct MkdirResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct MkdirResponse {
 	entry: node::Entry,
 }
 
-impl<'a> MkdirResponse<'a> {
+impl MkdirResponse {
 	#[inline]
 	#[must_use]
-	pub fn new(entry: node::Entry) -> MkdirResponse<'a> {
-		Self {
-			phantom: PhantomData,
-			entry,
-		}
+	pub fn new(entry: node::Entry) -> MkdirResponse {
+		Self { entry }
 	}
 
 	#[inline]
@@ -126,7 +121,7 @@ impl<'a> MkdirResponse<'a> {
 	}
 }
 
-impl fmt::Debug for MkdirResponse<'_> {
+impl fmt::Debug for MkdirResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("MkdirResponse")
 			.field("entry", &self.entry())
@@ -134,9 +129,9 @@ impl fmt::Debug for MkdirResponse<'_> {
 	}
 }
 
-impl server::sealed::Sealed for MkdirResponse<'_> {}
+impl server::sealed::Sealed for MkdirResponse {}
 
-impl server::FuseResponse for MkdirResponse<'_> {
+impl server::FuseResponse for MkdirResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

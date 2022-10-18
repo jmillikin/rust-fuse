@@ -17,7 +17,6 @@
 //! Implements the `FUSE_LOOKUP` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 use core::time;
 
 use crate::internal::fuse_kernel;
@@ -75,17 +74,15 @@ impl<'a> server::FuseRequest<'a> for LookupRequest<'a> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_LOOKUP` operation.
-pub struct LookupResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct LookupResponse {
 	entry_out: fuse_kernel::fuse_entry_out,
 }
 
-impl<'a> LookupResponse<'a> {
+impl LookupResponse {
 	#[inline]
 	#[must_use]
-	pub fn new(entry: Option<node::Entry>) -> LookupResponse<'a> {
+	pub fn new(entry: Option<node::Entry>) -> LookupResponse {
 		Self {
-			phantom: PhantomData,
 			entry_out: match entry {
 				Some(entry) => entry.into_entry_out(),
 				None => fuse_kernel::fuse_entry_out::zeroed(),
@@ -148,7 +145,7 @@ impl<'a> LookupResponse<'a> {
 	}
 }
 
-impl fmt::Debug for LookupResponse<'_> {
+impl fmt::Debug for LookupResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("LookupResponse")
 			.field("entry", &self.entry())
@@ -158,9 +155,9 @@ impl fmt::Debug for LookupResponse<'_> {
 	}
 }
 
-impl server::sealed::Sealed for LookupResponse<'_> {}
+impl server::sealed::Sealed for LookupResponse {}
 
-impl server::FuseResponse for LookupResponse<'_> {
+impl server::FuseResponse for LookupResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

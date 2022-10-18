@@ -17,7 +17,6 @@
 //! Implements the `FUSE_UNLINK` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::fuse_kernel;
 use crate::node;
@@ -73,28 +72,26 @@ impl<'a> server::FuseRequest<'a> for UnlinkRequest<'a> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_UNLINK` operation.
-pub struct UnlinkResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct UnlinkResponse {
+	_priv: (),
 }
 
-impl<'a> UnlinkResponse<'a> {
+impl UnlinkResponse {
 	#[must_use]
-	pub fn new() -> UnlinkResponse<'a> {
-		Self {
-			phantom: PhantomData,
-		}
+	pub fn new() -> UnlinkResponse {
+		Self { _priv: () }
 	}
 }
 
-impl fmt::Debug for UnlinkResponse<'_> {
+impl fmt::Debug for UnlinkResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("UnlinkResponse").finish()
 	}
 }
 
-impl server::sealed::Sealed for UnlinkResponse<'_> {}
+impl server::sealed::Sealed for UnlinkResponse {}
 
-impl server::FuseResponse for UnlinkResponse<'_> {
+impl server::FuseResponse for UnlinkResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

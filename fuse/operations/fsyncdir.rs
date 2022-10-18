@@ -17,7 +17,6 @@
 //! Implements the `FUSE_FSYNCDIR` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::fuse_kernel;
 use crate::node;
@@ -90,28 +89,26 @@ impl fmt::Debug for FsyncdirRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_FSYNCDIR` operation.
-pub struct FsyncdirResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct FsyncdirResponse {
+	_priv: (),
 }
 
-impl<'a> FsyncdirResponse<'a> {
+impl FsyncdirResponse {
 	#[must_use]
-	pub fn new() -> FsyncdirResponse<'a> {
-		Self {
-			phantom: PhantomData,
-		}
+	pub fn new() -> FsyncdirResponse {
+		Self { _priv: () }
 	}
 }
 
-impl fmt::Debug for FsyncdirResponse<'_> {
+impl fmt::Debug for FsyncdirResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("FsyncdirResponse").finish()
 	}
 }
 
-impl server::sealed::Sealed for FsyncdirResponse<'_> {}
+impl server::sealed::Sealed for FsyncdirResponse {}
 
-impl server::FuseResponse for FsyncdirResponse<'_> {
+impl server::FuseResponse for FsyncdirResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

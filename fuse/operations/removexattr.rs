@@ -17,7 +17,6 @@
 //! Implements the `FUSE_REMOVEXATTR` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::fuse_kernel;
 use crate::node;
@@ -87,29 +86,27 @@ impl fmt::Debug for RemovexattrRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_REMOVEXATTR` operation.
-pub struct RemovexattrResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct RemovexattrResponse {
+	_priv: (),
 }
 
-impl<'a> RemovexattrResponse<'a> {
+impl RemovexattrResponse {
 	#[inline]
 	#[must_use]
-	pub fn new() -> RemovexattrResponse<'a> {
-		Self {
-			phantom: PhantomData,
-		}
+	pub fn new() -> RemovexattrResponse {
+		Self { _priv: () }
 	}
 }
 
-impl fmt::Debug for RemovexattrResponse<'_> {
+impl fmt::Debug for RemovexattrResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("RemovexattrResponse").finish()
 	}
 }
 
-impl server::sealed::Sealed for RemovexattrResponse<'_> {}
+impl server::sealed::Sealed for RemovexattrResponse {}
 
-impl server::FuseResponse for RemovexattrResponse<'_> {
+impl server::FuseResponse for RemovexattrResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

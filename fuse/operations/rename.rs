@@ -17,7 +17,6 @@
 //! Implements the `FUSE_RENAME` and `FUSE_RENAME2` operations.
 
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::debug;
 use crate::internal::fuse_kernel;
@@ -120,28 +119,26 @@ impl fmt::Debug for RenameRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_RENAME` and `FUSE_RENAME2` operations.
-pub struct RenameResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct RenameResponse {
+	_priv: (),
 }
 
-impl<'a> RenameResponse<'a> {
+impl RenameResponse {
 	#[must_use]
-	pub fn new() -> RenameResponse<'a> {
-		Self {
-			phantom: PhantomData,
-		}
+	pub fn new() -> RenameResponse {
+		Self { _priv: () }
 	}
 }
 
-impl fmt::Debug for RenameResponse<'_> {
+impl fmt::Debug for RenameResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("RenameResponse").finish()
 	}
 }
 
-impl server::sealed::Sealed for RenameResponse<'_> {}
+impl server::sealed::Sealed for RenameResponse {}
 
-impl server::FuseResponse for RenameResponse<'_> {
+impl server::FuseResponse for RenameResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

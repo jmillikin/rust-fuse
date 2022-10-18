@@ -17,7 +17,6 @@
 //! Implements the `FUSE_SETLK` and `FUSE_SETLKW` operations.
 
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::fuse_kernel;
 use crate::lock;
@@ -158,28 +157,26 @@ impl fmt::Debug for SetlkRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_SETLK` and `FUSE_SETLKW` operations.
-pub struct SetlkResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct SetlkResponse {
+	_priv: (),
 }
 
-impl<'a> SetlkResponse<'a> {
+impl SetlkResponse {
 	#[must_use]
-	pub fn new() -> SetlkResponse<'a> {
-		Self {
-			phantom: PhantomData,
-		}
+	pub fn new() -> SetlkResponse {
+		Self { _priv: () }
 	}
 }
 
-impl fmt::Debug for SetlkResponse<'_> {
+impl fmt::Debug for SetlkResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("SetlkResponse").finish()
 	}
 }
 
-impl server::sealed::Sealed for SetlkResponse<'_> {}
+impl server::sealed::Sealed for SetlkResponse {}
 
-impl server::FuseResponse for SetlkResponse<'_> {
+impl server::FuseResponse for SetlkResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

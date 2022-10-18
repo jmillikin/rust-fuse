@@ -17,7 +17,6 @@
 //! Implements the `FUSE_SETXATTR` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::compat;
 use crate::internal::debug;
@@ -128,29 +127,27 @@ impl fmt::Debug for SetxattrRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_SETXATTR` operation.
-pub struct SetxattrResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct SetxattrResponse {
+	_priv: (),
 }
 
-impl<'a> SetxattrResponse<'a> {
+impl SetxattrResponse {
 	#[inline]
 	#[must_use]
-	pub fn new() -> SetxattrResponse<'a> {
-		Self {
-			phantom: PhantomData,
-		}
+	pub fn new() -> SetxattrResponse {
+		Self { _priv: () }
 	}
 }
 
-impl fmt::Debug for SetxattrResponse<'_> {
+impl fmt::Debug for SetxattrResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("SetxattrResponse").finish()
 	}
 }
 
-impl server::sealed::Sealed for SetxattrResponse<'_> {}
+impl server::sealed::Sealed for SetxattrResponse {}
 
-impl server::FuseResponse for SetxattrResponse<'_> {
+impl server::FuseResponse for SetxattrResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

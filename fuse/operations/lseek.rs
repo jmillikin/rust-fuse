@@ -17,7 +17,6 @@
 //! Implements the `FUSE_LSEEK` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::fuse_kernel;
 use crate::node;
@@ -112,16 +111,14 @@ impl fmt::Debug for LseekWhence {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_LSEEK` operation.
-pub struct LseekResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct LseekResponse {
 	raw: fuse_kernel::fuse_lseek_out,
 }
 
-impl<'a> LseekResponse<'a> {
+impl LseekResponse {
 	#[must_use]
-	pub fn new() -> LseekResponse<'a> {
+	pub fn new() -> LseekResponse {
 		Self {
-			phantom: PhantomData,
 			raw: fuse_kernel::fuse_lseek_out { offset: 0 },
 		}
 	}
@@ -131,7 +128,7 @@ impl<'a> LseekResponse<'a> {
 	}
 }
 
-impl fmt::Debug for LseekResponse<'_> {
+impl fmt::Debug for LseekResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("LseekResponse")
 			.field("offset", &self.raw.offset)
@@ -139,9 +136,9 @@ impl fmt::Debug for LseekResponse<'_> {
 	}
 }
 
-impl server::sealed::Sealed for LseekResponse<'_> {}
+impl server::sealed::Sealed for LseekResponse {}
 
-impl server::FuseResponse for LseekResponse<'_> {
+impl server::FuseResponse for LseekResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,

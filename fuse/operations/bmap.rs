@@ -17,7 +17,6 @@
 //! Implements the `FUSE_BMAP` operation.
 
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::internal::fuse_kernel;
 use crate::node;
@@ -88,16 +87,14 @@ impl fmt::Debug for BmapRequest<'_> {
 ///
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_BMAP` operation.
-pub struct BmapResponse<'a> {
-	phantom: PhantomData<&'a ()>,
+pub struct BmapResponse {
 	raw: fuse_kernel::fuse_bmap_out,
 }
 
-impl<'a> BmapResponse<'a> {
+impl BmapResponse {
 	#[must_use]
-	pub fn new() -> BmapResponse<'a> {
+	pub fn new() -> BmapResponse {
 		Self {
-			phantom: PhantomData,
 			raw: fuse_kernel::fuse_bmap_out::zeroed(),
 		}
 	}
@@ -112,7 +109,7 @@ impl<'a> BmapResponse<'a> {
 	}
 }
 
-impl fmt::Debug for BmapResponse<'_> {
+impl fmt::Debug for BmapResponse {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("BmapResponse")
 			.field("block", &self.raw.block)
@@ -120,9 +117,9 @@ impl fmt::Debug for BmapResponse<'_> {
 	}
 }
 
-impl server::sealed::Sealed for BmapResponse<'_> {}
+impl server::sealed::Sealed for BmapResponse {}
 
-impl server::FuseResponse for BmapResponse<'_> {
+impl server::FuseResponse for BmapResponse {
 	fn to_response<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,
