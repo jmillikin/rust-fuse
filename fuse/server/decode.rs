@@ -54,20 +54,24 @@ impl<'a> RequestBuf<'a> {
 
 pub(crate) struct RequestDecoder<'a> {
 	buf: RequestBuf<'a>,
-	consumed: u32,
+	header_len: usize,
+	consumed: usize,
 }
 
 impl<'a> RequestDecoder<'a> {
 	pub(crate) unsafe fn new_unchecked(buf: &'a [u8]) -> RequestDecoder<'a> {
-		Self {
-			buf: RequestBuf {
-				slice: Slice {
-					ptr: buf.as_ptr(),
-					len: buf.len(),
-					_phantom: PhantomData,
-				},
+		let buf = RequestBuf {
+			slice: Slice {
+				ptr: buf.as_ptr(),
+				len: buf.len(),
+				_phantom: PhantomData,
 			},
-			consumed: size_of::<fuse_kernel::fuse_in_header>() as u32,
+		};
+		let header_len = buf.raw_header.len as usize;
+		Self {
+			buf,
+			header_len,
+			consumed: size_of::<fuse_kernel::fuse_in_header>(),
 		}
 	}
 
@@ -85,43 +89,38 @@ impl<'a> RequestDecoder<'a> {
 		unsafe { self.buf.raw_header }
 	}
 
-	fn consume(&self, len: u32) -> Result<u32, RequestError> {
-		let new_consumed: u32;
-		let eof: bool;
+	#[inline]
+	fn consume(&self, len: usize) -> Result<usize, RequestError> {
 		match self.consumed.checked_add(len) {
-			Some(x) => {
-				new_consumed = x;
-				eof = new_consumed > self.header().len;
+			Some(new_consumed) => {
+				if new_consumed > self.header_len {
+					return Err(RequestError::UnexpectedEof);
+				}
+				Ok(new_consumed)
 			},
-			None => {
-				new_consumed = 0;
-				eof = true;
-			},
+			None => Err(RequestError::UnexpectedEof),
 		}
-		if eof {
-			return Err(RequestError::UnexpectedEof);
-		}
-		debug_assert!(new_consumed <= self.header().len);
-		Ok(new_consumed)
 	}
 
 	pub(crate) fn peek_sized<T: Sized>(&self) -> Result<&'a T, RequestError> {
-		if size_of::<usize>() > size_of::<u32>() {
-			debug_assert!(size_of::<T>() < u32::MAX as usize);
-		}
-		self.consume(size_of::<T>() as u32)?;
+		self.consume(size_of::<T>())?;
 		let out: &'a T = unsafe {
-			let out_p = self.buf.slice.ptr.add(self.consumed as usize);
+			let out_p = self.buf.slice.ptr.add(self.consumed);
 			&*(out_p.cast::<T>())
 		};
 		Ok(out)
 	}
 
+	#[inline]
 	pub(crate) fn next_sized<T: Sized>(
 		&mut self,
 	) -> Result<&'a T, RequestError> {
-		let out = self.peek_sized()?;
-		self.consumed = self.consume(size_of::<T>() as u32)?;
+		let next_consumed = self.consume(size_of::<T>())?;
+		let out: &'a T = unsafe {
+			let out_p = self.buf.slice.ptr.add(self.consumed);
+			&*(out_p.cast::<T>())
+		};
+		self.consumed = next_consumed;
 		Ok(out)
 	}
 
@@ -129,9 +128,12 @@ impl<'a> RequestDecoder<'a> {
 		&mut self,
 		len: u32,
 	) -> Result<&'a [u8], RequestError> {
+		let len = len as usize;
 		let new_consumed = self.consume(len)?;
-		let (_, start) = self.buf.as_slice().split_at(self.consumed as usize);
-		let (out, _) = start.split_at(len as usize);
+		let out = unsafe {
+			let out_p = self.buf.slice.ptr.add(self.consumed);
+			from_raw_parts(out_p, len)
+		};
 		self.consumed = new_consumed;
 		Ok(out)
 	}
@@ -146,14 +148,19 @@ impl<'a> RequestDecoder<'a> {
 	pub(crate) fn next_nul_terminated_bytes(
 		&mut self,
 	) -> Result<NulTerminatedBytes<'a>, RequestError> {
-		for off in self.consumed..self.header().len {
-			if self.buf.as_slice()[off as usize] == 0 {
+		let buf = self.buf.as_slice();
+		for off in self.consumed..self.header_len {
+			if unsafe { buf.get_unchecked(off) } == &0 {
 				let len = off - self.consumed;
 				if len == 0 {
 					return Err(RequestError::UnexpectedEof);
 				}
-				let buf = self.next_bytes(len + 1)?;
-				return Ok(NulTerminatedBytes(buf));
+				let new_consumed = off + 1;
+				let out = unsafe {
+					buf.get_unchecked(self.consumed..new_consumed)
+				};
+				self.consumed = new_consumed;
+				return Ok(NulTerminatedBytes(out));
 			}
 		}
 		Err(RequestError::UnexpectedEof)

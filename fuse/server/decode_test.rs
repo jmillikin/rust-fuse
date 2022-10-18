@@ -39,7 +39,7 @@ fn request_decoder_new() {
 
 	assert_eq!(
 		decoder.consumed,
-		size_of::<fuse_kernel::fuse_in_header>() as u32
+		size_of::<fuse_kernel::fuse_in_header>()
 	);
 }
 
