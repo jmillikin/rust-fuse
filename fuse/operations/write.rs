@@ -17,6 +17,8 @@
 //! Implements the `FUSE_WRITE` operation.
 
 use core::fmt;
+use core::mem;
+use core::slice;
 
 use crate::internal::compat;
 use crate::internal::debug;
@@ -34,20 +36,59 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_WRITE` operation.
 pub struct WriteRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	body: compat::Versioned<compat::fuse_write_in<'a>>,
-	value: &'a [u8],
+	msg: &'a write_msg,
+	version_minor: u32,
+}
+
+#[repr(C)]
+struct write_msg {
+	header: fuse_kernel::fuse_in_header,
+	body: fuse_write_in,
+}
+
+#[repr(C)]
+union fuse_write_in {
+	v7p1: compat::fuse_write_in_v7p1,
+	v7p9: fuse_kernel::fuse_write_in,
+}
+
+const VALUE_OFFSET_V7P1: usize =
+	  mem::size_of::<fuse_kernel::fuse_in_header>()
+	+ mem::size_of::<compat::fuse_write_in_v7p1>();
+
+const VALUE_OFFSET_V7P9: usize =
+	  mem::size_of::<fuse_kernel::fuse_in_header>()
+	+ mem::size_of::<fuse_kernel::fuse_write_in>();
+
+impl<'a> WriteRequest<'a> {
+	#[inline]
+	fn header(&self) -> &'a fuse_kernel::fuse_in_header {
+		&self.msg.header
+	}
+
+	#[inline]
+	fn body_v7p1(&self) -> &'a compat::fuse_write_in_v7p1 {
+		unsafe { &self.msg.body.v7p1 }
+	}
+
+	#[inline]
+	fn body_v7p9(&self) -> Option<&'a fuse_kernel::fuse_write_in> {
+		if self.version_minor >= 9 {
+			return Some(unsafe { &self.msg.body.v7p9 });
+		}
+		None
+	}
 }
 
 impl WriteRequest<'_> {
 	#[must_use]
 	pub fn node_id(&self) -> node::Id {
-		node::Id::new(self.header.nodeid).unwrap_or(node::Id::ROOT)
+		node::Id::new(self.header().nodeid).unwrap_or(node::Id::ROOT)
 	}
 
 	#[must_use]
 	pub fn offset(&self) -> u64 {
-		self.body.as_v7p1().offset
+		self.body_v7p1().offset
 	}
 
 	/// The value passed to [`OpenResponse::set_handle`], or zero if not set.
@@ -55,24 +96,37 @@ impl WriteRequest<'_> {
 	/// [`OpenResponse::set_handle`]: crate::operations::open::OpenResponse::set_handle
 	#[must_use]
 	pub fn handle(&self) -> u64 {
-		self.body.as_v7p1().fh
+		self.body_v7p1().fh
 	}
 
 	#[must_use]
 	pub fn value(&self) -> &[u8] {
-		self.value
+		let value_len = self.body_v7p1().size;
+
+		let offset = if self.version_minor >= 9 {
+			VALUE_OFFSET_V7P9
+		} else {
+			VALUE_OFFSET_V7P1
+		};
+
+		unsafe {
+			slice::from_raw_parts(
+				((self.msg as *const write_msg).cast::<u8>()).add(offset),
+				value_len as usize,
+			)
+		}
 	}
 
 	#[must_use]
 	pub fn flags(&self) -> WriteRequestFlags {
 		WriteRequestFlags {
-			bits: self.body.as_v7p1().write_flags,
+			bits: self.body_v7p1().write_flags,
 		}
 	}
 
 	#[must_use]
 	pub fn lock_owner(&self) -> Option<lock::Owner> {
-		let body = self.body.as_v7p9()?;
+		let body = self.body_v7p9()?;
 		if body.write_flags & fuse_kernel::FUSE_WRITE_LOCKOWNER == 0 {
 			return None;
 		}
@@ -81,7 +135,7 @@ impl WriteRequest<'_> {
 
 	#[must_use]
 	pub fn open_flags(&self) -> crate::OpenFlags {
-		if let Some(body) = self.body.as_v7p9() {
+		if let Some(body) = self.body_v7p9() {
 			return body.flags;
 		}
 		0
@@ -122,17 +176,20 @@ impl<'a> WriteRequest<'a> {
 			decode::node_id(header.nodeid)?;
 		}
 
-		let body = if version_minor >= 9 {
-			let body_v7p9 = dec.next_sized()?;
-			compat::Versioned::new_write_v7p9(version_minor, body_v7p9)
+		let value_len = if version_minor >= 9 {
+			let body: &fuse_kernel::fuse_write_in = dec.next_sized()?;
+			body.size
 		} else {
-			let body_v7p1 = dec.next_sized()?;
-			compat::Versioned::new_write_v7p1(version_minor, body_v7p1)
+			let body: &compat::fuse_write_in_v7p1 = dec.next_sized()?;
+			body.size
 		};
+		dec.next_bytes(value_len)?;
 
-		let value = dec.next_bytes(body.as_v7p1().size)?;
-
-		Ok(Self { header, body, value })
+		let header_ptr = header as *const fuse_kernel::fuse_in_header;
+		Ok(Self {
+			msg: unsafe { &*(header_ptr.cast()) },
+			version_minor,
+		})
 	}
 }
 
@@ -142,7 +199,7 @@ impl fmt::Debug for WriteRequest<'_> {
 			.field("node_id", &self.node_id())
 			.field("offset", &self.offset())
 			.field("handle", &self.handle())
-			.field("value", &debug::bytes(self.value))
+			.field("value", &debug::bytes(self.value()))
 			.field("flags", &self.flags())
 			.field("lock_owner", &format_args!("{:?}", &self.lock_owner()))
 			.field("open_flags", &debug::hex_u32(self.open_flags()))

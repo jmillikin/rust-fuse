@@ -339,55 +339,11 @@ impl<'a> Versioned<fuse_release_in<'a>> {
 
 #[derive(Clone, Copy)]
 #[repr(C)]
-pub(crate) union fuse_write_in<'a> {
-	v7p1: &'a fuse_write_in_v7p1,
-	v7p9: &'a fuse_kernel::fuse_write_in,
-}
-
-#[repr(C)]
 pub(crate) struct fuse_write_in_v7p1 {
 	pub(crate) fh: u64,
 	pub(crate) offset: u64,
 	pub(crate) size: u32,
 	pub(crate) write_flags: u32,
 }
-
-impl<'a> Versioned<fuse_write_in<'a>> {
-	#[inline]
-	pub(crate) fn new_write_v7p1(
-		version_minor: u32,
-		v7p1: &'a fuse_write_in_v7p1,
-	) -> Self {
-		Self {
-			version_minor,
-			u: fuse_write_in { v7p1 },
-		}
-	}
-
-	#[inline]
-	pub(crate) fn new_write_v7p9(
-		version_minor: u32,
-		v7p9: &'a fuse_kernel::fuse_write_in,
-	) -> Self {
-		Self {
-			version_minor,
-			u: fuse_write_in { v7p9 },
-		}
-	}
-
-	#[inline]
-	pub(crate) fn as_v7p1(self) -> &'a fuse_write_in_v7p1 {
-		unsafe { self.u.v7p1 }
-	}
-
-	#[inline]
-	pub(crate) fn as_v7p9(self) -> Option<&'a fuse_kernel::fuse_write_in> {
-		if self.version_minor >= 9 {
-			return Some(unsafe { self.u.v7p9 });
-		}
-		None
-	}
-}
-
 
 // }}}
