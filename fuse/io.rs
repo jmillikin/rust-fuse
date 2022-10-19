@@ -53,6 +53,12 @@ pub struct AlignedSlice<'a> {
 	inner: &'a [u8],
 }
 
+/// Values that can be borrowed as aligned slices.
+pub trait AsAlignedSlice {
+	/// Borrow the value as an aligned slice.
+	fn as_aligned_slice(&self) -> AlignedSlice;
+}
+
 impl<'a> AlignedSlice<'a> {
 	/// Creates an `AlignedSlice` from a byte slice, if properly aligned.
 	#[inline]
@@ -111,6 +117,12 @@ impl<'a> AlignedSlice<'a> {
 #[derive(Debug)]
 pub struct AlignedSliceMut<'a> {
 	inner: &'a mut [u8],
+}
+
+/// Values that can be borrowed as mutable aligned slices.
+pub trait AsAlignedSliceMut: AsAlignedSlice {
+	/// Borrow the value as a mutable aligned slice.
+	fn as_aligned_slice_mut(&mut self) -> AlignedSliceMut;
 }
 
 impl<'a> AlignedSliceMut<'a> {
@@ -220,6 +232,18 @@ impl MinReadBuffer {
 	#[must_use]
 	pub fn as_aligned_slice_mut(&mut self) -> AlignedSliceMut {
 		AlignedSliceMut { inner: &mut self.bytes }
+	}
+}
+
+impl AsAlignedSlice for MinReadBuffer {
+	fn as_aligned_slice(&self) -> AlignedSlice {
+		self.as_aligned_slice()
+	}
+}
+
+impl AsAlignedSliceMut for MinReadBuffer {
+	fn as_aligned_slice_mut(&mut self) -> AlignedSliceMut {
+		self.as_aligned_slice_mut()
 	}
 }
 
