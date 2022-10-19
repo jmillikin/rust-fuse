@@ -66,14 +66,14 @@ impl Error {
 	#[cfg(target_os = "linux")]
 	#[inline]
 	#[must_use]
-	const fn from_errno(errno: os_errno::Error) -> Error {
+	pub(crate) const fn from_errno(errno: os_errno::Error) -> Error {
 		Error::new(errno.get_nonzero())
 	}
 
 	#[cfg(target_os = "freebsd")]
 	#[inline]
 	#[must_use]
-	const fn from_errno(errno: os_errno::Error) -> Error {
+	pub(crate) const fn from_errno(errno: os_errno::Error) -> Error {
 		let raw: NonZeroI32 = errno.get_nonzero();
 		let raw_i32 = raw.get();
 		let raw_neg = if raw_i32 < 0 || raw_i32 > u16::MAX as i32 {
@@ -115,22 +115,6 @@ mod errno {
 	pub(super) const ENOSYS: Error = Error::from_errno(os_errno::ENOSYS);
 	pub(super) const EOVERFLOW: Error = Error::from_errno(os_errno::EOVERFLOW);
 	pub(super) const EPROTO: Error = Error::from_errno(os_errno::EPROTO);
-
-	#[cfg(target_os = "linux")]
-	pub(super) const ENODATA: Error = Error::from_errno(os_errno::ENODATA);
-
-	#[cfg(target_os = "freebsd")]
-	pub(super) const ENOATTR: Error = Error::from_errno(os_errno::ENOATTR);
-}
-
-#[cfg(target_os = "linux")]
-macro_rules! enodata_or_enoattr {
-	() => { errno::ENODATA };
-}
-
-#[cfg(target_os = "freebsd")]
-macro_rules! enodata_or_enoattr {
-	() => { errno::ENOATTR };
 }
 
 impl Error {
@@ -173,10 +157,4 @@ impl Error {
 	///
 	/// This error maps to `ENOSYS`.
 	pub const UNIMPLEMENTED: Error = errno::ENOSYS;
-
-	/// The requested extended attribute does not exist.
-	///
-	/// This error maps to either `ENODATA` or `ENOATTR`, depending on the
-	/// target platform.
-	pub const XATTR_NOT_FOUND: Error = enodata_or_enoattr!();
 }

@@ -37,6 +37,42 @@ pub(crate) const XATTR_LIST_MAX: usize = 65536;
 #[cfg(target_os = "linux")]
 const XATTR_SIZE_MAX: usize = 65536;
 
+// NOT_FOUND {{{
+
+mod errno {
+	#[cfg(target_os = "freebsd")]
+	use freebsd_errno as os_errno;
+
+	#[cfg(target_os = "linux")]
+	use linux_errno as os_errno;
+
+	use crate::Error;
+
+	#[cfg(target_os = "linux")]
+	pub(super) const ENODATA: Error = Error::from_errno(os_errno::ENODATA);
+
+	#[cfg(target_os = "freebsd")]
+	pub(super) const ENOATTR: Error = Error::from_errno(os_errno::ENOATTR);
+}
+
+#[cfg(target_os = "linux")]
+macro_rules! enodata_or_enoattr {
+	() => { errno::ENODATA };
+}
+
+#[cfg(target_os = "freebsd")]
+macro_rules! enodata_or_enoattr {
+	() => { errno::ENOATTR };
+}
+
+/// The requested extended attribute does not exist.
+///
+/// This error maps to either `ENODATA` or `ENOATTR`, depending on the
+/// target platform.
+pub const NOT_FOUND: crate::Error = enodata_or_enoattr!();
+
+// }}}
+
 // NameError {{{
 
 /// Errors that may occur when validating an extended attribute name.
