@@ -149,11 +149,7 @@ where
 		}
 
 		while let Some(request) = self.conn.recv(buf.as_aligned_slice_mut())? {
-			match dispatcher.dispatch(request) {
-				Ok(()) => {},
-				Err(io::SendError::NotFound(_)) => {},
-				Err(err) => return Err(err.into()),
-			};
+			dispatcher.dispatch(request)?;
 		}
 		Ok(())
 	}
@@ -339,10 +335,14 @@ impl<S: FuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 		if let Some(hooks) = self.hooks {
 			hooks.request(request);
 		}
-		match request.header().opcode() {
+		let result = match request.header().opcode() {
 			Opcode::FUSE_READ => self.do_read(request),
 			Opcode::FUSE_WRITE => self.do_write(request),
 			_ => self.do_other(request),
+		};
+		match result {
+			Err(io::SendError::NotFound(_)) => Ok(()),
+			_ => result,
 		}
 	}
 
