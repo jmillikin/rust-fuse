@@ -190,6 +190,122 @@ impl<'a> From<AlignedSliceMut<'a>> for AlignedSlice<'a> {
 
 // }}}
 
+// AlignedBuf {{{
+
+/// An owned byte buffer, aligned to store an encoded FUSE message.
+#[cfg(any(doc, feature = "alloc", feature = "std"))]
+pub struct AlignedBuf {
+	inner: AlignedBufInner,
+}
+
+#[cfg(any(doc, feature = "alloc", feature = "std"))]
+#[repr(C)]
+struct AlignedBufInner {
+	aligned_ptr: *mut u8,
+	aligned_len: usize,
+	orig_ptr: *mut u8,
+	orig_capacity: usize,
+}
+
+#[cfg(any(doc, feature = "alloc", feature = "std"))]
+impl Drop for AlignedBufInner {
+	fn drop(&mut self) {
+		let orig = unsafe {
+			Vec::from_raw_parts(self.orig_ptr, 0, self.orig_capacity)
+		};
+		mem::drop(orig)
+	}
+}
+
+#[cfg(any(doc, feature = "alloc", feature = "std"))]
+impl AlignedBuf {
+	/// Allocates a new `AlignedBuf` with capacity [`MinReadBuffer::LEN`].
+	///
+	/// # Errors
+	///
+	/// Returns an error if the underlying [`Vec::try_reserve_exact`] fails.
+	pub fn new() -> Result<AlignedBuf, collections::TryReserveError> {
+		Self::with_capacity(MinReadBuffer::LEN)
+	}
+
+	/// Allocates a new `AlignedBuf` with at least the specified capacity.
+	///
+	/// # Errors
+	///
+	/// Returns an error if the underlying [`Vec::try_reserve_exact`] fails.
+	pub fn with_capacity(
+		capacity: usize,
+	) -> Result<AlignedBuf, collections::TryReserveError> {
+		const ALIGN_U64: usize = mem::align_of::<u64>();
+
+		let aligned_len = core::cmp::max(MinReadBuffer::LEN, capacity);
+
+		let mut bytes: Vec<u8> = Vec::new();
+		bytes.try_reserve_exact(aligned_len.saturating_add(ALIGN_U64))?;
+		let orig_ptr = bytes.as_mut_ptr();
+		let orig_capacity = bytes.capacity();
+
+		let offset = orig_ptr.align_offset(ALIGN_U64);
+		let aligned_ptr = unsafe { orig_ptr.add(offset) };
+
+		mem::forget(bytes);
+		Ok(Self {
+			inner: AlignedBufInner {
+				aligned_ptr,
+				aligned_len,
+				orig_ptr,
+				orig_capacity,
+			},
+		})
+	}
+
+	/// Borrows this `AlignedBuf` as a byte slice.
+	#[inline]
+	#[must_use]
+	pub fn as_slice(&self) -> &[u8] {
+		unsafe {
+			core::slice::from_raw_parts(
+				self.inner.aligned_ptr,
+				self.inner.aligned_len,
+			)
+		}
+	}
+
+	/// Borrows this `AlignedBuf` as a mutable byte slice.
+	#[inline]
+	#[must_use]
+	pub fn as_mut_slice(&mut self) -> &mut [u8] {
+		unsafe {
+			core::slice::from_raw_parts_mut(
+				self.inner.aligned_ptr,
+				self.inner.aligned_len,
+			)
+		}
+	}
+}
+
+#[cfg(any(doc, feature = "alloc", feature = "std"))]
+impl AsAlignedSlice for AlignedBuf {
+	#[inline]
+	fn as_aligned_slice(&self) -> AlignedSlice {
+		AlignedSlice {
+			inner: self.as_slice(),
+		}
+	}
+}
+
+#[cfg(any(doc, feature = "alloc", feature = "std"))]
+impl AsAlignedSliceMut for AlignedBuf {
+	#[inline]
+	fn as_aligned_slice_mut(&mut self) -> AlignedSliceMut {
+		AlignedSliceMut {
+			inner: self.as_mut_slice(),
+		}
+	}
+}
+
+// }}}
+
 // MinReadBuffer {{{
 
 /// A fixed-size aligned buffer of [`FUSE_MIN_READ_BUFFER`] bytes.
