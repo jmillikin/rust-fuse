@@ -113,40 +113,24 @@ impl<S: CuseSocket, H> ServerBuilder<S, H> {
 		mut init_fn: impl FnMut(&CuseInitRequest, &mut CuseInitResponse),
 	) -> Result<Server<S, H>, ServerError<S::Error>> {
 		let opts = self.opts;
-		let mut socket = self.socket;
-		let init_response = server::cuse_init(&mut socket, |request| {
-			let mut response = opts.init_response(request, device_name);
-			init_fn(request, &mut response);
-			response
-		})?;
+		let conn = server::CuseConnection::connect(
+			self.socket,
+			device_name,
+			opts.device_number,
+			|init_request, init_response| {
+				init_response.set_max_read(opts.max_read);
+				init_response.set_max_write(opts.max_write);
+				init_response.set_flags(opts.flags);
+				init_fn(init_request, init_response)
+			},
+		)?;
 
-		let request_options =
-			server::CuseRequestOptions::from_init_response(&init_response);
-		let response_options =
-			server::CuseResponseOptions::from_init_response(&init_response);
 		Ok(Server {
-			socket,
+			conn,
 			handlers: self.handlers,
-			request_options,
-			response_options,
 			#[cfg(feature = "std")]
 			hooks: self.hooks,
 		})
-	}
-}
-
-impl ServerOptions {
-	fn init_response<'a>(
-		&self,
-		_request: &CuseInitRequest,
-		device_name: &'a cuse::DeviceName,
-	) -> CuseInitResponse<'a> {
-		let mut response = CuseInitResponse::new(device_name);
-		response.set_device_number(self.device_number);
-		response.set_max_read(self.max_read);
-		response.set_max_write(self.max_write);
-		response.set_flags(self.flags);
-		response
 	}
 }
 
@@ -156,13 +140,13 @@ impl ServerOptions {
 
 /// An RPC-style CUSE device server.
 ///
-/// Maintains ownership of a [`CuseSocket`] and a set of [`Handlers`]. Each
-/// incoming request from the socket will be routed to the appropriate handler.
+/// Maintains ownership of a [`CuseConnection`] and a set of [`Handlers`]. Each
+/// incoming request will be routed to the appropriate handler.
+///
+/// [`CuseConnection`]: server::CuseConnection
 pub struct Server<S, H> {
-	socket: S,
+	conn: server::CuseConnection<S>,
 	handlers: H,
-	request_options: server::CuseRequestOptions,
-	response_options: server::CuseResponseOptions,
 
 	#[cfg(feature = "std")]
 	hooks: Option<Box<dyn server::Hooks>>,
@@ -173,36 +157,26 @@ where
 	S: CuseSocket,
 	H: Handlers<S>,
 {
-	/// Serve CUSE requests from the socket in a loop.
-	///
-	/// Returns `Ok(())` when the device is cleanly removed by external action.
-	pub fn serve(&self) -> Result<(), ServerError<S::Error>> {
+	/// Serve CUSE requests in a loop.
+	pub fn serve(&self) -> Result<core::convert::Infallible, ServerError<S::Error>> {
 		let mut buf = crate::io::MinReadBuffer::new();
 
 		#[allow(unused_mut)]
-		let mut dispatcher = Dispatcher::new(
-			&self.socket,
-			&self.handlers,
-			self.request_options,
-			self.response_options,
-		);
+		let mut dispatcher = Dispatcher::new(&self.conn, &self.handlers);
 
 		#[cfg(feature = "std")]
 		if let Some(hooks) = self.hooks.as_ref() {
 			dispatcher.set_hooks(hooks.as_ref());
 		}
 
-		while let Some(request) = server::recv(
-			&self.socket,
-			buf.as_aligned_slice_mut(),
-		)? {
+		loop {
+			let request = self.conn.recv(buf.as_aligned_slice_mut())?;
 			match dispatcher.dispatch(request) {
 				Ok(()) => {},
 				Err(io::SendError::NotFound(_)) => {},
 				Err(err) => return Err(err.into()),
-			};
+			}
 		}
-		Ok(())
 	}
 }
 
@@ -340,8 +314,22 @@ pub struct Dispatcher<'a, S, H> {
 }
 
 impl<'a, S, H> Dispatcher<'a, S, H> {
-	/// Create a new `Dispatcher` with the given socket, handlers, and options.
+	/// Create a new `Dispatcher` for the given connection and handlers.
 	pub fn new(
+		conn: &'a server::CuseConnection<S>,
+		handlers: &'a H,
+	) -> Dispatcher<'a, S, H> {
+		Self {
+			socket: conn.socket(),
+			handlers,
+			request_options: conn.request_options(),
+			response_options: conn.response_options(),
+			hooks: None,
+		}
+	}
+
+	/// Create a new `Dispatcher` with the given socket, handlers, and options.
+	pub fn from_socket(
 		socket: &'a S,
 		handlers: &'a H,
 		request_options: server::CuseRequestOptions,

@@ -92,37 +92,21 @@ impl<S: FuseSocket, H> ServerBuilder<S, H> {
 		mut init_fn: impl FnMut(&FuseInitRequest, &mut FuseInitResponse),
 	) -> Result<Server<S, H>, ServerError<S::Error>> {
 		let opts = self.opts;
-		let mut socket = self.socket;
-		let init_response = server::fuse_init(&mut socket, |request| {
-			let mut response = opts.init_response(request);
-			init_fn(request, &mut response);
-			response
-		})?;
+		let conn = server::FuseConnection::connect(
+			self.socket,
+			|init_request, init_response| {
+				init_response.set_max_write(opts.max_write);
+				init_response.set_flags(opts.flags);
+				init_fn(init_request, init_response)
+			},
+		)?;
 
-		let request_options =
-			server::FuseRequestOptions::from_init_response(&init_response);
-		let response_options =
-			server::FuseResponseOptions::from_init_response(&init_response);
 		Ok(Server {
-			socket,
+			conn,
 			handlers: self.handlers,
-			request_options,
-			response_options,
 			#[cfg(feature = "std")]
 			hooks: self.hooks,
 		})
-	}
-}
-
-impl ServerOptions {
-	fn init_response(
-		&self,
-		_request: &FuseInitRequest,
-	) -> FuseInitResponse {
-		let mut response = FuseInitResponse::new();
-		response.set_max_write(self.max_write);
-		response.set_flags(self.flags);
-		response
 	}
 }
 
@@ -132,13 +116,13 @@ impl ServerOptions {
 
 /// An RPC-style FUSE filesystem server.
 ///
-/// Maintains ownership of a [`FuseSocket`] and a set of [`Handlers`]. Each
-/// incoming request from the socket will be routed to the appropriate handler.
+/// Maintains ownership of a [`FuseConnection`] and a set of [`Handlers`]. Each
+/// incoming request will be routed to the appropriate handler.
+///
+/// [`FuseConnection`]: server::FuseConnection
 pub struct Server<S, H> {
-	socket: S,
+	conn: server::FuseConnection<S>,
 	handlers: H,
-	request_options: server::FuseRequestOptions,
-	response_options: server::FuseResponseOptions,
 
 	#[cfg(feature = "std")]
 	hooks: Option<Box<dyn server::Hooks>>,
@@ -149,30 +133,22 @@ where
 	S: FuseSocket,
 	H: Handlers<S>,
 {
-	/// Serve FUSE requests from the socket in a loop.
+	/// Serve FUSE requests in a loop.
 	///
-	/// Returns `Ok(())` when the filesystem is cleanly shut down by external
-	/// action, such as the user running `fusermount -u`.
+	/// Returns `Ok(())` when the connection is closed, such as by the user
+	/// unmounting the filesystem with `fusermount -u`.
 	pub fn serve(&self) -> Result<(), ServerError<S::Error>> {
 		let mut buf = crate::io::MinReadBuffer::new();
 
 		#[allow(unused_mut)]
-		let mut dispatcher = Dispatcher::new(
-			&self.socket,
-			&self.handlers,
-			self.request_options,
-			self.response_options,
-		);
+		let mut dispatcher = Dispatcher::new(&self.conn, &self.handlers);
 
 		#[cfg(feature = "std")]
 		if let Some(hooks) = self.hooks.as_ref() {
 			dispatcher.set_hooks(hooks.as_ref());
 		}
 
-		while let Some(request) = server::recv(
-			&self.socket,
-			buf.as_aligned_slice_mut(),
-		)? {
+		while let Some(request) = self.conn.recv(buf.as_aligned_slice_mut())? {
 			match dispatcher.dispatch(request) {
 				Ok(()) => {},
 				Err(io::SendError::NotFound(_)) => {},
@@ -317,8 +293,22 @@ pub struct Dispatcher<'a, S, H> {
 }
 
 impl<'a, S, H> Dispatcher<'a, S, H> {
-	/// Create a new `Dispatcher` with the given socket, handlers, and options.
+	/// Create a new `Dispatcher` for the given connection and handlers.
 	pub fn new(
+		conn: &'a server::FuseConnection<S>,
+		handlers: &'a H,
+	) -> Dispatcher<'a, S, H> {
+		Self {
+			socket: conn.socket(),
+			handlers,
+			request_options: conn.request_options(),
+			response_options: conn.response_options(),
+			hooks: None,
+		}
+	}
+
+	/// Create a new `Dispatcher` with the given socket, handlers, and options.
+	pub fn from_socket(
 		socket: &'a S,
 		handlers: &'a H,
 		request_options: server::FuseRequestOptions,

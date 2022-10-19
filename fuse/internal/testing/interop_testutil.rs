@@ -393,7 +393,7 @@ pub fn cuse_interop_test<H: TestDev + Send + 'static>(
 			match srv.serve() {
 				Ok(_) => {},
 				Err(err) if is_conn_reset(&err) => {},
-				err => err.unwrap(),
+				Err(err) => Err(err).unwrap(),
 			}
 		})
 	};

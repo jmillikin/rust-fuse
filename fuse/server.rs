@@ -20,6 +20,7 @@ use core::cmp;
 use core::mem;
 use core::num;
 
+use crate::cuse;
 use crate::internal::fuse_kernel;
 use crate::lock;
 use crate::node;
@@ -516,46 +517,140 @@ pub trait Hooks {
 
 // }}}
 
-/// Perform a CUSE session handshake.
-///
-/// When a CUSE session is being established the client will send a
-/// [`CuseInitRequest`] and the server responds with a [`CuseInitResponse`].
-///
-/// The response specifies the name and device number of the CUSE device that
-/// will be created for this server.
-pub fn cuse_init<'a, F, S: io::CuseSocket>(
-	socket: &mut S,
-	mut init_fn: F,
-) -> Result<CuseInitResponse<'a>, ServerError<S::Error>>
-where
-	F: FnMut(&CuseInitRequest) -> CuseInitResponse<'a>
-{
-	let mut buf = crate::io::MinReadBuffer::new();
+// CuseConnection {{{
 
-	loop {
-		let recv_len = socket.recv(buf.as_slice_mut())?;
-		let request = Request::new(buf.as_aligned_slice().truncate(recv_len))?;
-		let init_req = CuseInitRequest::from_request(request)?;
-		let (response, ok) = cuse_handshake(&init_req, &mut init_fn)?;
-		let request_id = request.header().request_id();
-		let mut header = crate::ResponseHeader::new(request_id);
-		socket.send(response.to_response(&mut header).into())?;
-		if ok {
-			return Ok(response);
+/// Represents an active connection to a CUSE client.
+pub struct CuseConnection<S> {
+	socket: S,
+	request_options: CuseRequestOptions,
+	response_options: CuseResponseOptions,
+}
+
+impl<S: io::CuseSocket> CuseConnection<S> {
+	/// Perform a CUSE connection handshake.
+	///
+	/// When a CUSE connection is being established the client will send a
+	/// [`CuseInitRequest`] and the server responds with a [`CuseInitResponse`].
+	///
+	/// The response specifies the name and device number of the CUSE device that
+	/// will be created for this server.
+	pub fn connect<F>(
+		socket: S,
+		device_name: &cuse::DeviceName,
+		device_number: cuse::DeviceNumber,
+		mut init_fn: F,
+	) -> Result<CuseConnection<S>, ServerError<S::Error>>
+	where
+		F: FnMut(&CuseInitRequest, &mut CuseInitResponse),
+	{
+		let mut buf = crate::io::MinReadBuffer::new();
+
+		loop {
+			let recv_len = socket.recv(buf.as_slice_mut())?;
+			let recv_buf = buf.as_aligned_slice().truncate(recv_len);
+			let request = Request::new(recv_buf)?;
+			let init_req = CuseInitRequest::from_request(request)?;
+
+			let (response, ok) = cuse_handshake(&init_req, || {
+				let mut response = CuseInitResponse::new(device_name);
+				response.set_device_number(device_number);
+				init_fn(&init_req, &mut response);
+				response
+			})?;
+
+			let request_id = request.header().request_id();
+			let mut header = crate::ResponseHeader::new(request_id);
+			socket.send(response.to_response(&mut header).into())?;
+
+			if !ok {
+				continue;
+			}
+
+			let req_opts = CuseRequestOptions::from_init_response(&response);
+			let resp_opts = CuseResponseOptions::from_init_response(&response);
+			return Ok(Self {
+				socket,
+				request_options: req_opts,
+				response_options: resp_opts,
+			});
 		}
+	}
+
+	/// Receive a CUSE request from the client.
+	pub fn recv<'a>(
+		&self,
+		mut buf: crate::io::AlignedSliceMut<'a>,
+	) -> Result<Request<'a>, ServerError<S::Error>> {
+		use crate::io::AlignedSlice;
+		let recv_len = self.socket.recv(buf.get_mut())?;
+		let recv_buf = AlignedSlice::from(buf).truncate(recv_len);
+		Ok(Request::new(recv_buf)?)
+	}
+
+	/// Send a CUSE response to the client.
+	pub fn send<R: CuseResponse>(
+		&self,
+		request_id: num::NonZeroU64,
+		response: &R,
+	) -> Result<(), io::SendError<S::Error>> {
+		let mut response_header = crate::ResponseHeader::new(request_id);
+		let response_buf = response
+			.to_response(&mut response_header, self.response_options)
+			.into();
+		self.socket.send(response_buf)
+	}
+
+	/// Send an error response to the client.
+	pub fn send_error(
+		&self,
+		request_id: num::NonZeroU64,
+		error: crate::Error,
+	) -> Result<(), io::SendError<S::Error>> {
+		send_error(&self.socket, request_id, error)
+	}
+}
+
+impl<S> CuseConnection<S> {
+	/// Returns a reference to the underlying [`Socket`] for this connection.
+	///
+	/// [`Socket`]: io::Socket
+	#[inline]
+	#[must_use]
+	pub fn socket(&self) -> &S {
+		&self.socket
+	}
+
+	/// Returns the request options for this connection.
+	///
+	/// Request options are used for decoding requests according to the
+	/// current protocol version and negotiated server features.
+	#[inline]
+	#[must_use]
+	pub fn request_options(&self) -> CuseRequestOptions {
+		self.request_options
+	}
+
+	/// Returns the response options for this connection.
+	///
+	/// Response options are used for encoding responses according to the
+	/// current protocol version and negotiated server features.
+	#[inline]
+	#[must_use]
+	pub fn response_options(&self) -> CuseResponseOptions {
+		self.response_options
 	}
 }
 
 pub(crate) fn cuse_handshake<'a, E, F>(
 	request: &CuseInitRequest,
-	init_fn: &mut F,
+	mut new_response: F,
 ) -> Result<(CuseInitResponse<'a>, bool), ServerError<E>>
 where
-	F: FnMut(&CuseInitRequest) -> CuseInitResponse<'a>
+	F: FnMut() -> CuseInitResponse<'a>,
 {
 	match negotiate_version(request.version()) {
 		Some(version) => {
-			let mut response = init_fn(request);
+			let mut response = new_response();
 			response.set_version(version);
 			Ok((response, true))
 		},
@@ -567,46 +662,145 @@ where
 	}
 }
 
-/// Perform a FUSE session handshake.
-///
-/// When a FUSE session is being established the client will send a
-/// [`FuseInitRequest`] and the server responds with a [`FuseInitResponse`].
-///
-/// The response specifies tunable parameters and optional features of the
-/// filesystem server.
-pub fn fuse_init<F, S: io::FuseSocket>(
-	socket: &mut S,
-	mut init_fn: F,
-) -> Result<FuseInitResponse, ServerError<S::Error>>
-where
-	F: FnMut(&FuseInitRequest) -> FuseInitResponse,
-{
-	let mut buf = crate::io::MinReadBuffer::new();
+// }}}
 
-	loop {
-		let recv_len = socket.recv(buf.as_slice_mut())?;
-		let request = Request::new(buf.as_aligned_slice().truncate(recv_len))?;
-		let init_req = FuseInitRequest::from_request(request)?;
-		let (response, ok) = fuse_handshake(&init_req, &mut init_fn)?;
-		let request_id = request.header().request_id();
-		let mut header = crate::ResponseHeader::new(request_id);
-		socket.send(response.to_response(&mut header).into())?;
-		if ok {
-			return Ok(response);
+// FuseConnection {{{
+
+/// Represents an active connection to a FUSE client.
+pub struct FuseConnection<S> {
+	socket: S,
+	request_options: FuseRequestOptions,
+	response_options: FuseResponseOptions,
+}
+
+impl<S: io::FuseSocket> FuseConnection<S> {
+	/// Perform a FUSE connection handshake.
+	///
+	/// When a FUSE session is being established the client will send a
+	/// [`FuseInitRequest`] and the server responds with a [`FuseInitResponse`].
+	///
+	/// The response specifies tunable parameters and optional features of the
+	/// filesystem server.
+	pub fn connect<F>(
+		socket: S,
+		mut init_fn: F,
+	) -> Result<FuseConnection<S>, ServerError<S::Error>>
+	where
+		F: FnMut(&FuseInitRequest, &mut FuseInitResponse),
+	{
+		let mut buf = crate::io::MinReadBuffer::new();
+
+		loop {
+			let recv_len = socket.recv(buf.as_slice_mut())?;
+			let recv_buf = buf.as_aligned_slice().truncate(recv_len);
+			let request = Request::new(recv_buf)?;
+			let init_req = FuseInitRequest::from_request(request)?;
+
+			let (response, ok) = fuse_handshake(&init_req, || {
+				let mut response = FuseInitResponse::new();
+				init_fn(&init_req, &mut response);
+				response
+			})?;
+
+			let request_id = request.header().request_id();
+			let mut header = crate::ResponseHeader::new(request_id);
+			socket.send(response.to_response(&mut header).into())?;
+
+			if !ok {
+				continue;
+			}
+
+			let req_opts = FuseRequestOptions::from_init_response(&response);
+			let resp_opts = FuseResponseOptions::from_init_response(&response);
+			return Ok(Self {
+				socket,
+				request_options: req_opts,
+				response_options: resp_opts,
+			});
 		}
+	}
+
+	/// Receive a FUSE request from the client.
+	///
+	/// Returns `Ok(None)` if the socket's connection has been closed.
+	pub fn recv<'a>(
+		&self,
+		mut buf: crate::io::AlignedSliceMut<'a>,
+	) -> Result<Option<Request<'a>>, ServerError<S::Error>> {
+		use crate::io::AlignedSlice;
+		let recv_len = match self.socket.recv(buf.get_mut()) {
+			Ok(len) => len,
+			Err(io::RecvError::ConnectionClosed(_)) => return Ok(None),
+			Err(err) => return Err(err.into()),
+		};
+		let recv_buf = AlignedSlice::from(buf).truncate(recv_len);
+		Ok(Some(Request::new(recv_buf)?))
+	}
+
+	/// Send a FUSE response to the client.
+	pub fn send<R: FuseResponse>(
+		&self,
+		request_id: num::NonZeroU64,
+		response: &R,
+	) -> Result<(), io::SendError<S::Error>> {
+		let mut response_header = crate::ResponseHeader::new(request_id);
+		let response_buf = response
+			.to_response(&mut response_header, self.response_options)
+			.into();
+		self.socket.send(response_buf)
+	}
+
+	/// Send an error response to the client.
+	pub fn send_error(
+		&self,
+		request_id: num::NonZeroU64,
+		error: crate::Error,
+	) -> Result<(), io::SendError<S::Error>> {
+		send_error(&self.socket, request_id, error)
+	}
+}
+
+impl<S> FuseConnection<S> {
+	/// Returns a reference to the underlying [`Socket`] for this connection.
+	///
+	/// [`Socket`]: io::Socket
+	#[inline]
+	#[must_use]
+	pub fn socket(&self) -> &S {
+		&self.socket
+	}
+
+	/// Returns the request options for this connection.
+	///
+	/// Request options are used for decoding requests according to the
+	/// current protocol version and negotiated server features.
+	#[inline]
+	#[must_use]
+	pub fn request_options(&self) -> FuseRequestOptions {
+		self.request_options
+	}
+
+	/// Returns the response options for this connection.
+	///
+	/// Response options are used for encoding responses according to the
+	/// current protocol version and negotiated server features.
+	#[inline]
+	#[must_use]
+	pub fn response_options(&self) -> FuseResponseOptions {
+		self.response_options
 	}
 }
 
 pub(crate) fn fuse_handshake<E, F>(
 	request: &FuseInitRequest,
-	init_fn: &mut F,
+	mut new_response: F,
 ) -> Result<(FuseInitResponse, bool), ServerError<E>>
 where
-	F: FnMut(&FuseInitRequest) -> FuseInitResponse,
+	F: FnMut() -> FuseInitResponse,
 {
 	match negotiate_version(request.version()) {
 		Some(version) => {
-			let mut response = init_fn(request);
+			let mut response = new_response();
 			response.set_version(version);
 			Ok((response, true))
 		},
@@ -618,6 +812,8 @@ where
 	}
 }
 
+// }}}
+
 fn negotiate_version(kernel: crate::Version) -> Option<crate::Version> {
 	if kernel.major() != crate::Version::LATEST.major() {
 		// TODO: hard error on kernel major version < FUSE_KERNEL_VERSION
@@ -627,24 +823,6 @@ fn negotiate_version(kernel: crate::Version) -> Option<crate::Version> {
 		crate::Version::LATEST.major(),
 		cmp::min(kernel.minor(), crate::Version::LATEST.minor()),
 	))
-}
-
-/// Receive a CUSE or FUSE request from a [`Socket`].
-///
-/// Returns `Ok(None)` if the socket's connection has been closed.
-///
-/// [`Socket`]: io::Socket
-pub fn recv<'a, S: io::Socket>(
-	socket: &S,
-	mut buf: crate::io::AlignedSliceMut<'a>,
-) -> Result<Option<Request<'a>>, ServerError<S::Error>> {
-	let recv_len = match socket.recv(buf.get_mut()) {
-		Ok(len) => len,
-		Err(io::RecvError::ConnectionClosed(_)) => return Ok(None),
-		Err(err) => return Err(err.into()),
-	};
-	let recv_buf = buf.truncate(recv_len);
-	Ok(Some(Request::new(recv_buf.into())?))
 }
 
 /// Send an error response to a [`Socket`].

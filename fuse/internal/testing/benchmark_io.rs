@@ -93,7 +93,7 @@ fn benchmark_read(c: &mut criterion::Criterion) {
 	init.set_version(fuse::Version::new(7, u32::MAX));
 	let req_opts = server::FuseRequestOptions::from_init_response(&init);
 	let resp_opts = server::FuseResponseOptions::from_init_response(&init);
-	let dispatcher = fuse_rpc::Dispatcher::new(
+	let dispatcher = fuse_rpc::Dispatcher::from_socket(
 		&socket,
 		&handlers,
 		req_opts,
@@ -151,7 +151,7 @@ fn benchmark_write(c: &mut criterion::Criterion) {
 	init.set_version(fuse::Version::new(7, u32::MAX));
 	let req_opts = fuse::server::FuseRequestOptions::from_init_response(&init);
 	let resp_opts = server::FuseResponseOptions::from_init_response(&init);
-	let dispatcher = fuse_rpc::Dispatcher::new(
+	let dispatcher = fuse_rpc::Dispatcher::from_socket(
 		&socket,
 		&handlers,
 		req_opts,
