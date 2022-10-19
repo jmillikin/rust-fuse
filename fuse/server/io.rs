@@ -85,10 +85,11 @@ impl<S: CuseSocket> CuseSocket for &S {}
 
 impl<S: FuseSocket> FuseSocket for &S {}
 
-#[cfg(feature = "std")]
+#[cfg(feature = "alloc")]
 mod std_impls {
-	use std::rc::Rc;
-	use std::sync::Arc;
+	use alloc::boxed::Box;
+	use alloc::rc::Rc;
+	use alloc::sync::Arc;
 
 	use super::*;
 

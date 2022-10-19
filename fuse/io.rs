@@ -18,6 +18,14 @@
 
 use core::mem;
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::collections;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::vec::Vec;
+
+#[cfg(any(doc, feature = "std"))]
+use std::collections;
+
 use crate::internal::fuse_kernel;
 
 /// The minimum buffer size (in bytes) for receiving a FUSE message.
@@ -387,9 +395,9 @@ impl<'a> SendBuf<'a> {
 	/// # Errors
 	///
 	/// Returns an error on capacity overflow or allocation failure.
-	#[cfg(any(doc, feature = "std"))]
+	#[cfg(any(doc, feature = "alloc", feature = "std"))]
 	#[inline]
-	pub fn to_vec(&self) -> Result<Vec<u8>, std::collections::TryReserveError> {
+	pub fn to_vec(&self) -> Result<Vec<u8>, collections::TryReserveError> {
 		let mut vec = Vec::new();
 		vec.try_reserve_exact(self.len)?;
 		for chunk in self.chunks() {

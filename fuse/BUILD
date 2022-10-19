@@ -16,7 +16,10 @@ rust_library(
         "//fuse/server:srcs",
         "//fuse/server_async:srcs",
     ],
-    crate_features = ["std"],
+    crate_features = [
+        "alloc",
+        "std",
+    ],
     edition = "2018",
     visibility = ["//visibility:public"],
     deps = select({

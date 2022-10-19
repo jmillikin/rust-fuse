@@ -42,6 +42,7 @@
 	clippy::unwrap_used,
 
 	// no_std hygiene
+	clippy::std_instead_of_alloc,
 	clippy::std_instead_of_core,
 
 	// Documentation coverage
@@ -64,6 +65,9 @@
 	clippy::print_stderr,
 	clippy::print_stdout,
 )]
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 #[macro_use]
 mod internal;
