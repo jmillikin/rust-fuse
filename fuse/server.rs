@@ -524,6 +524,7 @@ pub struct CuseConnection<S> {
 	socket: S,
 	request_options: CuseRequestOptions,
 	response_options: CuseResponseOptions,
+	recv_buf_len: usize,
 }
 
 impl<S: io::CuseSocket> CuseConnection<S> {
@@ -572,6 +573,7 @@ impl<S: io::CuseSocket> CuseConnection<S> {
 				socket,
 				request_options: req_opts,
 				response_options: resp_opts,
+				recv_buf_len: recv_buf_len(response.max_write()),
 			});
 		}
 	}
@@ -639,6 +641,13 @@ impl<S> CuseConnection<S> {
 	pub fn response_options(&self) -> CuseResponseOptions {
 		self.response_options
 	}
+
+	/// Returns the minimum size of the receive buffer for this connection.
+	#[inline]
+	#[must_use]
+	pub fn recv_buf_len(&self) -> usize {
+		self.recv_buf_len
+	}
 }
 
 pub(crate) fn cuse_handshake<'a, E, F>(
@@ -671,6 +680,7 @@ pub struct FuseConnection<S> {
 	socket: S,
 	request_options: FuseRequestOptions,
 	response_options: FuseResponseOptions,
+	recv_buf_len: usize,
 }
 
 impl<S: io::FuseSocket> FuseConnection<S> {
@@ -716,6 +726,7 @@ impl<S: io::FuseSocket> FuseConnection<S> {
 				socket,
 				request_options: req_opts,
 				response_options: resp_opts,
+				recv_buf_len: recv_buf_len(response.max_write()),
 			});
 		}
 	}
@@ -789,6 +800,17 @@ impl<S> FuseConnection<S> {
 	pub fn response_options(&self) -> FuseResponseOptions {
 		self.response_options
 	}
+
+	/// Returns the minimum size of the receive buffer for this connection.
+	///
+	/// This value is computed from `max_write`. Operations with their own
+	/// notion of maximum size, such as `FUSE_SETXATTR`, may require a receive
+	/// buffer length greater than this value.
+	#[inline]
+	#[must_use]
+	pub fn recv_buf_len(&self) -> usize {
+		self.recv_buf_len
+	}
 }
 
 pub(crate) fn fuse_handshake<E, F>(
@@ -835,4 +857,12 @@ pub fn send_error<S: io::Socket>(
 ) -> Result<(), io::SendError<S::Error>> {
 	let mut response_header = crate::ResponseHeader::new(request_id);
 	socket.send(encode::error(&mut response_header, error).into())
+}
+
+fn recv_buf_len(max_write: u32) -> usize {
+	const FUSE_BUFFER_HEADER_SIZE: usize = 4096;
+	cmp::max(
+		(max_write as usize).saturating_add(FUSE_BUFFER_HEADER_SIZE),
+		crate::io::MinReadBuffer::LEN,
+	)
 }
