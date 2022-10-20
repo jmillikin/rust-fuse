@@ -42,6 +42,43 @@ const MOUNT_TYPE_FUSEBLK: &MountType = unsafe {
 	MountType::new_unchecked(CSTR_FUSEBLK)
 };
 
+// FUSE_DEV_IOC_CLONE {{{
+
+#[cfg(not(any(
+	target_arch = "alpha",
+	target_arch = "mips",
+	target_arch = "mips64",
+	target_arch = "parisc",
+	target_arch = "powerpc",
+	target_arch = "powerpc64",
+	target_arch = "sparc",
+	target_arch = "sparc64",
+)))]
+mod arch {
+	// _IOC_SIZEBITS == 14 && _IOC_DIRBITS == 2
+	pub const FUSE_DEV_IOC_CLONE: u32 = 0x8004E500; // _IOR(229, 0, uint32_t)
+}
+
+#[cfg(any(
+	target_arch = "alpha",
+	target_arch = "mips",
+	target_arch = "mips64",
+	target_arch = "parisc",
+	target_arch = "powerpc",
+	target_arch = "powerpc64",
+	target_arch = "sparc",
+	target_arch = "sparc64",
+))]
+mod arch {
+	// _IOC_SIZEBITS == 13 && _IOC_DIRBITS == 3
+	pub const FUSE_DEV_IOC_CLONE: u32 = 0x4004E500; // _IOR(229, 0, uint32_t)
+}
+
+/// `ioctl` command for cloning a `/dev/fuse` device handle.
+pub const FUSE_DEV_IOC_CLONE: u32 = arch::FUSE_DEV_IOC_CLONE;
+
+// }}}
+
 // MountSource {{{
 
 /// A borrowed FUSE mount source.

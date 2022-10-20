@@ -127,17 +127,3 @@ macro_rules! fuse_kernel_type {
 	($t:ident [ ]) => { [ fuse_kernel_type!($t) ; 0 ] };
 	($t:ident [ $arr_size:literal ]) => { [ fuse_kernel_type!($t) ; $arr_size ] };
 }
-
-#[cfg(all(
-	target_os = "linux",
-	any(
-		target_arch = "arm",
-		target_arch = "x86",
-		target_arch = "x86_64",
-	),
-))]
-macro_rules! _IOR {
-	(FUSE_DEV_IOC_MAGIC, 0, uint32_t) => {
-		2147804416u32
-	};
-}
