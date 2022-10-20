@@ -21,6 +21,7 @@ use std::{fmt, panic};
 use fuse::lock;
 use fuse::node;
 use fuse::server::fuse_rpc;
+use fuse::server::prelude::*;
 
 use interop_testutil::{
 	diff_str,
@@ -34,17 +35,17 @@ struct TestFS {
 }
 
 impl interop_testutil::TestFS for TestFS {
-	fn fuse_init_flags(flags: &mut fuse::FuseInitFlags) {
-		flags.set(fuse::FuseInitFlag::POSIX_LOCKS);
+	fn fuse_init_flags(flags: &mut FuseInitFlags) {
+		flags.set(FuseInitFlag::POSIX_LOCKS);
 	}
 }
 
-impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
+impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 	fn lookup(
 		&self,
 		call: fuse_rpc::Call<S>,
-		request: &fuse::LookupRequest,
-	) -> fuse_rpc::SendResult<fuse::LookupResponse, S::Error> {
+		request: &LookupRequest,
+	) -> fuse_rpc::SendResult<LookupResponse, S::Error> {
 		if !request.parent_id().is_root() {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
@@ -67,16 +68,16 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		let mut entry = node::Entry::new(attr);
 		entry.set_cache_timeout(std::time::Duration::from_secs(60));
 
-		let resp = fuse::LookupResponse::new(Some(entry));
+		let resp = LookupResponse::new(Some(entry));
 		call.respond_ok(&resp)
 	}
 
 	fn open(
 		&self,
 		call: fuse_rpc::Call<S>,
-		request: &fuse::OpenRequest,
-	) -> fuse_rpc::SendResult<fuse::OpenResponse, S::Error> {
-		let mut resp = fuse::OpenResponse::new();
+		request: &OpenRequest,
+	) -> fuse_rpc::SendResult<OpenResponse, S::Error> {
+		let mut resp = OpenResponse::new();
 		resp.set_handle(1000 + request.node_id().get());
 		call.respond_ok(&resp)
 	}
@@ -84,8 +85,8 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 	fn getlk(
 		&self,
 		call: fuse_rpc::Call<S>,
-		request: &fuse::GetlkRequest,
-	) -> fuse_rpc::SendResult<fuse::GetlkResponse, S::Error> {
+		request: &GetlkRequest,
+	) -> fuse_rpc::SendResult<GetlkResponse, S::Error> {
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the lock owner, which is non-deterministic.
@@ -109,7 +110,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		} else {
 			None
 		};
-		let resp = fuse::GetlkResponse::new(lock);
+		let resp = GetlkResponse::new(lock);
 		call.respond_ok(&resp)
 	}
 }

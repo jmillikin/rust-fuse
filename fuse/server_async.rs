@@ -39,6 +39,7 @@ pub use crate::server::{
 };
 
 pub mod io;
+pub mod prelude;
 
 // CuseConnection {{{
 

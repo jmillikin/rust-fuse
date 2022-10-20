@@ -18,6 +18,8 @@ use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::{env, ffi, fs, io, panic, path, sync, thread};
 
 use fuse::cuse;
+use fuse::operations::cuse_init;
+use fuse::operations::fuse_init;
 use fuse::server;
 use fuse::server::cuse_rpc;
 use fuse::server::fuse_rpc;
@@ -62,12 +64,12 @@ type DevFuse = fuse_libc::FuseServerSocket;
 
 pub trait TestDev: cuse_rpc::Handlers<DevCuse> {
 	#[allow(unused)]
-	fn cuse_init_flags(flags: &mut fuse::CuseInitFlags) {}
+	fn cuse_init_flags(flags: &mut cuse_init::CuseInitFlags) {}
 }
 
 pub trait TestFS: fuse_rpc::Handlers<DevFuse> {
 	#[allow(unused)]
-	fn fuse_init_flags(flags: &mut fuse::FuseInitFlags) {}
+	fn fuse_init_flags(flags: &mut fuse_init::FuseInitFlags) {}
 
 	fn mount_subtype(&self) -> ffi::CString {
 		ffi::CString::new("rust_fuse_test").unwrap()

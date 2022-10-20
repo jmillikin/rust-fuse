@@ -8,6 +8,7 @@ filegroup(
         "encode.rs",
         "fuse_rpc.rs",
         "io.rs",
+        "prelude.rs",
     ],
     visibility = ["//fuse:__subpackages__"],
 )

@@ -19,12 +19,10 @@
 #[cfg(any(doc, feature = "std"))]
 use std::sync::mpsc;
 
-use crate::operations;
+use crate::operations as ops;
 use crate::server;
 use crate::server::io;
 use crate::server::ServerError;
-
-pub use crate::server::io::FuseSocket;
 
 // SendResult {{{
 
@@ -88,7 +86,7 @@ impl<S> Call<'_, S> {
 	}
 }
 
-impl<S: FuseSocket> Call<'_, S> {
+impl<S: io::FuseSocket> Call<'_, S> {
 	/// Sends a successful response to the FUSE client.
 	pub fn respond_ok<R: server::FuseResponse>(
 		self,
@@ -194,7 +192,7 @@ impl<'a, S, H> Dispatcher<'a, S, H> {
 	}
 }
 
-impl<S: FuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
+impl<S: io::FuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 	/// Dispatch a single FUSE request.
 	pub fn dispatch(
 		&self,
@@ -395,7 +393,7 @@ impl<S: FuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 /// [`Hooks::unimplemented`]: server::Hooks::unimplemented
 /// [`statfs`]: Handlers::statfs
 #[allow(unused_variables)]
-pub trait Handlers<S: FuseSocket> {
+pub trait Handlers<S: io::FuseSocket> {
 	/// Request handler for [`FUSE_ACCESS`].
 	///
 	/// See the [`fuse::operations::access`] module for an overview of the
@@ -406,8 +404,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn access(
 		&self,
 		call: Call<S>,
-		request: &operations::AccessRequest,
-	) -> SendResult<operations::AccessResponse, S::Error> {
+		request: &ops::access::AccessRequest,
+	) -> SendResult<ops::access::AccessResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -421,8 +419,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn bmap(
 		&self,
 		call: Call<S>,
-		request: &operations::BmapRequest,
-	) -> SendResult<operations::BmapResponse, S::Error> {
+		request: &ops::bmap::BmapRequest,
+	) -> SendResult<ops::bmap::BmapResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -436,8 +434,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn copy_file_range(
 		&self,
 		call: Call<S>,
-		request: &operations::CopyFileRangeRequest,
-	) -> SendResult<operations::CopyFileRangeResponse, S::Error> {
+		request: &ops::copy_file_range::CopyFileRangeRequest,
+	) -> SendResult<ops::copy_file_range::CopyFileRangeResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -451,8 +449,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn create(
 		&self,
 		call: Call<S>,
-		request: &operations::CreateRequest,
-	) -> SendResult<operations::CreateResponse, S::Error> {
+		request: &ops::create::CreateRequest,
+	) -> SendResult<ops::create::CreateResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -466,8 +464,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn destroy(
 		&self,
 		call: Call<S>,
-		request: &operations::DestroyRequest,
-	) -> SendResult<operations::DestroyResponse, S::Error> {
+		request: &ops::destroy::DestroyRequest,
+	) -> SendResult<ops::destroy::DestroyResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -481,8 +479,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn fallocate(
 		&self,
 		call: Call<S>,
-		request: &operations::FallocateRequest,
-	) -> SendResult<operations::FallocateResponse, S::Error> {
+		request: &ops::fallocate::FallocateRequest,
+	) -> SendResult<ops::fallocate::FallocateResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -496,8 +494,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn flush(
 		&self,
 		call: Call<S>,
-		request: &operations::FlushRequest,
-	) -> SendResult<operations::FlushResponse, S::Error> {
+		request: &ops::flush::FlushRequest,
+	) -> SendResult<ops::flush::FlushResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -509,7 +507,7 @@ pub trait Handlers<S: FuseSocket> {
 	/// [`FUSE_FORGET`]: crate::Opcode::FUSE_FORGET
 	/// [`FUSE_BATCH_FORGET`]: crate::Opcode::FUSE_BATCH_FORGET
 	/// [`fuse::operations::forget`]: crate::operations::forget
-	fn forget(&self, call: Call<S>, request: &operations::ForgetRequest) {
+	fn forget(&self, call: Call<S>, request: &ops::forget::ForgetRequest) {
 		if let Some(hooks) = call.hooks {
 			hooks.unimplemented(call.request);
 		}
@@ -525,8 +523,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn fsync(
 		&self,
 		call: Call<S>,
-		request: &operations::FsyncRequest,
-	) -> SendResult<operations::FsyncResponse, S::Error> {
+		request: &ops::fsync::FsyncRequest,
+	) -> SendResult<ops::fsync::FsyncResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -540,8 +538,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn fsyncdir(
 		&self,
 		call: Call<S>,
-		request: &operations::FsyncdirRequest,
-	) -> SendResult<operations::FsyncdirResponse, S::Error> {
+		request: &ops::fsyncdir::FsyncdirRequest,
+	) -> SendResult<ops::fsyncdir::FsyncdirResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -555,8 +553,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn getattr(
 		&self,
 		call: Call<S>,
-		request: &operations::GetattrRequest,
-	) -> SendResult<operations::GetattrResponse, S::Error> {
+		request: &ops::getattr::GetattrRequest,
+	) -> SendResult<ops::getattr::GetattrResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -570,8 +568,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn getlk(
 		&self,
 		call: Call<S>,
-		request: &operations::GetlkRequest,
-	) -> SendResult<operations::GetlkResponse, S::Error> {
+		request: &ops::getlk::GetlkRequest,
+	) -> SendResult<ops::getlk::GetlkResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -585,8 +583,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn getxattr(
 		&self,
 		call: Call<S>,
-		request: &operations::GetxattrRequest,
-	) -> SendResult<operations::GetxattrResponse, S::Error> {
+		request: &ops::getxattr::GetxattrRequest,
+	) -> SendResult<ops::getxattr::GetxattrResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -600,7 +598,7 @@ pub trait Handlers<S: FuseSocket> {
 	fn interrupt(
 		&self,
 		call: Call<S>,
-		request: &operations::InterruptRequest,
+		request: &ops::interrupt::InterruptRequest,
 	) {
 		if let Some(hooks) = call.hooks {
 			hooks.unimplemented(call.request);
@@ -617,8 +615,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn ioctl(
 		&self,
 		call: Call<S>,
-		request: &operations::IoctlRequest,
-	) -> SendResult<operations::IoctlResponse, S::Error> {
+		request: &ops::ioctl::IoctlRequest,
+	) -> SendResult<ops::ioctl::IoctlResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -632,8 +630,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn link(
 		&self,
 		call: Call<S>,
-		request: &operations::LinkRequest,
-	) -> SendResult<operations::LinkResponse, S::Error> {
+		request: &ops::link::LinkRequest,
+	) -> SendResult<ops::link::LinkResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -647,8 +645,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn listxattr(
 		&self,
 		call: Call<S>,
-		request: &operations::ListxattrRequest,
-	) -> SendResult<operations::ListxattrResponse, S::Error> {
+		request: &ops::listxattr::ListxattrRequest,
+	) -> SendResult<ops::listxattr::ListxattrResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -662,8 +660,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn lookup(
 		&self,
 		call: Call<S>,
-		request: &operations::LookupRequest,
-	) -> SendResult<operations::LookupResponse, S::Error> {
+		request: &ops::lookup::LookupRequest,
+	) -> SendResult<ops::lookup::LookupResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -677,8 +675,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn lseek(
 		&self,
 		call: Call<S>,
-		request: &operations::LseekRequest,
-	) -> SendResult<operations::LseekResponse, S::Error> {
+		request: &ops::lseek::LseekRequest,
+	) -> SendResult<ops::lseek::LseekResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -692,8 +690,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn mkdir(
 		&self,
 		call: Call<S>,
-		request: &operations::MkdirRequest,
-	) -> SendResult<operations::MkdirResponse, S::Error> {
+		request: &ops::mkdir::MkdirRequest,
+	) -> SendResult<ops::mkdir::MkdirResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -707,8 +705,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn mknod(
 		&self,
 		call: Call<S>,
-		request: &operations::MknodRequest,
-	) -> SendResult<operations::MknodResponse, S::Error> {
+		request: &ops::mknod::MknodRequest,
+	) -> SendResult<ops::mknod::MknodResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -722,8 +720,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn open(
 		&self,
 		call: Call<S>,
-		request: &operations::OpenRequest,
-	) -> SendResult<operations::OpenResponse, S::Error> {
+		request: &ops::open::OpenRequest,
+	) -> SendResult<ops::open::OpenResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -737,8 +735,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn opendir(
 		&self,
 		call: Call<S>,
-		request: &operations::OpendirRequest,
-	) -> SendResult<operations::OpendirResponse, S::Error> {
+		request: &ops::opendir::OpendirRequest,
+	) -> SendResult<ops::opendir::OpendirResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -752,8 +750,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn poll(
 		&self,
 		call: Call<S>,
-		request: &operations::PollRequest,
-	) -> SendResult<operations::PollResponse, S::Error> {
+		request: &ops::poll::PollRequest,
+	) -> SendResult<ops::poll::PollResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -767,8 +765,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn read(
 		&self,
 		call: Call<S>,
-		request: &operations::ReadRequest,
-	) -> SendResult<operations::ReadResponse, S::Error> {
+		request: &ops::read::ReadRequest,
+	) -> SendResult<ops::read::ReadResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -782,8 +780,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn readdir(
 		&self,
 		call: Call<S>,
-		request: &operations::ReaddirRequest,
-	) -> SendResult<operations::ReaddirResponse, S::Error> {
+		request: &ops::readdir::ReaddirRequest,
+	) -> SendResult<ops::readdir::ReaddirResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -797,8 +795,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn readdirplus(
 		&self,
 		call: Call<S>,
-		request: &operations::ReaddirplusRequest,
-	) -> SendResult<operations::ReaddirplusResponse, S::Error> {
+		request: &ops::readdirplus::ReaddirplusRequest,
+	) -> SendResult<ops::readdirplus::ReaddirplusResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -812,8 +810,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn readlink(
 		&self,
 		call: Call<S>,
-		request: &operations::ReadlinkRequest,
-	) -> SendResult<operations::ReadlinkResponse, S::Error> {
+		request: &ops::readlink::ReadlinkRequest,
+	) -> SendResult<ops::readlink::ReadlinkResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -827,8 +825,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn release(
 		&self,
 		call: Call<S>,
-		request: &operations::ReleaseRequest,
-	) -> SendResult<operations::ReleaseResponse, S::Error> {
+		request: &ops::release::ReleaseRequest,
+	) -> SendResult<ops::release::ReleaseResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -842,8 +840,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn releasedir(
 		&self,
 		call: Call<S>,
-		request: &operations::ReleasedirRequest,
-	) -> SendResult<operations::ReleasedirResponse, S::Error> {
+		request: &ops::releasedir::ReleasedirRequest,
+	) -> SendResult<ops::releasedir::ReleasedirResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -857,8 +855,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn removexattr(
 		&self,
 		call: Call<S>,
-		request: &operations::RemovexattrRequest,
-	) -> SendResult<operations::RemovexattrResponse, S::Error> {
+		request: &ops::removexattr::RemovexattrRequest,
+	) -> SendResult<ops::removexattr::RemovexattrResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -873,8 +871,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn rename(
 		&self,
 		call: Call<S>,
-		request: &operations::RenameRequest,
-	) -> SendResult<operations::RenameResponse, S::Error> {
+		request: &ops::rename::RenameRequest,
+	) -> SendResult<ops::rename::RenameResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -888,8 +886,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn rmdir(
 		&self,
 		call: Call<S>,
-		request: &operations::RmdirRequest,
-	) -> SendResult<operations::RmdirResponse, S::Error> {
+		request: &ops::rmdir::RmdirRequest,
+	) -> SendResult<ops::rmdir::RmdirResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -903,8 +901,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn setattr(
 		&self,
 		call: Call<S>,
-		request: &operations::SetattrRequest,
-	) -> SendResult<operations::SetattrResponse, S::Error> {
+		request: &ops::setattr::SetattrRequest,
+	) -> SendResult<ops::setattr::SetattrResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -919,8 +917,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn setlk(
 		&self,
 		call: Call<S>,
-		request: &operations::SetlkRequest,
-	) -> SendResult<operations::SetlkResponse, S::Error> {
+		request: &ops::setlk::SetlkRequest,
+	) -> SendResult<ops::setlk::SetlkResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -934,8 +932,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn setxattr(
 		&self,
 		call: Call<S>,
-		request: &operations::SetxattrRequest,
-	) -> SendResult<operations::SetxattrResponse, S::Error> {
+		request: &ops::setxattr::SetxattrRequest,
+	) -> SendResult<ops::setxattr::SetxattrResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -949,8 +947,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn statfs(
 		&self,
 		call: Call<S>,
-		request: &operations::StatfsRequest,
-	) -> SendResult<operations::StatfsResponse, S::Error> {
+		request: &ops::statfs::StatfsRequest,
+	) -> SendResult<ops::statfs::StatfsResponse, S::Error> {
 		#[cfg(not(target_os = "freebsd"))]
 		{
 			call.unimplemented()
@@ -961,7 +959,7 @@ pub trait Handlers<S: FuseSocket> {
 			if let Some(hooks) = call.hooks {
 				hooks.unimplemented(call.request);
 			}
-			let resp = operations::StatfsResponse::new();
+			let resp = ops::statfs::StatfsResponse::new();
 			call.respond_ok(&resp)
 		}
 	}
@@ -976,8 +974,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn symlink(
 		&self,
 		call: Call<S>,
-		request: &operations::SymlinkRequest,
-	) -> SendResult<operations::SymlinkResponse, S::Error> {
+		request: &ops::symlink::SymlinkRequest,
+	) -> SendResult<ops::symlink::SymlinkResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -991,8 +989,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn syncfs(
 		&self,
 		call: Call<S>,
-		request: &operations::SyncfsRequest,
-	) -> SendResult<operations::SyncfsResponse, S::Error> {
+		request: &ops::syncfs::SyncfsRequest,
+	) -> SendResult<ops::syncfs::SyncfsResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -1006,8 +1004,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn unlink(
 		&self,
 		call: Call<S>,
-		request: &operations::UnlinkRequest,
-	) -> SendResult<operations::UnlinkResponse, S::Error> {
+		request: &ops::unlink::UnlinkRequest,
+	) -> SendResult<ops::unlink::UnlinkResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -1021,8 +1019,8 @@ pub trait Handlers<S: FuseSocket> {
 	fn write(
 		&self,
 		call: Call<S>,
-		request: &operations::WriteRequest,
-	) -> SendResult<operations::WriteResponse, S::Error> {
+		request: &ops::write::WriteRequest,
+	) -> SendResult<ops::write::WriteResponse, S::Error> {
 		call.unimplemented()
 	}
 }

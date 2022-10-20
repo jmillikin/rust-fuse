@@ -19,6 +19,7 @@ use std::sync::mpsc;
 
 use fuse::node;
 use fuse::server::fuse_rpc;
+use fuse::server::prelude::*;
 
 use interop_testutil::{
 	diff_str,
@@ -33,20 +34,20 @@ struct TestFS {
 
 impl interop_testutil::TestFS for TestFS {}
 
-impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
+impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 	fn lookup(
 		&self,
 		call: fuse_rpc::Call<S>,
-		_request: &fuse::LookupRequest,
-	) -> fuse_rpc::SendResult<fuse::LookupResponse, S::Error> {
+		_request: &LookupRequest,
+	) -> fuse_rpc::SendResult<LookupResponse, S::Error> {
 		call.respond_err(ErrorCode::ENOENT)
 	}
 
 	fn create(
 		&self,
 		call: fuse_rpc::Call<S>,
-		request: &fuse::CreateRequest,
-	) -> fuse_rpc::SendResult<fuse::CreateResponse, S::Error> {
+		request: &CreateRequest,
+	) -> fuse_rpc::SendResult<CreateResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut attr = node::Attributes::new(node::Id::new(2).unwrap());
@@ -56,7 +57,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		let mut entry = node::Entry::new(attr);
 		entry.set_cache_timeout(std::time::Duration::from_secs(60));
 
-		let mut resp = fuse::CreateResponse::new(entry);
+		let mut resp = CreateResponse::new(entry);
 		resp.set_handle(12345);
 
 		call.respond_ok(&resp)

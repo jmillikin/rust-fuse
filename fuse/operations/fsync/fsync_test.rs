@@ -16,7 +16,11 @@
 
 use core::mem::size_of;
 
-use fuse::operations::fsync::{FsyncRequest, FsyncResponse};
+use fuse::operations::fsync::{
+	FsyncRequest,
+	FsyncRequestFlag,
+	FsyncResponse,
+};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
@@ -37,7 +41,7 @@ fn request() {
 	let req = decode_request!(FsyncRequest, buf);
 
 	assert_eq!(req.handle(), 3);
-	assert_eq!(req.flags().get(fuse::FsyncRequestFlag::FDATASYNC), true);
+	assert_eq!(req.flags().get(FsyncRequestFlag::FDATASYNC), true);
 }
 
 #[test]

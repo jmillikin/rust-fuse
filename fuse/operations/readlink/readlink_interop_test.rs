@@ -19,6 +19,7 @@ use std::sync::mpsc;
 
 use fuse::node;
 use fuse::server::fuse_rpc;
+use fuse::server::prelude::*;
 
 use interop_testutil::{
 	diff_str,
@@ -34,12 +35,12 @@ struct TestFS {
 
 impl interop_testutil::TestFS for TestFS {}
 
-impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
+impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 	fn lookup(
 		&self,
 		call: fuse_rpc::Call<S>,
-		request: &fuse::LookupRequest,
-	) -> fuse_rpc::SendResult<fuse::LookupResponse, S::Error> {
+		request: &LookupRequest,
+	) -> fuse_rpc::SendResult<LookupResponse, S::Error> {
 		if !request.parent_id().is_root() {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
@@ -54,19 +55,19 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		let mut entry = node::Entry::new(attr);
 		entry.set_cache_timeout(std::time::Duration::from_secs(60));
 
-		let resp = fuse::LookupResponse::new(Some(entry));
+		let resp = LookupResponse::new(Some(entry));
 		call.respond_ok(&resp)
 	}
 
 	fn readlink(
 		&self,
 		call: fuse_rpc::Call<S>,
-		request: &fuse::ReadlinkRequest,
-	) -> fuse_rpc::SendResult<fuse::ReadlinkResponse, S::Error> {
+		request: &ReadlinkRequest,
+	) -> fuse_rpc::SendResult<ReadlinkResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		let name = node::Name::new("target.txt").unwrap();
-		let resp = fuse::ReadlinkResponse::from_name(name);
+		let resp = ReadlinkResponse::from_name(name);
 		call.respond_ok(&resp)
 	}
 }

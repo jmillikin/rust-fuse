@@ -17,7 +17,11 @@
 use core::mem::size_of;
 
 use fuse::lock;
-use fuse::operations::write::{WriteRequest, WriteResponse};
+use fuse::operations::write::{
+	WriteRequest,
+	WriteRequestFlag,
+	WriteResponse,
+};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
@@ -44,7 +48,7 @@ fn request_v7p1() {
 	assert_eq!(req.handle(), 123);
 	assert_eq!(req.offset(), 45);
 	assert_eq!(req.lock_owner(), None);
-	assert_eq!(req.flags().get(fuse::WriteRequestFlag::WRITE_CACHE), false);
+	assert_eq!(req.flags().get(WriteRequestFlag::WRITE_CACHE), false);
 	assert_eq!(req.open_flags(), 0);
 	assert_eq!(req.value(), b"hello.world!");
 }
@@ -75,7 +79,7 @@ fn request_v7p9() {
 	assert_eq!(req.handle(), 123);
 	assert_eq!(req.offset(), 45);
 	assert_eq!(req.lock_owner(), None);
-	assert_eq!(req.flags().get(fuse::WriteRequestFlag::WRITE_CACHE), false);
+	assert_eq!(req.flags().get(WriteRequestFlag::WRITE_CACHE), false);
 	assert_eq!(req.open_flags(), 67);
 	assert_eq!(req.value(), b"hello.world!");
 }
@@ -123,7 +127,7 @@ fn request_page_cache() {
 
 	let req = decode_request!(WriteRequest, buf);
 
-	assert_eq!(req.flags().get(fuse::WriteRequestFlag::WRITE_CACHE), true);
+	assert_eq!(req.flags().get(WriteRequestFlag::WRITE_CACHE), true);
 }
 
 #[test]

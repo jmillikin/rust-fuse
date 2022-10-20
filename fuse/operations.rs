@@ -17,211 +17,45 @@
 #![allow(missing_docs)] // TODO
 
 pub mod access;
-#[doc(inline)]
-pub use self::access::*;
-
 pub mod bmap;
-#[doc(inline)]
-pub use self::bmap::*;
-
 pub mod copy_file_range;
-#[doc(inline)]
-pub use self::copy_file_range::*;
-
 pub mod create;
-#[doc(inline)]
-pub use self::create::*;
-
 pub mod cuse_init;
-#[doc(inline)]
-pub use self::cuse_init::*;
-
 pub mod destroy;
-#[doc(inline)]
-pub use self::destroy::*;
-
 pub mod fallocate;
-#[doc(inline)]
-pub use self::fallocate::*;
-
 pub mod flush;
-#[doc(inline)]
-pub use self::flush::*;
-
 pub mod forget;
-#[doc(inline)]
-pub use self::forget::*;
-
 pub mod fsync;
-#[doc(inline)]
-pub use self::fsync::*;
-
 pub mod fsyncdir;
-#[doc(inline)]
-pub use self::fsyncdir::*;
-
 pub mod fuse_init;
-#[doc(inline)]
-pub use self::fuse_init::*;
-
 pub mod getattr;
-#[doc(inline)]
-pub use self::getattr::*;
-
 pub mod getlk;
-#[doc(inline)]
-pub use self::getlk::*;
-
 pub mod getxattr;
-#[doc(inline)]
-pub use self::getxattr::*;
-
 pub mod interrupt;
-#[doc(inline)]
-pub use self::interrupt::*;
-
 pub mod ioctl;
-#[doc(inline)]
-pub use self::ioctl::*;
-
 pub mod link;
-#[doc(inline)]
-pub use self::link::*;
-
 pub mod listxattr;
-#[doc(inline)]
-pub use self::listxattr::*;
-
 pub mod lookup;
-#[doc(inline)]
-pub use self::lookup::*;
-
 pub mod lseek;
-#[doc(inline)]
-pub use self::lseek::*;
-
 pub mod mkdir;
-#[doc(inline)]
-pub use self::mkdir::*;
-
 pub mod mknod;
-#[doc(inline)]
-pub use self::mknod::*;
-
 pub mod open;
-#[doc(inline)]
-pub use self::open::*;
-
 pub mod opendir;
-#[doc(inline)]
-pub use self::opendir::*;
-
 pub mod poll;
-#[doc(inline)]
-pub use self::poll::*;
-
 pub mod read;
-#[doc(inline)]
-pub use self::read::*;
-
 pub mod readdir;
-#[doc(inline)]
-pub use self::readdir::*;
-
 pub mod readdirplus;
-#[doc(inline)]
-pub use self::readdirplus::*;
-
 pub mod readlink;
-#[doc(inline)]
-pub use self::readlink::*;
-
 pub mod release;
-#[doc(inline)]
-pub use self::release::*;
-
 pub mod releasedir;
-#[doc(inline)]
-pub use self::releasedir::*;
-
 pub mod removexattr;
-#[doc(inline)]
-pub use self::removexattr::*;
-
 pub mod rename;
-#[doc(inline)]
-pub use self::rename::*;
-
 pub mod rmdir;
-#[doc(inline)]
-pub use self::rmdir::*;
-
 pub mod setattr;
-#[doc(inline)]
-pub use self::setattr::*;
-
 pub mod setlk;
-#[doc(inline)]
-pub use self::setlk::*;
-
 pub mod setxattr;
-#[doc(inline)]
-pub use self::setxattr::*;
-
 pub mod statfs;
-#[doc(inline)]
-pub use self::statfs::*;
-
 pub mod symlink;
-#[doc(inline)]
-pub use self::symlink::*;
-
 pub mod syncfs;
-#[doc(inline)]
-pub use self::syncfs::*;
-
 pub mod unlink;
-#[doc(inline)]
-pub use self::unlink::*;
-
 pub mod write;
-#[doc(inline)]
-pub use self::write::*;
-
-pub(crate) mod types_only {
-	mod access {}
-	mod bmap {}
-	mod copy_file_range {}
-	mod create {}
-	mod cuse_init {}
-	mod fallocate {}
-	mod flush {}
-	mod forget {}
-	mod fsync {}
-	mod fsyncdir {}
-	mod fuse_init {}
-	mod getattr {}
-	mod getlk {}
-	mod getxattr {}
-	mod ioctl {}
-	mod link {}
-	mod listxattr {}
-	mod lookup {}
-	mod lseek {}
-	mod mkdir {}
-	mod mknod {}
-	mod open {}
-	mod opendir {}
-	mod read {}
-	mod readdir {}
-	mod readlink {}
-	mod release {}
-	mod releasedir {}
-	mod removexattr {}
-	mod rename {}
-	mod rmdir {}
-	mod setattr {}
-	mod setlk {}
-
-	pub use crate::operations::*;
-}

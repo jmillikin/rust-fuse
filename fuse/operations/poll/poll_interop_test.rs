@@ -19,6 +19,7 @@ use std::sync::mpsc;
 
 use fuse::node;
 use fuse::server::fuse_rpc;
+use fuse::server::prelude::*;
 
 use interop_testutil::{
 	diff_str,
@@ -33,12 +34,12 @@ struct TestFS {
 
 impl interop_testutil::TestFS for TestFS {}
 
-impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
+impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 	fn lookup(
 		&self,
 		call: fuse_rpc::Call<S>,
-		request: &fuse::LookupRequest,
-	) -> fuse_rpc::SendResult<fuse::LookupResponse, S::Error> {
+		request: &LookupRequest,
+	) -> fuse_rpc::SendResult<LookupResponse, S::Error> {
 		if !request.parent_id().is_root() {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
@@ -53,20 +54,20 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		let mut entry = node::Entry::new(attr);
 		entry.set_cache_timeout(std::time::Duration::from_secs(60));
 
-		let resp = fuse::LookupResponse::new(Some(entry));
+		let resp = LookupResponse::new(Some(entry));
 		call.respond_ok(&resp)
 	}
 
 	fn open(
 		&self,
 		call: fuse_rpc::Call<S>,
-		request: &fuse::OpenRequest,
-	) -> fuse_rpc::SendResult<fuse::OpenResponse, S::Error> {
+		request: &OpenRequest,
+	) -> fuse_rpc::SendResult<OpenResponse, S::Error> {
 		if request.node_id().get() != 2 {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
 
-		let mut resp = fuse::OpenResponse::new();
+		let mut resp = OpenResponse::new();
 		resp.set_handle(10);
 		call.respond_ok(&resp)
 	}
@@ -75,8 +76,8 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 	fn poll(
 		&self,
 		call: fuse_rpc::Call<S>,
-		request: &fuse::PollRequest,
-	) -> fuse_rpc::SendResult<fuse::PollResponse, S::Error> {
+		request: &PollRequest,
+	) -> fuse_rpc::SendResult<PollResponse, S::Error> {
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the poll handle, which is non-deterministic.
@@ -93,7 +94,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		let POLLIN = libc::POLLIN as u32;
 		let POLLOUT = libc::POLLOUT as u32;
 
-		let mut resp = fuse::PollResponse::new();
+		let mut resp = PollResponse::new();
 		if (request.poll_events() & POLLIN) > 0 {
 			resp.set_poll_events(POLLIN);
 		}
@@ -106,9 +107,9 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 	fn release(
 		&self,
 		call: fuse_rpc::Call<S>,
-		_request: &fuse::ReleaseRequest,
-	) -> fuse_rpc::SendResult<fuse::ReleaseResponse, S::Error> {
-		let resp = fuse::ReleaseResponse::new();
+		_request: &ReleaseRequest,
+	) -> fuse_rpc::SendResult<ReleaseResponse, S::Error> {
+		let resp = ReleaseResponse::new();
 		call.respond_ok(&resp)
 	}
 }

@@ -19,6 +19,7 @@ use std::sync::mpsc;
 
 use fuse::node;
 use fuse::server::fuse_rpc;
+use fuse::server::prelude::*;
 
 use interop_testutil::{
 	diff_str,
@@ -34,12 +35,12 @@ struct TestFS {
 
 impl interop_testutil::TestFS for TestFS {}
 
-impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
+impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 	fn lookup(
 		&self,
 		call: fuse_rpc::Call<S>,
-		request: &fuse::LookupRequest,
-	) -> fuse_rpc::SendResult<fuse::LookupResponse, S::Error> {
+		request: &LookupRequest,
+	) -> fuse_rpc::SendResult<LookupResponse, S::Error> {
 		if !request.parent_id().is_root() {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
@@ -60,16 +61,16 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		let mut entry = node::Entry::new(attr);
 		entry.set_cache_timeout(std::time::Duration::from_secs(60));
 
-		let resp = fuse::LookupResponse::new(Some(entry));
+		let resp = LookupResponse::new(Some(entry));
 		call.respond_ok(&resp)
 	}
 
 	fn open(
 		&self,
 		call: fuse_rpc::Call<S>,
-		request: &fuse::OpenRequest,
-	) -> fuse_rpc::SendResult<fuse::OpenResponse, S::Error> {
-		let mut resp = fuse::OpenResponse::new();
+		request: &OpenRequest,
+	) -> fuse_rpc::SendResult<OpenResponse, S::Error> {
+		let mut resp = OpenResponse::new();
 		if request.node_id() == node::Id::new(2).unwrap() {
 			resp.set_handle(1002);
 		} else {
@@ -81,8 +82,8 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 	fn flush(
 		&self,
 		call: fuse_rpc::Call<S>,
-		request: &fuse::FlushRequest,
-	) -> fuse_rpc::SendResult<fuse::FlushResponse, S::Error> {
+		request: &FlushRequest,
+	) -> fuse_rpc::SendResult<FlushResponse, S::Error> {
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the lock owner, which is non-deterministic.
@@ -97,7 +98,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		self.requests.send(request_str).unwrap();
 
 		if request.handle() == 1002 {
-			let resp = fuse::FlushResponse::new();
+			let resp = FlushResponse::new();
 			call.respond_ok(&resp)
 		} else {
 			call.respond_err(ErrorCode::E2BIG)

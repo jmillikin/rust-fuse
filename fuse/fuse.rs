@@ -89,7 +89,6 @@ pub mod server_async;
 pub mod xattr;
 
 pub use self::error::Error;
-pub use self::operations::types_only::*;
 
 // RequestHeader {{{
 

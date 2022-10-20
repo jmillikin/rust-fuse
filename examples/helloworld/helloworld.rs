@@ -19,8 +19,8 @@ use std::num::NonZeroU64;
 use std::os::unix::ffi::OsStrExt;
 
 use fuse::node;
-use fuse::server;
 use fuse::server::fuse_rpc;
+use fuse::server::prelude::*;
 
 const HELLO_WORLD: &[u8] = b"Hello, world!\n";
 
@@ -48,12 +48,12 @@ const HELLO_TXT: HelloTxt = HelloTxt {};
 
 struct HelloWorldFS {}
 
-impl<S: server::io::FuseSocket> fuse_rpc::Handlers<S> for HelloWorldFS {
+impl<S: FuseSocket> fuse_rpc::Handlers<S> for HelloWorldFS {
 	fn lookup(
 		&self,
 		call: fuse_rpc::Call<S>,
-		request: &fuse::LookupRequest,
-	) -> fuse_rpc::SendResult<fuse::LookupResponse, S::Error> {
+		request: &LookupRequest,
+	) -> fuse_rpc::SendResult<LookupResponse, S::Error> {
 		if !request.parent_id().is_root() {
 			return call.respond_err(fuse::Error::NOT_FOUND);
 		}
@@ -65,15 +65,15 @@ impl<S: server::io::FuseSocket> fuse_rpc::Handlers<S> for HelloWorldFS {
 		HELLO_TXT.set_attr(&mut attr);
 
 		let entry = node::Entry::new(attr);
-		let resp = fuse::LookupResponse::new(Some(entry));
+		let resp = LookupResponse::new(Some(entry));
 		call.respond_ok(&resp)
 	}
 
 	fn getattr(
 		&self,
 		call: fuse_rpc::Call<S>,
-		request: &fuse::GetattrRequest,
-	) -> fuse_rpc::SendResult<fuse::GetattrResponse, S::Error> {
+		request: &GetattrRequest,
+	) -> fuse_rpc::SendResult<GetattrResponse, S::Error> {
 		let mut attr = node::Attributes::new(request.node_id());
 
 		if request.node_id().is_root() {
@@ -81,13 +81,13 @@ impl<S: server::io::FuseSocket> fuse_rpc::Handlers<S> for HelloWorldFS {
 			attr.set_group_id(getgid());
 			attr.set_mode(node::Mode::S_IFDIR | 0o755);
 			attr.set_link_count(2);
-			let resp = fuse::GetattrResponse::new(attr);
+			let resp = GetattrResponse::new(attr);
 			return call.respond_ok(&resp);
 		}
 
 		if request.node_id() == HELLO_TXT.node_id() {
 			HELLO_TXT.set_attr(&mut attr);
-			let resp = fuse::GetattrResponse::new(attr);
+			let resp = GetattrResponse::new(attr);
 			return call.respond_ok(&resp);
 		}
 
@@ -97,13 +97,13 @@ impl<S: server::io::FuseSocket> fuse_rpc::Handlers<S> for HelloWorldFS {
 	fn open(
 		&self,
 		call: fuse_rpc::Call<S>,
-		request: &fuse::OpenRequest,
-	) -> fuse_rpc::SendResult<fuse::OpenResponse, S::Error> {
+		request: &OpenRequest,
+	) -> fuse_rpc::SendResult<OpenResponse, S::Error> {
 		if request.node_id() != HELLO_TXT.node_id() {
 			return call.respond_err(fuse::Error::NOT_FOUND);
 		}
 
-		let mut resp = fuse::OpenResponse::new();
+		let mut resp = OpenResponse::new();
 		resp.set_handle(1001);
 		call.respond_ok(&resp)
 	}
@@ -111,26 +111,26 @@ impl<S: server::io::FuseSocket> fuse_rpc::Handlers<S> for HelloWorldFS {
 	fn read(
 		&self,
 		call: fuse_rpc::Call<S>,
-		request: &fuse::ReadRequest,
-	) -> fuse_rpc::SendResult<fuse::ReadResponse, S::Error> {
+		request: &ReadRequest,
+	) -> fuse_rpc::SendResult<ReadResponse, S::Error> {
 		if request.handle() != 1001 {
 			return call.respond_err(fuse::Error::INVALID_ARGUMENT);
 		}
 
-		let resp = fuse::ReadResponse::from_bytes(HELLO_WORLD);
+		let resp = ReadResponse::from_bytes(HELLO_WORLD);
 		call.respond_ok(&resp)
 	}
 
 	fn opendir(
 		&self,
 		call: fuse_rpc::Call<S>,
-		request: &fuse::OpendirRequest,
-	) -> fuse_rpc::SendResult<fuse::OpendirResponse, S::Error> {
+		request: &OpendirRequest,
+	) -> fuse_rpc::SendResult<OpendirResponse, S::Error> {
 		if !request.node_id().is_root() {
 			return call.respond_err(fuse::Error::NOT_FOUND);
 		}
 
-		let mut resp = fuse::OpendirResponse::new();
+		let mut resp = OpendirResponse::new();
 		resp.set_handle(1002);
 		call.respond_ok(&resp)
 	}
@@ -138,21 +138,21 @@ impl<S: server::io::FuseSocket> fuse_rpc::Handlers<S> for HelloWorldFS {
 	fn readdir(
 		&self,
 		call: fuse_rpc::Call<S>,
-		request: &fuse::ReaddirRequest,
-	) -> fuse_rpc::SendResult<fuse::ReaddirResponse, S::Error> {
+		request: &ReaddirRequest,
+	) -> fuse_rpc::SendResult<ReaddirResponse, S::Error> {
 		if request.handle() != 1002 {
 			return call.respond_err(fuse::Error::INVALID_ARGUMENT);
 		}
 
 		if request.offset().is_some() {
-			return call.respond_ok(fuse::ReaddirResponse::EMPTY);
+			return call.respond_ok(ReaddirResponse::EMPTY);
 		}
 
 		let mut buf = vec![0u8; request.size()];
-		let mut entries = fuse::ReaddirEntriesWriter::new(&mut buf);
+		let mut entries = ReaddirEntriesWriter::new(&mut buf);
 
 		let node_offset = NonZeroU64::new(1).unwrap();
-		let mut entry = fuse::ReaddirEntry::new(
+		let mut entry = ReaddirEntry::new(
 			HELLO_TXT.node_id(),
 			HELLO_TXT.name(),
 			node_offset,
@@ -160,20 +160,20 @@ impl<S: server::io::FuseSocket> fuse_rpc::Handlers<S> for HelloWorldFS {
 		entry.set_file_type(node::Type::Regular);
 		entries.try_push(&entry).unwrap();
 
-		let resp = fuse::ReaddirResponse::new(entries.into_entries());
+		let resp = ReaddirResponse::new(entries.into_entries());
 		call.respond_ok(&resp)
 	}
 
 	fn releasedir(
 		&self,
 		call: fuse_rpc::Call<S>,
-		request: &fuse::ReleasedirRequest,
-	) -> fuse_rpc::SendResult<fuse::ReleasedirResponse, S::Error> {
+		request: &ReleasedirRequest,
+	) -> fuse_rpc::SendResult<ReleasedirResponse, S::Error> {
 		if request.handle() != 1002 {
 			return call.respond_err(fuse::Error::INVALID_ARGUMENT);
 		}
 
-		let resp = fuse::ReleasedirResponse::new();
+		let resp = ReleasedirResponse::new();
 		call.respond_ok(&resp)
 	}
 }
@@ -225,6 +225,6 @@ fn main() {
 	let handlers = HelloWorldFS {};
 	let mount_target = std::env::args_os().nth(1).unwrap();
 	let dev_fuse = mount(&mount_target);
-	let conn = server::FuseServer::new().connect(dev_fuse).unwrap();
+	let conn = FuseServer::new().connect(dev_fuse).unwrap();
 	fuse_rpc::serve(&conn, &handlers);
 }

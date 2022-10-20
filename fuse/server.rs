@@ -41,6 +41,7 @@ use crate::xattr;
 pub mod cuse_rpc;
 pub mod fuse_rpc;
 pub mod io;
+pub mod prelude;
 
 pub(crate) mod decode;
 pub(crate) mod encode;

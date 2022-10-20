@@ -108,6 +108,7 @@ macro_rules! decode_request {
 		$crate::decode_request!($t, $buf, {})
 	};
 	($t:ty, $buf: ident, $opts:tt $(,)?) => {{
+		use fuse::operations::fuse_init;
 		use fuse::server;
 		use fuse::server::FuseRequest;
 		use fuse::server::FuseRequestOptions;
@@ -117,7 +118,7 @@ macro_rules! decode_request {
 		let opts = $crate::decode_request_opts!($opts);
 		let request_len = $buf.as_slice().len();
 
-		let mut init = fuse::FuseInitResponse::new();
+		let mut init = fuse_init::FuseInitResponse::new();
 		init.set_version(fuse::Version::new(
 			opts.protocol_version.0,
 			opts.protocol_version.1,
@@ -156,6 +157,7 @@ macro_rules! encode_response {
 		$crate::encode_response!($response, {})
 	};
 	($response:expr, $opts:tt $(,)?) => {{
+		use fuse::operations::fuse_init;
 		use fuse::server::FuseRequest;
 		use fuse::server::FuseResponse;
 		use fuse::server::FuseResponseOptions;
@@ -163,7 +165,7 @@ macro_rules! encode_response {
 
 		let opts = $crate::encode_request_opts!($opts);
 
-		let mut init = fuse::FuseInitResponse::new();
+		let mut init = fuse_init::FuseInitResponse::new();
 		init.set_version(fuse::Version::new(
 			opts.protocol_version.0,
 			opts.protocol_version.1,

@@ -19,12 +19,10 @@
 #[cfg(any(doc, feature = "std"))]
 use std::sync::mpsc;
 
-use crate::operations;
+use crate::operations as ops;
 use crate::server;
 use crate::server::io;
 use crate::server::ServerError;
-
-pub use crate::server::io::CuseSocket;
 
 // SendResult {{{
 
@@ -88,7 +86,7 @@ impl<S> Call<'_, S> {
 	}
 }
 
-impl<S: CuseSocket> Call<'_, S> {
+impl<S: io::CuseSocket> Call<'_, S> {
 	/// Sends a successful response to the CUSE client.
 	pub fn respond_ok<R: server::CuseResponse>(
 		self,
@@ -194,7 +192,7 @@ impl<'a, S, H> Dispatcher<'a, S, H> {
 	}
 }
 
-impl<S: CuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
+impl<S: io::CuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 	/// Dispatch a single CUSE request.
 	pub fn dispatch(
 		&self,
@@ -351,7 +349,7 @@ impl<S: CuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 /// [`Error::UNIMPLEMENTED`]: crate::Error::UNIMPLEMENTED
 /// [`Hooks::unimplemented`]: server::Hooks::unimplemented
 #[allow(unused_variables)]
-pub trait Handlers<S: CuseSocket> {
+pub trait Handlers<S: io::CuseSocket> {
 	/// Request handler for [`FUSE_FLUSH`].
 	///
 	/// See the [`fuse::operations::flush`] module for an overview of the
@@ -362,8 +360,8 @@ pub trait Handlers<S: CuseSocket> {
 	fn flush(
 		&self,
 		call: Call<S>,
-		request: &operations::FlushRequest,
-	) -> SendResult<operations::FlushResponse, S::Error> {
+		request: &ops::flush::FlushRequest,
+	) -> SendResult<ops::flush::FlushResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -377,8 +375,8 @@ pub trait Handlers<S: CuseSocket> {
 	fn fsync(
 		&self,
 		call: Call<S>,
-		request: &operations::FsyncRequest,
-	) -> SendResult<operations::FsyncResponse, S::Error> {
+		request: &ops::fsync::FsyncRequest,
+	) -> SendResult<ops::fsync::FsyncResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -392,7 +390,7 @@ pub trait Handlers<S: CuseSocket> {
 	fn interrupt(
 		&self,
 		call: Call<S>,
-		request: &operations::InterruptRequest,
+		request: &ops::interrupt::InterruptRequest,
 	) {
 		if let Some(hooks) = call.hooks {
 			hooks.unimplemented(call.request);
@@ -409,8 +407,8 @@ pub trait Handlers<S: CuseSocket> {
 	fn ioctl(
 		&self,
 		call: Call<S>,
-		request: &operations::IoctlRequest,
-	) -> SendResult<operations::IoctlResponse, S::Error> {
+		request: &ops::ioctl::IoctlRequest,
+	) -> SendResult<ops::ioctl::IoctlResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -424,8 +422,8 @@ pub trait Handlers<S: CuseSocket> {
 	fn open(
 		&self,
 		call: Call<S>,
-		request: &operations::OpenRequest,
-	) -> SendResult<operations::OpenResponse, S::Error> {
+		request: &ops::open::OpenRequest,
+	) -> SendResult<ops::open::OpenResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -439,8 +437,8 @@ pub trait Handlers<S: CuseSocket> {
 	fn poll(
 		&self,
 		call: Call<S>,
-		request: &operations::PollRequest,
-	) -> SendResult<operations::PollResponse, S::Error> {
+		request: &ops::poll::PollRequest,
+	) -> SendResult<ops::poll::PollResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -454,8 +452,8 @@ pub trait Handlers<S: CuseSocket> {
 	fn read(
 		&self,
 		call: Call<S>,
-		request: &operations::ReadRequest,
-	) -> SendResult<operations::ReadResponse, S::Error> {
+		request: &ops::read::ReadRequest,
+	) -> SendResult<ops::read::ReadResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -469,8 +467,8 @@ pub trait Handlers<S: CuseSocket> {
 	fn release(
 		&self,
 		call: Call<S>,
-		request: &operations::ReleaseRequest,
-	) -> SendResult<operations::ReleaseResponse, S::Error> {
+		request: &ops::release::ReleaseRequest,
+	) -> SendResult<ops::release::ReleaseResponse, S::Error> {
 		call.unimplemented()
 	}
 
@@ -484,8 +482,8 @@ pub trait Handlers<S: CuseSocket> {
 	fn write(
 		&self,
 		call: Call<S>,
-		request: &operations::WriteRequest,
-	) -> SendResult<operations::WriteResponse, S::Error> {
+		request: &ops::write::WriteRequest,
+	) -> SendResult<ops::write::WriteResponse, S::Error> {
 		call.unimplemented()
 	}
 }

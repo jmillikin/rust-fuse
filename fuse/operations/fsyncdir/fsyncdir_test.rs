@@ -16,7 +16,11 @@
 
 use core::mem::size_of;
 
-use fuse::operations::fsyncdir::{FsyncdirRequest, FsyncdirResponse};
+use fuse::operations::fsyncdir::{
+	FsyncdirRequest,
+	FsyncdirRequestFlag,
+	FsyncdirResponse,
+};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
@@ -39,7 +43,7 @@ fn request() {
 	});
 
 	assert_eq!(req.handle(), 3);
-	assert_eq!(req.flags().get(fuse::FsyncdirRequestFlag::FDATASYNC), true);
+	assert_eq!(req.flags().get(FsyncdirRequestFlag::FDATASYNC), true);
 }
 
 #[test]

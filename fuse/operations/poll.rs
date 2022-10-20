@@ -63,8 +63,8 @@ impl PollRequest<'_> {
 	}
 
 	#[must_use]
-	pub fn poll_handle(&self) -> crate::PollHandle {
-		crate::PollHandle { bits: self.body.kh }
+	pub fn poll_handle(&self) -> PollHandle {
+		PollHandle { bits: self.body.kh }
 	}
 
 	#[must_use]

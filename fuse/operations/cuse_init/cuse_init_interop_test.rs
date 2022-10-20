@@ -17,7 +17,8 @@
 use std::panic;
 use std::sync::mpsc;
 
-use ::fuse::server::cuse_rpc;
+use fuse::server::cuse_rpc;
+use fuse::server::prelude::*;
 
 use interop_testutil::{
 	cuse_interop_test,
@@ -31,15 +32,15 @@ struct TestCharDev {
 
 impl interop_testutil::TestDev for TestCharDev {}
 
-impl<S: cuse_rpc::CuseSocket> cuse_rpc::Handlers<S> for TestCharDev {
+impl<S: CuseSocket> cuse_rpc::Handlers<S> for TestCharDev {
 	fn open(
 		&self,
 		call: cuse_rpc::Call<S>,
-		request: &fuse::OpenRequest,
-	) -> cuse_rpc::SendResult<fuse::OpenResponse, S::Error> {
+		request: &OpenRequest,
+	) -> cuse_rpc::SendResult<OpenResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
-		let mut resp = fuse::OpenResponse::new();
+		let mut resp = OpenResponse::new();
 		resp.set_handle(12345);
 		call.respond_ok(&resp)
 	}
@@ -47,8 +48,8 @@ impl<S: cuse_rpc::CuseSocket> cuse_rpc::Handlers<S> for TestCharDev {
 	fn read(
 		&self,
 		call: cuse_rpc::Call<S>,
-		request: &fuse::ReadRequest,
-	) -> cuse_rpc::SendResult<fuse::ReadResponse, S::Error> {
+		request: &ReadRequest,
+	) -> cuse_rpc::SendResult<ReadResponse, S::Error> {
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the lock owner, which is non-deterministic.
@@ -62,26 +63,26 @@ impl<S: cuse_rpc::CuseSocket> cuse_rpc::Handlers<S> for TestCharDev {
 
 		self.requests.send(request_str).unwrap();
 
-		let resp = fuse::ReadResponse::from_bytes(b"file_content");
+		let resp = ReadResponse::from_bytes(b"file_content");
 		call.respond_ok(&resp)
 	}
 
 	fn release(
 		&self,
 		call: cuse_rpc::Call<S>,
-		request: &fuse::ReleaseRequest,
-	) -> cuse_rpc::SendResult<fuse::ReleaseResponse, S::Error> {
+		request: &ReleaseRequest,
+	) -> cuse_rpc::SendResult<ReleaseResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
-		let resp = fuse::ReleaseResponse::new();
+		let resp = ReleaseResponse::new();
 		call.respond_ok(&resp)
 	}
 
 	fn write(
 		&self,
 		call: cuse_rpc::Call<S>,
-		request: &fuse::WriteRequest,
-	) -> cuse_rpc::SendResult<fuse::WriteResponse, S::Error> {
+		request: &WriteRequest,
+	) -> cuse_rpc::SendResult<WriteResponse, S::Error> {
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the lock owner, which is non-deterministic.
@@ -95,7 +96,7 @@ impl<S: cuse_rpc::CuseSocket> cuse_rpc::Handlers<S> for TestCharDev {
 
 		self.requests.send(request_str).unwrap();
 
-		let mut resp = fuse::WriteResponse::new();
+		let mut resp = WriteResponse::new();
 		resp.set_size(request.value().len() as u32);
 		call.respond_ok(&resp)
 	}

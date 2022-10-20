@@ -19,6 +19,7 @@ use std::sync::mpsc;
 
 use fuse::node;
 use fuse::server::fuse_rpc;
+use fuse::server::prelude::*;
 use fuse::xattr;
 
 use interop_testutil::{
@@ -35,12 +36,12 @@ struct TestFS {
 
 impl interop_testutil::TestFS for TestFS {}
 
-impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
+impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 	fn lookup(
 		&self,
 		call: fuse_rpc::Call<S>,
-		request: &fuse::LookupRequest,
-	) -> fuse_rpc::SendResult<fuse::LookupResponse, S::Error> {
+		request: &LookupRequest,
+	) -> fuse_rpc::SendResult<LookupResponse, S::Error> {
 		if !request.parent_id().is_root() {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
@@ -61,15 +62,15 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		let mut entry = node::Entry::new(attr);
 		entry.set_cache_timeout(std::time::Duration::from_secs(60));
 
-		let resp = fuse::LookupResponse::new(Some(entry));
+		let resp = LookupResponse::new(Some(entry));
 		call.respond_ok(&resp)
 	}
 
 	fn listxattr(
 		&self,
 		call: fuse_rpc::Call<S>,
-		request: &fuse::ListxattrRequest,
-	) -> fuse_rpc::SendResult<fuse::ListxattrResponse, S::Error> {
+		request: &ListxattrRequest,
+	) -> fuse_rpc::SendResult<ListxattrResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		if request.node_id() == node::Id::new(3).unwrap() {
@@ -83,14 +84,14 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 			None => {
 				let mut need_size = xattr_small.size();
 				need_size += xattr_toobig.size();
-				let resp = fuse::ListxattrResponse::with_names_size(need_size);
+				let resp = ListxattrResponse::with_names_size(need_size);
 				return call.respond_ok(&resp);
 			},
 			Some(request_size) => request_size,
 		};
 
 		let mut buf = vec![0u8; buf_size.get()];
-		let mut names = fuse::ListxattrNamesWriter::new(&mut buf);
+		let mut names = ListxattrNamesWriter::new(&mut buf);
 
 		if names.try_push(xattr_small).is_err() {
 			return call.respond_err(ErrorCode::ERANGE);
@@ -99,7 +100,7 @@ impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 			return call.respond_err(ErrorCode::ERANGE);
 		}
 
-		let resp = fuse::ListxattrResponse::with_names(names);
+		let resp = ListxattrResponse::with_names(names);
 		call.respond_ok(&resp)
 	}
 }

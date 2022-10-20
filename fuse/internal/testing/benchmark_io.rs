@@ -14,6 +14,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use fuse::operations::fuse_init;
+use fuse::operations::read;
+use fuse::operations::write;
 use fuse::server;
 use fuse::server::fuse_rpc;
 use fuse::server::io::Socket;
@@ -50,18 +53,18 @@ impl fuse_rpc::Handlers<FakeSocket> for FakeHandlers {
 	fn read(
 		&self,
 		call: fuse_rpc::Call<FakeSocket>,
-		_request: &fuse::ReadRequest,
-	) -> fuse_rpc::SendResult<fuse::ReadResponse, std::io::Error> {
-		let resp = fuse::ReadResponse::from_bytes(&[0u8; 4096]);
+		_request: &read::ReadRequest,
+	) -> fuse_rpc::SendResult<read::ReadResponse, std::io::Error> {
+		let resp = read::ReadResponse::from_bytes(&[0u8; 4096]);
 		call.respond_ok(&resp)
 	}
 
 	fn write(
 		&self,
 		call: fuse_rpc::Call<FakeSocket>,
-		request: &fuse::WriteRequest,
-	) -> fuse_rpc::SendResult<fuse::WriteResponse, std::io::Error> {
-		let mut resp = fuse::WriteResponse::new();
+		request: &write::WriteRequest,
+	) -> fuse_rpc::SendResult<write::WriteResponse, std::io::Error> {
+		let mut resp = write::WriteResponse::new();
 		resp.set_size(request.value().len() as u32);
 		call.respond_ok(&resp)
 	}
@@ -89,7 +92,7 @@ fn benchmark_read(c: &mut criterion::Criterion) {
 	};
 	let handlers = FakeHandlers {};
 
-	let mut init = fuse::FuseInitResponse::new();
+	let mut init = fuse_init::FuseInitResponse::new();
 	init.set_version(fuse::Version::new(7, u32::MAX));
 	let req_opts = server::FuseRequestOptions::from_init_response(&init);
 	let resp_opts = server::FuseResponseOptions::from_init_response(&init);
@@ -115,7 +118,7 @@ fn benchmark_read(c: &mut criterion::Criterion) {
 	c.bench_function("read_decode", |b| {
 		b.iter(|| {
 			use fuse::server::FuseRequest;
-			fuse::ReadRequest::from_request(request_buf, req_opts)
+			read::ReadRequest::from_request(request_buf, req_opts)
 		})
 	});
 
@@ -147,7 +150,7 @@ fn benchmark_write(c: &mut criterion::Criterion) {
 	};
 	let handlers = FakeHandlers {};
 
-	let mut init = fuse::FuseInitResponse::new();
+	let mut init = fuse_init::FuseInitResponse::new();
 	init.set_version(fuse::Version::new(7, u32::MAX));
 	let req_opts = fuse::server::FuseRequestOptions::from_init_response(&init);
 	let resp_opts = server::FuseResponseOptions::from_init_response(&init);
@@ -173,7 +176,7 @@ fn benchmark_write(c: &mut criterion::Criterion) {
 	c.bench_function("write_decode", |b| {
 		b.iter(|| {
 			use fuse::server::FuseRequest;
-			fuse::WriteRequest::from_request(request_buf, req_opts)
+			write::WriteRequest::from_request(request_buf, req_opts)
 		})
 	});
 

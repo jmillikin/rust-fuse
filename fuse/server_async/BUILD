@@ -4,6 +4,7 @@ filegroup(
     name = "srcs",
     srcs = [
         "io.rs",
+        "prelude.rs",
     ],
     visibility = ["//fuse:__subpackages__"],
 )
