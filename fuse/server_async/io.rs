@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Server-specific async I/O types.
+
 use crate::io::SendBuf;
 
 pub use crate::server::io::{
@@ -21,22 +23,31 @@ pub use crate::server::io::{
 	SendError,
 };
 
+/// Trait for async sockets that can receive requests and send responses.
 pub trait Socket {
+	/// Type of errors that may be returned from this socket's I/O methods.
 	type Error;
 
+	/// Receive a single serialised request from the client.
+	///
+	/// The buffer must be large enough to contain any request that might be
+	/// received for the current session's negotiated maximum message size.
 	async fn recv(
 		&self,
 		buf: &mut [u8],
 	) -> Result<usize, RecvError<Self::Error>>;
 
+	/// Send a single serialised response to the client.
 	async fn send(
 		&self,
 		buf: SendBuf<'_>,
 	) -> Result<(), SendError<Self::Error>>;
 }
 
+/// Marker trait for async CUSE sockets.
 pub trait CuseSocket: Socket {}
 
+/// Marker trait for async FUSE sockets.
 pub trait FuseSocket: Socket {}
 
 impl<S: Socket> Socket for &S {
@@ -52,6 +63,7 @@ impl<S: Socket> Socket for &S {
 }
 
 impl<S: CuseSocket> CuseSocket for &S {}
+
 impl<S: FuseSocket> FuseSocket for &S {}
 
 #[cfg(feature = "alloc")]

@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//! Async CUSE and FUSE servers.
+
 use core::num;
 
 use crate::cuse;
