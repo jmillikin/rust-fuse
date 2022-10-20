@@ -208,6 +208,12 @@ struct AlignedBufInner {
 }
 
 #[cfg(any(doc, feature = "alloc", feature = "std"))]
+unsafe impl Send for AlignedBufInner {}
+
+#[cfg(any(doc, feature = "alloc", feature = "std"))]
+unsafe impl Sync for AlignedBufInner {}
+
+#[cfg(any(doc, feature = "alloc", feature = "std"))]
 impl Drop for AlignedBufInner {
 	fn drop(&mut self) {
 		let orig = unsafe {
