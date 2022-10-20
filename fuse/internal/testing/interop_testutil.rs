@@ -62,20 +62,12 @@ type DevFuse = fuse_libc::FuseServerSocket;
 
 pub trait TestDev: cuse_rpc::Handlers<DevCuse> {
 	#[allow(unused)]
-	fn cuse_init(
-		init_request: &fuse::CuseInitRequest,
-		init_response: &mut fuse::CuseInitResponse,
-	) {
-	}
+	fn cuse_init_flags(flags: &mut fuse::CuseInitFlags) {}
 }
 
 pub trait TestFS: fuse_rpc::Handlers<DevFuse> {
 	#[allow(unused)]
-	fn fuse_init(
-		init_request: &fuse::FuseInitRequest,
-		init_response: &mut fuse::FuseInitResponse,
-	) {
-	}
+	fn fuse_init_flags(flags: &mut fuse::FuseInitFlags) {}
 
 	fn mount_subtype(&self) -> ffi::CString {
 		ffi::CString::new("rust_fuse_test").unwrap()
@@ -168,16 +160,19 @@ pub fn fuse_interop_test<H: TestFS + Send + 'static>(
 	let server_thread = {
 		let ready = sync::Arc::clone(&server_ready);
 		thread::spawn(move || {
-			let builder = fuse_rpc::ServerBuilder::new(dev_fuse, handlers);
-			let srv = builder
-				.server_hooks(Box::new(PrintHooks {}))
-				.fuse_init_fn(|req, resp| {
-					H::fuse_init(req, resp);
-				})
-				.unwrap();
+			let conn_or_err = server::FuseServer::new()
+				.update_flags(H::fuse_init_flags)
+				.connect(dev_fuse);
 			ready.wait();
 
-			srv.serve().unwrap();
+			let conn = conn_or_err.unwrap();
+			let mut dispatcher = fuse_rpc::Dispatcher::new(&conn, &handlers);
+			dispatcher.set_hooks(&PrintHooks {});
+
+			let mut buf = fuse::io::MinReadBuffer::new();
+			while let Some(request) = conn.recv(buf.as_aligned_slice_mut()).unwrap() {
+				dispatcher.dispatch(request).unwrap();
+			}
 		})
 	};
 
@@ -366,23 +361,32 @@ pub fn cuse_interop_test<H: TestDev + Send + 'static>(
 	let server_thread = {
 		let ready = sync::Arc::clone(&server_ready);
 		thread::spawn(move || {
-			let devname = cuse::DeviceName::from_bytes(&mktemp_template)
+			let dev_name = cuse::DeviceName::from_bytes(&mktemp_template)
 				.unwrap();
-			let srv = cuse_rpc::ServerBuilder::new(dev_cuse, handlers)
-				.device_number(cuse::DeviceNumber::new(
-					CUSE_DEV_MAJOR,
-					CUSE_DEV_MINOR,
-				))
-				.server_hooks(Box::new(PrintHooks {}))
-				.cuse_init_fn(devname, |req, resp| {
-					H::cuse_init(req, resp);
-				})
-				.unwrap();
+			let dev_number = cuse::DeviceNumber::new(
+				CUSE_DEV_MAJOR,
+				CUSE_DEV_MINOR,
+			);
+
+			let conn_or_err = server::CuseServer::new(dev_name, dev_number)
+				.update_flags(H::cuse_init_flags)
+				.connect(dev_cuse);
 			ready.wait();
 
-			use fuse::server::ServerError;
-			fn is_conn_reset(err: &ServerError<io::Error>) -> bool {
-				if let ServerError::RecvError(err) = err {
+			let conn = conn_or_err.unwrap();
+			let mut dispatcher = cuse_rpc::Dispatcher::new(&conn, &handlers);
+			dispatcher.set_hooks(&PrintHooks {});
+
+			let serve = || -> Result<(), server::ServerError<std::io::Error>> {
+				let mut buf = fuse::io::MinReadBuffer::new();
+				loop {
+					let request = conn.recv(buf.as_aligned_slice_mut())?;
+					dispatcher.dispatch(request)?;
+				}
+			};
+
+			fn is_conn_reset(err: &server::ServerError<io::Error>) -> bool {
+				if let server::ServerError::RecvError(err) = err {
 					if err.kind() == io::ErrorKind::ConnectionReset {
 						return true;
 					}
@@ -390,7 +394,7 @@ pub fn cuse_interop_test<H: TestDev + Send + 'static>(
 				false
 			}
 
-			match srv.serve() {
+			match serve() {
 				Ok(_) => {},
 				Err(err) if is_conn_reset(&err) => {},
 				Err(err) => Err(err).unwrap(),

@@ -25,11 +25,14 @@ use crate::internal::fuse_kernel;
 use crate::lock;
 use crate::node;
 use crate::operations::cuse_init::{
+	CuseInitFlag,
+	CuseInitFlags,
 	CuseInitRequest,
 	CuseInitResponse,
 };
 use crate::operations::fuse_init::{
 	FuseInitFlag,
+	FuseInitFlags,
 	FuseInitRequest,
 	FuseInitResponse,
 };
@@ -673,6 +676,91 @@ where
 
 // }}}
 
+// CuseServer {{{
+
+/// Builder for CUSE connections.
+pub struct CuseServer<'a> {
+	device_name: &'a cuse::DeviceName,
+	device_number: cuse::DeviceNumber,
+	flags: CuseInitFlags,
+	max_read: u32,
+	max_write: u32,
+}
+
+impl<'a> CuseServer<'a> {
+	/// Create a new `CuseServer` with the given device name and device number.
+	#[must_use]
+	pub fn new(
+		device_name: &'a cuse::DeviceName,
+		device_number: cuse::DeviceNumber,
+	) -> CuseServer<'a> {
+		Self {
+			device_name,
+			device_number,
+			flags: CuseInitFlags::new(),
+			max_read: 0,
+			max_write: 0,
+		}
+	}
+
+	/// Establish a new CUSE connection by on the given socket.
+	pub fn connect<S: io::CuseSocket>(
+		&self,
+		socket: S,
+	) -> Result<CuseConnection<S>, ServerError<S::Error>> {
+		CuseConnection::connect(
+			socket,
+			self.device_name,
+			self.device_number,
+			|request, response| {
+				response.set_max_read(self.max_read);
+				response.set_max_write(self.max_write);
+				response.set_flags(request.flags() & self.flags);
+			},
+		)
+	}
+
+	/// Set the connection's [`max_read`].
+	///
+	/// [`max_read`]: CuseInitResponse::max_read
+	pub fn max_read(&mut self, max_read: u32) -> &mut Self {
+		self.max_read = max_read;
+		self
+	}
+
+	/// Set the connection's [`max_write`].
+	///
+	/// [`max_write`]: CuseInitResponse::max_write
+	pub fn max_write(&mut self, max_write: u32) -> &mut Self {
+		self.max_write = max_write;
+		self
+	}
+
+	/// Adjust which [`CuseInitFlags`] the server will offer.
+	///
+	/// Init flags will be enabled if they are offered by the server and
+	/// supported by the client.
+	pub fn update_flags(
+		&mut self,
+		f: impl FnOnce(&mut CuseInitFlags),
+	) -> &mut Self {
+		f(&mut self.flags);
+		self
+	}
+
+	/// Offer the [`UNRESTRICTED_IOCTL`] init flag.
+	///
+	/// [`UNRESTRICTED_IOCTL`]: CuseInitFlag::UNRESTRICTED_IOCTL
+	pub fn enable_unrestricted_ioctl(&mut self) -> &mut Self {
+		self.update_flags(|flags| {
+			flags.set(CuseInitFlag::UNRESTRICTED_IOCTL);
+		});
+		self
+	}
+}
+
+// }}}
+
 // FuseConnection {{{
 
 /// Represents an active connection to a FUSE client.
@@ -831,6 +919,105 @@ where
 			response.set_version(crate::Version::LATEST);
 			Ok((response, false))
 		},
+	}
+}
+
+// }}}
+
+// FuseServer {{{
+
+/// Builder for FUSE connections.
+pub struct FuseServer {
+	init_response: FuseInitResponse,
+}
+
+impl FuseServer {
+	/// Create a new `FuseServer`.
+	#[must_use]
+	pub fn new() -> FuseServer {
+		Self {
+			init_response: FuseInitResponse::new(),
+		}
+	}
+
+	/// Establish a new FUSE connection by on the given socket.
+	pub fn connect<S: io::FuseSocket>(
+		&self,
+		socket: S,
+	) -> Result<FuseConnection<S>, ServerError<S::Error>> {
+		let opts = &self.init_response;
+		FuseConnection::connect(socket, |request, response| {
+			response.set_congestion_threshold(opts.congestion_threshold());
+			response.set_max_background(opts.max_background());
+			response.set_max_readahead(opts.max_readahead());
+			response.set_max_write(opts.max_write());
+			response.set_time_granularity(opts.time_granularity());
+			response.set_flags(request.flags() & opts.flags());
+		})
+	}
+
+	/// Set the connection's [`congestion_threshold`].
+	///
+	/// [`congestion_threshold`]: FuseInitResponse::congestion_threshold
+	pub fn congestion_threshold(
+		&mut self,
+		congestion_threshold: u16,
+	) -> &mut Self {
+		self.init_response.set_congestion_threshold(congestion_threshold);
+		self
+	}
+
+	/// Set the connection's [`max_background`].
+	///
+	/// [`max_background`]: FuseInitResponse::max_background
+	pub fn max_background(&mut self, max_background: u16) -> &mut Self {
+		self.init_response.set_max_background(max_background);
+		self
+	}
+
+	/// Set the connection's [`max_readahead`].
+	///
+	/// [`max_readahead`]: FuseInitResponse::max_readahead
+	pub fn max_readahead(&mut self, max_readahead: u32) -> &mut Self {
+		self.init_response.set_max_readahead(max_readahead);
+		self
+	}
+
+	/// Set the connection's [`max_write`].
+	///
+	/// If `max_write` is greater than 4096 this method also offers the
+	/// [`BIG_WRITES`] init flag.
+	///
+	/// [`max_write`]: FuseInitResponse::max_write
+	/// [`BIG_WRITES`]: FuseInitFlag::BIG_WRITES
+	pub fn max_write(&mut self, max_write: u32) -> &mut Self {
+		self.init_response.set_max_write(max_write);
+		if max_write > 4096 {
+			self.init_response.update_flags(|flags| {
+				flags.set(FuseInitFlag::BIG_WRITES);
+			});
+		}
+		self
+	}
+
+	/// Set the connection's [`time_granularity`].
+	///
+	/// [`time_granularity`]: FuseInitResponse::time_granularity
+	pub fn time_granularity(&mut self, time_granularity: u32) -> &mut Self {
+		self.init_response.set_time_granularity(time_granularity);
+		self
+	}
+
+	/// Adjust which [`FuseInitFlags`] the server will offer.
+	///
+	/// Init flags will be enabled if they are offered by the server and
+	/// supported by the client.
+	pub fn update_flags(
+		&mut self,
+		f: impl FnOnce(&mut FuseInitFlags),
+	) -> &mut Self {
+		self.init_response.update_flags(f);
+		self
 	}
 }
 

@@ -23,6 +23,7 @@
 #![allow(
 	clippy::collapsible_if,
 	clippy::len_without_is_empty,
+	clippy::match_like_matches_macro,
 	clippy::needless_late_init,
 	clippy::needless_lifetimes,
 	clippy::new_without_default,

@@ -32,14 +32,9 @@ struct TestFS {
 }
 
 impl interop_testutil::TestFS for TestFS {
-	fn fuse_init(
-		_request: &fuse::FuseInitRequest,
-		response: &mut fuse::FuseInitResponse,
-	) {
-		response.update_flags(|flags| {
-			flags.set(fuse::FuseInitFlag::FLOCK_LOCKS);
-			flags.set(fuse::FuseInitFlag::POSIX_LOCKS);
-		});
+	fn fuse_init_flags(flags: &mut fuse::FuseInitFlags) {
+		flags.set(fuse::FuseInitFlag::FLOCK_LOCKS);
+		flags.set(fuse::FuseInitFlag::POSIX_LOCKS);
 	}
 }
 

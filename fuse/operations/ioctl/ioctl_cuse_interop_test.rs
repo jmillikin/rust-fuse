@@ -27,13 +27,8 @@ struct TestCharDev {
 }
 
 impl interop_testutil::TestDev for TestCharDev {
-	fn cuse_init(
-		_request: &fuse::CuseInitRequest,
-		response: &mut fuse::CuseInitResponse,
-	) {
-		response.update_flags(|flags| {
-			flags.set(fuse::CuseInitFlag::UNRESTRICTED_IOCTL);
-		});
+	fn cuse_init_flags(flags: &mut fuse::CuseInitFlags) {
+		flags.set(fuse::CuseInitFlag::UNRESTRICTED_IOCTL);
 	}
 }
 

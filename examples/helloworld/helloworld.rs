@@ -14,9 +14,12 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use std::ffi::{CString, OsStr};
 use std::num::NonZeroU64;
+use std::os::unix::ffi::OsStrExt;
 
 use fuse::node;
+use fuse::server;
 use fuse::server::fuse_rpc;
 
 const HELLO_WORLD: &[u8] = b"Hello, world!\n";
@@ -45,7 +48,7 @@ const HELLO_TXT: HelloTxt = HelloTxt {};
 
 struct HelloWorldFS {}
 
-impl<S: fuse_rpc::FuseSocket> fuse_rpc::Handlers<S> for HelloWorldFS {
+impl<S: server::io::FuseSocket> fuse_rpc::Handlers<S> for HelloWorldFS {
 	fn lookup(
 		&self,
 		call: fuse_rpc::Call<S>,
@@ -183,56 +186,45 @@ fn getgid() -> u32 {
 	unsafe { libc::getgid() }
 }
 
+#[cfg(target_os = "linux")]
+fn mount(target: &OsStr) -> fuse_libc::FuseServerSocket {
+	use fuse::os::linux::FuseSubtype;
+	use fuse::os::linux::MountSource;
+
+	let target_cstr = CString::new(target.as_bytes()).unwrap();
+
+	let fs_source = CString::new("helloworld").unwrap();
+	let fs_source = MountSource::new(&fs_source).unwrap();
+
+	let fs_subtype = CString::new("helloworld").unwrap();
+	let fs_subtype = FuseSubtype::new(&fs_subtype).unwrap();
+
+	let mut mount_options = fuse::os::linux::MountOptions::new();
+	mount_options.set_mount_source(fs_source);
+	mount_options.set_subtype(Some(fs_subtype));
+	mount_options.set_user_id(Some(getuid()));
+	mount_options.set_group_id(Some(getgid()));
+	fuse_libc::os::linux::mount(&target_cstr, mount_options).unwrap()
+}
+
+#[cfg(target_os = "freebsd")]
+fn mount(target: &OsStr) -> fuse_libc::FuseServerSocket {
+	use fuse::os::freebsd::FuseSubtype;
+
+	let target_cstr = CString::new(target.as_bytes()).unwrap();
+
+	let fs_subtype = CString::new("helloworld").unwrap();
+	let fs_subtype = FuseSubtype::new(&fs_subtype).unwrap();
+
+	let mut mount_options = fuse::os::freebsd::MountOptions::new();
+	mount_options.set_subtype(Some(fs_subtype));
+	fuse_libc::os::freebsd::mount(&target_cstr, mount_options).unwrap()
+}
+
 fn main() {
-	use std::ffi::CString;
-	use std::os::unix::ffi::OsStrExt;
-
-	let mount_target = std::env::args_os().nth(1).unwrap();
-	let mount_target_cstr = CString::new(mount_target.as_bytes()).unwrap();
-
 	let handlers = HelloWorldFS {};
-
-
-	let dev_fuse;
-
-	#[cfg(target_os = "linux")]
-	{
-		use fuse::os::linux::FuseSubtype;
-		use fuse::os::linux::MountSource;
-		use fuse_libc::os::linux as fuse_libc;
-
-		let fs_source = CString::new("helloworld").unwrap();
-		let fs_source = MountSource::new(&fs_source).unwrap();
-
-		let fs_subtype = CString::new("helloworld").unwrap();
-		let fs_subtype = FuseSubtype::new(&fs_subtype).unwrap();
-
-		let mut mount_options = fuse::os::linux::MountOptions::new();
-		mount_options.set_mount_source(fs_source);
-		mount_options.set_subtype(Some(fs_subtype));
-		mount_options.set_user_id(Some(getuid()));
-		mount_options.set_group_id(Some(getgid()));
-		dev_fuse = fuse_libc::mount(&mount_target_cstr, mount_options)
-			.unwrap();
-	}
-
-	#[cfg(target_os = "freebsd")]
-	{
-		use fuse::os::freebsd::FuseSubtype;
-		use fuse_libc::os::freebsd as fuse_libc;
-
-		let fs_subtype = CString::new("helloworld").unwrap();
-		let fs_subtype = FuseSubtype::new(&fs_subtype).unwrap();
-
-		let mut mount_options = fuse::os::freebsd::MountOptions::new();
-		mount_options.set_subtype(Some(fs_subtype));
-		dev_fuse = fuse_libc::mount(&mount_target_cstr, mount_options)
-			.unwrap();
-	}
-
-	let srv = fuse_rpc::ServerBuilder::new(dev_fuse, handlers)
-		.fuse_init()
-		.unwrap();
-
-	srv.serve().unwrap();
+	let mount_target = std::env::args_os().nth(1).unwrap();
+	let dev_fuse = mount(&mount_target);
+	let conn = server::FuseServer::new().connect(dev_fuse).unwrap();
+	fuse_rpc::serve(&conn, &handlers);
 }

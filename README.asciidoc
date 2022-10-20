@@ -57,31 +57,31 @@ Implement the `FuseHandlers` trait for your filesystem:
 [source,rust]
 ----
 extern crate fuse;
+use fuse::server;
 use fuse::server::fuse_rpc;
 
 struct HelloFS {}
-impl fuse_rpc::Handlers for HelloFS {
+impl<S: server::io::FuseSocket> fuse_rpc::Handlers<S> for HelloFS {
     // your filesystem handlers here
 }
 ----
 
-Use `LibcFuseMount` (requires `libc`) or `SyscallFuseMount` (requires nightly
-rustc) to build and run your filesystem server:
+Use `fuse-libc` (requires `libc`) or `fuse-linux` (requires a supported
+target architecture) to build and run your filesystem server:
 
 [source,rust]
 ----
-fn main() {
-	let mount_target = std::env::args_os().nth(1).unwrap();
-	let handlers = HelloFS {};
+fn mount(target: &OsStr) -> fuse_libc::FuseServerSocket {
+	let mount_options = fuse::os::linux::MountOptions::new();
+	fuse_libc::os::linux::mount(&target_cstr, mount_options).unwrap()
+}
 
-	use fuse::os::linux::*;
-	let mount = LibcFuseMount::new()
-		.set_mount_source("hello")
-		.set_mount_subtype("hello");
-	let mut srv = FuseServerBuilder::new(&mount_target, handlers)
-		.set_mount(mount)
-		.build().unwrap();
-	srv.executor_mut().run().unwrap();
+fn main() {
+	let handlers = HelloWorldFS {};
+	let mount_target = std::env::args_os().nth(1).unwrap();
+	let dev_fuse = mount(&mount_target);
+	let conn = server::FuseServer::new().connect(dev_fuse).unwrap();
+	fuse_rpc::serve(&conn, &handlers);
 }
 ----
 

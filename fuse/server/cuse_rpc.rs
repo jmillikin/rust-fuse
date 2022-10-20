@@ -16,167 +16,15 @@
 
 //! RPC-style CUSE servers.
 
-use crate::cuse;
+#[cfg(any(doc, feature = "std"))]
+use std::sync::mpsc;
+
 use crate::operations;
-use crate::operations::cuse_init::{
-	CuseInitFlags,
-	CuseInitRequest,
-	CuseInitResponse,
-};
 use crate::server;
 use crate::server::io;
 use crate::server::ServerError;
 
 pub use crate::server::io::CuseSocket;
-
-// ServerBuilder {{{
-
-#[allow(missing_docs)] // TODO
-pub struct ServerBuilder<S, H> {
-	socket: S,
-	handlers: H,
-	opts: ServerOptions,
-
-	#[cfg(feature = "std")]
-	hooks: Option<Box<dyn server::Hooks>>,
-}
-
-struct ServerOptions {
-	device_number: cuse::DeviceNumber,
-	max_read: u32,
-	max_write: u32,
-	flags: CuseInitFlags,
-}
-
-#[allow(missing_docs)] // TODO
-impl<S, H> ServerBuilder<S, H> {
-	#[must_use]
-	pub fn new(socket: S, handlers: H) -> Self {
-		Self {
-			socket,
-			handlers,
-			opts: ServerOptions {
-				device_number: cuse::DeviceNumber::new(0, 0),
-				max_read: 0,
-				max_write: 0,
-				flags: CuseInitFlags::new(),
-			},
-			#[cfg(feature = "std")]
-			hooks: None,
-		}
-	}
-
-	#[must_use]
-	pub fn device_number(mut self, device_number: cuse::DeviceNumber) -> Self {
-		self.opts.device_number = device_number;
-		self
-	}
-
-	#[must_use]
-	pub fn max_read(mut self, max_read: u32) -> Self {
-		self.opts.max_read = max_read;
-		self
-	}
-
-	#[must_use]
-	pub fn max_write(mut self, max_write: u32) -> Self {
-		self.opts.max_write = max_write;
-		self
-	}
-
-	#[must_use]
-	pub fn cuse_init_flags(mut self, flags: CuseInitFlags) -> Self {
-		self.opts.flags = flags;
-		self
-	}
-
-	#[cfg(feature = "std")]
-	#[must_use]
-	pub fn server_hooks(mut self, hooks: Box<dyn server::Hooks>) -> Self {
-		self.hooks = Some(hooks);
-		self
-	}
-}
-
-#[allow(missing_docs)] // TODO
-impl<S: CuseSocket, H> ServerBuilder<S, H> {
-	pub fn cuse_init(
-		self,
-		device_name: &cuse::DeviceName,
-	) -> Result<Server<S, H>, ServerError<S::Error>> {
-		self.cuse_init_fn(device_name, |_init_request, _init_response| {})
-	}
-
-	pub fn cuse_init_fn(
-		self,
-		device_name: &cuse::DeviceName,
-		mut init_fn: impl FnMut(&CuseInitRequest, &mut CuseInitResponse),
-	) -> Result<Server<S, H>, ServerError<S::Error>> {
-		let opts = self.opts;
-		let conn = server::CuseConnection::connect(
-			self.socket,
-			device_name,
-			opts.device_number,
-			|init_request, init_response| {
-				init_response.set_max_read(opts.max_read);
-				init_response.set_max_write(opts.max_write);
-				init_response.set_flags(opts.flags);
-				init_fn(init_request, init_response)
-			},
-		)?;
-
-		Ok(Server {
-			conn,
-			handlers: self.handlers,
-			#[cfg(feature = "std")]
-			hooks: self.hooks,
-		})
-	}
-}
-
-// }}}
-
-// Server {{{
-
-/// An RPC-style CUSE device server.
-///
-/// Maintains ownership of a [`CuseConnection`] and a set of [`Handlers`]. Each
-/// incoming request will be routed to the appropriate handler.
-///
-/// [`CuseConnection`]: server::CuseConnection
-pub struct Server<S, H> {
-	conn: server::CuseConnection<S>,
-	handlers: H,
-
-	#[cfg(feature = "std")]
-	hooks: Option<Box<dyn server::Hooks>>,
-}
-
-impl<S, H> Server<S, H>
-where
-	S: CuseSocket,
-	H: Handlers<S>,
-{
-	/// Serve CUSE requests in a loop.
-	pub fn serve(&self) -> Result<core::convert::Infallible, ServerError<S::Error>> {
-		let mut buf = crate::io::MinReadBuffer::new();
-
-		#[allow(unused_mut)]
-		let mut dispatcher = Dispatcher::new(&self.conn, &self.handlers);
-
-		#[cfg(feature = "std")]
-		if let Some(hooks) = self.hooks.as_ref() {
-			dispatcher.set_hooks(hooks.as_ref());
-		}
-
-		loop {
-			let request = self.conn.recv(buf.as_aligned_slice_mut())?;
-			dispatcher.dispatch(request)?;
-		}
-	}
-}
-
-// }}}
 
 // SendResult {{{
 
@@ -643,3 +491,97 @@ pub trait Handlers<S: CuseSocket> {
 }
 
 // }}}
+
+/// Serve CUSE requests in a loop.
+///
+/// This function spawns worker threads to process CUSE requests from the
+/// given channel. The returned [`mpsc::Receiver`] can be used to receive
+/// server errors from the worker threads, or dropped to run without error
+/// reporting.
+///
+/// The worker threads will terminate if an I/O error is reported by the
+/// socket.
+///
+/// # Panics
+///
+/// Panics on memory allocation failure. This function allocates
+/// [`conn.recv_buf_len()`] bytes per worker thread, and also calls standard
+/// library APIs such as [`Vec::with_capacity`] that panic on OOM.
+///
+/// [`conn.recv_buf_len()`]: server::CuseConnection::recv_buf_len
+#[cfg(any(doc, feature = "std"))]
+pub fn serve<S, H>(
+	conn: &server::CuseConnection<S>,
+	handlers: &H,
+) -> mpsc::Receiver<ServerError<S::Error>>
+where
+	S: io::CuseSocket + Send + Sync,
+	S::Error: Send,
+	H: Handlers<S> + Send + Sync,
+{
+	use crate::io::AlignedBuf;
+
+	// Use `thread::available_parallelism()` to estimate how many hardware
+	// threads might be available. This number is clamped to 16 to avoid
+	// allocating an unreasonable amount of memory on larger machines.
+	//
+	// It's expected that this estimate won't work for all possible servers,
+	// either because it's too small (in a server doing lots of slow remote IO)
+	// or too large (in a constrained environment). Since the `serve()` function
+	// uses only public API, servers with special requirements can write their
+	// own version with appropriate threadpool sizing.
+	const MAX_THREADS: usize = 16;
+	let num_threads = core::cmp::min(
+		std::thread::available_parallelism().map_or(1, |n| n.get()),
+		MAX_THREADS,
+	);
+
+	// Pre-allocate receive buffers so that an allocation failure will happen
+	// before any server threads get spawned.
+	let mut recv_bufs = Vec::with_capacity(num_threads);
+	let recv_buf_len = conn.recv_buf_len();
+	for _ii in 0..num_threads {
+		#[allow(clippy::unwrap_used)]
+		recv_bufs.push(AlignedBuf::with_capacity(recv_buf_len).unwrap());
+	}
+
+	let (err_sender, err_receiver) = mpsc::sync_channel(num_threads);
+	std::thread::scope(|s| {
+		for _ii in 0..num_threads {
+			let err_sender = err_sender.clone();
+			let mut buf = recv_bufs.remove(recv_bufs.len() - 1);
+			s.spawn(move || {
+				while let Err(err) = serve_local(conn, handlers, &mut buf) {
+					let fatal = fatal_error(&err);
+					let _ = err_sender.send(err);
+					if fatal {
+						return;
+					}
+				}
+			});
+		}
+	});
+
+	err_receiver
+}
+
+#[cfg(feature = "std")]
+fn fatal_error<E>(err: &ServerError<E>) -> bool {
+	match err {
+		ServerError::RequestError(_) => false,
+		_ => true,
+	}
+}
+
+/// Serve CUSE requests in a loop, in a single thread without allocating.
+pub fn serve_local<S: io::CuseSocket>(
+	conn: &server::CuseConnection<S>,
+	handlers: &impl Handlers<S>,
+	buf: &mut impl crate::io::AsAlignedSliceMut,
+) -> Result<(), ServerError<S::Error>> {
+	let dispatcher = Dispatcher::new(conn, handlers);
+	loop {
+		let request = conn.recv(buf.as_aligned_slice_mut())?;
+		dispatcher.dispatch(request)?;
+	}
+}
