@@ -67,7 +67,7 @@
 	clippy::print_stdout,
 )]
 
-#[cfg(feature = "alloc")]
+#[cfg(any(doc, feature = "alloc"))]
 extern crate alloc;
 
 #[macro_use]

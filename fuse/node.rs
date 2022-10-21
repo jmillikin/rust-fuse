@@ -16,10 +16,24 @@
 
 //! Filesystem nodes and node attributes.
 
+use core::convert;
 use core::fmt;
 use core::num;
 use core::ops;
 use core::time;
+
+#[cfg(any(doc, feature = "alloc"))]
+use alloc::borrow;
+#[cfg(any(doc, feature = "alloc"))]
+use alloc::boxed;
+#[cfg(any(doc, feature = "alloc"))]
+use alloc::rc;
+#[cfg(any(doc, feature = "alloc"))]
+use alloc::string;
+#[cfg(any(doc, feature = "alloc"))]
+use alloc::vec;
+#[cfg(any(doc, feature = "std"))]
+use std::sync;
 
 use crate::internal::debug;
 use crate::internal::fuse_kernel;
@@ -108,7 +122,7 @@ impl fmt::UpperHex for Id {
 
 // }}}
 
-// Name {{{
+// NameError {{{
 
 /// Errors that may occur when validating a node name.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -123,6 +137,10 @@ pub enum NameError {
 	/// The input length in bytes exceeds [`Name::MAX_LEN`].
 	ExceedsMaxLen,
 }
+
+// }}}
+
+// Name {{{
 
 /// A borrowed filesystem node name.
 ///
@@ -249,11 +267,62 @@ impl Name {
 	pub fn as_str(&self) -> Result<&str, core::str::Utf8Error> {
 		core::str::from_utf8(&self.bytes)
 	}
+
+	/// Converts a `Name` to an owned [`NameBuf`].
+	#[cfg(any(doc, feature = "alloc"))]
+	#[must_use]
+	pub fn to_name_buf(&self) -> NameBuf {
+		NameBuf {
+			bytes: self.bytes.to_vec(),
+		}
+	}
+
+	/// Converts a [`Box<Name>`] into a [`NameBuf`] without copying or
+	/// allocating.
+	///
+	/// [`Box<Name>`]: boxed::Box<Name>
+	#[cfg(any(doc, feature = "alloc"))]
+	#[must_use]
+	pub fn into_name_buf(self: boxed::Box<Name>) -> NameBuf {
+		let raw = boxed::Box::into_raw(self) as *mut [u8];
+		NameBuf {
+			bytes: vec::Vec::from(unsafe { boxed::Box::from_raw(raw) }),
+		}
+	}
 }
 
 impl fmt::Debug for Name {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		debug::bytes(&self.bytes).fmt(fmt)
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl borrow::ToOwned for Name {
+	type Owned = NameBuf;
+	fn to_owned(&self) -> NameBuf {
+		self.to_name_buf()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl<'a> From<&'a Name> for borrow::Cow<'a, Name> {
+	fn from(name: &'a Name) -> Self {
+		borrow::Cow::Borrowed(name)
+	}
+}
+
+impl<'a> convert::TryFrom<&'a Name> for &'a str {
+	type Error = core::str::Utf8Error;
+	fn try_from(name: &'a Name) -> Result<&'a str, core::str::Utf8Error> {
+		name.as_str()
+	}
+}
+
+impl<'a> convert::TryFrom<&'a str> for &'a Name {
+	type Error = NameError;
+	fn try_from(name: &'a str) -> Result<&'a Name, NameError> {
+		Name::new(name)
 	}
 }
 
@@ -278,6 +347,166 @@ impl PartialEq<Name> for str {
 impl PartialEq<Name> for [u8] {
 	fn eq(&self, other: &Name) -> bool {
 		self.eq(other.as_bytes())
+	}
+}
+
+// }}}
+
+// NameBuf {{{
+
+/// An owned filesystem node name.
+#[cfg(any(doc, feature = "alloc"))]
+#[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct NameBuf {
+	bytes: vec::Vec<u8>,
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl NameBuf {
+	/// Attempts to allocate a new `NameBuf` containing the given node name.
+	///
+	/// # Errors
+	///
+	/// Returns an error if the string is empty, is longer than
+	/// [`Name::MAX_LEN`] bytes, or contains a forbidden character
+	/// (`NUL` or `'/'`).
+	pub fn new(name: &str) -> Result<NameBuf, NameError> {
+		Name::new(name).map(Name::to_name_buf)
+	}
+
+	/// Borrows this `NameBuf` as a [`Name`].
+	#[must_use]
+	pub fn as_name(&self) -> &Name {
+		unsafe { Name::from_bytes_unchecked(&self.bytes) }
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl AsRef<Name> for NameBuf {
+	fn as_ref(&self) -> &Name {
+		self.as_name()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl borrow::Borrow<Name> for NameBuf {
+	fn borrow(&self) -> &Name {
+		self.as_name()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl core::ops::Deref for NameBuf {
+	type Target = Name;
+	fn deref(&self) -> &Name {
+		self.as_name()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl From<&Name> for NameBuf {
+	fn from(name: &Name) -> Self {
+		name.to_name_buf()
+	}
+}
+
+#[cfg(any(doc, feature = "std"))]
+impl From<&Name> for sync::Arc<NameBuf> {
+	fn from(name: &Name) -> Self {
+		sync::Arc::new(name.into())
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl From<&Name> for boxed::Box<NameBuf> {
+	fn from(name: &Name) -> Self {
+		boxed::Box::new(name.into())
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl From<&Name> for rc::Rc<NameBuf> {
+	fn from(name: &Name) -> Self {
+		rc::Rc::new(name.into())
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl From<borrow::Cow<'_, Name>> for NameBuf {
+	fn from(name: borrow::Cow<Name>) -> Self {
+		match name {
+			borrow::Cow::Owned(name) => name,
+			borrow::Cow::Borrowed(name) => name.to_name_buf(),
+		}
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl From<boxed::Box<Name>> for NameBuf {
+	fn from(name: boxed::Box<Name>) -> Self {
+		name.into_name_buf()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl convert::TryFrom<string::String> for NameBuf {
+	type Error = NameError;
+	fn try_from(name: string::String) -> Result<NameBuf, NameError> {
+		let bytes = name.into_bytes();
+		Name::from_bytes(&bytes)?;
+		Ok(NameBuf { bytes })
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl convert::TryFrom<NameBuf> for string::String {
+	type Error = string::FromUtf8Error;
+	fn try_from(
+		name: NameBuf,
+	) -> Result<string::String, string::FromUtf8Error> {
+		string::String::from_utf8(name.bytes)
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<Name> for NameBuf {
+	fn eq(&self, other: &Name) -> bool {
+		self.as_name() == other
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<NameBuf> for Name {
+	fn eq(&self, other: &NameBuf) -> bool {
+		self == other.as_name()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<str> for NameBuf {
+	fn eq(&self, other: &str) -> bool {
+		self.as_name().as_bytes() == other.as_bytes()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<NameBuf> for str {
+	fn eq(&self, other: &NameBuf) -> bool {
+		self.as_bytes() == other.as_name().as_bytes()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<[u8]> for NameBuf {
+	fn eq(&self, other: &[u8]) -> bool {
+		self.as_name().as_bytes() == other
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<NameBuf> for [u8] {
+	fn eq(&self, other: &NameBuf) -> bool {
+		self == other.as_name().as_bytes()
 	}
 }
 
