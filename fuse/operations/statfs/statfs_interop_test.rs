@@ -64,15 +64,16 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		request: &StatfsRequest,
 	) -> fuse_rpc::SendResult<StatfsResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
-		let mut response = StatfsResponse::new();
-		response.set_block_size(10);
-		response.set_block_count(20);
-		response.set_blocks_free(30);
-		response.set_blocks_available(40);
-		response.set_inode_count(50);
-		response.set_inodes_free(60);
-		response.set_max_filename_length(70);
-		response.set_fragment_size(80);
+		let mut attr = StatfsAttributes::new();
+		attr.set_block_size(10);
+		attr.set_block_count(20);
+		attr.set_blocks_free(30);
+		attr.set_blocks_available(40);
+		attr.set_inode_count(50);
+		attr.set_inodes_free(60);
+		attr.set_max_filename_length(70);
+		attr.set_fragment_size(80);
+		let response = StatfsResponse::new(attr);
 		call.respond_ok(&response)
 	}
 }

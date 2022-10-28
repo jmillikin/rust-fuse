@@ -16,7 +16,11 @@
 
 use core::mem::size_of;
 
-use fuse::operations::statfs::{StatfsRequest, StatfsResponse};
+use fuse::operations::statfs::{
+	StatfsAttributes,
+	StatfsRequest,
+	StatfsResponse,
+};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
@@ -50,16 +54,17 @@ fn request_impl_debug() {
 
 #[test]
 fn response_v7p1() {
-	let mut response = StatfsResponse::new();
-	response.set_block_count(10);
-	response.set_block_size(20);
-	response.set_blocks_available(30);
-	response.set_blocks_free(40);
-	response.set_fragment_size(50);
-	response.set_inode_count(60);
-	response.set_inodes_free(70);
-	response.set_max_filename_length(80);
+	let mut attr = StatfsAttributes::new();
+	attr.set_block_count(10);
+	attr.set_block_size(20);
+	attr.set_blocks_available(30);
+	attr.set_blocks_free(40);
+	attr.set_fragment_size(50);
+	attr.set_inode_count(60);
+	attr.set_inodes_free(70);
+	attr.set_max_filename_length(80);
 
+	let response = StatfsResponse::new(attr);
 	let encoded = encode_response!(response, {
 		protocol_version: (7, 1),
 	});
@@ -96,16 +101,17 @@ fn response_v7p1() {
 
 #[test]
 fn response_v7p4() {
-	let mut response = StatfsResponse::new();
-	response.set_block_count(10);
-	response.set_block_size(20);
-	response.set_blocks_available(30);
-	response.set_blocks_free(40);
-	response.set_fragment_size(50);
-	response.set_inode_count(60);
-	response.set_inodes_free(70);
-	response.set_max_filename_length(80);
+	let mut attr = StatfsAttributes::new();
+	attr.set_block_count(10);
+	attr.set_block_size(20);
+	attr.set_blocks_available(30);
+	attr.set_blocks_free(40);
+	attr.set_fragment_size(50);
+	attr.set_inode_count(60);
+	attr.set_inodes_free(70);
+	attr.set_max_filename_length(80);
 
+	let response = StatfsResponse::new(attr);
 	let encoded = encode_response!(response, {
 		protocol_version: (7, 4),
 	});
@@ -138,28 +144,31 @@ fn response_v7p4() {
 
 #[test]
 fn response_impl_debug() {
-	let mut response = StatfsResponse::new();
-	response.set_block_count(10);
-	response.set_block_size(20);
-	response.set_blocks_available(30);
-	response.set_blocks_free(40);
-	response.set_fragment_size(50);
-	response.set_inode_count(60);
-	response.set_inodes_free(70);
-	response.set_max_filename_length(80);
+	let mut attr = StatfsAttributes::new();
+	attr.set_block_count(10);
+	attr.set_block_size(20);
+	attr.set_blocks_available(30);
+	attr.set_blocks_free(40);
+	attr.set_fragment_size(50);
+	attr.set_inode_count(60);
+	attr.set_inodes_free(70);
+	attr.set_max_filename_length(80);
+	let response = StatfsResponse::new(attr);
 
 	assert_eq!(
 		format!("{:#?}", response),
 		concat!(
 			"StatfsResponse {\n",
-			"    block_count: 10,\n",
-			"    block_size: 20,\n",
-			"    blocks_available: 30,\n",
-			"    blocks_free: 40,\n",
-			"    fragment_size: 50,\n",
-			"    inode_count: 60,\n",
-			"    inodes_free: 70,\n",
-			"    max_filename_length: 80,\n",
+			"    attributes: StatfsAttributes {\n",
+			"        block_count: 10,\n",
+			"        block_size: 20,\n",
+			"        blocks_available: 30,\n",
+			"        blocks_free: 40,\n",
+			"        fragment_size: 50,\n",
+			"        inode_count: 60,\n",
+			"        inodes_free: 70,\n",
+			"        max_filename_length: 80,\n",
+			"    },\n",
 			"}",
 		),
 	);

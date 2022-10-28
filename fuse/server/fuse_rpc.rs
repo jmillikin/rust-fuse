@@ -959,7 +959,8 @@ pub trait Handlers<S: io::FuseSocket> {
 			if let Some(hooks) = call.hooks {
 				hooks.unimplemented(call.request);
 			}
-			let resp = ops::statfs::StatfsResponse::new();
+			let attr = ops::statfs::StatfsAttributes::new();
+			let resp = ops::statfs::StatfsResponse::new(attr);
 			call.respond_ok(&resp)
 		}
 	}
