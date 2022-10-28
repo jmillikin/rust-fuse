@@ -561,11 +561,48 @@ impl Value {
 	pub fn as_bytes(&self) -> &[u8] {
 		&self.bytes
 	}
+
+	/// Converts a `Value` to an owned [`ValueBuf`].
+	#[cfg(any(doc, feature = "alloc"))]
+	#[must_use]
+	pub fn to_value_buf(&self) -> ValueBuf {
+		ValueBuf {
+			bytes: self.bytes.to_vec(),
+		}
+	}
+
+	/// Converts a [`Box<Value>`] into a [`ValueBuf`] without copying or
+	/// allocating.
+	///
+	/// [`Box<Value>`]: boxed::Box<Value>
+	#[cfg(any(doc, feature = "alloc"))]
+	#[must_use]
+	pub fn into_value_buf(self: boxed::Box<Value>) -> ValueBuf {
+		let raw = boxed::Box::into_raw(self) as *mut [u8];
+		ValueBuf {
+			bytes: vec::Vec::from(unsafe { boxed::Box::from_raw(raw) }),
+		}
+	}
 }
 
 impl fmt::Debug for Value {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		self.bytes.fmt(fmt)
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl borrow::ToOwned for Value {
+	type Owned = ValueBuf;
+	fn to_owned(&self) -> ValueBuf {
+		self.to_value_buf()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl<'a> From<&'a Value> for borrow::Cow<'a, Value> {
+	fn from(value: &'a Value) -> Self {
+		borrow::Cow::Borrowed(value)
 	}
 }
 
@@ -578,6 +615,131 @@ impl PartialEq<[u8]> for Value {
 impl PartialEq<Value> for [u8] {
 	fn eq(&self, other: &Value) -> bool {
 		self.eq(other.as_bytes())
+	}
+}
+
+// }}}
+
+// ValueBuf {{{
+
+/// An owned extended attribute value.
+#[cfg(any(doc, feature = "alloc"))]
+#[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ValueBuf {
+	bytes: vec::Vec<u8>,
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl ValueBuf {
+	/// Attempts to allocate a new `ValueBuf` containing the given extended
+	/// attribute value.
+	///
+	/// # Errors
+	///
+	/// Returns an error if the slice is longer than [`Value::MAX_LEN`] bytes.
+	pub fn new(value: &[u8]) -> Result<ValueBuf, ValueError> {
+		Value::new(value).map(Value::to_value_buf)
+	}
+
+	/// Borrows this `ValueBuf` as a [`Value`].
+	#[must_use]
+	pub fn as_value(&self) -> &Value {
+		unsafe { Value::new_unchecked(&self.bytes) }
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl AsRef<Value> for ValueBuf {
+	fn as_ref(&self) -> &Value {
+		self.as_value()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl borrow::Borrow<Value> for ValueBuf {
+	fn borrow(&self) -> &Value {
+		self.as_value()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl core::ops::Deref for ValueBuf {
+	type Target = Value;
+	fn deref(&self) -> &Value {
+		self.as_value()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl From<&Value> for ValueBuf {
+	fn from(value: &Value) -> Self {
+		value.to_value_buf()
+	}
+}
+
+#[cfg(any(doc, feature = "std"))]
+impl From<&Value> for sync::Arc<ValueBuf> {
+	fn from(value: &Value) -> Self {
+		sync::Arc::new(value.into())
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl From<&Value> for boxed::Box<ValueBuf> {
+	fn from(value: &Value) -> Self {
+		boxed::Box::new(value.into())
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl From<&Value> for rc::Rc<ValueBuf> {
+	fn from(value: &Value) -> Self {
+		rc::Rc::new(value.into())
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl From<borrow::Cow<'_, Value>> for ValueBuf {
+	fn from(value: borrow::Cow<Value>) -> Self {
+		match value {
+			borrow::Cow::Owned(value) => value,
+			borrow::Cow::Borrowed(value) => value.to_value_buf(),
+		}
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl From<boxed::Box<Value>> for ValueBuf {
+	fn from(value: boxed::Box<Value>) -> Self {
+		value.into_value_buf()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<Value> for ValueBuf {
+	fn eq(&self, other: &Value) -> bool {
+		self.as_value() == other
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<ValueBuf> for Value {
+	fn eq(&self, other: &ValueBuf) -> bool {
+		self == other.as_value()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<[u8]> for ValueBuf {
+	fn eq(&self, other: &[u8]) -> bool {
+		self.as_value().as_bytes() == other
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<ValueBuf> for [u8] {
+	fn eq(&self, other: &ValueBuf) -> bool {
+		self == other.as_value().as_bytes()
 	}
 }
 
