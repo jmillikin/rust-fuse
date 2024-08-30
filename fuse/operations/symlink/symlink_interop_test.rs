@@ -15,7 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::sync::mpsc;
-use std::{ffi, panic};
+use std::panic;
 
 use fuse::node;
 use fuse::server::fuse_rpc;
@@ -93,7 +93,7 @@ fn symlink_test(
 fn symlink() {
 	let requests = symlink_test(|root| {
 		let path = path_cstr(root.join("symlink.txt"));
-		let target = ffi::CString::new("symlink_target.txt").unwrap();
+		let target = c"symlink_target.txt";
 
 		let rc = unsafe { libc::symlink(target.as_ptr(), path.as_ptr()) };
 		assert_eq!(rc, 0);
@@ -115,7 +115,7 @@ fn symlink() {
 fn symlink_err_eexist() {
 	let requests = symlink_test(|root| {
 		let path = path_cstr(root.join("exists.txt"));
-		let target = ffi::CString::new("symlink_target.txt").unwrap();
+		let target = c"symlink_target.txt";
 
 		let rc = unsafe { libc::symlink(target.as_ptr(), path.as_ptr()) };
 		assert_eq!(rc, -1);

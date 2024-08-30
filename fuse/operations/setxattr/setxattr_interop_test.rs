@@ -15,7 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::sync::mpsc;
-use std::{ffi, panic};
+use std::panic;
 
 use fuse::node;
 use fuse::server::fuse_rpc;
@@ -88,11 +88,10 @@ fn setxattr() {
 
 		#[cfg(target_os = "linux")]
 		{
-			let xattr_name = ffi::CString::new("user.xattr_name").unwrap();
 			let rc = unsafe {
 				libc::setxattr(
 					path.as_ptr(),
-					xattr_name.as_ptr(),
+					c"user.xattr_name".as_ptr(),
 					xattr_value.as_ptr() as *const libc::c_void,
 					xattr_value.len(),
 					0,
@@ -103,12 +102,11 @@ fn setxattr() {
 
 		#[cfg(target_os = "freebsd")]
 		{
-			let xattr_name = ffi::CString::new("xattr_name").unwrap();
 			let rc = unsafe {
 				libc::extattr_set_file(
 					path.as_ptr(),
 					libc::EXTATTR_NAMESPACE_USER,
-					xattr_name.as_ptr(),
+					c"xattr_name".as_ptr(),
 					xattr_value.as_ptr() as *const libc::c_void,
 					xattr_value.len(),
 				)
@@ -147,13 +145,12 @@ fn setxattr() {
 fn setxattr_flag_create() {
 	let requests = setxattr_test(|root| {
 		let path = path_cstr(root.join("xattrs.txt"));
-		let xattr_name = ffi::CString::new("user.xattr_name").unwrap();
 		let xattr_value = b"some\x00value";
 
 		let rc = unsafe {
 			libc::setxattr(
 				path.as_ptr(),
-				xattr_name.as_ptr(),
+				c"user.xattr_name".as_ptr(),
 				xattr_value.as_ptr() as *const libc::c_void,
 				xattr_value.len(),
 				libc::XATTR_CREATE,
@@ -192,13 +189,12 @@ fn setxattr_flag_create() {
 fn setxattr_flag_replace() {
 	let requests = setxattr_test(|root| {
 		let path = path_cstr(root.join("xattrs.txt"));
-		let xattr_name = ffi::CString::new("user.xattr_name").unwrap();
 		let xattr_value = b"some\x00value";
 
 		let rc = unsafe {
 			libc::setxattr(
 				path.as_ptr(),
-				xattr_name.as_ptr(),
+				c"user.xattr_name".as_ptr(),
 				xattr_value.as_ptr() as *const libc::c_void,
 				xattr_value.len(),
 				libc::XATTR_REPLACE,

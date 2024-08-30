@@ -25,12 +25,12 @@ rust_library(
         "@rust_libc//:libc",
     ] + select({
         "@platforms//os:freebsd": [
-            "@rust_freebsd_errno//freebsd-errno",
             "//fuse-libc",
+            "@rust_freebsd_errno//freebsd-errno",
         ],
         "@platforms//os:linux": [
-            "@rust_linux_errno//linux-errno",
             "//fuse-linux",
+            "@rust_linux_errno//linux-errno",
         ],
         "//conditions:default": [],
     }),

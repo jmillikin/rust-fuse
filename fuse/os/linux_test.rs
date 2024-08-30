@@ -56,20 +56,18 @@ fn opt_default_permissions() {
 #[test]
 fn opt_subtype() {
 	let mut opts = MountOptions::new();
-	let subtype = CString::new("rust_subtype").unwrap();
 
 	assert_eq!(opts.subtype(), None);
-	opts.set_subtype(Some(FuseSubtype::new(&subtype).unwrap()));
+	opts.set_subtype(Some(FuseSubtype::new(c"rust_subtype").unwrap()));
 	assert_eq!(opts.subtype().unwrap().as_cstr(), subtype.as_ref());
 }
 
 #[test]
 fn opt_mount_source() {
 	let mut opts = MountOptions::new();
-	let source = CString::new("rust_fuse_source").unwrap();
 
 	assert_eq!(opts.mount_source(), MountSource::FUSE);
-	opts.set_mount_source(MountSource::new(&source).unwrap());
+	opts.set_mount_source(MountSource::new(c"rust_fuse_source").unwrap());
 	assert_eq!(opts.mount_source().as_cstr(), source.as_ref());
 }
 
@@ -132,16 +130,12 @@ fn opt_user_id() {
 
 #[test]
 fn mount_data_full() {
-	let subtype = CString::new("rust_subtype").unwrap();
-
 	let mut opts = MountOptions::new();
 
 	opts.set_allow_other(true);
 	opts.set_block_size(Some(10));
 	opts.set_default_permissions(true);
-	opts.set_subtype(Some(
-		FuseSubtype::new(&subtype).unwrap(),
-	));
+	opts.set_subtype(FuseSubtype::new(c"rust_subtype"));
 	opts.set_fuse_device_fd(Some(20));
 	opts.set_group_id(Some(30));
 	opts.set_max_read(Some(40));
@@ -193,9 +187,6 @@ fn mount_data_small_buf() {
 
 #[test]
 fn subtype_new() {
-	let empty_subtype = CString::new("").unwrap();
-	let bad_subtype = CString::new("bad,subtype").unwrap();
-
-	assert!(FuseSubtype::new(&empty_subtype).is_none());
-	assert!(FuseSubtype::new(&bad_subtype).is_none());
+	assert!(FuseSubtype::new(c"").is_none());
+	assert!(FuseSubtype::new(c"bad,subtype").is_none());
 }

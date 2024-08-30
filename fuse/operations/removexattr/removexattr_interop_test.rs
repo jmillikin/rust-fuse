@@ -15,7 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::sync::mpsc;
-use std::{ffi, panic};
+use std::panic;
 
 use fuse::node;
 use fuse::server::fuse_rpc;
@@ -87,20 +87,18 @@ fn removexattr() {
 
 		#[cfg(target_os = "linux")]
 		let rc = unsafe {
-			let xattr_name = ffi::CString::new("user.xattr_name").unwrap();
 			libc::removexattr(
 				path.as_ptr(),
-				xattr_name.as_ptr(),
+				c"user.xattr_name".as_ptr(),
 			)
 		};
 
 		#[cfg(target_os = "freebsd")]
 		let rc = unsafe {
-			let xattr_name = ffi::CString::new("xattr_name").unwrap();
 			libc::extattr_delete_file(
 				path.as_ptr(),
 				libc::EXTATTR_NAMESPACE_USER,
-				xattr_name.as_ptr(),
+				c"xattr_name".as_ptr(),
 			)
 		};
 

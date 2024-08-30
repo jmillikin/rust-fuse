@@ -15,7 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::sync::mpsc;
-use std::{ffi, panic};
+use std::panic;
 
 use fuse::node;
 use fuse::server::fuse_rpc;
@@ -121,10 +121,9 @@ fn getxattr_query_size() {
 
 		#[cfg(target_os = "linux")]
 		let rc = unsafe {
-			let xattr_name = ffi::CString::new("user.xattr_small").unwrap();
 			libc::getxattr(
 				path.as_ptr(),
-				xattr_name.as_ptr(),
+				c"user.xattr_small".as_ptr(),
 				std::ptr::null_mut(),
 				0,
 			)
@@ -132,11 +131,10 @@ fn getxattr_query_size() {
 
 		#[cfg(target_os = "freebsd")]
 		let rc = unsafe {
-			let xattr_name = ffi::CString::new("xattr_small").unwrap();
 			libc::extattr_get_file(
 				path.as_ptr(),
 				libc::EXTATTR_NAMESPACE_USER,
-				xattr_name.as_ptr(),
+				c"xattr_small".as_ptr(),
 				std::ptr::null_mut(),
 				0,
 			)
@@ -166,10 +164,9 @@ fn getxattr_small() {
 
 		#[cfg(target_os = "linux")]
 		let rc = unsafe {
-			let xattr_name = ffi::CString::new("user.xattr_small").unwrap();
 			libc::getxattr(
 				path.as_ptr(),
-				xattr_name.as_ptr(),
+				c"user.xattr_small".as_ptr(),
 				value.as_mut_ptr() as *mut libc::c_void,
 				value.len(),
 			)
@@ -177,11 +174,10 @@ fn getxattr_small() {
 
 		#[cfg(target_os = "freebsd")]
 		let rc = unsafe {
-			let xattr_name = ffi::CString::new("xattr_small").unwrap();
 			libc::extattr_get_file(
 				path.as_ptr(),
 				libc::EXTATTR_NAMESPACE_USER,
-				xattr_name.as_ptr(),
+				c"xattr_small".as_ptr(),
 				value.as_mut_ptr() as *mut libc::c_void,
 				value.len(),
 			)
@@ -210,10 +206,9 @@ fn getxattr_noexist() {
 
 		#[cfg(target_os = "linux")]
 		let rc = unsafe {
-			let xattr_name = ffi::CString::new("user.xattr_noexist").unwrap();
 			libc::getxattr(
 				path.as_ptr(),
-				xattr_name.as_ptr(),
+				c"user.xattr_noexist".as_ptr(),
 				std::ptr::null_mut(),
 				0,
 			)
@@ -221,11 +216,10 @@ fn getxattr_noexist() {
 
 		#[cfg(target_os = "freebsd")]
 		let rc = unsafe {
-			let xattr_name = ffi::CString::new("xattr_noexist").unwrap();
 			libc::extattr_get_file(
 				path.as_ptr(),
 				libc::EXTATTR_NAMESPACE_USER,
-				xattr_name.as_ptr(),
+				c"xattr_noexist".as_ptr(),
 				std::ptr::null_mut(),
 				0,
 			)
@@ -258,10 +252,9 @@ fn getxattr_buffer_too_small() {
 
 		#[cfg(target_os = "linux")]
 		let rc = unsafe {
-			let xattr_name = ffi::CString::new("user.xattr_small").unwrap();
 			libc::getxattr(
 				path.as_ptr(),
-				xattr_name.as_ptr(),
+				c"user.xattr_small".as_ptr(),
 				value.as_mut_ptr() as *mut libc::c_void,
 				value.len(),
 			)
@@ -269,11 +262,10 @@ fn getxattr_buffer_too_small() {
 
 		#[cfg(target_os = "freebsd")]
 		let rc = unsafe {
-			let xattr_name = ffi::CString::new("xattr_small").unwrap();
 			libc::extattr_get_file(
 				path.as_ptr(),
 				libc::EXTATTR_NAMESPACE_USER,
-				xattr_name.as_ptr(),
+				c"xattr_small".as_ptr(),
 				value.as_mut_ptr() as *mut libc::c_void,
 				value.len(),
 			)
@@ -304,10 +296,9 @@ fn getxattr_oversize_xattr() {
 
 		#[cfg(target_os = "linux")]
 		let rc = unsafe {
-			let xattr_name = ffi::CString::new("user.xattr_toobig").unwrap();
 			libc::getxattr(
 				path.as_ptr(),
-				xattr_name.as_ptr(),
+				c"user.xattr_toobig".as_ptr(),
 				value.as_mut_ptr() as *mut libc::c_void,
 				value.len(),
 			)
@@ -315,11 +306,10 @@ fn getxattr_oversize_xattr() {
 
 		#[cfg(target_os = "freebsd")]
 		let rc = unsafe {
-			let xattr_name = ffi::CString::new("xattr_toobig").unwrap();
 			libc::extattr_get_file(
 				path.as_ptr(),
 				libc::EXTATTR_NAMESPACE_USER,
-				xattr_name.as_ptr(),
+				c"xattr_toobig".as_ptr(),
 				value.as_mut_ptr() as *mut libc::c_void,
 				value.len(),
 			)
