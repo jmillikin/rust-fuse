@@ -38,7 +38,7 @@ impl FuseSubtype {
 	/// Returns `None` if the C string is empty.
 	#[must_use]
 	pub fn new(subtype: &ffi::CStr) -> Option<&FuseSubtype> {
-		if cstr_is_empty(subtype) {
+		if subtype.is_empty() {
 			return None;
 		}
 		Some(unsafe { Self::new_unchecked(subtype) })
@@ -124,8 +124,3 @@ impl fmt::Debug for MountOptions<'_> {
 }
 
 // }}}
-
-// https://github.com/rust-lang/rust/issues/102444
-fn cstr_is_empty(s: &ffi::CStr) -> bool {
-	unsafe { s.as_ptr().read() == 0 }
-}

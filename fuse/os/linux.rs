@@ -98,7 +98,7 @@ impl MountSource {
 	/// Returns `None` if the C string is empty.
 	#[must_use]
 	pub fn new(mount_source: &ffi::CStr) -> Option<&MountSource> {
-		if cstr_is_empty(mount_source) {
+		if mount_source.is_empty() {
 			return None;
 		}
 		Some(unsafe { Self::new_unchecked(mount_source) })
@@ -187,7 +187,7 @@ impl FuseSubtype {
 	/// Returns `None` if the C string is empty or contains a comma.
 	#[must_use]
 	pub fn new(subtype: &ffi::CStr) -> Option<&FuseSubtype> {
-		if cstr_is_empty(subtype) {
+		if subtype.is_empty() {
 			return None;
 		}
 		if subtype.to_bytes().contains(&b',') {
@@ -560,8 +560,3 @@ impl fmt::Write for BufWriter<'_> {
 }
 
 // }}}
-
-// https://github.com/rust-lang/rust/issues/102444
-fn cstr_is_empty(s: &ffi::CStr) -> bool {
-	unsafe { s.as_ptr().read() == 0 }
-}
