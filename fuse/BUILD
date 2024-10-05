@@ -20,7 +20,7 @@ rust_library(
         "alloc",
         "std",
     ],
-    edition = "2018",
+    edition = "2021",
     visibility = ["//visibility:public"],
     deps = select({
         "@platforms//os:freebsd": [

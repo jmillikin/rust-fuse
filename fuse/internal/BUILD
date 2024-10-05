@@ -22,7 +22,7 @@ rust_library(
         ":fuse_kernel_util_pub.rs",
     ],
     crate_root = "fuse_kernel_lib.rs",
-    edition = "2018",
+    edition = "2021",
     visibility = ["//fuse:__subpackages__"],
 )
 

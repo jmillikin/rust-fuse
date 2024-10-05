@@ -20,13 +20,8 @@ use core::ffi;
 use core::fmt;
 use core::fmt::Write;
 
-const CSTR_FUSE: &ffi::CStr = unsafe {
-	ffi::CStr::from_bytes_with_nul_unchecked(b"fuse\0")
-};
-
-const CSTR_FUSEBLK: &ffi::CStr = unsafe {
-	ffi::CStr::from_bytes_with_nul_unchecked(b"fuseblk\0")
-};
+const CSTR_FUSE: &ffi::CStr = c"fuse";
+const CSTR_FUSEBLK: &ffi::CStr = c"fuseblk";
 
 const MOUNT_SOURCE_FUSE: &MountSource = unsafe {
 	MountSource::new_unchecked(CSTR_FUSE)

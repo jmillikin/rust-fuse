@@ -85,6 +85,6 @@ load(
 rules_rust_dependencies()
 
 rust_register_toolchains(
-    edition = "2018",
+    edition = "2021",
     version = "1.64.0",
 )

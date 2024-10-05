@@ -9,7 +9,7 @@ load(
 rust_library(
     name = "fuse-linux",
     srcs = glob(["*.rs"]),
-    edition = "2018",
+    edition = "2021",
     visibility = ["//visibility:public"],
     deps = [
         "//fuse",

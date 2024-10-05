@@ -16,7 +16,7 @@ rust_test(
         "linux_test.rs",
     ],
     crate = "//fuse",
-    edition = "2018",
+    edition = "2021",
     target_compatible_with = [
         "@platforms//os:linux",
     ],

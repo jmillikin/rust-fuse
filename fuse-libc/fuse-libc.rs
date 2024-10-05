@@ -72,10 +72,6 @@ pub mod os {
 }
 
 #[cfg(not(target_os = "freebsd"))]
-const DEV_CUSE: &ffi::CStr = unsafe {
-	ffi::CStr::from_bytes_with_nul_unchecked(b"/dev/cuse\0")
-};
+const DEV_CUSE: &ffi::CStr = c"/dev/cuse";
 
-const DEV_FUSE: &ffi::CStr = unsafe {
-	ffi::CStr::from_bytes_with_nul_unchecked(b"/dev/fuse\0")
-};
+const DEV_FUSE: &ffi::CStr = c"/dev/fuse";

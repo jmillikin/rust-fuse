@@ -8,7 +8,7 @@ package(
 rust_library(
     name = "fuse_testutil",
     srcs = ["fuse_testutil.rs"],
-    edition = "2018",
+    edition = "2021",
     deps = [
         "//fuse",
         "//fuse/internal:fuse_kernel",
@@ -18,7 +18,7 @@ rust_library(
 rust_library(
     name = "interop_testutil",
     srcs = ["interop_testutil.rs"],
-    edition = "2018",
+    edition = "2021",
     deps = [
         "//fuse",
         "@rust_diff//:diff",

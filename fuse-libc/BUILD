@@ -14,7 +14,7 @@ rust_library(
         "os/*.rs",
     ]),
     crate_features = ["std"],
-    edition = "2018",
+    edition = "2021",
     visibility = ["//visibility:public"],
     deps = [
         "//fuse",
