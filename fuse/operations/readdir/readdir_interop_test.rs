@@ -19,7 +19,6 @@ use std::os::unix::ffi::OsStrExt;
 use std::sync::mpsc;
 use std::{ffi, panic};
 
-use fuse::node;
 use fuse::server::fuse_rpc;
 use fuse::server::prelude::*;
 
@@ -49,11 +48,11 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
 
-		let mut attr = node::Attributes::new(node::Id::new(2).unwrap());
-		attr.set_mode(node::Mode::S_IFDIR | 0o755);
+		let mut attr = fuse::Attributes::new(fuse::NodeId::new(2).unwrap());
+		attr.set_mode(fuse::FileMode::S_IFDIR | 0o755);
 		attr.set_link_count(2);
 
-		let mut entry = node::Entry::new(attr);
+		let mut entry = fuse::Entry::new(attr);
 		entry.set_cache_timeout(std::time::Duration::from_secs(60));
 
 		let resp = LookupResponse::new(Some(entry));
@@ -88,21 +87,21 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		if offset == 0 {
 			offset += 1;
 			let mut entry = ReaddirEntry::new(
-				node::Id::new(10).unwrap(),
-				node::Name::new("entry_a").unwrap(),
+				fuse::NodeId::new(10).unwrap(),
+				fuse::NodeName::new("entry_a").unwrap(),
 				NonZeroU64::new(offset).unwrap(),
 			);
-			entry.set_file_type(node::Type::Regular);
+			entry.set_file_type(fuse::FileType::Regular);
 			entries.try_push(&entry).unwrap();
 		}
 		if offset == 1 {
 			offset += 1;
 			let mut entry = ReaddirEntry::new(
-				node::Id::new(11).unwrap(),
-				node::Name::new("entry_b").unwrap(),
+				fuse::NodeId::new(11).unwrap(),
+				fuse::NodeName::new("entry_b").unwrap(),
 				NonZeroU64::new(offset).unwrap(),
 			);
-			entry.set_file_type(node::Type::Symlink);
+			entry.set_file_type(fuse::FileType::Symlink);
 			entries.try_push(&entry).unwrap();
 
 			let resp = ReaddirResponse::new(entries.into_entries());
@@ -112,11 +111,11 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		if offset == 2 {
 			offset += 1;
 			let mut entry = ReaddirEntry::new(
-				node::Id::new(12).unwrap(),
-				node::Name::new("entry_c").unwrap(),
+				fuse::NodeId::new(12).unwrap(),
+				fuse::NodeName::new("entry_c").unwrap(),
 				NonZeroU64::new(offset).unwrap(),
 			);
-			entry.set_file_type(node::Type::Directory);
+			entry.set_file_type(fuse::FileType::Directory);
 			entries.try_push(&entry).unwrap();
 		}
 

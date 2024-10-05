@@ -18,7 +18,6 @@ use std::mem::size_of;
 use std::panic;
 use std::sync::mpsc;
 
-use fuse::node;
 use fuse::server::fuse_rpc;
 use fuse::server::prelude::*;
 
@@ -43,11 +42,11 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
 
-		let mut attr = node::Attributes::new(node::Id::new(2).unwrap());
-		attr.set_mode(node::Mode::S_IFREG | 0o644);
+		let mut attr = fuse::Attributes::new(fuse::NodeId::new(2).unwrap());
+		attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 		attr.set_link_count(1);
 
-		let mut entry = node::Entry::new(attr);
+		let mut entry = fuse::Entry::new(attr);
 		entry.set_cache_timeout(std::time::Duration::from_secs(60));
 
 		let resp = LookupResponse::new(Some(entry));
@@ -61,17 +60,17 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 	) -> fuse_rpc::SendResult<GetattrResponse, S::Error> {
 		println!("{:#?}", request);
 
-		let mut attr = node::Attributes::new(request.node_id());
+		let mut attr = fuse::Attributes::new(request.node_id());
 
 		if request.node_id().is_root() {
-			attr.set_mode(node::Mode::S_IFDIR | 0o755);
+			attr.set_mode(fuse::FileMode::S_IFDIR | 0o755);
 			attr.set_link_count(2);
 			let resp = GetattrResponse::new(attr);
 			return call.respond_ok(&resp);
 		}
 
-		if request.node_id() == node::Id::new(2).unwrap() {
-			attr.set_mode(node::Mode::S_IFREG | 0o644);
+		if request.node_id() == fuse::NodeId::new(2).unwrap() {
+			attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 			attr.set_link_count(1);
 			let resp = GetattrResponse::new(attr);
 			return call.respond_ok(&resp);
@@ -136,7 +135,7 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 	) -> fuse_rpc::SendResult<OpenResponse, S::Error> {
 		println!("{:#?}", request);
 		let mut resp = OpenResponse::new();
-		if request.node_id() == node::Id::new(2).unwrap() {
+		if request.node_id() == fuse::NodeId::new(2).unwrap() {
 			resp.set_handle(1002);
 			return call.respond_ok(&resp);
 		}

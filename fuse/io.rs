@@ -44,10 +44,10 @@ use crate::internal::fuse_kernel;
 ///   enough to store the largest possible `FUSE_WRITE` message.
 ///
 /// * A `FUSE_SETXATTR` message may contain values up to 64 KiB (on Linux), or
-///   even of unlimited size (on FreeBSD). See [`xattr::Value::MAX_LEN`] for
+///   even of unlimited size (on FreeBSD). See [`crate::XattrValue::MAX_LEN`] for
 ///   details.
 ///
-/// [`xattr::Value::MAX_LEN`]: crate::xattr::Value::MAX_LEN
+/// [`crate::XattrValue::MAX_LEN`]: crate::XattrValue::MAX_LEN
 pub const FUSE_MIN_READ_BUFFER: usize = fuse_kernel::FUSE_MIN_READ_BUFFER;
 
 // AlignedSlice {{{

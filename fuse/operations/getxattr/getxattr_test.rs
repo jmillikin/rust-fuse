@@ -18,7 +18,6 @@ use core::mem::size_of;
 use core::num;
 
 use fuse::operations::getxattr::{GetxattrRequest, GetxattrResponse};
-use fuse::xattr;
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
@@ -38,7 +37,7 @@ fn request_sized() {
 
 	let req = decode_request!(GetxattrRequest, buf);
 
-	let expect = xattr::Name::new("hello.world!").unwrap();
+	let expect = fuse::XattrName::new("hello.world!").unwrap();
 	assert_eq!(req.size(), Some(num::NonZeroUsize::new(10).unwrap()));
 	assert_eq!(req.name(), expect);
 }
@@ -59,7 +58,7 @@ fn request_unsized() {
 
 	let req = decode_request!(GetxattrRequest, buf);
 
-	let expect = xattr::Name::new("hello.world!").unwrap();
+	let expect = fuse::XattrName::new("hello.world!").unwrap();
 	assert_eq!(req.size(), None);
 	assert_eq!(req.name(), expect);
 }
@@ -93,7 +92,7 @@ fn request_impl_debug() {
 
 #[test]
 fn response_with_value() {
-	let value = xattr::Value::new(&[255, 0, 255]).unwrap();
+	let value = fuse::XattrValue::new(&[255, 0, 255]).unwrap();
 	let resp = GetxattrResponse::with_value(value);
 	let encoded = encode_response!(resp);
 
@@ -134,7 +133,7 @@ fn response_with_value_size() {
 
 #[test]
 fn response_with_value_debug() {
-	let value = xattr::Value::new(&[1, 2, 3, 4]).unwrap();
+	let value = fuse::XattrValue::new(&[1, 2, 3, 4]).unwrap();
 	let response = GetxattrResponse::with_value(value);
 	assert_eq!(
 		format!("{:#?}", response),

@@ -21,7 +21,6 @@ use core::fmt;
 use crate::internal::compat;
 use crate::internal::debug;
 use crate::internal::fuse_kernel;
-use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -35,17 +34,17 @@ use crate::server::encode;
 pub struct CreateRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_create_in<'a>>,
-	name: &'a node::Name,
+	name: &'a crate::NodeName,
 }
 
 impl CreateRequest<'_> {
 	#[must_use]
-	pub fn node_id(&self) -> node::Id {
-		unsafe { node::Id::new_unchecked(self.header.nodeid) }
+	pub fn node_id(&self) -> crate::NodeId {
+		unsafe { crate::NodeId::new_unchecked(self.header.nodeid) }
 	}
 
 	#[must_use]
-	pub fn name(&self) -> &node::Name {
+	pub fn name(&self) -> &crate::NodeName {
 		self.name
 	}
 
@@ -65,11 +64,11 @@ impl CreateRequest<'_> {
 	}
 
 	#[must_use]
-	pub fn mode(&self) -> node::Mode {
+	pub fn mode(&self) -> crate::FileMode {
 		if let Some(body) = self.body.as_v7p12() {
-			return node::Mode::new(body.mode);
+			return crate::FileMode::new(body.mode);
 		}
-		node::Mode::new(0)
+		crate::FileMode::new(0)
 	}
 
 	#[must_use]
@@ -131,14 +130,14 @@ impl fmt::Debug for CreateRequest<'_> {
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_CREATE` operation.
 pub struct CreateResponse {
-	entry: node::Entry,
+	entry: crate::Entry,
 	open_out: fuse_kernel::fuse_open_out,
 }
 
 impl CreateResponse {
 	#[inline]
 	#[must_use]
-	pub fn new(entry: node::Entry) -> CreateResponse {
+	pub fn new(entry: crate::Entry) -> CreateResponse {
 		Self {
 			entry,
 			open_out: fuse_kernel::fuse_open_out::zeroed(),
@@ -147,13 +146,13 @@ impl CreateResponse {
 
 	#[inline]
 	#[must_use]
-	pub fn entry(&self) -> &node::Entry {
+	pub fn entry(&self) -> &crate::Entry {
 		&self.entry
 	}
 
 	#[inline]
 	#[must_use]
-	pub fn entry_mut(&mut self) -> &mut node::Entry {
+	pub fn entry_mut(&mut self) -> &mut crate::Entry {
 		&mut self.entry
 	}
 

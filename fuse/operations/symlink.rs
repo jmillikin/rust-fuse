@@ -20,7 +20,6 @@ use core::fmt;
 
 use crate::internal::debug;
 use crate::internal::fuse_kernel;
-use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -32,19 +31,19 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_SYMLINK` operation.
 pub struct SymlinkRequest<'a> {
-	parent_id: node::Id,
-	name: &'a node::Name,
+	parent_id: crate::NodeId,
+	name: &'a crate::NodeName,
 	content: &'a [u8],
 }
 
 impl SymlinkRequest<'_> {
 	#[must_use]
-	pub fn parent_id(&self) -> node::Id {
+	pub fn parent_id(&self) -> crate::NodeId {
 		self.parent_id
 	}
 
 	#[must_use]
-	pub fn name(&self) -> &node::Name {
+	pub fn name(&self) -> &crate::NodeName {
 		self.name
 	}
 
@@ -92,24 +91,24 @@ impl fmt::Debug for SymlinkRequest<'_> {
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_SYMLINK` operation.
 pub struct SymlinkResponse {
-	entry: node::Entry,
+	entry: crate::Entry,
 }
 
 impl SymlinkResponse {
 	#[must_use]
-	pub fn new(entry: node::Entry) -> SymlinkResponse {
+	pub fn new(entry: crate::Entry) -> SymlinkResponse {
 		Self { entry }
 	}
 
 	#[inline]
 	#[must_use]
-	pub fn entry(&self) -> &node::Entry {
+	pub fn entry(&self) -> &crate::Entry {
 		&self.entry
 	}
 
 	#[inline]
 	#[must_use]
-	pub fn entry_mut(&mut self) -> &mut node::Entry {
+	pub fn entry_mut(&mut self) -> &mut crate::Entry {
 		&mut self.entry
 	}
 }

@@ -19,7 +19,6 @@ use std::sync::mpsc;
 use std::{fmt, panic};
 
 use fuse::lock;
-use fuse::node;
 use fuse::server::fuse_rpc;
 use fuse::server::prelude::*;
 
@@ -52,20 +51,20 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 
 		let node_id;
 		if request.name() == "getlk_u.txt" {
-			node_id = node::Id::new(2).unwrap();
+			node_id = fuse::NodeId::new(2).unwrap();
 		} else if request.name() == "getlk_r.txt" {
-			node_id = node::Id::new(3).unwrap();
+			node_id = fuse::NodeId::new(3).unwrap();
 		} else if request.name() == "getlk_w.txt" {
-			node_id = node::Id::new(4).unwrap();
+			node_id = fuse::NodeId::new(4).unwrap();
 		} else {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
 
-		let mut attr = node::Attributes::new(node_id);
-		attr.set_mode(node::Mode::S_IFREG | 0o644);
+		let mut attr = fuse::Attributes::new(node_id);
+		attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 		attr.set_link_count(1);
 
-		let mut entry = node::Entry::new(attr);
+		let mut entry = fuse::Entry::new(attr);
 		entry.set_cache_timeout(std::time::Duration::from_secs(60));
 
 		let resp = LookupResponse::new(Some(entry));
@@ -103,9 +102,9 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		let range = lock::Range::new(1024, num::NonZeroU64::new(3072));
 		let pid = lock::ProcessId::new(std::process::id());
 
-		let lock = if request.node_id() == node::Id::new(3).unwrap() {
+		let lock = if request.node_id() == fuse::NodeId::new(3).unwrap() {
 			Some(lock::Lock::new(lock::Mode::Shared, range, pid))
-		} else if request.node_id() == node::Id::new(4).unwrap() {
+		} else if request.node_id() == fuse::NodeId::new(4).unwrap() {
 			Some(lock::Lock::new(lock::Mode::Exclusive, range, pid))
 		} else {
 			None

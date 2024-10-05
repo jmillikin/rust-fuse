@@ -22,7 +22,6 @@ use core::slice::from_raw_parts;
 
 use crate::internal::fuse_kernel;
 use crate::internal::timestamp;
-use crate::node;
 use crate::server::RequestError;
 
 #[cfg(rust_fuse_test = "decode_test")]
@@ -140,9 +139,9 @@ impl<'a> RequestDecoder<'a> {
 
 	pub(crate) fn next_node_name(
 		&mut self,
-	) -> Result<&'a node::Name, RequestError> {
+	) -> Result<&'a crate::NodeName, RequestError> {
 		let bytes = self.next_nul_terminated_bytes()?;
-		Ok(node::Name::from_bytes(bytes.to_bytes_without_nul())?)
+		Ok(crate::NodeName::from_bytes(bytes.to_bytes_without_nul())?)
 	}
 
 	pub(crate) fn next_nul_terminated_bytes(
@@ -176,8 +175,8 @@ impl<'a> NulTerminatedBytes<'a> {
 	}
 }
 
-pub(crate) fn node_id(raw: u64) -> Result<node::Id, RequestError> {
-	match node::Id::new(raw) {
+pub(crate) fn node_id(raw: u64) -> Result<crate::NodeId, RequestError> {
+	match crate::NodeId::new(raw) {
 		Some(x) => Ok(x),
 		None => Err(RequestError::MissingNodeId),
 	}

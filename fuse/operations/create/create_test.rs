@@ -16,7 +16,6 @@
 
 use core::mem::size_of;
 
-use fuse::node;
 use fuse::operations::create::{
 	CreateRequest,
 	CreateRequestFlags,
@@ -46,7 +45,7 @@ fn request_v7p1() {
 	assert_eq!(req.name(), expect);
 	assert_eq!(req.flags(), CreateRequestFlags::new());
 	assert_eq!(req.open_flags(), 0xFF);
-	assert_eq!(req.mode(), node::Mode::new(0));
+	assert_eq!(req.mode(), fuse::FileMode::new(0));
 	assert_eq!(req.umask(), 0);
 }
 
@@ -74,7 +73,7 @@ fn request_v7p12() {
 	assert_eq!(req.name(), expect);
 	assert_eq!(req.flags(), CreateRequestFlags::new());
 	assert_eq!(req.open_flags(), 0xFF);
-	assert_eq!(req.mode(), node::Mode::new(0xEE));
+	assert_eq!(req.mode(), fuse::FileMode::new(0xEE));
 	assert_eq!(req.umask(), 0xDD);
 }
 
@@ -112,8 +111,8 @@ fn request_impl_debug() {
 
 #[test]
 fn response_v7p1() {
-	let attr = node::Attributes::new(node::Id::new(11).unwrap());
-	let mut entry = node::Entry::new(attr);
+	let attr = fuse::Attributes::new(fuse::NodeId::new(11).unwrap());
+	let mut entry = fuse::Entry::new(attr);
 	entry.set_generation(22);
 
 	let mut resp = CreateResponse::new(entry);
@@ -164,8 +163,8 @@ fn response_v7p1() {
 
 #[test]
 fn response_v7p9() {
-	let attr = node::Attributes::new(node::Id::new(11).unwrap());
-	let mut entry = node::Entry::new(attr);
+	let attr = fuse::Attributes::new(fuse::NodeId::new(11).unwrap());
+	let mut entry = fuse::Entry::new(attr);
 	entry.set_generation(22);
 
 	let mut resp = CreateResponse::new(entry);
@@ -213,10 +212,10 @@ fn response_v7p9() {
 #[test]
 fn response_impl_debug() {
 
-	let mut attr = node::Attributes::new(node::Id::new(11).unwrap());
-	attr.set_mode(node::Mode::S_IFREG | 0o644);
+	let mut attr = fuse::Attributes::new(fuse::NodeId::new(11).unwrap());
+	attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 
-	let mut entry = node::Entry::new(attr);
+	let mut entry = fuse::Entry::new(attr);
 	entry.set_generation(22);
 
 	let mut response = CreateResponse::new(entry);

@@ -22,7 +22,6 @@ use crate::internal::compat;
 use crate::internal::debug;
 use crate::internal::fuse_kernel;
 use crate::lock;
-use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -40,8 +39,8 @@ pub struct ReleaseRequest<'a> {
 
 impl ReleaseRequest<'_> {
 	#[must_use]
-	pub fn node_id(&self) -> node::Id {
-		node::Id::new(self.header.nodeid).unwrap_or(node::Id::ROOT)
+	pub fn node_id(&self) -> crate::NodeId {
+		crate::NodeId::new(self.header.nodeid).unwrap_or(crate::NodeId::ROOT)
 	}
 
 	/// The value passed to [`OpenResponse::set_handle`], or zero if not set.

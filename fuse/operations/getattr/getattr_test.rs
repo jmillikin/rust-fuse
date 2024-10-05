@@ -17,7 +17,6 @@
 use core::mem::size_of;
 use core::time;
 
-use fuse::node;
 use fuse::operations::getattr::{GetattrRequest, GetattrResponse};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
@@ -108,8 +107,8 @@ fn request_impl_debug() {
 
 #[test]
 fn response_v7p1() {
-	let node_id = node::Id::new(0xABCD).unwrap();
-	let attr = node::Attributes::new(node_id);
+	let node_id = fuse::NodeId::new(0xABCD).unwrap();
+	let attr = fuse::Attributes::new(node_id);
 	let resp = GetattrResponse::new(attr);
 	let encoded = encode_response!(resp, {
 		protocol_version: (7, 1),
@@ -143,8 +142,8 @@ fn response_v7p1() {
 
 #[test]
 fn response_v7p9() {
-	let node_id = node::Id::new(0xABCD).unwrap();
-	let mut attr = node::Attributes::new(node_id);
+	let node_id = fuse::NodeId::new(0xABCD).unwrap();
+	let mut attr = fuse::Attributes::new(node_id);
 	attr.set_size(999);
 
 	let mut resp = GetattrResponse::new(attr);
@@ -179,11 +178,11 @@ fn response_v7p9() {
 
 #[test]
 fn response_impl_debug() {
-	let node_id = node::Id::new(11).unwrap();
+	let node_id = fuse::NodeId::new(11).unwrap();
 
-	let mut attr = node::Attributes::new(node_id);
+	let mut attr = fuse::Attributes::new(node_id);
 	attr.set_size(999);
-	attr.set_mode(node::Mode::S_IFREG | 0o644);
+	attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 
 	let mut response = GetattrResponse::new(attr);
 	response.set_cache_timeout(time::Duration::new(123, 456));

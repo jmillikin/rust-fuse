@@ -19,7 +19,6 @@
 use core::fmt;
 
 use crate::internal::fuse_kernel;
-use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -32,24 +31,24 @@ use crate::server::encode;
 /// `FUSE_LINK` operation.
 #[derive(Debug)]
 pub struct LinkRequest<'a> {
-	node_id: node::Id,
-	new_parent_id: node::Id,
-	new_name: &'a node::Name,
+	node_id: crate::NodeId,
+	new_parent_id: crate::NodeId,
+	new_name: &'a crate::NodeName,
 }
 
 impl LinkRequest<'_> {
 	#[must_use]
-	pub fn node_id(&self) -> node::Id {
+	pub fn node_id(&self) -> crate::NodeId {
 		self.node_id
 	}
 
 	#[must_use]
-	pub fn new_parent_id(&self) -> node::Id {
+	pub fn new_parent_id(&self) -> crate::NodeId {
 		self.new_parent_id
 	}
 
 	#[must_use]
-	pub fn new_name(&self) -> &node::Name {
+	pub fn new_name(&self) -> &crate::NodeName {
 		self.new_name
 	}
 }
@@ -83,25 +82,25 @@ impl<'a> server::FuseRequest<'a> for LinkRequest<'a> {
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_LINK` operation.
 pub struct LinkResponse {
-	entry: node::Entry,
+	entry: crate::Entry,
 }
 
 impl LinkResponse {
 	#[inline]
 	#[must_use]
-	pub fn new(entry: node::Entry) -> LinkResponse {
+	pub fn new(entry: crate::Entry) -> LinkResponse {
 		Self { entry }
 	}
 
 	#[inline]
 	#[must_use]
-	pub fn entry(&self) -> &node::Entry {
+	pub fn entry(&self) -> &crate::Entry {
 		&self.entry
 	}
 
 	#[inline]
 	#[must_use]
-	pub fn entry_mut(&mut self) -> &mut node::Entry {
+	pub fn entry_mut(&mut self) -> &mut crate::Entry {
 		&mut self.entry
 	}
 }

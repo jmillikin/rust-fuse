@@ -20,7 +20,6 @@ use core::fmt;
 
 use crate::internal::compat;
 use crate::internal::fuse_kernel;
-use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -34,23 +33,23 @@ use crate::server::encode;
 pub struct MknodRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_mknod_in<'a>>,
-	name: &'a node::Name,
+	name: &'a crate::NodeName,
 }
 
 impl MknodRequest<'_> {
 	#[must_use]
-	pub fn parent_id(&self) -> node::Id {
-		unsafe { node::Id::new_unchecked(self.header.nodeid) }
+	pub fn parent_id(&self) -> crate::NodeId {
+		unsafe { crate::NodeId::new_unchecked(self.header.nodeid) }
 	}
 
 	#[must_use]
-	pub fn name(&self) -> &node::Name {
+	pub fn name(&self) -> &crate::NodeName {
 		self.name
 	}
 
 	#[must_use]
-	pub fn mode(&self) -> node::Mode {
-		node::Mode::new(self.body.as_v7p1().mode)
+	pub fn mode(&self) -> crate::FileMode {
+		crate::FileMode::new(self.body.as_v7p1().mode)
 	}
 
 	#[must_use]
@@ -63,9 +62,9 @@ impl MknodRequest<'_> {
 
 	#[must_use]
 	pub fn device_number(&self) -> Option<u32> {
-		use node::Type as T;
+		use crate::FileType as T;
 		let body = self.body.as_v7p1();
-		match node::Type::from_mode(self.mode()) {
+		match crate::FileType::from_mode(self.mode()) {
 			Some(T::CharacterDevice | T::BlockDevice) => {
 				Some(body.rdev)
 			},
@@ -123,24 +122,24 @@ impl fmt::Debug for MknodRequest<'_> {
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_MKNOD` operation.
 pub struct MknodResponse {
-	entry: node::Entry,
+	entry: crate::Entry,
 }
 
 impl MknodResponse {
 	#[must_use]
-	pub fn new(entry: node::Entry) -> MknodResponse {
+	pub fn new(entry: crate::Entry) -> MknodResponse {
 		Self { entry }
 	}
 
 	#[inline]
 	#[must_use]
-	pub fn entry(&self) -> &node::Entry {
+	pub fn entry(&self) -> &crate::Entry {
 		&self.entry
 	}
 
 	#[inline]
 	#[must_use]
-	pub fn entry_mut(&mut self) -> &mut node::Entry {
+	pub fn entry_mut(&mut self) -> &mut crate::Entry {
 		&mut self.entry
 	}
 }

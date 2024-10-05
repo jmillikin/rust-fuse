@@ -19,11 +19,9 @@
 use core::fmt;
 
 use crate::internal::fuse_kernel;
-use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
-use crate::xattr;
 
 // RemovexattrRequest {{{
 
@@ -33,19 +31,19 @@ use crate::xattr;
 /// `FUSE_REMOVEXATTR` operation.
 pub struct RemovexattrRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
-	name: &'a xattr::Name,
+	name: &'a crate::XattrName,
 }
 
 impl RemovexattrRequest<'_> {
 	#[inline]
 	#[must_use]
-	pub fn node_id(&self) -> node::Id {
-		unsafe { node::Id::new_unchecked(self.header.nodeid) }
+	pub fn node_id(&self) -> crate::NodeId {
+		unsafe { crate::NodeId::new_unchecked(self.header.nodeid) }
 	}
 
 	#[inline]
 	#[must_use]
-	pub fn name(&self) -> &xattr::Name {
+	pub fn name(&self) -> &crate::XattrName {
 		self.name
 	}
 }
@@ -64,7 +62,7 @@ impl<'a> server::FuseRequest<'a> for RemovexattrRequest<'a> {
 		decode::node_id(header.nodeid)?;
 
 		let name_bytes = dec.next_nul_terminated_bytes()?;
-		let name = xattr::Name::from_bytes(name_bytes.to_bytes_without_nul())?;
+		let name = crate::XattrName::from_bytes(name_bytes.to_bytes_without_nul())?;
 		Ok(Self { header, name })
 	}
 }

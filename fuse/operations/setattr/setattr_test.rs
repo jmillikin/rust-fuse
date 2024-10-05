@@ -18,7 +18,6 @@ use core::mem::size_of;
 use core::time;
 
 use fuse::lock;
-use fuse::node;
 use fuse::operations::setattr::{SetattrRequest, SetattrResponse};
 
 const S_IFREG: u32 = 0o100000;
@@ -51,7 +50,7 @@ fn request() {
 		})
 	});
 
-	assert_eq!(request.node_id(), node::Id::new(1000).unwrap());
+	assert_eq!(request.node_id(), fuse::NodeId::new(1000).unwrap());
 	assert_eq!(request.handle(), Some(1));
 	assert_eq!(request.size(), Some(2));
 	assert_eq!(request.lock_owner(), Some(lock::Owner::new(3)));
@@ -64,7 +63,7 @@ fn request() {
 	assert_eq!(request.group_id(), Some(13));
 
 	let mode = request.mode().unwrap();
-	assert_eq!(node::Type::from_mode(mode), Some(node::Type::Regular));
+	assert_eq!(fuse::FileType::from_mode(mode), Some(fuse::FileType::Regular));
 	assert_eq!(mode.permissions(), 0o644);
 }
 
@@ -144,8 +143,8 @@ fn request_impl_debug() {
 
 #[test]
 fn response_v7p1() {
-	let mut attr = node::Attributes::new(node::Id::new(2).unwrap());
-	attr.set_mode(node::Mode::S_IFREG | 0o644);
+	let mut attr = fuse::Attributes::new(fuse::NodeId::new(2).unwrap());
+	attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 	attr.set_link_count(1);
 	attr.set_size(999);
 
@@ -187,8 +186,8 @@ fn response_v7p1() {
 
 #[test]
 fn response_v7p9() {
-	let mut attr = node::Attributes::new(node::Id::new(2).unwrap());
-	attr.set_mode(node::Mode::S_IFREG | 0o644);
+	let mut attr = fuse::Attributes::new(fuse::NodeId::new(2).unwrap());
+	attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 	attr.set_link_count(1);
 	attr.set_size(999);
 
@@ -226,8 +225,8 @@ fn response_v7p9() {
 
 #[test]
 fn response_impl_debug() {
-	let mut attr = node::Attributes::new(node::Id::new(2).unwrap());
-	attr.set_mode(node::Mode::S_IFREG | 0o644);
+	let mut attr = fuse::Attributes::new(fuse::NodeId::new(2).unwrap());
+	attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 	attr.set_link_count(1);
 	attr.set_size(999);
 

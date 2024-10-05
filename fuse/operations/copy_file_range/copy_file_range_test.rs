@@ -16,7 +16,6 @@
 
 use core::mem::size_of;
 
-use fuse::node;
 use fuse::operations::copy_file_range::{
 	CopyFileRangeRequest,
 	CopyFileRangeRequestFlags,
@@ -45,10 +44,10 @@ fn request() {
 
 	let req = decode_request!(CopyFileRangeRequest, buf);
 
-	assert_eq!(req.input_node_id(), node::Id::new(10).unwrap());
+	assert_eq!(req.input_node_id(), fuse::NodeId::new(10).unwrap());
 	assert_eq!(req.input_handle(), 11);
 	assert_eq!(req.input_offset(), 12);
-	assert_eq!(req.output_node_id(), node::Id::new(13).unwrap());
+	assert_eq!(req.output_node_id(), fuse::NodeId::new(13).unwrap());
 	assert_eq!(req.output_handle(), 14);
 	assert_eq!(req.output_offset(), 15);
 	assert_eq!(req.len(), 16);

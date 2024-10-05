@@ -17,7 +17,6 @@
 use std::panic;
 use std::sync::mpsc;
 
-use fuse::node;
 use fuse::server::fuse_rpc;
 use fuse::server::prelude::*;
 
@@ -47,18 +46,18 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 
 		let node_id;
 		if request.name() == "flush.txt" {
-			node_id = node::Id::new(2).unwrap();
+			node_id = fuse::NodeId::new(2).unwrap();
 		} else if request.name() == "flush_err.txt" {
-			node_id = node::Id::new(3).unwrap();
+			node_id = fuse::NodeId::new(3).unwrap();
 		} else {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
 
-		let mut attr = node::Attributes::new(node_id);
-		attr.set_mode(node::Mode::S_IFREG | 0o644);
+		let mut attr = fuse::Attributes::new(node_id);
+		attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 		attr.set_link_count(1);
 
-		let mut entry = node::Entry::new(attr);
+		let mut entry = fuse::Entry::new(attr);
 		entry.set_cache_timeout(std::time::Duration::from_secs(60));
 
 		let resp = LookupResponse::new(Some(entry));
@@ -71,7 +70,7 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		request: &OpenRequest,
 	) -> fuse_rpc::SendResult<OpenResponse, S::Error> {
 		let mut resp = OpenResponse::new();
-		if request.node_id() == node::Id::new(2).unwrap() {
+		if request.node_id() == fuse::NodeId::new(2).unwrap() {
 			resp.set_handle(1002);
 		} else {
 			resp.set_handle(1003);

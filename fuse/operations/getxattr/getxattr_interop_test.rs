@@ -17,10 +17,8 @@
 use std::sync::mpsc;
 use std::panic;
 
-use fuse::node;
 use fuse::server::fuse_rpc;
 use fuse::server::prelude::*;
-use fuse::xattr;
 
 use interop_testutil::{
 	diff_str,
@@ -49,11 +47,11 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
 
-		let mut attr = node::Attributes::new(node::Id::new(2).unwrap());
-		attr.set_mode(node::Mode::S_IFREG | 0o644);
+		let mut attr = fuse::Attributes::new(fuse::NodeId::new(2).unwrap());
+		attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 		attr.set_link_count(1);
 
-		let mut entry = node::Entry::new(attr);
+		let mut entry = fuse::Entry::new(attr);
 		entry.set_cache_timeout(std::time::Duration::from_secs(60));
 
 		let resp = LookupResponse::new(Some(entry));
@@ -67,11 +65,11 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 	) -> fuse_rpc::SendResult<GetxattrResponse, S::Error> {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
-		let xattr_small = xattr::Name::new("user.xattr_small").unwrap();
-		let xattr_toobig = xattr::Name::new("user.xattr_toobig").unwrap();
+		let xattr_small = fuse::XattrName::new("user.xattr_small").unwrap();
+		let xattr_toobig = fuse::XattrName::new("user.xattr_toobig").unwrap();
 
 		if request.name() == xattr_small {
-			let value = xattr::Value::new(b"small xattr value").unwrap();
+			let value = fuse::XattrValue::new(b"small xattr value").unwrap();
 
 			match request.size() {
 				None => {

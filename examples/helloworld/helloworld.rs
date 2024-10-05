@@ -18,7 +18,6 @@ use std::ffi::{CString, OsStr};
 use std::num::NonZeroU64;
 use std::os::unix::ffi::OsStrExt;
 
-use fuse::node;
 use fuse::server::fuse_rpc;
 use fuse::server::prelude::*;
 
@@ -27,18 +26,18 @@ const HELLO_WORLD: &[u8] = b"Hello, world!\n";
 struct HelloTxt {}
 
 impl HelloTxt {
-	fn name(&self) -> &node::Name {
-		node::Name::new("hello.txt").unwrap()
+	fn name(&self) -> &fuse::NodeName {
+		fuse::NodeName::new("hello.txt").unwrap()
 	}
 
-	fn node_id(&self) -> node::Id {
-		node::Id::new(100).unwrap()
+	fn node_id(&self) -> fuse::NodeId {
+		fuse::NodeId::new(100).unwrap()
 	}
 
-	fn set_attr(&self, attr: &mut node::Attributes) {
+	fn set_attr(&self, attr: &mut fuse::Attributes) {
 		attr.set_user_id(getuid());
 		attr.set_group_id(getgid());
-		attr.set_mode(node::Mode::S_IFREG | 0o644);
+		attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 		attr.set_size(HELLO_WORLD.len() as u64);
 		attr.set_link_count(1);
 	}
@@ -61,10 +60,10 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for HelloWorldFS {
 			return call.respond_err(fuse::Error::NOT_FOUND);
 		}
 
-		let mut attr = node::Attributes::new(HELLO_TXT.node_id());
+		let mut attr = fuse::Attributes::new(HELLO_TXT.node_id());
 		HELLO_TXT.set_attr(&mut attr);
 
-		let entry = node::Entry::new(attr);
+		let entry = fuse::Entry::new(attr);
 		let resp = LookupResponse::new(Some(entry));
 		call.respond_ok(&resp)
 	}
@@ -74,12 +73,12 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for HelloWorldFS {
 		call: fuse_rpc::Call<S>,
 		request: &GetattrRequest,
 	) -> fuse_rpc::SendResult<GetattrResponse, S::Error> {
-		let mut attr = node::Attributes::new(request.node_id());
+		let mut attr = fuse::Attributes::new(request.node_id());
 
 		if request.node_id().is_root() {
 			attr.set_user_id(getuid());
 			attr.set_group_id(getgid());
-			attr.set_mode(node::Mode::S_IFDIR | 0o755);
+			attr.set_mode(fuse::FileMode::S_IFDIR | 0o755);
 			attr.set_link_count(2);
 			let resp = GetattrResponse::new(attr);
 			return call.respond_ok(&resp);
@@ -157,7 +156,7 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for HelloWorldFS {
 			HELLO_TXT.name(),
 			node_offset,
 		);
-		entry.set_file_type(node::Type::Regular);
+		entry.set_file_type(fuse::FileType::Regular);
 		entries.try_push(&entry).unwrap();
 
 		let resp = ReaddirResponse::new(entries.into_entries());

@@ -16,7 +16,6 @@
 
 use core::mem::size_of;
 
-use fuse::node;
 use fuse::operations::mkdir::{MkdirRequest, MkdirResponse};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
@@ -38,9 +37,9 @@ fn request() {
 	let req = decode_request!(MkdirRequest, buf);
 
 	let expect: &[u8] = b"hello.world!";
-	assert_eq!(req.parent_id(), node::Id::new(100).unwrap());
+	assert_eq!(req.parent_id(), fuse::NodeId::new(100).unwrap());
 	assert_eq!(req.name(), expect);
-	assert_eq!(req.mode(), node::Mode::new(0o755));
+	assert_eq!(req.mode(), fuse::FileMode::new(0o755));
 	assert_eq!(req.umask(), 0o111);
 }
 
@@ -74,8 +73,8 @@ fn request_impl_debug() {
 
 #[test]
 fn response_v7p1() {
-	let attr = node::Attributes::new(node::Id::new(11).unwrap());
-	let mut entry = node::Entry::new(attr);
+	let attr = fuse::Attributes::new(fuse::NodeId::new(11).unwrap());
+	let mut entry = fuse::Entry::new(attr);
 	entry.set_generation(22);
 	let resp = MkdirResponse::new(entry);
 
@@ -114,8 +113,8 @@ fn response_v7p1() {
 
 #[test]
 fn response_v7p9() {
-	let attr = node::Attributes::new(node::Id::new(11).unwrap());
-	let mut entry = node::Entry::new(attr);
+	let attr = fuse::Attributes::new(fuse::NodeId::new(11).unwrap());
+	let mut entry = fuse::Entry::new(attr);
 	entry.set_generation(22);
 	let resp = MkdirResponse::new(entry);
 
@@ -150,9 +149,9 @@ fn response_v7p9() {
 
 #[test]
 fn response_impl_debug() {
-	let mut attr = node::Attributes::new(node::Id::new(11).unwrap());
-	attr.set_mode(node::Mode::S_IFREG | 0o644);
-	let mut entry = node::Entry::new(attr);
+	let mut attr = fuse::Attributes::new(fuse::NodeId::new(11).unwrap());
+	attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
+	let mut entry = fuse::Entry::new(attr);
 	entry.set_generation(22);
 	let response = MkdirResponse::new(entry);
 

@@ -22,7 +22,6 @@ use core::mem::size_of;
 
 use crate::internal::debug;
 use crate::internal::fuse_kernel;
-use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -41,8 +40,8 @@ pub struct IoctlRequest<'a> {
 
 impl<'a> IoctlRequest<'a> {
 	#[must_use]
-	pub fn node_id(&self) -> node::Id {
-		node::Id::new(self.header.nodeid).unwrap_or(node::Id::ROOT)
+	pub fn node_id(&self) -> crate::NodeId {
+		crate::NodeId::new(self.header.nodeid).unwrap_or(crate::NodeId::ROOT)
 	}
 
 	#[must_use]

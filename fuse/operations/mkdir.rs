@@ -19,7 +19,6 @@
 use core::fmt;
 
 use crate::internal::fuse_kernel;
-use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -31,25 +30,25 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_MKDIR` operation.
 pub struct MkdirRequest<'a> {
-	parent_id: node::Id,
-	name: &'a node::Name,
+	parent_id: crate::NodeId,
+	name: &'a crate::NodeName,
 	raw: fuse_kernel::fuse_mkdir_in,
 }
 
 impl MkdirRequest<'_> {
 	#[must_use]
-	pub fn parent_id(&self) -> node::Id {
+	pub fn parent_id(&self) -> crate::NodeId {
 		self.parent_id
 	}
 
 	#[must_use]
-	pub fn name(&self) -> &node::Name {
+	pub fn name(&self) -> &crate::NodeName {
 		self.name
 	}
 
 	#[must_use]
-	pub fn mode(&self) -> node::Mode {
-		node::Mode::new(self.raw.mode)
+	pub fn mode(&self) -> crate::FileMode {
+		crate::FileMode::new(self.raw.mode)
 	}
 
 	#[must_use]
@@ -98,25 +97,25 @@ impl fmt::Debug for MkdirRequest<'_> {
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_MKDIR` operation.
 pub struct MkdirResponse {
-	entry: node::Entry,
+	entry: crate::Entry,
 }
 
 impl MkdirResponse {
 	#[inline]
 	#[must_use]
-	pub fn new(entry: node::Entry) -> MkdirResponse {
+	pub fn new(entry: crate::Entry) -> MkdirResponse {
 		Self { entry }
 	}
 
 	#[inline]
 	#[must_use]
-	pub fn entry(&self) -> &node::Entry {
+	pub fn entry(&self) -> &crate::Entry {
 		&self.entry
 	}
 
 	#[inline]
 	#[must_use]
-	pub fn entry_mut(&mut self) -> &mut node::Entry {
+	pub fn entry_mut(&mut self) -> &mut crate::Entry {
 		&mut self.entry
 	}
 }

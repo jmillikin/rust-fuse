@@ -22,11 +22,9 @@ use core::num;
 use core::ptr;
 
 use crate::internal::fuse_kernel;
-use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
-use crate::xattr;
 
 #[cfg(target_os = "freebsd")]
 macro_rules! xattr_name_list_max_size {
@@ -35,7 +33,7 @@ macro_rules! xattr_name_list_max_size {
 
 #[cfg(target_os = "linux")]
 macro_rules! xattr_name_list_max_size {
-	() => { Some(xattr::XATTR_LIST_MAX) }
+	() => { Some(crate::XATTR_LIST_MAX) }
 }
 
 const NAMES_LIST_MAX_SIZE: Option<usize> = xattr_name_list_max_size!();
@@ -54,8 +52,8 @@ pub struct ListxattrRequest<'a> {
 impl ListxattrRequest<'_> {
 	#[inline]
 	#[must_use]
-	pub fn node_id(&self) -> node::Id {
-		unsafe { node::Id::new_unchecked(self.header.nodeid) }
+	pub fn node_id(&self) -> crate::NodeId {
+		unsafe { crate::NodeId::new_unchecked(self.header.nodeid) }
 	}
 
 	#[inline]
@@ -208,9 +206,9 @@ impl fmt::Debug for ListxattrNames<'_> {
 struct XattrNamesIter<'a>(&'a [u8]);
 
 impl<'a> core::iter::Iterator for XattrNamesIter<'a> {
-	type Item = &'a xattr::Name;
+	type Item = &'a crate::XattrName;
 
-	fn next(&mut self) -> Option<&'a xattr::Name> {
+	fn next(&mut self) -> Option<&'a crate::XattrName> {
 		if self.0.is_empty() {
 			return None;
 		}
@@ -220,11 +218,11 @@ impl<'a> core::iter::Iterator for XattrNamesIter<'a> {
 				let (_, next) = self.0.split_at(ii + 1);
 				self.0 = next;
 				return Some(unsafe {
-					xattr::Name::from_bytes_unchecked(name)
+					crate::XattrName::from_bytes_unchecked(name)
 				});
 			}
 		}
-		let name = unsafe { xattr::Name::from_bytes_unchecked(self.0) };
+		let name = unsafe { crate::XattrName::from_bytes_unchecked(self.0) };
 		self.0 = &[];
 		Some(name)
 	}
@@ -277,7 +275,7 @@ impl<'a> ListxattrNamesWriter<'a> {
 
 	pub fn try_push(
 		&mut self,
-		name: &xattr::Name,
+		name: &crate::XattrName,
 	) -> Result<(), ListxattrCapacityError> {
 		let remaining_capacity = self.capacity() - self.position();
 		if name.size() > remaining_capacity {

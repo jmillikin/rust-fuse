@@ -17,7 +17,6 @@
 use std::sync::mpsc;
 use std::{fmt, mem, panic};
 
-use fuse::node;
 use fuse::server::fuse_rpc;
 use fuse::server::prelude::*;
 
@@ -47,11 +46,11 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
 
-		let mut attr = node::Attributes::new(node::Id::new(2).unwrap());
-		attr.set_mode(node::Mode::S_IFREG | 0o644);
+		let mut attr = fuse::Attributes::new(fuse::NodeId::new(2).unwrap());
+		attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 		attr.set_link_count(1);
 
-		let mut entry = node::Entry::new(attr);
+		let mut entry = fuse::Entry::new(attr);
 		entry.set_cache_timeout(std::time::Duration::from_secs(60));
 
 		let resp = LookupResponse::new(Some(entry));

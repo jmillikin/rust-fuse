@@ -20,8 +20,6 @@ use core::ffi;
 use core::fmt;
 use core::fmt::Write;
 
-use crate::node;
-
 const CSTR_FUSE: &ffi::CStr = unsafe {
 	ffi::CStr::from_bytes_with_nul_unchecked(b"fuse\0")
 };
@@ -236,7 +234,7 @@ pub struct MountOptions<'a> {
 	subtype: Option<&'a FuseSubtype>,
 	group_id: Option<u32>,
 	max_read: Option<u32>,
-	root_mode: Option<node::Mode>,
+	root_mode: Option<crate::FileMode>,
 	user_id: Option<u32>,
 }
 
@@ -387,7 +385,7 @@ impl<'a> MountOptions<'a> {
 
 	/// Returns the `rootmode` mount data value.
 	#[must_use]
-	pub fn root_mode(&self) -> Option<node::Mode> {
+	pub fn root_mode(&self) -> Option<crate::FileMode> {
 		self.root_mode
 	}
 
@@ -396,8 +394,8 @@ impl<'a> MountOptions<'a> {
 	/// This option is the filesystem root's Unix file mode. It will typically
 	/// be [`S_IFDIR`] plus appropriate permission bits.
 	///
-	/// [`S_IFDIR`]: node::Mode::S_IFDIR
-	pub fn set_root_mode(&mut self, root_mode: Option<node::Mode>) {
+	/// [`S_IFDIR`]: crate::FileMode::S_IFDIR
+	pub fn set_root_mode(&mut self, root_mode: Option<crate::FileMode>) {
 		self.root_mode = root_mode;
 	}
 

@@ -22,7 +22,6 @@ use core::marker::PhantomData;
 
 use crate::internal::debug;
 use crate::internal::fuse_kernel;
-use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -35,12 +34,12 @@ use crate::server::encode;
 /// `FUSE_READLINK` operation.
 pub struct ReadlinkRequest<'a> {
 	phantom: PhantomData<&'a ()>,
-	node_id: node::Id,
+	node_id: crate::NodeId,
 }
 
 impl ReadlinkRequest<'_> {
 	#[must_use]
-	pub fn node_id(&self) -> node::Id {
+	pub fn node_id(&self) -> crate::NodeId {
 		self.node_id
 	}
 }
@@ -88,7 +87,7 @@ impl<'a> ReadlinkResponse<'a> {
 	}
 
 	#[must_use]
-	pub fn from_name(target: &'a node::Name) -> ReadlinkResponse<'a> {
+	pub fn from_name(target: &'a crate::NodeName) -> ReadlinkResponse<'a> {
 		Self { target: target.as_bytes() }
 	}
 }

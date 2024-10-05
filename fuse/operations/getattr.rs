@@ -21,7 +21,6 @@ use core::time;
 
 use crate::internal::compat;
 use crate::internal::fuse_kernel;
-use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -39,8 +38,8 @@ pub struct GetattrRequest<'a> {
 
 impl GetattrRequest<'_> {
 	#[must_use]
-	pub fn node_id(&self) -> node::Id {
-		unsafe { node::Id::new_unchecked(self.header.nodeid) }
+	pub fn node_id(&self) -> crate::NodeId {
+		unsafe { crate::NodeId::new_unchecked(self.header.nodeid) }
 	}
 
 	#[must_use]
@@ -96,27 +95,27 @@ impl fmt::Debug for GetattrRequest<'_> {
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_GETATTR` operation.
 pub struct GetattrResponse {
-	attr_out: node::FuseAttrOut,
+	attr_out: crate::FuseAttrOut,
 }
 
 impl GetattrResponse {
 	#[inline]
 	#[must_use]
-	pub fn new(attributes: node::Attributes) -> GetattrResponse {
+	pub fn new(attributes: crate::Attributes) -> GetattrResponse {
 		Self {
-			attr_out: node::FuseAttrOut::new(attributes),
+			attr_out: crate::FuseAttrOut::new(attributes),
 		}
 	}
 
 	#[inline]
 	#[must_use]
-	pub fn attributes(&self) -> &node::Attributes {
+	pub fn attributes(&self) -> &crate::Attributes {
 		self.attr_out.attributes()
 	}
 
 	#[inline]
 	#[must_use]
-	pub fn attributes_mut(&mut self) -> &mut node::Attributes {
+	pub fn attributes_mut(&mut self) -> &mut crate::Attributes {
 		self.attr_out.attributes_mut()
 	}
 

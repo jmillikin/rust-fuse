@@ -16,7 +16,6 @@
 
 use core::mem::size_of;
 
-use fuse::node;
 use fuse::operations::rename::{RenameRequest, RenameResponse};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
@@ -39,8 +38,8 @@ fn request_rename() {
 	let expect_new: &[u8] = b"new";
 	assert_eq!(request.old_name(), expect_old);
 	assert_eq!(request.new_name(), expect_new);
-	assert_eq!(request.old_directory_id(), node::Id::new(123).unwrap());
-	assert_eq!(request.new_directory_id(), node::Id::new(456).unwrap());
+	assert_eq!(request.old_directory_id(), fuse::NodeId::new(123).unwrap());
+	assert_eq!(request.new_directory_id(), fuse::NodeId::new(456).unwrap());
 	assert_eq!(request.rename_flags(), 0);
 }
 
@@ -66,8 +65,8 @@ fn request_rename2() {
 	let expect_new: &[u8] = b"new";
 	assert_eq!(request.old_name(), expect_old);
 	assert_eq!(request.new_name(), expect_new);
-	assert_eq!(request.old_directory_id(), node::Id::new(123).unwrap());
-	assert_eq!(request.new_directory_id(), node::Id::new(456).unwrap());
+	assert_eq!(request.old_directory_id(), fuse::NodeId::new(123).unwrap());
+	assert_eq!(request.new_directory_id(), fuse::NodeId::new(456).unwrap());
 	assert_eq!(request.rename_flags(), 0b111);
 }
 

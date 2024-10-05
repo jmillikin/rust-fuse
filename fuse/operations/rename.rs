@@ -20,7 +20,6 @@ use core::fmt;
 
 use crate::internal::debug;
 use crate::internal::fuse_kernel;
-use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -32,31 +31,31 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_RENAME` and `FUSE_RENAME2` operations.
 pub struct RenameRequest<'a> {
-	old_directory_id: node::Id,
-	old_name: &'a node::Name,
-	new_directory_id: node::Id,
-	new_name: &'a node::Name,
+	old_directory_id: crate::NodeId,
+	old_name: &'a crate::NodeName,
+	new_directory_id: crate::NodeId,
+	new_name: &'a crate::NodeName,
 	rename_flags: u32,
 }
 
 impl RenameRequest<'_> {
 	#[must_use]
-	pub fn old_directory_id(&self) -> node::Id {
+	pub fn old_directory_id(&self) -> crate::NodeId {
 		self.old_directory_id
 	}
 
 	#[must_use]
-	pub fn old_name(&self) -> &node::Name {
+	pub fn old_name(&self) -> &crate::NodeName {
 		self.old_name
 	}
 
 	#[must_use]
-	pub fn new_directory_id(&self) -> node::Id {
+	pub fn new_directory_id(&self) -> crate::NodeId {
 		self.new_directory_id
 	}
 
 	#[must_use]
-	pub fn new_name(&self) -> &node::Name {
+	pub fn new_name(&self) -> &crate::NodeName {
 		self.new_name
 	}
 

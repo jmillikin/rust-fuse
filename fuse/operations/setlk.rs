@@ -20,7 +20,6 @@ use core::fmt;
 
 use crate::internal::fuse_kernel;
 use crate::lock;
-use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -41,8 +40,8 @@ pub struct SetlkRequest<'a> {
 impl SetlkRequest<'_> {
 	#[inline]
 	#[must_use]
-	pub fn node_id(&self) -> node::Id {
-		unsafe { node::Id::new_unchecked(self.header.nodeid) }
+	pub fn node_id(&self) -> crate::NodeId {
+		unsafe { crate::NodeId::new_unchecked(self.header.nodeid) }
 	}
 
 	#[inline]

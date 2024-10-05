@@ -22,7 +22,6 @@ use fuse::operations::listxattr::{
 	ListxattrRequest,
 	ListxattrResponse,
 };
-use fuse::xattr;
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
@@ -95,14 +94,14 @@ fn response_with_names() {
 
 	// response must fit in provided buffer
 	{
-		let name = xattr::Name::new("12345678901").unwrap();
+		let name = fuse::XattrName::new("12345678901").unwrap();
 		assert!(names.try_push(name).is_err());
 	}
 
 	// xattr names are NUL-terminated, so two 3-byte names requires 8 bytes
 	// of buffer space.
-	names.try_push(xattr::Name::new("123").unwrap()).unwrap();
-	names.try_push(xattr::Name::new("456").unwrap()).unwrap();
+	names.try_push(fuse::XattrName::new("123").unwrap()).unwrap();
+	names.try_push(fuse::XattrName::new("456").unwrap()).unwrap();
 	assert_eq!(names.position(), 8);
 
 	let resp = ListxattrResponse::with_names(names);
@@ -157,8 +156,8 @@ fn response_with_names_debug() {
 	let mut buf = [0u8; 10];
 	let mut names = ListxattrNamesWriter::new(&mut buf);
 
-	names.try_push(xattr::Name::new("123").unwrap()).unwrap();
-	names.try_push(xattr::Name::new("456").unwrap()).unwrap();
+	names.try_push(fuse::XattrName::new("123").unwrap()).unwrap();
+	names.try_push(fuse::XattrName::new("456").unwrap()).unwrap();
 
 	let response = ListxattrResponse::with_names(names);
 	assert_eq!(

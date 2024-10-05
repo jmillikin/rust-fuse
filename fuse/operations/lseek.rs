@@ -19,7 +19,6 @@
 use core::fmt;
 
 use crate::internal::fuse_kernel;
-use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -32,12 +31,12 @@ use crate::server::encode;
 /// `FUSE_LSEEK` operation.
 pub struct LseekRequest<'a> {
 	raw: &'a fuse_kernel::fuse_lseek_in,
-	node_id: node::Id,
+	node_id: crate::NodeId,
 }
 
 impl LseekRequest<'_> {
 	#[must_use]
-	pub fn node_id(&self) -> node::Id {
+	pub fn node_id(&self) -> crate::NodeId {
 		self.node_id
 	}
 

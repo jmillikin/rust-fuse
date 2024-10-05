@@ -24,7 +24,6 @@ use crate::internal::compat;
 use crate::internal::debug;
 use crate::internal::dirent;
 use crate::internal::fuse_kernel;
-use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -42,8 +41,8 @@ pub struct ReaddirplusRequest<'a> {
 
 impl ReaddirplusRequest<'_> {
 	#[must_use]
-	pub fn node_id(&self) -> node::Id {
-		unsafe { node::Id::new_unchecked(self.header.nodeid) }
+	pub fn node_id(&self) -> crate::NodeId {
+		unsafe { crate::NodeId::new_unchecked(self.header.nodeid) }
 	}
 
 	#[must_use]
@@ -176,16 +175,16 @@ impl server::FuseResponse for ReaddirplusResponse<'_> {
 #[derive(Clone, Copy)]
 pub struct ReaddirplusEntry<'a> {
 	dirent: fuse_kernel::fuse_direntplus,
-	name: &'a node::Name,
+	name: &'a crate::NodeName,
 }
 
 impl<'a> ReaddirplusEntry<'a> {
 	#[inline]
 	#[must_use]
 	pub fn new(
-		name: &'a node::Name,
+		name: &'a crate::NodeName,
 		offset: num::NonZeroU64,
-		entry: node::Entry,
+		entry: crate::Entry,
 	) -> ReaddirplusEntry<'a> {
 		let node_id = entry.attributes().node_id();
 		let mode = entry.attributes().mode();
@@ -206,7 +205,7 @@ impl<'a> ReaddirplusEntry<'a> {
 
 	#[inline]
 	#[must_use]
-	pub fn name(&self) -> &node::Name {
+	pub fn name(&self) -> &crate::NodeName {
 		self.name
 	}
 
@@ -218,8 +217,8 @@ impl<'a> ReaddirplusEntry<'a> {
 
 	#[inline]
 	#[must_use]
-	pub fn entry(&self) -> &node::Entry {
-		unsafe { node::Entry::from_ref(&self.dirent.entry_out) }
+	pub fn entry(&self) -> &crate::Entry {
+		unsafe { crate::Entry::from_ref(&self.dirent.entry_out) }
 	}
 }
 

@@ -16,7 +16,6 @@
 
 use core::mem::size_of;
 
-use fuse::node;
 use fuse::operations::rmdir::{RmdirRequest, RmdirResponse};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
@@ -33,7 +32,7 @@ fn request() {
 	let request = decode_request!(RmdirRequest, buf);
 
 	let expect: &[u8] = b"hello.world!";
-	assert_eq!(request.parent_id(), node::Id::new(100).unwrap());
+	assert_eq!(request.parent_id(), fuse::NodeId::new(100).unwrap());
 	assert_eq!(request.name(), expect);
 }
 

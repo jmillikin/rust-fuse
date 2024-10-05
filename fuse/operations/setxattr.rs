@@ -21,11 +21,9 @@ use core::fmt;
 use crate::internal::compat;
 use crate::internal::debug;
 use crate::internal::fuse_kernel;
-use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
-use crate::xattr;
 
 // SetxattrRequest {{{
 
@@ -36,20 +34,20 @@ use crate::xattr;
 pub struct SetxattrRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_setxattr_in<'a>>,
-	name: &'a xattr::Name,
-	value: &'a xattr::Value,
+	name: &'a crate::XattrName,
+	value: &'a crate::XattrValue,
 }
 
 impl SetxattrRequest<'_> {
 	#[inline]
 	#[must_use]
-	pub fn node_id(&self) -> node::Id {
-		unsafe { node::Id::new_unchecked(self.header.nodeid) }
+	pub fn node_id(&self) -> crate::NodeId {
+		unsafe { crate::NodeId::new_unchecked(self.header.nodeid) }
 	}
 
 	#[inline]
 	#[must_use]
-	pub fn name(&self) -> &xattr::Name {
+	pub fn name(&self) -> &crate::XattrName {
 		self.name
 	}
 
@@ -72,7 +70,7 @@ impl SetxattrRequest<'_> {
 
 	#[inline]
 	#[must_use]
-	pub fn value(&self) -> &xattr::Value {
+	pub fn value(&self) -> &crate::XattrValue {
 		self.value
 	}
 }
@@ -99,9 +97,9 @@ impl<'a> server::FuseRequest<'a> for SetxattrRequest<'a> {
 		};
 
 		let name_bytes = dec.next_nul_terminated_bytes()?;
-		let name = xattr::Name::from_bytes(name_bytes.to_bytes_without_nul())?;
+		let name = crate::XattrName::from_bytes(name_bytes.to_bytes_without_nul())?;
 		let value_bytes = dec.next_bytes(body.as_v7p1().size)?;
-		let value = xattr::Value::new(value_bytes)?;
+		let value = crate::XattrValue::new(value_bytes)?;
 
 		Ok(Self { header, body, name, value })
 	}

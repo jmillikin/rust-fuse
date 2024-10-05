@@ -17,7 +17,6 @@
 use std::panic;
 use std::sync::mpsc;
 
-use fuse::node;
 use fuse::server::fuse_rpc;
 use fuse::server::prelude::*;
 use linux_syscall::ResultSize;
@@ -59,19 +58,19 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 
 		let node_id;
 		if request.name() == "file_src.txt" {
-			node_id = node::Id::new(2).unwrap();
+			node_id = fuse::NodeId::new(2).unwrap();
 		} else if request.name() == "file_dst.txt" {
-			node_id = node::Id::new(3).unwrap();
+			node_id = fuse::NodeId::new(3).unwrap();
 		} else {
 			return call.respond_err(ErrorCode::ENOENT);
 		}
 
-		let mut attr = node::Attributes::new(node_id);
-		attr.set_mode(node::Mode::S_IFREG | 0o644);
+		let mut attr = fuse::Attributes::new(node_id);
+		attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 		attr.set_link_count(1);
 		attr.set_size(1_000_000);
 
-		let mut entry = node::Entry::new(attr);
+		let mut entry = fuse::Entry::new(attr);
 		entry.set_cache_timeout(std::time::Duration::from_secs(60));
 
 		let resp = LookupResponse::new(Some(entry));

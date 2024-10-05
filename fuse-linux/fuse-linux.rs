@@ -50,7 +50,6 @@
 
 use core::ffi;
 
-use fuse::node;
 #[cfg(target_os = "linux")]
 use fuse::os::linux as fuse_os_linux;
 
@@ -158,9 +157,9 @@ pub fn mount<'a>(
 	Ok(socket)
 }
 
-fn get_root_mode(target: &ffi::CStr) -> Result<node::Mode, linux_errno::Error> {
+fn get_root_mode(target: &ffi::CStr) -> Result<fuse::FileMode, linux_errno::Error> {
 	let statx = unsafe {
 		sys::statx(sys::AT_FDCWD, target, 0, sys::STATX_MODE)?
 	};
-	Ok(node::Mode::new(u32::from(statx.stx_mode)))
+	Ok(fuse::FileMode::new(u32::from(statx.stx_mode)))
 }

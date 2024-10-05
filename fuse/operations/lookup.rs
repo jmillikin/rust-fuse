@@ -21,7 +21,6 @@ use core::time;
 
 use crate::internal::fuse_kernel;
 use crate::internal::timestamp;
-use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -34,18 +33,18 @@ use crate::server::encode;
 /// `FUSE_LOOKUP` operation.
 #[derive(Debug)]
 pub struct LookupRequest<'a> {
-	parent_id: node::Id,
-	name: &'a node::Name,
+	parent_id: crate::NodeId,
+	name: &'a crate::NodeName,
 }
 
 impl LookupRequest<'_> {
 	#[must_use]
-	pub fn parent_id(&self) -> node::Id {
+	pub fn parent_id(&self) -> crate::NodeId {
 		self.parent_id
 	}
 
 	#[must_use]
-	pub fn name(&self) -> &node::Name {
+	pub fn name(&self) -> &crate::NodeName {
 		self.name
 	}
 }
@@ -81,7 +80,7 @@ pub struct LookupResponse {
 impl LookupResponse {
 	#[inline]
 	#[must_use]
-	pub fn new(entry: Option<node::Entry>) -> LookupResponse {
+	pub fn new(entry: Option<crate::Entry>) -> LookupResponse {
 		Self {
 			entry_out: match entry {
 				Some(entry) => entry.into_entry_out(),
@@ -92,23 +91,23 @@ impl LookupResponse {
 
 	#[inline]
 	#[must_use]
-	pub fn entry(&self) -> Option<&node::Entry> {
+	pub fn entry(&self) -> Option<&crate::Entry> {
 		if self.entry_out.nodeid == 0 {
 			return None;
 		}
 		Some(unsafe {
-			node::Entry::from_ref(&self.entry_out)
+			crate::Entry::from_ref(&self.entry_out)
 		})
 	}
 
 	#[inline]
 	#[must_use]
-	pub fn entry_mut(&mut self) -> Option<&mut node::Entry> {
+	pub fn entry_mut(&mut self) -> Option<&mut crate::Entry> {
 		if self.entry_out.nodeid == 0 {
 			return None;
 		}
 		Some(unsafe {
-			node::Entry::from_ref_mut(&mut self.entry_out)
+			crate::Entry::from_ref_mut(&mut self.entry_out)
 		})
 	}
 
@@ -169,7 +168,7 @@ impl server::FuseResponse for LookupResponse {
 		if self.entry_out.nodeid == 0 && options.version_minor() < 4 {
 			return encode::error(header, crate::Error::NOT_FOUND);
 		}
-		let entry = unsafe { node::Entry::from_ref(&self.entry_out) };
+		let entry = unsafe { crate::Entry::from_ref(&self.entry_out) };
 		if options.version_minor() >= 9 {
 			return encode::sized(header, entry.as_v7p9());
 		}

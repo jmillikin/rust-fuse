@@ -21,20 +21,19 @@ use core::mem::size_of;
 use core::slice;
 
 use crate::internal::fuse_kernel;
-use crate::node;
 use crate::server;
 
 // ForgetRequest {{{
 
 #[derive(Debug)]
 pub struct ForgetRequestItem {
-	node_id: node::Id,
+	node_id: crate::NodeId,
 	lookup_count: u64,
 }
 
 impl ForgetRequestItem {
 	#[must_use]
-	pub fn node_id(&self) -> node::Id {
+	pub fn node_id(&self) -> crate::NodeId {
 		self.node_id
 	}
 
@@ -140,7 +139,7 @@ impl Iterator for ForgetRequestIter<'_> {
 			Self::One(Some(item)) => {
 				let item = *item;
 				*self = Self::One(None);
-				let node_id = node::Id::new(item.nodeid)?;
+				let node_id = crate::NodeId::new(item.nodeid)?;
 				Some(ForgetRequestItem {
 					node_id,
 					lookup_count: item.nlookup,
@@ -161,7 +160,7 @@ fn next_batch_item(
 	loop {
 		match items.split_first() {
 			None => return (None, &[]),
-			Some((head, tail)) => match node::Id::new(head.nodeid) {
+			Some((head, tail)) => match crate::NodeId::new(head.nodeid) {
 				None => {
 					items = tail;
 				},

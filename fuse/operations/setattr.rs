@@ -21,7 +21,6 @@ use core::time;
 
 use crate::internal::fuse_kernel;
 use crate::lock;
-use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -39,8 +38,8 @@ pub struct SetattrRequest<'a> {
 
 impl SetattrRequest<'_> {
 	#[must_use]
-	pub fn node_id(&self) -> node::Id {
-		unsafe { node::Id::new_unchecked(self.header.nodeid) }
+	pub fn node_id(&self) -> crate::NodeId {
+		unsafe { crate::NodeId::new_unchecked(self.header.nodeid) }
 	}
 
 	#[must_use]
@@ -122,8 +121,8 @@ impl SetattrRequest<'_> {
 	}
 
 	#[must_use]
-	pub fn mode(&self) -> Option<node::Mode> {
-		self.get(fuse_kernel::FATTR_MODE, node::Mode::new(self.raw.mode))
+	pub fn mode(&self) -> Option<crate::FileMode> {
+		self.get(fuse_kernel::FATTR_MODE, crate::FileMode::new(self.raw.mode))
 	}
 
 	#[must_use]
@@ -192,27 +191,27 @@ impl fmt::Debug for SetattrRequest<'_> {
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_SETATTR` operation.
 pub struct SetattrResponse {
-	attr_out: node::FuseAttrOut,
+	attr_out: crate::FuseAttrOut,
 }
 
 impl SetattrResponse {
 	#[inline]
 	#[must_use]
-	pub fn new(attributes: node::Attributes) -> SetattrResponse {
+	pub fn new(attributes: crate::Attributes) -> SetattrResponse {
 		Self {
-			attr_out: node::FuseAttrOut::new(attributes),
+			attr_out: crate::FuseAttrOut::new(attributes),
 		}
 	}
 
 	#[inline]
 	#[must_use]
-	pub fn attributes(&self) -> &node::Attributes {
+	pub fn attributes(&self) -> &crate::Attributes {
 		self.attr_out.attributes()
 	}
 
 	#[inline]
 	#[must_use]
-	pub fn attributes_mut(&mut self) -> &mut node::Attributes {
+	pub fn attributes_mut(&mut self) -> &mut crate::Attributes {
 		self.attr_out.attributes_mut()
 	}
 

@@ -17,7 +17,6 @@
 use std::panic;
 use std::sync::mpsc;
 
-use fuse::node;
 use fuse::server::fuse_rpc;
 use fuse::server::prelude::*;
 
@@ -48,11 +47,11 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		let cache_timeout = std::time::Duration::from_secs(60);
 
 		if request.name() == "rename_old.txt" {
-			let mut attr = node::Attributes::new(node::Id::new(2).unwrap());
-			attr.set_mode(node::Mode::S_IFREG | 0o644);
+			let mut attr = fuse::Attributes::new(fuse::NodeId::new(2).unwrap());
+			attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 			attr.set_link_count(1);
 
-			let mut entry = node::Entry::new(attr);
+			let mut entry = fuse::Entry::new(attr);
 			entry.set_cache_timeout(cache_timeout);
 
 			let resp = LookupResponse::new(Some(entry));
@@ -60,11 +59,11 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		}
 
 		if request.name() == "rename_new.txt" {
-			let mut attr = node::Attributes::new(node::Id::new(4).unwrap());
-			attr.set_mode(node::Mode::S_IFREG | 0o644);
+			let mut attr = fuse::Attributes::new(fuse::NodeId::new(4).unwrap());
+			attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 			attr.set_link_count(1);
 
-			let mut entry = node::Entry::new(attr);
+			let mut entry = fuse::Entry::new(attr);
 			entry.set_cache_timeout(cache_timeout);
 
 			let resp = LookupResponse::new(Some(entry));
@@ -72,11 +71,11 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		}
 
 		if request.name() == "rename_dir.d" {
-			let mut attr = node::Attributes::new(node::Id::new(4).unwrap());
-			attr.set_mode(node::Mode::S_IFDIR | 0o755);
+			let mut attr = fuse::Attributes::new(fuse::NodeId::new(4).unwrap());
+			attr.set_mode(fuse::FileMode::S_IFDIR | 0o755);
 			attr.set_link_count(2);
 
-			let mut entry = node::Entry::new(attr);
+			let mut entry = fuse::Entry::new(attr);
 			entry.set_cache_timeout(cache_timeout);
 
 			let resp = LookupResponse::new(Some(entry));

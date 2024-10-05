@@ -21,7 +21,6 @@ use core::marker::PhantomData;
 
 use crate::internal::fuse_kernel;
 use crate::lock;
-use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -34,14 +33,14 @@ use crate::server::encode;
 /// `FUSE_FLUSH` operation.
 pub struct FlushRequest<'a> {
 	phantom: PhantomData<&'a ()>,
-	node_id: node::Id,
+	node_id: crate::NodeId,
 	handle: u64,
 	lock_owner: lock::Owner,
 }
 
 impl FlushRequest<'_> {
 	#[must_use]
-	pub fn node_id(&self) -> node::Id {
+	pub fn node_id(&self) -> crate::NodeId {
 		self.node_id
 	}
 
@@ -85,7 +84,7 @@ impl<'a> FlushRequest<'a> {
 		dec.expect_opcode(fuse_kernel::FUSE_FLUSH)?;
 
 		let node_id = if is_cuse {
-			node::Id::ROOT
+			crate::NodeId::ROOT
 		} else {
 			decode::node_id(dec.header().nodeid)?
 		};

@@ -24,7 +24,6 @@ use crate::internal::compat;
 use crate::internal::debug;
 use crate::internal::dirent;
 use crate::internal::fuse_kernel;
-use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -42,8 +41,8 @@ pub struct ReaddirRequest<'a> {
 
 impl ReaddirRequest<'_> {
 	#[must_use]
-	pub fn node_id(&self) -> node::Id {
-		unsafe { node::Id::new_unchecked(self.header.nodeid) }
+	pub fn node_id(&self) -> crate::NodeId {
+		unsafe { crate::NodeId::new_unchecked(self.header.nodeid) }
 	}
 
 	#[must_use]
@@ -176,15 +175,15 @@ impl server::FuseResponse for ReaddirResponse<'_> {
 #[derive(Clone, Copy)]
 pub struct ReaddirEntry<'a> {
 	dirent: fuse_kernel::fuse_dirent,
-	name: &'a node::Name,
+	name: &'a crate::NodeName,
 }
 
 impl<'a> ReaddirEntry<'a> {
 	#[inline]
 	#[must_use]
 	pub fn new(
-		node_id: node::Id,
-		name: &'a node::Name,
+		node_id: crate::NodeId,
+		name: &'a crate::NodeName,
 		offset: num::NonZeroU64,
 	) -> ReaddirEntry<'a> {
 		Self {
@@ -200,13 +199,13 @@ impl<'a> ReaddirEntry<'a> {
 
 	#[inline]
 	#[must_use]
-	pub fn node_id(&self) -> node::Id {
-		unsafe { node::Id::new_unchecked(self.dirent.ino) }
+	pub fn node_id(&self) -> crate::NodeId {
+		unsafe { crate::NodeId::new_unchecked(self.dirent.ino) }
 	}
 
 	#[inline]
 	#[must_use]
-	pub fn name(&self) -> &node::Name {
+	pub fn name(&self) -> &crate::NodeName {
 		self.name
 	}
 
@@ -218,12 +217,12 @@ impl<'a> ReaddirEntry<'a> {
 
 	#[inline]
 	#[must_use]
-	pub fn file_type(&self) -> Option<node::Type> {
-		node::Type::from_bits(self.dirent.r#type)
+	pub fn file_type(&self) -> Option<crate::FileType> {
+		crate::FileType::from_bits(self.dirent.r#type)
 	}
 
 	#[inline]
-	pub fn set_file_type(&mut self, file_type: node::Type) {
+	pub fn set_file_type(&mut self, file_type: crate::FileType) {
 		self.dirent.r#type = file_type.as_bits();
 	}
 }

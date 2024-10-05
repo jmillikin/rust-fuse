@@ -19,7 +19,6 @@
 use core::fmt;
 
 use crate::internal::fuse_kernel;
-use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -32,18 +31,18 @@ use crate::server::encode;
 /// `FUSE_UNLINK` operation.
 #[derive(Debug)]
 pub struct UnlinkRequest<'a> {
-	parent_id: node::Id,
-	name: &'a node::Name,
+	parent_id: crate::NodeId,
+	name: &'a crate::NodeName,
 }
 
 impl UnlinkRequest<'_> {
 	#[must_use]
-	pub fn parent_id(&self) -> node::Id {
+	pub fn parent_id(&self) -> crate::NodeId {
 		self.parent_id
 	}
 
 	#[must_use]
-	pub fn name(&self) -> &node::Name {
+	pub fn name(&self) -> &crate::NodeName {
 		self.name
 	}
 }

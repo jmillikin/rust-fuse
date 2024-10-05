@@ -23,7 +23,6 @@ use core::num;
 use crate::cuse;
 use crate::internal::fuse_kernel;
 use crate::lock;
-use crate::node;
 use crate::operations::cuse_init::{
 	CuseInitFlag,
 	CuseInitFlags,
@@ -36,7 +35,6 @@ use crate::operations::fuse_init::{
 	FuseInitRequest,
 	FuseInitResponse,
 };
-use crate::xattr;
 
 pub mod cuse_rpc;
 pub mod fuse_rpc;
@@ -115,21 +113,21 @@ pub enum RequestError {
 	/// The request is a `FUSE_INTERRUPT` with a missing request ID.
 	MissingRequestId,
 
-	/// The request contains an invalid [`node::Name`].
-	NodeNameError(node::NameError),
+	/// The request contains an invalid [`crate::NodeName`].
+	NodeNameError(crate::NodeNameError),
 
 	/// The request contains a timestamp with too many nanoseconds.
 	TimestampOverflow,
 
-	/// The request contains an invalid [`xattr::Name`].
+	/// The request contains an invalid [`crate::XattrName`].
 	///
-	/// [`xattr::Name`]: crate::xattr::Name
-	XattrNameError(xattr::NameError),
+	/// [`crate::XattrName`]: crate::XattrName
+	XattrNameError(crate::XattrNameError),
 
-	/// The request contains an invalid [`xattr::Value`].
+	/// The request contains an invalid [`crate::XattrValue`].
 	///
-	/// [`xattr::Value`]: crate::xattr::Value
-	XattrValueError(xattr::ValueError),
+	/// [`crate::XattrValue`]: crate::XattrValue
+	XattrValueError(crate::XattrValueError),
 
 	// Errors indicating a programming error in the client.
 
@@ -153,20 +151,20 @@ impl From<lock::LockError> for RequestError {
 	}
 }
 
-impl From<node::NameError> for RequestError {
-	fn from(err: node::NameError) -> RequestError {
+impl From<crate::NodeNameError> for RequestError {
+	fn from(err: crate::NodeNameError) -> RequestError {
 		RequestError::NodeNameError(err)
 	}
 }
 
-impl From<xattr::NameError> for RequestError {
-	fn from(err: xattr::NameError) -> RequestError {
+impl From<crate::XattrNameError> for RequestError {
+	fn from(err: crate::XattrNameError) -> RequestError {
 		RequestError::XattrNameError(err)
 	}
 }
 
-impl From<xattr::ValueError> for RequestError {
-	fn from(err: xattr::ValueError) -> RequestError {
+impl From<crate::XattrValueError> for RequestError {
+	fn from(err: crate::XattrValueError) -> RequestError {
 		RequestError::XattrValueError(err)
 	}
 }

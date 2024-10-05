@@ -16,7 +16,6 @@
 
 use core::mem::size_of;
 
-use fuse::node;
 use fuse::operations::symlink::{SymlinkRequest, SymlinkResponse};
 
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
@@ -35,7 +34,7 @@ fn request() {
 
 	let expect_content: &[u8] = b"link content";
 	let expect_name: &[u8] = b"link name";
-	assert_eq!(request.parent_id(), node::Id::new(100).unwrap());
+	assert_eq!(request.parent_id(), fuse::NodeId::new(100).unwrap());
 	assert_eq!(request.name(), expect_name);
 	assert_eq!(request.content(), expect_content);
 }
@@ -66,8 +65,8 @@ fn request_impl_debug() {
 
 #[test]
 fn response_v7p1() {
-	let attr = node::Attributes::new(node::Id::new(11).unwrap());
-	let mut entry = node::Entry::new(attr);
+	let attr = fuse::Attributes::new(fuse::NodeId::new(11).unwrap());
+	let mut entry = fuse::Entry::new(attr);
 	entry.set_generation(22);
 	let resp = SymlinkResponse::new(entry);
 
@@ -106,8 +105,8 @@ fn response_v7p1() {
 
 #[test]
 fn response_v7p9() {
-	let attr = node::Attributes::new(node::Id::new(11).unwrap());
-	let mut entry = node::Entry::new(attr);
+	let attr = fuse::Attributes::new(fuse::NodeId::new(11).unwrap());
+	let mut entry = fuse::Entry::new(attr);
 	entry.set_generation(22);
 	let resp = SymlinkResponse::new(entry);
 
@@ -142,9 +141,9 @@ fn response_v7p9() {
 
 #[test]
 fn response_impl_debug() {
-	let mut attr = node::Attributes::new(node::Id::new(11).unwrap());
-	attr.set_mode(node::Mode::S_IFREG | 0o644);
-	let mut entry = node::Entry::new(attr);
+	let mut attr = fuse::Attributes::new(fuse::NodeId::new(11).unwrap());
+	attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
+	let mut entry = fuse::Entry::new(attr);
 	entry.set_generation(22);
 	let response = SymlinkResponse::new(entry);
 

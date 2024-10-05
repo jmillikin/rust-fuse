@@ -75,18 +75,73 @@ mod internal;
 
 mod error;
 
+mod node_id;
+pub use node_id::NodeId;
+
+mod node_name;
+pub use node_name::{NodeName, NodeNameError};
+
+mod file_mode;
+pub use file_mode::{FileMode, FileType};
+
+mod attributes;
+pub use attributes::{Attributes};
+pub(crate) use attributes::FuseAttrOut;
+
+mod entry;
+pub use entry::Entry;
+
+mod xattr_name;
+pub use xattr_name::{XattrName, XattrNameError};
+
+mod xattr_value;
+pub use xattr_value::{XattrValue, XattrValueError};
+
+#[cfg(target_os = "linux")]
+pub(crate) const XATTR_LIST_MAX: usize = 65536;
+
+mod errno {
+	#[cfg(target_os = "freebsd")]
+	use freebsd_errno as os_errno;
+
+	#[cfg(target_os = "linux")]
+	use linux_errno as os_errno;
+
+	use crate::Error;
+
+	#[cfg(target_os = "linux")]
+	pub(super) const ENODATA: Error = Error::from_errno(os_errno::ENODATA);
+
+	#[cfg(target_os = "freebsd")]
+	pub(super) const ENOATTR: Error = Error::from_errno(os_errno::ENOATTR);
+}
+
+#[cfg(target_os = "linux")]
+macro_rules! enodata_or_enoattr {
+	() => { errno::ENODATA };
+}
+
+#[cfg(target_os = "freebsd")]
+macro_rules! enodata_or_enoattr {
+	() => { errno::ENOATTR };
+}
+
+/// The requested extended attribute does not exist.
+///
+/// This error maps to either `ENODATA` or `ENOATTR`, depending on the
+/// target platform.
+pub const XATTR_NOT_FOUND: crate::Error = enodata_or_enoattr!();
+
 pub mod client;
 pub mod cuse;
 pub mod io;
 pub mod lock;
-pub mod node;
 pub mod notify;
 pub mod operations;
 pub mod os;
 pub mod server;
 #[cfg(feature = "unstable_async")]
 pub mod server_async;
-pub mod xattr;
 
 pub use self::error::Error;
 
@@ -125,8 +180,8 @@ impl RequestHeader {
 	/// Returns the ID of this request's primary node, if present.
 	#[inline]
 	#[must_use]
-	pub fn node_id(&self) -> Option<node::Id> {
-		node::Id::new(self.raw.nodeid)
+	pub fn node_id(&self) -> Option<crate::NodeId> {
+		crate::NodeId::new(self.raw.nodeid)
 	}
 
 	/// Returns the user ID of the process that initiated this request.

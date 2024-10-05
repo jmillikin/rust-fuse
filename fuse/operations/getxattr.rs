@@ -21,11 +21,9 @@ use core::fmt;
 use core::num;
 
 use crate::internal::fuse_kernel;
-use crate::node;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
-use crate::xattr;
 
 // GetxattrRequest {{{
 
@@ -36,14 +34,14 @@ use crate::xattr;
 pub struct GetxattrRequest<'a> {
 	header: &'a fuse_kernel::fuse_in_header,
 	body: &'a fuse_kernel::fuse_getxattr_in,
-	name: &'a xattr::Name,
+	name: &'a crate::XattrName,
 }
 
 impl GetxattrRequest<'_> {
 	#[inline]
 	#[must_use]
-	pub fn node_id(&self) -> node::Id {
-		unsafe { node::Id::new_unchecked(self.header.nodeid) }
+	pub fn node_id(&self) -> crate::NodeId {
+		unsafe { crate::NodeId::new_unchecked(self.header.nodeid) }
 	}
 
 	#[inline]
@@ -55,7 +53,7 @@ impl GetxattrRequest<'_> {
 
 	#[inline]
 	#[must_use]
-	pub fn name(&self) -> &xattr::Name {
+	pub fn name(&self) -> &crate::XattrName {
 		self.name
 	}
 }
@@ -75,7 +73,7 @@ impl<'a> server::FuseRequest<'a> for GetxattrRequest<'a> {
 
 		let body = dec.next_sized()?;
 		let name_bytes = dec.next_nul_terminated_bytes()?;
-		let name = xattr::Name::from_bytes(name_bytes.to_bytes_without_nul())?;
+		let name = crate::XattrName::from_bytes(name_bytes.to_bytes_without_nul())?;
 		Ok(Self { header, body, name })
 	}
 }
@@ -103,7 +101,7 @@ pub struct GetxattrResponse<'a> {
 }
 
 enum GetxattrOutput<'a> {
-	Value(&'a xattr::Value),
+	Value(&'a crate::XattrValue),
 	Size(fuse_kernel::fuse_getxattr_out),
 	ErrTooBig(usize),
 }
@@ -111,7 +109,7 @@ enum GetxattrOutput<'a> {
 impl<'a> GetxattrResponse<'a> {
 	#[inline]
 	#[must_use]
-	pub fn with_value(value: &'a xattr::Value) -> GetxattrResponse<'a> {
+	pub fn with_value(value: &'a crate::XattrValue) -> GetxattrResponse<'a> {
 		GetxattrResponse {
 			output: GetxattrOutput::Value(value),
 		}
@@ -171,7 +169,7 @@ impl server::FuseResponse for GetxattrResponse<'_> {
 #[inline]
 #[must_use]
 fn check_value_size(value_size: usize) -> Option<u32> {
-	if let Some(max_len) = xattr::Value::MAX_LEN {
+	if let Some(max_len) = crate::XattrValue::MAX_LEN {
 		if value_size > max_len {
 			return None;
 		}
