@@ -25,7 +25,7 @@ use fuse::operations::fuse_init::{
 };
 use fuse::server;
 
-use fuse_testutil::MessageBuilder;
+use fuse_testutil::{MessageBuilder, SendBufToVec};
 
 #[test]
 fn request_v7p1() {
@@ -124,8 +124,7 @@ fn response_v7p1() {
 	let request_id = core::num::NonZeroU64::new(0xAABBCCDD).unwrap();
 	let mut header = fuse::ResponseHeader::new(request_id);
 	let encoded = fuse::io::SendBuf::from(resp.to_response(&mut header))
-		.to_vec()
-		.unwrap();
+		.to_vec();
 
 	assert_eq!(
 		encoded,
@@ -150,8 +149,7 @@ fn response_v7p5() {
 	let request_id = core::num::NonZeroU64::new(0xAABBCCDD).unwrap();
 	let mut header = fuse::ResponseHeader::new(request_id);
 	let encoded = fuse::io::SendBuf::from(resp.to_response(&mut header))
-		.to_vec()
-		.unwrap();
+		.to_vec();
 
 	assert_eq!(
 		encoded,
@@ -183,8 +181,7 @@ fn response_v7p23() {
 	let request_id = core::num::NonZeroU64::new(0xAABBCCDD).unwrap();
 	let mut header = fuse::ResponseHeader::new(request_id);
 	let encoded = fuse::io::SendBuf::from(resp.to_response(&mut header))
-		.to_vec()
-		.unwrap();
+		.to_vec();
 
 	assert_eq!(
 		encoded,

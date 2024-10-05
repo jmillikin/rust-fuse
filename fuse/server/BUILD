@@ -19,10 +19,6 @@ rust_test(
     timeout = "short",
     srcs = ["decode_test.rs"],
     crate = "//fuse",
-    crate_features = [
-        "alloc",
-        "std",
-    ],
     rustc_flags = ['--cfg=rust_fuse_test="decode_test"'],
     deps = [
         "//fuse",

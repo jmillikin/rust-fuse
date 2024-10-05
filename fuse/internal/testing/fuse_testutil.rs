@@ -151,6 +151,21 @@ macro_rules! decode_request_opts {
 	};
 }
 
+pub trait SendBufToVec {
+	fn to_vec(&self) -> Vec<u8>;
+}
+
+impl SendBufToVec for fuse::io::SendBuf<'_> {
+	fn to_vec(&self) -> Vec<u8> {
+		let mut vec = Vec::new();
+		vec.reserve_exact(self.len());
+		for chunk in self.chunks() {
+			vec.extend_from_slice(chunk);
+		}
+		vec
+	}
+}
+
 #[macro_export]
 macro_rules! encode_response {
 	($response:expr) => {
@@ -162,6 +177,7 @@ macro_rules! encode_response {
 		use fuse::server::FuseResponse;
 		use fuse::server::FuseResponseOptions;
 		use $crate::EncodeRequestOpts;
+		use $crate::SendBufToVec;
 
 		let opts = $crate::encode_request_opts!($opts);
 
@@ -175,7 +191,7 @@ macro_rules! encode_response {
 		let request_id = core::num::NonZeroU64::new(0xAABBCCDD).unwrap();
 		let mut resp_header = fuse::ResponseHeader::new(request_id);
 		let response = $response.to_response(&mut resp_header, resp_opts);
-		fuse::io::SendBuf::from(response).to_vec().unwrap()
+		fuse::io::SendBuf::from(response).to_vec()
 	}};
 }
 

@@ -16,7 +16,7 @@
 
 //! An implementation of the FUSE protocol in Rust.
 
-#![cfg_attr(not(any(doc, feature = "std")), no_std)]
+#![no_std]
 
 #![cfg_attr(feature = "unstable_async", feature(async_fn_in_trait))]
 
@@ -66,9 +66,6 @@
 	clippy::print_stderr,
 	clippy::print_stdout,
 )]
-
-#[cfg(any(doc, feature = "alloc"))]
-extern crate alloc;
 
 #[macro_use]
 mod internal;
@@ -453,31 +450,6 @@ impl UnixTime {
 	#[must_use]
 	pub const fn nanos(&self) -> u32 {
 		self.nanos
-	}
-
-	/// Attempts to convert this `UnixTime` to a [`SystemTime`].
-	///
-	/// [`SystemTime`]: std::time::SystemTime
-	#[cfg(any(feature = "std", doc))]
-	#[must_use]
-	pub fn to_system_time(&self) -> Option<std::time::SystemTime> {
-		#![allow(clippy::std_instead_of_core)]
-		use std::time::{Duration, SystemTime};
-
-		if self.seconds == 0 && self.nanos == 0 {
-			return Some(SystemTime::UNIX_EPOCH);
-		}
-
-		if self.seconds > 0 {
-			return SystemTime::UNIX_EPOCH
-				.checked_add(Duration::from_secs(self.seconds as u64))?
-				.checked_add(Duration::from_nanos(u64::from(self.nanos)));
-		}
-
-		let seconds = self.seconds.checked_neg()?;
-		SystemTime::UNIX_EPOCH
-			.checked_sub(Duration::from_secs(seconds as u64))?
-			.checked_sub(Duration::from_nanos(u64::from(self.nanos)))
 	}
 }
 

@@ -20,6 +20,7 @@ rust_library(
     srcs = ["interop_testutil.rs"],
     edition = "2021",
     deps = [
+        ":fuse_testutil",
         "//fuse",
         "@rust_diff//:diff",
         "@rust_libc//:libc",

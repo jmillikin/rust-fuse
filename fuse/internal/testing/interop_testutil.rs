@@ -25,6 +25,8 @@ use fuse::server::cuse_rpc;
 use fuse::server::fuse_rpc;
 use fuse::server::io::{SendError, RecvError};
 
+use fuse_testutil::SendBufToVec;
+
 #[cfg(target_os = "linux")]
 pub use linux_errno as ErrorCode;
 
@@ -249,7 +251,7 @@ impl server::io::Socket for DevCuse {
 		buf: fuse::io::SendBuf,
 	) -> Result<(), SendError<io::Error>> {
 		use std::io::Write;
-		let buf = buf.to_vec().unwrap();
+		let buf = buf.to_vec();
 		let write_size = match Write::write(&mut &self.dev_cuse, &buf) {
 			Err(err) => return Err(SendError::Other(err)),
 			Ok(x) => x,
