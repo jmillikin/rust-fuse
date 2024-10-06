@@ -21,7 +21,7 @@ rust_clippy(
 
 rust_doc(
     name = "fuse-std_doc",
-    crate = ":fuse_std",
+    crate = ":fuse-std",
 )
 
 rust_doc_test(

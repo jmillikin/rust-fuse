@@ -219,5 +219,5 @@ fn main() {
 	let mount_target = std::env::args_os().nth(1).unwrap();
 	let dev_fuse = mount(&mount_target);
 	let conn = FuseServer::new().connect(dev_fuse).unwrap();
-	fuse_std::serve_fuse(conn, &handlers);
+	fuse_std::serve_fuse(&conn, &handlers);
 }

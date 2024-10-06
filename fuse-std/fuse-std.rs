@@ -70,7 +70,7 @@ fn server_threads() -> usize {
 ///
 /// [`conn.recv_buf_len()`]: FuseConnection::recv_buf_len
 pub fn serve_fuse<S, H>(
-	conn: FuseConnection<S>,
+	conn: &FuseConnection<S>,
 	handlers: &H,
 ) -> mpsc::Receiver<ServerError<S::Error>>
 where
@@ -78,8 +78,6 @@ where
 	S::Error: Send,
 	H: fuse_rpc::Handlers<S> + Send + Sync,
 {
-	let conn = &conn;
-
 	// Pre-allocate receive buffers so that an allocation failure will happen
 	// before any server threads get spawned.
 	let num_threads = server_threads();
@@ -127,7 +125,7 @@ where
 ///
 /// [`conn.recv_buf_len()`]: CuseConnection::recv_buf_len
 pub fn serve_cuse<S, H>(
-	conn: CuseConnection<S>,
+	conn: &CuseConnection<S>,
 	handlers: &H,
 ) -> mpsc::Receiver<ServerError<S::Error>>
 where
@@ -135,8 +133,6 @@ where
 	S::Error: Send,
 	H: cuse_rpc::Handlers<S> + Send + Sync,
 {
-	let conn = &conn;
-
 	// Pre-allocate receive buffers so that an allocation failure will happen
 	// before any server threads get spawned.
 	let num_threads = server_threads();
