@@ -7,6 +7,7 @@ rust_binary(
     deps = [
         "//fuse",
         "//fuse-libc",
+        "//fuse-std",
         "@rust_libc//:libc",
     ],
 )

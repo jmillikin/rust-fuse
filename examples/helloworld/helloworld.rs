@@ -191,12 +191,8 @@ fn mount(target: &OsStr) -> fuse_libc::FuseServerSocket {
 	use fuse::os::linux::MountSource;
 
 	let target_cstr = CString::new(target.as_bytes()).unwrap();
-
-	let fs_source = CString::new("helloworld").unwrap();
-	let fs_source = MountSource::new(&fs_source).unwrap();
-
-	let fs_subtype = CString::new("helloworld").unwrap();
-	let fs_subtype = FuseSubtype::new(&fs_subtype).unwrap();
+	let fs_source = MountSource::new(c"helloworld").unwrap();
+	let fs_subtype = FuseSubtype::new(c"helloworld").unwrap();
 
 	let mut mount_options = fuse::os::linux::MountOptions::new();
 	mount_options.set_mount_source(fs_source);
@@ -211,9 +207,7 @@ fn mount(target: &OsStr) -> fuse_libc::FuseServerSocket {
 	use fuse::os::freebsd::FuseSubtype;
 
 	let target_cstr = CString::new(target.as_bytes()).unwrap();
-
-	let fs_subtype = CString::new("helloworld").unwrap();
-	let fs_subtype = FuseSubtype::new(&fs_subtype).unwrap();
+	let fs_subtype = FuseSubtype::new(c"helloworld").unwrap();
 
 	let mut mount_options = fuse::os::freebsd::MountOptions::new();
 	mount_options.set_subtype(Some(fs_subtype));
@@ -225,5 +219,5 @@ fn main() {
 	let mount_target = std::env::args_os().nth(1).unwrap();
 	let dev_fuse = mount(&mount_target);
 	let conn = FuseServer::new().connect(dev_fuse).unwrap();
-	fuse_rpc::serve(&conn, &handlers);
+	fuse_std::serve_fuse(conn, &handlers);
 }
