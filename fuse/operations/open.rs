@@ -49,6 +49,7 @@ impl OpenRequest<'_> {
 	}
 
 	#[must_use]
+	#[allow(clippy::misnamed_getters)]
 	pub fn open_flags(&self) -> crate::OpenFlags {
 		self.body.flags
 	}

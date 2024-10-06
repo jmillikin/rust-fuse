@@ -14,6 +14,53 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#![allow(
+	clippy::collapsible_if,
+	clippy::len_without_is_empty,
+	clippy::match_like_matches_macro,
+	clippy::needless_late_init,
+	clippy::needless_lifetimes,
+	clippy::new_without_default,
+	clippy::tabs_in_doc_comments,
+)]
+
+#![warn(
+	// API hygiene
+	clippy::exhaustive_enums,
+	clippy::exhaustive_structs,
+	clippy::must_use_candidate,
+
+	// Panic hygiene
+	clippy::expect_used,
+	clippy::todo,
+	clippy::unimplemented,
+	clippy::unwrap_used,
+
+	// no_std hygiene
+	clippy::std_instead_of_alloc,
+	clippy::std_instead_of_core,
+
+	// Documentation coverage
+	missing_docs,
+	clippy::missing_panics_doc,
+
+	// Explicit casts
+	clippy::fn_to_numeric_cast_any,
+	clippy::ptr_as_ptr,
+
+	// Optimization
+	clippy::trivially_copy_pass_by_ref,
+
+	// Unused symbols
+	clippy::let_underscore_must_use,
+	clippy::no_effect_underscore_binding,
+	clippy::used_underscore_binding,
+
+	// Leftover debugging
+	clippy::print_stderr,
+	clippy::print_stdout,
+)]
+
 use std::alloc::Layout;
 use std::sync::mpsc;
 

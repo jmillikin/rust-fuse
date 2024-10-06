@@ -389,13 +389,13 @@ impl<'a> IoctlResponse<'a> {
 				let bytes_2: &'a [u8] = unsafe {
 					core::slice::from_raw_parts(
 						input_slices.as_ptr().cast::<u8>(),
-						size_of::<IoctlSlice>() * input_slices.len(),
+						core::mem::size_of_val(input_slices),
 					)
 				};
 				let bytes_3: &'a [u8] = unsafe {
 					core::slice::from_raw_parts(
 						output_slices.as_ptr().cast::<u8>(),
-						size_of::<IoctlSlice>() * output_slices.len(),
+						core::mem::size_of_val(output_slices),
 					)
 				};
 				encode::sized_bytes2(header, &self.raw, bytes_2, bytes_3)

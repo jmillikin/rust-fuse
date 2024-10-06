@@ -23,6 +23,7 @@ use crate::io::socket::{FuseServerSocket, LibcError};
 
 #[cfg(all(doc, not(target_os = "linux")))]
 mod fuse_os_linux {
+	#[derive(Copy, Clone)]
 	pub struct MountOptions<'a> { _p: &'a () }
 }
 

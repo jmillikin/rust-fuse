@@ -126,6 +126,7 @@ impl<S: io::CuseSocket> Call<'_, S> {
 			return;
 		}
 		let request_id = self.header().request_id();
+		#[allow(clippy::let_underscore_must_use)]
 		let _ = server::send_error(
 			self.socket,
 			request_id,

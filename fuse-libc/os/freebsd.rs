@@ -24,6 +24,7 @@ use crate::io::socket::{FuseServerSocket, LibcError};
 
 #[cfg(all(doc, not(target_os = "freebsd")))]
 mod fuse_os_freebsd {
+	#[derive(Copy, Clone)]
 	pub struct MountOptions<'a> { _p: &'a () }
 }
 
