@@ -18,7 +18,6 @@ use core::num;
 use std::sync::mpsc;
 use std::{fmt, panic};
 
-use fuse::lock;
 use fuse::server::fuse_rpc;
 use fuse::server::prelude::*;
 
@@ -99,13 +98,13 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 
 		self.requests.send(request_str).unwrap();
 
-		let range = lock::Range::new(1024, num::NonZeroU64::new(3072));
-		let pid = lock::ProcessId::new(std::process::id());
+		let range = fuse::LockRange::new(1024, num::NonZeroU64::new(3072));
+		let pid = fuse::LockOwnerProcessId::new(std::process::id());
 
 		let lock = if request.node_id() == fuse::NodeId::new(3).unwrap() {
-			Some(lock::Lock::new(lock::Mode::Shared, range, pid))
+			Some(fuse::Lock::new(fuse::LockMode::Shared, range, pid))
 		} else if request.node_id() == fuse::NodeId::new(4).unwrap() {
-			Some(lock::Lock::new(lock::Mode::Exclusive, range, pid))
+			Some(fuse::Lock::new(fuse::LockMode::Exclusive, range, pid))
 		} else {
 			None
 		};
@@ -206,7 +205,7 @@ fn getlk_fcntl_read_unlocked() {
     handle: 1002,
     owner: 123456789123456789,
     lock_mode: Shared,
-    lock_range: Range {
+    lock_range: LockRange {
         start: 100,
         length: Some(50),
     },
@@ -256,7 +255,7 @@ fn getlk_fcntl_read_unlocked_ofd() {
     handle: 1002,
     owner: 123456789123456789,
     lock_mode: Shared,
-    lock_range: Range {
+    lock_range: LockRange {
         start: 100,
         length: Some(50),
     },
@@ -316,7 +315,7 @@ fn getlk_fcntl_write_unlocked() {
     handle: 1002,
     owner: 123456789123456789,
     lock_mode: Exclusive,
-    lock_range: Range {
+    lock_range: LockRange {
         start: 100,
         length: Some(50),
     },
@@ -376,7 +375,7 @@ fn getlk_fcntl_read_unlocked_zero_len() {
     handle: 1002,
     owner: 123456789123456789,
     lock_mode: Shared,
-    lock_range: Range {
+    lock_range: LockRange {
         start: 100,
         length: None,
     },
@@ -436,7 +435,7 @@ fn getlk_fcntl_read_unlocked_one_byte() {
     handle: 1002,
     owner: 123456789123456789,
     lock_mode: Shared,
-    lock_range: Range {
+    lock_range: LockRange {
         start: 0,
         length: Some(1),
     },
@@ -496,7 +495,7 @@ fn getlk_fcntl_read_unlocked_negative_len() {
     handle: 1002,
     owner: 123456789123456789,
     lock_mode: Shared,
-    lock_range: Range {
+    lock_range: LockRange {
         start: 50,
         length: Some(50),
     },
@@ -556,7 +555,7 @@ fn getlk_fcntl_read_locked_r() {
     handle: 1003,
     owner: 123456789123456789,
     lock_mode: Shared,
-    lock_range: Range {
+    lock_range: LockRange {
         start: 100,
         length: Some(50),
     },
@@ -616,7 +615,7 @@ fn getlk_fcntl_write_locked_r() {
     handle: 1003,
     owner: 123456789123456789,
     lock_mode: Exclusive,
-    lock_range: Range {
+    lock_range: LockRange {
         start: 100,
         length: Some(50),
     },
@@ -676,7 +675,7 @@ fn getlk_fcntl_read_locked_w() {
     handle: 1004,
     owner: 123456789123456789,
     lock_mode: Shared,
-    lock_range: Range {
+    lock_range: LockRange {
         start: 100,
         length: Some(50),
     },
@@ -736,7 +735,7 @@ fn getlk_fcntl_write_locked_w() {
     handle: 1004,
     owner: 123456789123456789,
     lock_mode: Exclusive,
-    lock_range: Range {
+    lock_range: LockRange {
         start: 100,
         length: Some(50),
     },

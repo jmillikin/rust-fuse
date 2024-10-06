@@ -17,7 +17,6 @@
 use core::mem::size_of;
 
 use fuse::kernel;
-use fuse::lock;
 use fuse::operations::flush::{FlushRequest, FlushResponse};
 
 use fuse_testutil as testutil;
@@ -39,7 +38,7 @@ fn request() {
 	let req = decode_request!(FlushRequest, buf);
 
 	assert_eq!(req.handle(), 123);
-	assert_eq!(req.lock_owner(), lock::Owner::new(456));
+	assert_eq!(req.lock_owner(), fuse::LockOwner::new(456));
 }
 
 #[test]

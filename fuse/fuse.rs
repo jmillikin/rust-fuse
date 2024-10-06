@@ -90,6 +90,31 @@ pub(crate) use attributes::FuseAttrOut;
 mod entry;
 pub use entry::Entry;
 
+mod notify;
+pub use notify::{
+	FuseNotification,
+	Delete as NotifyDelete,
+	InvalidateEntry as NotifyInvalidateEntry,
+	InvalidateInode as NotifyInvalidateInode,
+	Poll as NotifyPoll,
+};
+
+pub(crate) mod lock;
+pub use lock::{
+	Lock,
+	LockError,
+	LockMode,
+	LockRange,
+	LockOwner,
+	ProcessId as LockOwnerProcessId,
+};
+
+mod process_id;
+pub use process_id::ProcessId;
+
+mod unix_time;
+pub use unix_time::UnixTime;
+
 mod xattr_name;
 pub use xattr_name::{XattrName, XattrNameError};
 
@@ -134,8 +159,6 @@ pub const XATTR_NOT_FOUND: crate::Error = enodata_or_enoattr!();
 pub mod client;
 pub mod cuse;
 pub mod io;
-pub mod lock;
-pub mod notify;
 pub mod operations;
 pub mod os;
 pub mod server;
@@ -198,8 +221,8 @@ impl RequestHeader {
 	/// Returns the process ID of the process that initiated this request,
 	/// if present.
 	///
-	/// See the documentation of [`ProcessId`](crate::ProcessId) for details
-	/// on the semantics of this value.
+	/// See the documentation of [`ProcessId`] for details on the semantics of
+	/// this value.
 	///
 	/// A request might not have a process ID, for example if it was generated
 	/// internally by the kernel, or if the client's PID isn't visible in the
@@ -334,134 +357,6 @@ pub type SetxattrFlags = u32;
 
 /// OS-specific event types used with `poll()`.
 pub type PollEvents = u32;
-
-// ProcessId {{{
-
-/// Represents a process that initiated a FUSE request.
-///
-/// The concept of a "process ID" is not fully specified by POSIX, and some
-/// platforms may report process IDs that don't match the intuitive userland
-/// meaning. For example, platforms that represent processes as a group of
-/// threads might populate a request's process ID from the thread ID (TID)
-/// rather than the thread group ID (TGID).
-#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct ProcessId {
-	pid: core::num::NonZeroU32,
-}
-
-impl ProcessId {
-	/// Creates a new `ProcessId` if the given value is not zero.
-	#[inline]
-	#[must_use]
-	pub fn new(pid: u32) -> Option<ProcessId> {
-		Some(Self {
-			pid: core::num::NonZeroU32::new(pid)?,
-		})
-	}
-
-	/// Returns the process ID as a primitive integer.
-	#[inline]
-	#[must_use]
-	pub fn get(&self) -> u32 {
-		self.pid.get()
-	}
-}
-
-impl core::fmt::Debug for ProcessId {
-	fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
-		self.pid.fmt(fmt)
-	}
-}
-
-// }}}
-
-// UnixTime {{{
-
-/// A measurement of Unix time with nanosecond precision.
-///
-/// Unix time is the number of Unix seconds that have elapsed since the Unix
-/// epoch of 1970-01-01 00:00:00 UTC. Unix seconds are exactly 1/86400 of a day.
-#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct UnixTime {
-	seconds: i64,
-	nanos: u32,
-}
-
-const UNIX_EPOCH: UnixTime = UnixTime {
-	seconds: 0,
-	nanos: 0,
-};
-
-impl UnixTime {
-	/// The Unix epoch, 1970-01-01 00:00:00 UTC.
-	pub const EPOCH: UnixTime = UNIX_EPOCH;
-
-	/// Creates a new `UnixTime` with the given offset from the epoch.
-	///
-	/// Returns `None` if the nanoseconds value exceeds 999,999,999.
-	#[inline]
-	#[must_use]
-	pub const fn new(seconds: i64, nanos: u32) -> Option<UnixTime> {
-		if nanos > crate::internal::timestamp::MAX_NANOS {
-			return None;
-		}
-		Some(Self { seconds, nanos })
-	}
-
-	/// Creates a new `UnixTime` without checking that the nanoseconds value
-	/// is valid.
-	///
-	/// # Safety
-	///
-	/// The nanoseconds value must not exceed 999,999,999.
-	#[inline]
-	#[must_use]
-	pub const unsafe fn new_unchecked(seconds: i64, nanos: u32) -> UnixTime {
-		Self { seconds, nanos }
-	}
-
-	#[inline]
-	#[must_use]
-	pub(crate) unsafe fn from_timespec_unchecked(
-		seconds: u64,
-		nanos: u32,
-	) -> UnixTime {
-		Self {
-			seconds: seconds as i64,
-			nanos,
-		}
-	}
-
-	#[inline]
-	#[must_use]
-	pub(crate) fn as_timespec(&self) -> (u64, u32) {
-		(self.seconds as u64, self.nanos)
-	}
-
-	/// Returns the number of whole seconds contained by this `UnixTime`.
-	#[inline]
-	#[must_use]
-	pub const fn seconds(&self) -> i64 {
-		self.seconds
-	}
-
-	/// Returns the fractional part of this `UnixTime`, in nanoseconds.
-	#[inline]
-	#[must_use]
-	pub const fn nanos(&self) -> u32 {
-		self.nanos
-	}
-}
-
-impl core::fmt::Debug for UnixTime {
-	fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
-		fmt.debug_tuple("UnixTime")
-			.field(&format_args!("{:?}.{:09?}", self.seconds, self.nanos))
-			.finish()
-	}
-}
-
-// }}}
 
 // Version {{{
 

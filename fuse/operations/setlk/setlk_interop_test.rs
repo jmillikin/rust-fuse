@@ -179,14 +179,14 @@ fn setlk_fcntl_read() {
     lock: Some(
         Lock {{
             mode: Shared,
-            range: Range {{
+            range: LockRange {{
                 start: 100,
                 length: Some(50),
             }},
             process_id: Some({pid}),
         }},
     ),
-    lock_range: Range {{
+    lock_range: LockRange {{
         start: 100,
         length: Some(50),
     }},
@@ -206,7 +206,7 @@ fn setlk_fcntl_read() {
     may_block: false,
     owner: 123456789123456789,
     lock: None,
-    lock_range: Range {
+    lock_range: LockRange {
         start: 0,
         length: None,
     },
@@ -261,14 +261,14 @@ fn setlkw_fcntl_read() {
     lock: Some(
         Lock {{
             mode: Shared,
-            range: Range {{
+            range: LockRange {{
                 start: 100,
                 length: Some(50),
             }},
             process_id: Some({pid}),
         }},
     ),
-    lock_range: Range {{
+    lock_range: LockRange {{
         start: 100,
         length: Some(50),
     }},
@@ -288,7 +288,7 @@ fn setlkw_fcntl_read() {
     may_block: false,
     owner: 123456789123456789,
     lock: None,
-    lock_range: Range {
+    lock_range: LockRange {
         start: 0,
         length: None,
     },
@@ -338,14 +338,14 @@ fn setlk_fcntl_write() {
     lock: Some(
         Lock {{
             mode: Exclusive,
-            range: Range {{
+            range: LockRange {{
                 start: 100,
                 length: Some(50),
             }},
             process_id: Some({pid}),
         }},
     ),
-    lock_range: Range {{
+    lock_range: LockRange {{
         start: 100,
         length: Some(50),
     }},
@@ -365,7 +365,7 @@ fn setlk_fcntl_write() {
     may_block: false,
     owner: 123456789123456789,
     lock: None,
-    lock_range: Range {
+    lock_range: LockRange {
         start: 0,
         length: None,
     },
@@ -409,14 +409,14 @@ fn setlkw_fcntl_write() {
     lock: Some(
         Lock {{
             mode: Exclusive,
-            range: Range {{
+            range: LockRange {{
                 start: 100,
                 length: Some(50),
             }},
             process_id: Some({pid}),
         }},
     ),
-    lock_range: Range {{
+    lock_range: LockRange {{
         start: 100,
         length: Some(50),
     }},
@@ -456,7 +456,7 @@ fn setlk_fcntl_unlock() {
     may_block: false,
     owner: 123456789123456789,
     lock: None,
-    lock_range: Range {
+    lock_range: LockRange {
         start: 100,
         length: Some(50),
     },
@@ -494,7 +494,7 @@ fn setlkw_fcntl_unlock() {
     may_block: true,
     owner: 123456789123456789,
     lock: None,
-    lock_range: Range {
+    lock_range: LockRange {
         start: 100,
         length: Some(50),
     },
@@ -526,14 +526,14 @@ fn setlk_flock_shared() {
     lock: Some(
         Lock {{
             mode: Shared,
-            range: Range {{
+            range: LockRange {{
                 start: 0,
                 length: None,
             }},
             process_id: Some({pid}),
         }},
     ),
-    lock_range: Range {{
+    lock_range: LockRange {{
         start: 0,
         length: None,
     }},
@@ -569,14 +569,14 @@ fn setlkw_flock_shared() {
     lock: Some(
         Lock {{
             mode: Shared,
-            range: Range {{
+            range: LockRange {{
                 start: 0,
                 length: None,
             }},
             process_id: Some({pid}),
         }},
     ),
-    lock_range: Range {{
+    lock_range: LockRange {{
         start: 0,
         length: None,
     }},
@@ -612,14 +612,14 @@ fn setlk_flock_exclusive() {
     lock: Some(
         Lock {{
             mode: Exclusive,
-            range: Range {{
+            range: LockRange {{
                 start: 0,
                 length: None,
             }},
             process_id: Some({pid}),
         }},
     ),
-    lock_range: Range {{
+    lock_range: LockRange {{
         start: 0,
         length: None,
     }},
@@ -655,14 +655,14 @@ fn setlkw_flock_exclusive() {
     lock: Some(
         Lock {{
             mode: Exclusive,
-            range: Range {{
+            range: LockRange {{
                 start: 0,
                 length: None,
             }},
             process_id: Some({pid}),
         }},
     ),
-    lock_range: Range {{
+    lock_range: LockRange {{
         start: 0,
         length: None,
     }},
@@ -693,7 +693,7 @@ fn setlk_flock_unlock() {
     may_block: false,
     owner: 123456789123456789,
     lock: None,
-    lock_range: Range {
+    lock_range: LockRange {
         start: 0,
         length: None,
     },
@@ -722,7 +722,7 @@ fn setlkw_flock_unlock() {
     may_block: true,
     owner: 123456789123456789,
     lock: None,
-    lock_range: Range {
+    lock_range: LockRange {
         start: 0,
         length: None,
     },

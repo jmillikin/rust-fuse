@@ -23,7 +23,6 @@ use core::slice;
 use crate::internal::compat;
 use crate::internal::debug;
 use crate::kernel;
-use crate::lock;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -124,12 +123,12 @@ impl WriteRequest<'_> {
 	}
 
 	#[must_use]
-	pub fn lock_owner(&self) -> Option<lock::Owner> {
+	pub fn lock_owner(&self) -> Option<crate::LockOwner> {
 		let body = self.body_v7p9()?;
 		if body.write_flags & kernel::FUSE_WRITE_LOCKOWNER == 0 {
 			return None;
 		}
-		Some(lock::Owner::new(body.lock_owner))
+		Some(crate::LockOwner::new(body.lock_owner))
 	}
 
 	#[must_use]

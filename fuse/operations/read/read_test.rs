@@ -17,7 +17,6 @@
 use core::mem::size_of;
 
 use fuse::kernel;
-use fuse::lock;
 use fuse::operations::read::{ReadRequest, ReadResponse};
 
 use fuse_testutil as testutil;
@@ -94,7 +93,7 @@ fn request_lock_owner() {
 
 	let req = decode_request!(ReadRequest, buf);
 
-	assert_eq!(req.lock_owner(), Some(lock::Owner::new(123)));
+	assert_eq!(req.lock_owner(), Some(fuse::LockOwner::new(123)));
 }
 
 #[test]

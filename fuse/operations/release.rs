@@ -21,7 +21,6 @@ use core::fmt;
 use crate::internal::compat;
 use crate::internal::debug;
 use crate::kernel;
-use crate::lock;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -52,12 +51,12 @@ impl ReleaseRequest<'_> {
 	}
 
 	#[must_use]
-	pub fn lock_owner(&self) -> Option<lock::Owner> {
+	pub fn lock_owner(&self) -> Option<crate::LockOwner> {
 		let body = self.body.as_v7p8()?;
 		if body.release_flags & kernel::FUSE_RELEASE_FLOCK_UNLOCK == 0 {
 			return None;
 		}
-		Some(lock::Owner::new(body.lock_owner))
+		Some(crate::LockOwner::new(body.lock_owner))
 	}
 
 	#[must_use]

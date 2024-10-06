@@ -20,7 +20,6 @@ use core::cmp;
 use core::fmt;
 
 use crate::kernel;
-use crate::lock;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -34,8 +33,8 @@ use crate::server::encode;
 pub struct GetlkRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_lk_in,
-	lock_mode: lock::Mode,
-	lock_range: lock::Range,
+	lock_mode: crate::LockMode,
+	lock_range: crate::LockRange,
 }
 
 impl GetlkRequest<'_> {
@@ -53,19 +52,19 @@ impl GetlkRequest<'_> {
 
 	#[inline]
 	#[must_use]
-	pub fn owner(&self) -> lock::Owner {
-		lock::Owner::new(self.body.owner)
+	pub fn owner(&self) -> crate::LockOwner {
+		crate::LockOwner::new(self.body.owner)
 	}
 
 	#[inline]
 	#[must_use]
-	pub fn lock_mode(&self) -> lock::Mode {
+	pub fn lock_mode(&self) -> crate::LockMode {
 		self.lock_mode
 	}
 
 	#[inline]
 	#[must_use]
-	pub fn lock_range(&self) -> lock::Range {
+	pub fn lock_range(&self) -> crate::LockRange {
 		self.lock_range
 	}
 }
@@ -84,8 +83,8 @@ impl<'a> server::FuseRequest<'a> for GetlkRequest<'a> {
 		decode::node_id(header.nodeid)?;
 
 		let body: &kernel::fuse_lk_in = dec.next_sized()?;
-		let lock_mode = lock::decode_mode(&body.lk)?;
-		let lock_range = lock::decode_range(&body.lk)?;
+		let lock_mode = crate::LockMode::decode(&body.lk)?;
+		let lock_range = crate::LockRange::decode(&body.lk)?;
 		Ok(Self { header, body, lock_mode, lock_range })
 	}
 }
@@ -111,33 +110,33 @@ impl fmt::Debug for GetlkRequest<'_> {
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_GETLK` operation.
 pub struct GetlkResponse {
-	lock: Option<lock::Lock>,
+	lock: Option<crate::Lock>,
 	raw: kernel::fuse_lk_out,
 }
 
 impl GetlkResponse {
 	#[inline]
 	#[must_use]
-	pub fn new(lock: Option<lock::Lock>) -> GetlkResponse {
+	pub fn new(lock: Option<crate::Lock>) -> GetlkResponse {
 		let fuse_lock = match &lock {
 			None => kernel::fuse_file_lock {
-				r#type: lock::F_UNLCK,
+				r#type: crate::lock::F_UNLCK,
 				start: 0,
 				end: 0,
 				pid: 0,
 			},
 			Some(lock) => kernel::fuse_file_lock {
 				r#type: match lock.mode() {
-					lock::Mode::Exclusive => lock::F_WRLCK,
-					lock::Mode::Shared => lock::F_RDLCK,
+					crate::LockMode::Exclusive => crate::lock::F_WRLCK,
+					crate::LockMode::Shared => crate::lock::F_RDLCK,
 				},
 				start: cmp::min(
 					lock.range().start(),
-					lock::OFFSET_MAX,
+					crate::lock::OFFSET_MAX,
 				),
 				end: cmp::min(
-					lock.range().end().unwrap_or(lock::OFFSET_MAX),
-					lock::OFFSET_MAX,
+					lock.range().end().unwrap_or(crate::lock::OFFSET_MAX),
+					crate::lock::OFFSET_MAX,
 				),
 				pid: lock.process_id().map(|x| x.get()).unwrap_or(0),
 			},
@@ -151,7 +150,7 @@ impl GetlkResponse {
 
 	#[inline]
 	#[must_use]
-	pub fn lock(&self) -> Option<lock::Lock> {
+	pub fn lock(&self) -> Option<crate::Lock> {
 		self.lock
 	}
 }

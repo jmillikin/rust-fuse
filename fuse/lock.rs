@@ -70,20 +70,20 @@ pub(crate) use sys_fcntl::{F_RDLCK, F_UNLCK, F_WRLCK};
 
 pub(crate) const OFFSET_MAX: u64 = i64::MAX as u64;
 
-// Owner {{{
+// LockOwner {{{
 
 /// Opaque identifier for the owner of advisory locks.
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Owner {
+pub struct LockOwner {
 	owner: u64,
 }
 
-impl Owner {
-	/// Creates a new `Owner` with the given lock owner.
+impl LockOwner {
+	/// Creates a new `LockOwner` with the given lock owner.
 	#[inline]
 	#[must_use]
-	pub fn new(owner: u64) -> Owner {
-		Owner { owner }
+	pub fn new(owner: u64) -> LockOwner {
+		LockOwner { owner }
 	}
 
 	/// Returns the lock owner as a primitive integer.
@@ -94,7 +94,7 @@ impl Owner {
 	}
 }
 
-impl fmt::Debug for Owner {
+impl fmt::Debug for LockOwner {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		debug::hex_u64(self.owner).fmt(fmt)
 	}
@@ -102,20 +102,20 @@ impl fmt::Debug for Owner {
 
 // }}}
 
-// Range {{{
+// LockRange {{{
 
 /// Represents a (possibly unbounded) range of bytes within a file.
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Range {
+pub struct LockRange {
 	start: u64,
 	length: Option<num::NonZeroU64>,
 }
 
-impl Range {
-	/// Creates a new `Range` with the given start offset and length.
+impl LockRange {
+	/// Creates a new `LockRange` with the given start offset and length.
 	#[inline]
 	#[must_use]
-	pub const fn new(start: u64, length: Option<num::NonZeroU64>) -> Range {
+	pub const fn new(start: u64, length: Option<num::NonZeroU64>) -> LockRange {
 		Self { start, length }
 	}
 
@@ -142,11 +142,52 @@ impl Range {
 			Some(length) => Some(self.start.saturating_add(length.get() - 1)),
 		}
 	}
+
+	pub(crate) fn decode(
+		raw: &kernel::fuse_file_lock,
+	) -> Result<LockRange, LockError> {
+		// Both Linux and FreeBSD allow the `(*struct flock)->l_len` field to be
+		// negative, but generate different `fuse_file_lock` values in this case:
+		//
+		// * Linux swaps the `start` and `end` fields before generating the
+		//   FUSE request, such that the `end >= start` invariant is maintained.
+		//
+		// * FreeBSD leaves `start` unchanged and computes `end` relative to
+		//   the negative length.
+		//
+		// To avoid exposing this to FUSE filesystem authors, detect the case of
+		// `start > end` and swap the fields.
+		if raw.start > raw.end {
+			let start = raw.end.saturating_add(1);
+			return match num::NonZeroU64::new(raw.start - start) {
+				None => Err(LockError::EmptyRange),
+				Some(length) => Ok(LockRange {
+					start,
+					length: Some(length),
+				}),
+			};
+		}
+
+		if raw.end >= OFFSET_MAX {
+			return Ok(LockRange {
+				start: raw.start,
+				length: None,
+			});
+		}
+
+		let length = (raw.end - raw.start).saturating_add(1);
+		Ok(LockRange {
+			start: raw.start,
+			length: Some(unsafe {
+				num::NonZeroU64::new_unchecked(length)
+			}),
+		})
+	}
 }
 
-impl fmt::Debug for Range {
+impl fmt::Debug for LockRange {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("Range")
+		fmt.debug_struct("LockRange")
 			.field("start", &self.start())
 			.field("length", &format_args!("{:?}", self.length()))
 			.finish()
@@ -163,7 +204,7 @@ impl fmt::Debug for Range {
 /// [`fuse::ProcessId`](crate::ProcessId) struct, although on some platforms
 /// they may be equivalent.
 ///
-/// For representing lock ownership the [`Owner`] type should be used instead.
+/// For representing lock ownership the [`LockOwner`] type should be used instead.
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ProcessId {
 	pid: num::NonZeroU32,
@@ -182,7 +223,7 @@ impl ProcessId {
 	/// Returns the process ID as a primitive integer.
 	#[inline]
 	#[must_use]
-	pub fn get(&self) -> u32 {
+	pub fn get(self) -> u32 {
 		self.pid.get()
 	}
 }
@@ -209,7 +250,7 @@ pub enum LockError {
 /// Whether a lock is an exclusive (write) or shared (read) lock.
 #[allow(clippy::exhaustive_enums)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum Mode {
+pub enum LockMode {
 	/// Exclusive locks may be held only by a single owner.
 	Exclusive,
 
@@ -217,13 +258,25 @@ pub enum Mode {
 	Shared,
 }
 
+impl LockMode {
+	pub(crate) fn decode(
+		raw: &kernel::fuse_file_lock,
+	) -> Result<LockMode, LockError> {
+		match raw.r#type {
+			F_WRLCK => Ok(LockMode::Exclusive),
+			F_RDLCK => Ok(LockMode::Shared),
+			_ => Err(LockError::UnknownMode),
+		}
+	}
+}
+
 // Lock {{{
 
 /// Represents an advisory lock on an open file.
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct Lock {
-	mode: Mode,
-	range: Range,
+	mode: LockMode,
+	range: LockRange,
 	process_id: Option<ProcessId>,
 }
 
@@ -232,8 +285,8 @@ impl Lock {
 	#[inline]
 	#[must_use]
 	pub fn new(
-		mode: Mode,
-		range: Range,
+		mode: LockMode,
+		range: LockRange,
 		process_id: Option<ProcessId>,
 	) -> Lock {
 		Self { mode, range, process_id }
@@ -242,14 +295,14 @@ impl Lock {
 	/// Returns the lock's mode (exclusive or shared).
 	#[inline]
 	#[must_use]
-	pub fn mode(&self) -> Mode {
+	pub fn mode(&self) -> LockMode {
 		self.mode
 	}
 
 	/// Returns the byte range covered by a lock.
 	#[inline]
 	#[must_use]
-	pub fn range(&self) -> Range {
+	pub fn range(&self) -> LockRange {
 		self.range
 	}
 
@@ -258,6 +311,15 @@ impl Lock {
 	#[must_use]
 	pub fn process_id(&self) -> Option<ProcessId> {
 		self.process_id
+	}
+
+	pub(crate) fn decode(
+		raw: &kernel::fuse_file_lock,
+	) -> Result<Lock, LockError> {
+		let mode = LockMode::decode(raw)?;
+		let range = LockRange::decode(raw)?;
+		let process_id = ProcessId::new(raw.pid);
+		Ok(Lock { mode, range, process_id })
 	}
 }
 
@@ -272,63 +334,3 @@ impl fmt::Debug for Lock {
 }
 
 // }}}
-
-pub(crate) fn decode(
-	raw: &kernel::fuse_file_lock,
-) -> Result<Lock, LockError> {
-	let mode = decode_mode(raw)?;
-	let range = decode_range(raw)?;
-	let process_id = ProcessId::new(raw.pid);
-	Ok(Lock { mode, range, process_id })
-}
-
-pub(crate) fn decode_mode(
-	raw: &kernel::fuse_file_lock,
-) -> Result<Mode, LockError> {
-	match raw.r#type {
-		F_WRLCK => Ok(Mode::Exclusive),
-		F_RDLCK => Ok(Mode::Shared),
-		_ => Err(LockError::UnknownMode),
-	}
-}
-
-pub(crate) fn decode_range(
-	raw: &kernel::fuse_file_lock,
-) -> Result<Range, LockError> {
-	// Both Linux and FreeBSD allow the `(*struct flock)->l_len` field to be
-	// negative, but generate different `fuse_file_lock` values in this case:
-	//
-	// * Linux swaps the `start` and `end` fields before generating the
-	//   FUSE request, such that the `end >= start` invariant is maintained.
-	//
-	// * FreeBSD leaves `start` unchanged and computes `end` relative to
-	//   the negative length.
-	//
-	// To avoid exposing this to FUSE filesystem authors, detect the case of
-	// `start > end` and swap the fields.
-	if raw.start > raw.end {
-		let start = raw.end.saturating_add(1);
-		return match num::NonZeroU64::new(raw.start - start) {
-			None => Err(LockError::EmptyRange),
-			Some(length) => Ok(Range {
-				start,
-				length: Some(length),
-			}),
-		};
-	}
-
-	if raw.end >= OFFSET_MAX {
-		return Ok(Range {
-			start: raw.start,
-			length: None,
-		});
-	}
-
-	let length = (raw.end - raw.start).saturating_add(1);
-	Ok(Range {
-		start: raw.start,
-		length: Some(unsafe {
-			num::NonZeroU64::new_unchecked(length)
-		}),
-	})
-}

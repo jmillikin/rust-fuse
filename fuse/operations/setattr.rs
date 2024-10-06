@@ -20,7 +20,6 @@ use core::fmt;
 use core::time;
 
 use crate::kernel;
-use crate::lock;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -76,10 +75,10 @@ impl SetattrRequest<'_> {
 	}
 
 	#[must_use]
-	pub fn lock_owner(&self) -> Option<lock::Owner> {
+	pub fn lock_owner(&self) -> Option<crate::LockOwner> {
 		self.get(
 			kernel::FATTR_LOCKOWNER,
-			lock::Owner::new(self.raw.lock_owner),
+			crate::LockOwner::new(self.raw.lock_owner),
 		)
 	}
 

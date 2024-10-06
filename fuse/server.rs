@@ -22,7 +22,6 @@ use core::num;
 
 use crate::cuse;
 use crate::kernel;
-use crate::lock;
 use crate::operations::cuse_init::{
 	CuseInitFlag,
 	CuseInitFlags,
@@ -98,8 +97,8 @@ impl<E> From<io::SendError<E>> for ServerError<E> {
 pub enum RequestError {
 	/// The request contains an invalid [`Lock`].
 	///
-	/// [`Lock`]: crate::lock::Lock
-	LockError(lock::LockError),
+	/// [`Lock`]: crate::Lock
+	LockError(crate::LockError),
 
 	/// The request is missing one or mode node IDs.
 	///
@@ -145,8 +144,8 @@ pub enum RequestError {
 	OpcodeMismatch,
 }
 
-impl From<lock::LockError> for RequestError {
-	fn from(err: lock::LockError) -> RequestError {
+impl From<crate::LockError> for RequestError {
+	fn from(err: crate::LockError) -> RequestError {
 		RequestError::LockError(err)
 	}
 }
@@ -1043,6 +1042,15 @@ pub fn send_error<S: io::Socket>(
 ) -> Result<(), io::SendError<S::Error>> {
 	let mut response_header = crate::ResponseHeader::new(request_id);
 	socket.send(encode::error(&mut response_header, error).into())
+}
+
+#[allow(missing_docs)] // TODO
+pub fn send_notification<S: io::Socket>(
+	conn: &FuseConnection<S>,
+	notification: &crate::FuseNotification<'_>,
+) -> Result<(), io::SendError<S::Error>> {
+	let mut header = crate::ResponseHeader::new_notification();
+	conn.socket.send(notification.encode(&mut header))
 }
 
 fn recv_buf_len(max_write: u32) -> usize {

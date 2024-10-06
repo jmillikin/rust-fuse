@@ -24,9 +24,6 @@ use core::num;
 use crate::kernel;
 use crate::operations::poll;
 use crate::server::encode;
-use crate::server::io;
-#[cfg(feature = "unstable_async")]
-use crate::server_async;
 
 // FuseNotification {{{
 
@@ -39,24 +36,7 @@ pub enum FuseNotification<'a> {
 }
 
 impl FuseNotification<'_> {
-	pub fn send<S: io::Socket>(
-		&self,
-		socket: &S,
-	) -> Result<(), io::SendError<S::Error>> {
-		let mut header = crate::ResponseHeader::new_notification();
-		socket.send(self.encode(&mut header))
-	}
-
-	#[cfg(feature = "unstable_async")]
-	pub async fn send_async<S: server_async::io::Socket>(
-		&self,
-		socket: &S,
-	) -> Result<(), io::SendError<S::Error>> {
-		let mut header = crate::ResponseHeader::new_notification();
-		socket.send(self.encode(&mut header)).await
-	}
-
-	fn encode<'a>(
+	pub(crate) fn encode<'a>(
 		&'a self,
 		header: &'a mut crate::ResponseHeader,
 	) -> crate::io::SendBuf<'a> {
