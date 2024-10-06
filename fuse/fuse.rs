@@ -68,8 +68,6 @@
 #[macro_use]
 mod internal;
 
-pub use crate::internal::fuse_kernel as kernel;
-
 mod error;
 
 mod node_id;
@@ -87,6 +85,20 @@ pub(crate) use attributes::FuseAttrOut;
 
 mod entry;
 pub use entry::Entry;
+
+/// Types and constants defined by the FUSE kernel interface.
+///
+/// This module is automatically generated from [`fuse.h`] in the Linux kernel
+/// source tree.
+///
+/// [`fuse.h`]: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/uapi/linux/fuse.h?h=v5.19
+#[allow(
+	dead_code,
+	missing_docs,
+	non_camel_case_types,
+	unused_parens,
+)]
+pub mod kernel;
 
 mod notify;
 pub use notify::{

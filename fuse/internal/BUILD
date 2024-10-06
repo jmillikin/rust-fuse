@@ -7,7 +7,6 @@ filegroup(
         "compat.rs",
         "debug.rs",
         "dirent.rs",
-        "fuse_kernel.rs",
         "timestamp.rs",
     ],
     visibility = ["//fuse:__subpackages__"],
