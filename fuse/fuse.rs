@@ -18,8 +18,6 @@
 
 #![no_std]
 
-#![cfg_attr(feature = "unstable_async", feature(async_fn_in_trait))]
-
 #![allow(
 	clippy::collapsible_if,
 	clippy::len_without_is_empty,
@@ -162,8 +160,6 @@ pub mod io;
 pub mod operations;
 pub mod os;
 pub mod server;
-#[cfg(feature = "unstable_async")]
-pub mod server_async;
 
 pub use self::error::Error;
 

@@ -14,7 +14,6 @@ rust_library(
         "//fuse/operations:srcs",
         "//fuse/os:srcs",
         "//fuse/server:srcs",
-        "//fuse/server_async:srcs",
     ],
     edition = "2021",
     visibility = ["//visibility:public"],
