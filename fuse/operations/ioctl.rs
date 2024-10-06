@@ -21,7 +21,7 @@ use core::marker::PhantomData;
 use core::mem::size_of;
 
 use crate::internal::debug;
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -33,8 +33,8 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_IOCTL` operation.
 pub struct IoctlRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	body: &'a fuse_kernel::fuse_ioctl_in,
+	header: &'a kernel::fuse_in_header,
+	body: &'a kernel::fuse_ioctl_in,
 	input: &'a [u8],
 }
 
@@ -108,10 +108,10 @@ impl<'a> IoctlRequest<'a> {
 		is_cuse: bool,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_IOCTL)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_IOCTL)?;
 
 		let header = dec.header();
-		let body: &'a fuse_kernel::fuse_ioctl_in = dec.next_sized()?;
+		let body: &'a kernel::fuse_ioctl_in = dec.next_sized()?;
 
 		if !is_cuse {
 			decode::node_id(header.nodeid)?;
@@ -303,7 +303,7 @@ impl<'a> IoctlInputReader<'a> {
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_IOCTL` operation.
 pub struct IoctlResponse<'a> {
-	raw: fuse_kernel::fuse_ioctl_out,
+	raw: kernel::fuse_ioctl_out,
 	output: IoctlResponseOutput<'a>,
 	set_result: bool,
 }
@@ -317,7 +317,7 @@ impl<'a> IoctlResponse<'a> {
 	#[must_use]
 	pub fn new(output: &'a [u8]) -> IoctlResponse<'a> {
 		Self {
-			raw: fuse_kernel::fuse_ioctl_out::zeroed(),
+			raw: kernel::fuse_ioctl_out::new(),
 			output: IoctlResponseOutput::Bytes(output),
 			set_result: false,
 		}
@@ -326,9 +326,9 @@ impl<'a> IoctlResponse<'a> {
 	#[must_use]
 	pub fn new_retry(retry: IoctlRetry<'a>) -> IoctlResponse<'a> {
 		Self {
-			raw: fuse_kernel::fuse_ioctl_out {
+			raw: kernel::fuse_ioctl_out {
 				result: 0,
-				flags: fuse_kernel::FUSE_IOCTL_RETRY,
+				flags: kernel::FUSE_IOCTL_RETRY,
 				in_iovs: retry.input_slices.len() as u32,
 				out_iovs: retry.output_slices.len() as u32,
 			},
@@ -468,13 +468,13 @@ impl<'a> IoctlRetry<'a> {
 	) -> Result<IoctlRetry<'a>, IoctlRetryError> {
 		let input_len = input_slices.len();
 		let output_len = output_slices.len();
-		if input_len > fuse_kernel::FUSE_IOCTL_MAX_IOV {
+		if input_len > kernel::FUSE_IOCTL_MAX_IOV {
 			return Err(IoctlRetryError::TooManySlices);
 		}
-		if output_len > fuse_kernel::FUSE_IOCTL_MAX_IOV {
+		if output_len > kernel::FUSE_IOCTL_MAX_IOV {
 			return Err(IoctlRetryError::TooManySlices);
 		}
-		if input_len + output_len > fuse_kernel::FUSE_IOCTL_MAX_IOV {
+		if input_len + output_len > kernel::FUSE_IOCTL_MAX_IOV {
 			return Err(IoctlRetryError::TooManySlices);
 		}
 
@@ -496,8 +496,8 @@ impl<'a> IoctlRetry<'a> {
 }
 
 pub struct IoctlRetryBuf {
-	input_slices: [IoctlSlice; fuse_kernel::FUSE_IOCTL_MAX_IOV],
-	output_slices: [IoctlSlice; fuse_kernel::FUSE_IOCTL_MAX_IOV],
+	input_slices: [IoctlSlice; kernel::FUSE_IOCTL_MAX_IOV],
+	output_slices: [IoctlSlice; kernel::FUSE_IOCTL_MAX_IOV],
 	input_slices_len: usize,
 	output_slices_len: usize,
 }
@@ -507,8 +507,8 @@ impl IoctlRetryBuf {
 	pub const fn new() -> IoctlRetryBuf {
 		let zero = IoctlSlice::new(0, 0);
 		Self {
-			input_slices: [zero; fuse_kernel::FUSE_IOCTL_MAX_IOV],
-			output_slices: [zero; fuse_kernel::FUSE_IOCTL_MAX_IOV],
+			input_slices: [zero; kernel::FUSE_IOCTL_MAX_IOV],
+			output_slices: [zero; kernel::FUSE_IOCTL_MAX_IOV],
 			input_slices_len: 0,
 			output_slices_len: 0,
 		}
@@ -535,7 +535,7 @@ impl IoctlRetryBuf {
 	fn check_add(&self) -> Result<(), IoctlRetryError> {
 		let input_len = self.input_slices_len;
 		let output_len = self.output_slices_len;
-		if input_len + output_len + 1 > fuse_kernel::FUSE_IOCTL_MAX_IOV {
+		if input_len + output_len + 1 > kernel::FUSE_IOCTL_MAX_IOV {
 			return Err(IoctlRetryError::TooManySlices);
 		}
 		Ok(())
@@ -600,13 +600,13 @@ pub struct IoctlRequestFlag {
 }
 
 mod request_flags {
-	use crate::internal::fuse_kernel;
+	use crate::kernel;
 	bitflags!(IoctlRequestFlag, IoctlRequestFlags, u32, {
-		IOCTL_COMPAT = fuse_kernel::FUSE_IOCTL_COMPAT;
-		IOCTL_UNRESTRICTED = fuse_kernel::FUSE_IOCTL_UNRESTRICTED;
-		IOCTL_32BIT = fuse_kernel::FUSE_IOCTL_32BIT;
-		IOCTL_DIR = fuse_kernel::FUSE_IOCTL_DIR;
-		IOCTL_COMPAT_X32 = fuse_kernel::FUSE_IOCTL_COMPAT_X32;
+		IOCTL_COMPAT = kernel::FUSE_IOCTL_COMPAT;
+		IOCTL_UNRESTRICTED = kernel::FUSE_IOCTL_UNRESTRICTED;
+		IOCTL_32BIT = kernel::FUSE_IOCTL_32BIT;
+		IOCTL_DIR = kernel::FUSE_IOCTL_DIR;
+		IOCTL_COMPAT_X32 = kernel::FUSE_IOCTL_COMPAT_X32;
 	});
 }
 

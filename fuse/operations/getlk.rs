@@ -19,7 +19,7 @@
 use core::cmp;
 use core::fmt;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::lock;
 use crate::server;
 use crate::server::decode;
@@ -32,8 +32,8 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_GETLK` operation.
 pub struct GetlkRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	body: &'a fuse_kernel::fuse_lk_in,
+	header: &'a kernel::fuse_in_header,
+	body: &'a kernel::fuse_lk_in,
 	lock_mode: lock::Mode,
 	lock_range: lock::Range,
 }
@@ -78,12 +78,12 @@ impl<'a> server::FuseRequest<'a> for GetlkRequest<'a> {
 		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_GETLK)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_GETLK)?;
 
 		let header = dec.header();
 		decode::node_id(header.nodeid)?;
 
-		let body: &fuse_kernel::fuse_lk_in = dec.next_sized()?;
+		let body: &kernel::fuse_lk_in = dec.next_sized()?;
 		let lock_mode = lock::decode_mode(&body.lk)?;
 		let lock_range = lock::decode_range(&body.lk)?;
 		Ok(Self { header, body, lock_mode, lock_range })
@@ -112,7 +112,7 @@ impl fmt::Debug for GetlkRequest<'_> {
 /// `FUSE_GETLK` operation.
 pub struct GetlkResponse {
 	lock: Option<lock::Lock>,
-	raw: fuse_kernel::fuse_lk_out,
+	raw: kernel::fuse_lk_out,
 }
 
 impl GetlkResponse {
@@ -120,13 +120,13 @@ impl GetlkResponse {
 	#[must_use]
 	pub fn new(lock: Option<lock::Lock>) -> GetlkResponse {
 		let fuse_lock = match &lock {
-			None => fuse_kernel::fuse_file_lock {
+			None => kernel::fuse_file_lock {
 				r#type: lock::F_UNLCK,
 				start: 0,
 				end: 0,
 				pid: 0,
 			},
-			Some(lock) => fuse_kernel::fuse_file_lock {
+			Some(lock) => kernel::fuse_file_lock {
 				r#type: match lock.mode() {
 					lock::Mode::Exclusive => lock::F_WRLCK,
 					lock::Mode::Shared => lock::F_RDLCK,
@@ -145,7 +145,7 @@ impl GetlkResponse {
 
 		Self {
 			lock,
-			raw: fuse_kernel::fuse_lk_out { lk: fuse_lock },
+			raw: kernel::fuse_lk_out { lk: fuse_lock },
 		}
 	}
 

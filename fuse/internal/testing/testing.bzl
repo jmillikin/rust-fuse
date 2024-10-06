@@ -21,7 +21,6 @@ def _operation_test(filename):
         timeout = "short",
         deps = [
             "//fuse",
-            "//fuse/internal:fuse_kernel",
             "//fuse/internal/testing:fuse_testutil",
         ] + select({
             "@platforms//os:freebsd": [

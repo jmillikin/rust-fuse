@@ -20,7 +20,7 @@ use core::fmt;
 use core::num;
 
 use crate::internal::debug;
-use crate::internal::fuse_kernel;
+use crate::kernel;
 
 #[cfg(target_os = "freebsd")]
 mod sys_fcntl {
@@ -274,7 +274,7 @@ impl fmt::Debug for Lock {
 // }}}
 
 pub(crate) fn decode(
-	raw: &fuse_kernel::fuse_file_lock,
+	raw: &kernel::fuse_file_lock,
 ) -> Result<Lock, LockError> {
 	let mode = decode_mode(raw)?;
 	let range = decode_range(raw)?;
@@ -283,7 +283,7 @@ pub(crate) fn decode(
 }
 
 pub(crate) fn decode_mode(
-	raw: &fuse_kernel::fuse_file_lock,
+	raw: &kernel::fuse_file_lock,
 ) -> Result<Mode, LockError> {
 	match raw.r#type {
 		F_WRLCK => Ok(Mode::Exclusive),
@@ -293,7 +293,7 @@ pub(crate) fn decode_mode(
 }
 
 pub(crate) fn decode_range(
-	raw: &fuse_kernel::fuse_file_lock,
+	raw: &kernel::fuse_file_lock,
 ) -> Result<Range, LockError> {
 	// Both Linux and FreeBSD allow the `(*struct flock)->l_len` field to be
 	// negative, but generate different `fuse_file_lock` values in this case:

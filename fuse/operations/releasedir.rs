@@ -20,7 +20,7 @@ use core::fmt;
 
 use crate::internal::compat;
 use crate::internal::debug;
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::lock;
 use crate::server;
 use crate::server::decode;
@@ -33,7 +33,7 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_RELEASEDIR` operation.
 pub struct ReleasedirRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
+	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_release_in<'a>>,
 }
 
@@ -54,7 +54,7 @@ impl ReleasedirRequest<'_> {
 	#[must_use]
 	pub fn lock_owner(&self) -> Option<lock::Owner> {
 		let body = self.body.as_v7p8()?;
-		if body.release_flags & fuse_kernel::FUSE_RELEASE_FLOCK_UNLOCK == 0 {
+		if body.release_flags & kernel::FUSE_RELEASE_FLOCK_UNLOCK == 0 {
 			return None;
 		}
 		Some(lock::Owner::new(body.lock_owner))
@@ -75,7 +75,7 @@ impl<'a> server::FuseRequest<'a> for ReleasedirRequest<'a> {
 	) -> Result<Self, server::RequestError> {
 		let version_minor = options.version_minor();
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_RELEASEDIR)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_RELEASEDIR)?;
 
 		let header = dec.header();
 		decode::node_id(header.nodeid)?;

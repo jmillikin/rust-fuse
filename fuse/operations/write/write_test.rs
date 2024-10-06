@@ -16,6 +16,7 @@
 
 use core::mem::size_of;
 
+use fuse::kernel;
 use fuse::lock;
 use fuse::operations::write::{
 	WriteRequest,
@@ -23,6 +24,7 @@ use fuse::operations::write::{
 	WriteResponse,
 };
 
+use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 const DUMMY_WRITE_FLAG: u32 = 0x80000000;
@@ -31,7 +33,7 @@ const DUMMY_WRITE_FLAG: u32 = 0x80000000;
 fn request_v7p1() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_WRITE;
+			h.opcode = kernel::fuse_opcode::FUSE_WRITE;
 			h.nodeid = 123;
 		})
 		.push_sized(&123u64) // fuse_write_in::fh
@@ -57,18 +59,15 @@ fn request_v7p1() {
 fn request_v7p9() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_WRITE;
+			h.opcode = kernel::fuse_opcode::FUSE_WRITE;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_write_in {
+		.push_sized(&testutil::new!(kernel::fuse_write_in {
 			fh: 123,
 			offset: 45,
 			size: 12,
-			write_flags: 0,
-			lock_owner: 0,
 			flags: 67,
-			padding: 0,
-		})
+		}))
 		.push_bytes(b"hello.world!")
 		.build_aligned();
 
@@ -88,18 +87,13 @@ fn request_v7p9() {
 fn request_lock_owner() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_WRITE;
+			h.opcode = kernel::fuse_opcode::FUSE_WRITE;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_write_in {
-			fh: 0,
-			offset: 0,
-			size: 0,
-			write_flags: DUMMY_WRITE_FLAG | fuse_kernel::FUSE_WRITE_LOCKOWNER,
+		.push_sized(&testutil::new!(kernel::fuse_write_in {
+			write_flags: DUMMY_WRITE_FLAG | kernel::FUSE_WRITE_LOCKOWNER,
 			lock_owner: 123,
-			flags: 0,
-			padding: 0,
-		})
+		}))
 		.build_aligned();
 
 	let req = decode_request!(WriteRequest, buf);
@@ -111,18 +105,12 @@ fn request_lock_owner() {
 fn request_page_cache() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_WRITE;
+			h.opcode = kernel::fuse_opcode::FUSE_WRITE;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_write_in {
-			fh: 0,
-			offset: 0,
-			size: 0,
-			write_flags: DUMMY_WRITE_FLAG | fuse_kernel::FUSE_WRITE_CACHE,
-			lock_owner: 0,
-			flags: 0,
-			padding: 0,
-		})
+		.push_sized(&testutil::new!(kernel::fuse_write_in {
+			write_flags: DUMMY_WRITE_FLAG | kernel::FUSE_WRITE_CACHE,
+		}))
 		.build_aligned();
 
 	let req = decode_request!(WriteRequest, buf);
@@ -140,16 +128,14 @@ fn response() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ size_of::<fuse_kernel::fuse_write_out>()) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ size_of::<kernel::fuse_write_out>()) as u32,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::fuse_write_out {
+			}))
+			.push_sized(&testutil::new!(kernel::fuse_write_out {
 				size: 123,
-				padding: 0,
-			})
+			}))
 			.build()
 	);
 }

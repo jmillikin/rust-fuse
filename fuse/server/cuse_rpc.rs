@@ -16,6 +16,8 @@
 
 //! RPC-style CUSE servers.
 
+#[allow(unused_imports)]
+use crate::kernel::fuse_opcode;
 use crate::operations as ops;
 use crate::server;
 use crate::server::io;
@@ -195,13 +197,13 @@ impl<S: io::CuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 		&self,
 		request: server::Request,
 	) -> Result<(), io::SendError<S::Error>> {
-		use crate::Opcode;
+		use crate::kernel::fuse_opcode as op;
 		if let Some(hooks) = self.hooks {
 			hooks.request(request);
 		}
 		let result = match request.header().opcode() {
-			Opcode::FUSE_READ => self.do_read(request),
-			Opcode::FUSE_WRITE => self.do_write(request),
+			op::FUSE_READ => self.do_read(request),
+			op::FUSE_WRITE => self.do_write(request),
 			_ => self.do_other(request),
 		};
 		match result {
@@ -257,7 +259,7 @@ impl<S: io::CuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 		request: server::Request,
 	) -> Result<(), io::SendError<S::Error>> {
 		use crate::server::CuseRequest;
-		use crate::Opcode as Op;
+		use crate::kernel::fuse_opcode as op;
 
 		let call = self.new_call(request);
 
@@ -271,9 +273,9 @@ impl<S: io::CuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 		}
 
 		match request.header().opcode() {
-			Op::FUSE_FLUSH => do_dispatch!(flush),
-			Op::FUSE_FSYNC => do_dispatch!(fsync),
-			Op::FUSE_INTERRUPT => {
+			op::FUSE_FLUSH => do_dispatch!(flush),
+			op::FUSE_FSYNC => do_dispatch!(fsync),
+			op::FUSE_INTERRUPT => {
 				match CuseRequest::from_request(request, self.request_options) {
 					Ok(request) => self.handlers.interrupt(call, &request),
 					Err(err) => if let Some(hooks) = self.hooks {
@@ -282,10 +284,10 @@ impl<S: io::CuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 				};
 				Ok(())
 			},
-			Op::FUSE_IOCTL => do_dispatch!(ioctl),
-			Op::FUSE_OPEN => do_dispatch!(open),
-			Op::FUSE_POLL => do_dispatch!(poll),
-			Op::FUSE_RELEASE => do_dispatch!(release),
+			op::FUSE_IOCTL => do_dispatch!(ioctl),
+			op::FUSE_OPEN => do_dispatch!(open),
+			op::FUSE_POLL => do_dispatch!(poll),
+			op::FUSE_RELEASE => do_dispatch!(release),
 			_ => self.on_request_unknown(request),
 		}
 	}
@@ -352,7 +354,7 @@ pub trait Handlers<S: io::CuseSocket> {
 	/// See the [`fuse::operations::flush`] module for an overview of the
 	/// `FUSE_FLUSH` operation.
 	///
-	/// [`FUSE_FLUSH`]: crate::Opcode::FUSE_FLUSH
+	/// [`FUSE_FLUSH`]: fuse_opcode::FUSE_FLUSH
 	/// [`fuse::operations::flush`]: crate::operations::flush
 	fn flush(
 		&self,
@@ -367,7 +369,7 @@ pub trait Handlers<S: io::CuseSocket> {
 	/// See the [`fuse::operations::fsync`] module for an overview of the
 	/// `FUSE_FSYNC` operation.
 	///
-	/// [`FUSE_FSYNC`]: crate::Opcode::FUSE_FSYNC
+	/// [`FUSE_FSYNC`]: fuse_opcode::FUSE_FSYNC
 	/// [`fuse::operations::fsync`]: crate::operations::fsync
 	fn fsync(
 		&self,
@@ -382,7 +384,7 @@ pub trait Handlers<S: io::CuseSocket> {
 	/// See the [`fuse::operations::interrupt`] module for an overview of the
 	/// `FUSE_INTERRUPT` operation.
 	///
-	/// [`FUSE_INTERRUPT`]: crate::Opcode::FUSE_INTERRUPT
+	/// [`FUSE_INTERRUPT`]: fuse_opcode::FUSE_INTERRUPT
 	/// [`fuse::operations::interrupt`]: crate::operations::interrupt
 	fn interrupt(
 		&self,
@@ -399,7 +401,7 @@ pub trait Handlers<S: io::CuseSocket> {
 	/// See the [`fuse::operations::ioctl`] module for an overview of the
 	/// `FUSE_IOCTL` operation.
 	///
-	/// [`FUSE_IOCTL`]: crate::Opcode::FUSE_IOCTL
+	/// [`FUSE_IOCTL`]: fuse_opcode::FUSE_IOCTL
 	/// [`fuse::operations::ioctl`]: crate::operations::ioctl
 	fn ioctl(
 		&self,
@@ -414,7 +416,7 @@ pub trait Handlers<S: io::CuseSocket> {
 	/// See the [`fuse::operations::open`] module for an overview of the
 	/// `FUSE_OPEN` operation.
 	///
-	/// [`FUSE_OPEN`]: crate::Opcode::FUSE_OPEN
+	/// [`FUSE_OPEN`]: fuse_opcode::FUSE_OPEN
 	/// [`fuse::operations::open`]: crate::operations::open
 	fn open(
 		&self,
@@ -429,7 +431,7 @@ pub trait Handlers<S: io::CuseSocket> {
 	/// See the [`fuse::operations::poll`] module for an overview of the
 	/// `FUSE_POLL` operation.
 	///
-	/// [`FUSE_POLL`]: crate::Opcode::FUSE_POLL
+	/// [`FUSE_POLL`]: fuse_opcode::FUSE_POLL
 	/// [`fuse::operations::poll`]: crate::operations::poll
 	fn poll(
 		&self,
@@ -444,7 +446,7 @@ pub trait Handlers<S: io::CuseSocket> {
 	/// See the [`fuse::operations::read`] module for an overview of the
 	/// `FUSE_READ` operation.
 	///
-	/// [`FUSE_READ`]: crate::Opcode::FUSE_READ
+	/// [`FUSE_READ`]: fuse_opcode::FUSE_READ
 	/// [`fuse::operations::read`]: crate::operations::read
 	fn read(
 		&self,
@@ -459,7 +461,7 @@ pub trait Handlers<S: io::CuseSocket> {
 	/// See the [`fuse::operations::release`] module for an overview of the
 	/// `FUSE_RELEASE` operation.
 	///
-	/// [`FUSE_RELEASE`]: crate::Opcode::FUSE_RELEASE
+	/// [`FUSE_RELEASE`]: fuse_opcode::FUSE_RELEASE
 	/// [`fuse::operations::release`]: crate::operations::release
 	fn release(
 		&self,
@@ -474,7 +476,7 @@ pub trait Handlers<S: io::CuseSocket> {
 	/// See the [`fuse::operations::write`] module for an overview of the
 	/// `FUSE_WRITE` operation.
 	///
-	/// [`FUSE_WRITE`]: crate::Opcode::FUSE_WRITE
+	/// [`FUSE_WRITE`]: fuse_opcode::FUSE_WRITE
 	/// [`fuse::operations::write`]: crate::operations::write
 	fn write(
 		&self,

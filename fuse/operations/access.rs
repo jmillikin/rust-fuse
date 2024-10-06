@@ -19,7 +19,7 @@
 use core::fmt;
 use core::marker::PhantomData;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -56,8 +56,8 @@ impl<'a> server::FuseRequest<'a> for AccessRequest<'a> {
 		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_ACCESS)?;
-		let raw: &'a fuse_kernel::fuse_access_in = dec.next_sized()?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_ACCESS)?;
+		let raw: &'a kernel::fuse_access_in = dec.next_sized()?;
 		Ok(Self {
 			phantom: PhantomData,
 			node_id: decode::node_id(dec.header().nodeid)?,

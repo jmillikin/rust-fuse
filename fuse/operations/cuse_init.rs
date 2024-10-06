@@ -21,7 +21,7 @@ use core::marker::PhantomData;
 
 use crate::Version;
 use crate::cuse;
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::encode;
 
@@ -54,9 +54,9 @@ impl<'a> CuseInitRequest<'a> {
 		request: server::Request<'a>,
 	) -> Result<CuseInitRequest<'a>, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::CUSE_INIT)?;
+		dec.expect_opcode(kernel::fuse_opcode::CUSE_INIT)?;
 
-		let raw: &'a fuse_kernel::cuse_init_in = dec.next_sized()?;
+		let raw: &'a kernel::cuse_init_in = dec.next_sized()?;
 		Ok(CuseInitRequest {
 			phantom: PhantomData,
 			version: Version::new(raw.major, raw.minor),
@@ -83,7 +83,7 @@ impl fmt::Debug for CuseInitRequest<'_> {
 /// See the [module-level documentation](self) for an overview of the
 /// `CUSE_INIT` operation.
 pub struct CuseInitResponse<'a> {
-	raw: fuse_kernel::cuse_init_out,
+	raw: kernel::cuse_init_out,
 	device_name: Option<&'a cuse::DeviceName>,
 }
 
@@ -91,7 +91,7 @@ impl<'a> CuseInitResponse<'a> {
 	#[must_use]
 	pub fn new(device_name: &'a cuse::DeviceName) -> CuseInitResponse<'a> {
 		CuseInitResponse {
-			raw: fuse_kernel::cuse_init_out::zeroed(),
+			raw: kernel::cuse_init_out::new(),
 			device_name: Some(device_name),
 		}
 	}
@@ -99,7 +99,7 @@ impl<'a> CuseInitResponse<'a> {
 	#[must_use]
 	pub(crate) fn new_nameless() -> CuseInitResponse<'static> {
 		CuseInitResponse {
-			raw: fuse_kernel::cuse_init_out::zeroed(),
+			raw: kernel::cuse_init_out::new(),
 			device_name: None,
 		}
 	}
@@ -211,9 +211,9 @@ pub struct CuseInitFlag {
 }
 
 mod flags {
-	use crate::internal::fuse_kernel;
+	use crate::kernel;
 	bitflags!(CuseInitFlag, CuseInitFlags, u32, {
-		UNRESTRICTED_IOCTL = fuse_kernel::CUSE_UNRESTRICTED_IOCTL;
+		UNRESTRICTED_IOCTL = kernel::CUSE_UNRESTRICTED_IOCTL;
 	});
 }
 

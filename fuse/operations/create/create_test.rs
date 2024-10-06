@@ -16,6 +16,7 @@
 
 use core::mem::size_of;
 
+use fuse::kernel;
 use fuse::operations::create::{
 	CreateRequest,
 	CreateRequestFlags,
@@ -23,13 +24,14 @@ use fuse::operations::create::{
 	CreateResponseFlag,
 };
 
+use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request_v7p1() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_CREATE;
+			h.opcode = kernel::fuse_opcode::FUSE_CREATE;
 			h.nodeid = 123;
 		})
 		.push_sized(&0xFFu32) // fuse_create_in::flags
@@ -53,15 +55,15 @@ fn request_v7p1() {
 fn request_v7p12() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_CREATE;
+			h.opcode = kernel::fuse_opcode::FUSE_CREATE;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_create_in {
+		.push_sized(&testutil::new!(kernel::fuse_create_in {
 			flags: 0xFF,
 			mode: 0xEE,
 			umask: 0xDD,
 			open_flags: 0, // TODO
-		})
+		}))
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 
@@ -82,15 +84,15 @@ fn request_impl_debug() {
 	let buf;
 	let request = fuse_testutil::build_request!(buf, CreateRequest, {
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_CREATE;
-			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+			h.opcode = kernel::fuse_opcode::FUSE_CREATE;
+			h.nodeid = kernel::FUSE_ROOT_ID;
 		})
-		.push_sized(&fuse_kernel::fuse_create_in {
+		.push_sized(&testutil::new!(kernel::fuse_create_in {
 			flags: 123,
 			mode: 0o100644,
 			umask: 0o22,
 			open_flags: 0, // TODO
-		})
+		}))
 		.push_bytes(b"hello.world\x00")
 	});
 
@@ -129,34 +131,27 @@ fn response_v7p1() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ fuse_kernel::FUSE_COMPAT_ENTRY_OUT_SIZE
-					+ size_of::<fuse_kernel::fuse_open_out>()) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ kernel::FUSE_COMPAT_ENTRY_OUT_SIZE
+					+ size_of::<kernel::fuse_open_out>()) as u32,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::fuse_entry_out {
+			}))
+			.push_sized(&testutil::new!(kernel::fuse_entry_out {
 				nodeid: 11,
 				generation: 22,
-				entry_valid: 0,
-				attr_valid: 0,
-				entry_valid_nsec: 0,
-				attr_valid_nsec: 0,
-				attr: fuse_kernel::fuse_attr {
+				attr: testutil::new!(kernel::fuse_attr {
 					ino: 11,
-					..fuse_kernel::fuse_attr::zeroed()
-				}
-			})
+				}),
+			}))
 			.unpush(
-				size_of::<fuse_kernel::fuse_entry_out>()
-					- fuse_kernel::FUSE_COMPAT_ENTRY_OUT_SIZE
+				size_of::<kernel::fuse_entry_out>()
+					- kernel::FUSE_COMPAT_ENTRY_OUT_SIZE
 			)
-			.push_sized(&fuse_kernel::fuse_open_out {
+			.push_sized(&testutil::new!(kernel::fuse_open_out {
 				fh: 123,
 				open_flags: 0b11,
-				padding: 0,
-			})
+			}))
 			.build()
 	);
 }
@@ -181,30 +176,23 @@ fn response_v7p9() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ size_of::<fuse_kernel::fuse_entry_out>()
-					+ size_of::<fuse_kernel::fuse_open_out>()) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ size_of::<kernel::fuse_entry_out>()
+					+ size_of::<kernel::fuse_open_out>()) as u32,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::fuse_entry_out {
+			}))
+			.push_sized(&testutil::new!(kernel::fuse_entry_out {
 				nodeid: 11,
 				generation: 22,
-				entry_valid: 0,
-				attr_valid: 0,
-				entry_valid_nsec: 0,
-				attr_valid_nsec: 0,
-				attr: fuse_kernel::fuse_attr {
+				attr: testutil::new!(kernel::fuse_attr {
 					ino: 11,
-					..fuse_kernel::fuse_attr::zeroed()
-				}
-			})
-			.push_sized(&fuse_kernel::fuse_open_out {
+				}),
+			}))
+			.push_sized(&testutil::new!(kernel::fuse_open_out {
 				fh: 123,
 				open_flags: 0b11,
-				padding: 0,
-			})
+			}))
 			.build()
 	);
 }

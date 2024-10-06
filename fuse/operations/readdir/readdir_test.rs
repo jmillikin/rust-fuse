@@ -17,6 +17,7 @@
 use core::mem::size_of;
 use core::num;
 
+use fuse::kernel;
 use fuse::operations::readdir::{
 	ReaddirEntriesWriter,
 	ReaddirEntry,
@@ -24,13 +25,14 @@ use fuse::operations::readdir::{
 	ReaddirResponse,
 };
 
+use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn readdir_request_v7p1() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_READDIR;
+			h.opcode = kernel::fuse_opcode::FUSE_READDIR;
 			h.nodeid = 123;
 		})
 		.push_sized(&123u64) // fuse_read_in::fh
@@ -52,18 +54,15 @@ fn readdir_request_v7p1() {
 fn readdir_request_v7p9() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_READDIR;
+			h.opcode = kernel::fuse_opcode::FUSE_READDIR;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_read_in {
+		.push_sized(&testutil::new!(kernel::fuse_read_in {
 			fh: 123,
 			offset: 45,
 			size: 4096,
-			read_flags: 0,
-			lock_owner: 0,
 			flags: 67,
-			padding: 0,
-		})
+		}))
 		.build_aligned();
 
 	let req = decode_request!(ReaddirRequest, buf, {
@@ -81,18 +80,15 @@ fn request_impl_debug() {
 	let buf;
 	let request = fuse_testutil::build_request!(buf, ReaddirRequest, {
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_READDIR;
-			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+			h.opcode = kernel::fuse_opcode::FUSE_READDIR;
+			h.nodeid = kernel::FUSE_ROOT_ID;
 		})
-		.push_sized(&fuse_kernel::fuse_read_in {
+		.push_sized(&testutil::new!(kernel::fuse_read_in {
 			fh: 3,
 			offset: 2,
 			size: 1,
-			read_flags: 0,
-			lock_owner: 0,
 			flags: 0x4,
-			padding: 0,
-		})
+		}))
 	});
 
 	assert_eq!(
@@ -111,7 +107,7 @@ fn request_impl_debug() {
 
 #[test]
 fn readdir_response() {
-	let max_size = size_of::<fuse_kernel::fuse_dirent>() + 12;
+	let max_size = size_of::<kernel::fuse_dirent>() + 12;
 	let mut buf = vec![0u8; max_size];
 	let mut writer = ReaddirEntriesWriter::new(&mut buf);
 
@@ -150,20 +146,18 @@ fn readdir_response() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ size_of::<fuse_kernel::fuse_dirent>()
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ size_of::<kernel::fuse_dirent>()
 					+ 8) as u32,
-				error: 0,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::fuse_dirent {
+			}))
+			.push_sized(&testutil::new!(kernel::fuse_dirent {
 				ino: 100,
 				off: 1,
 				namelen: 6,
 				r#type: 8,
-				name: [0u8; 0],
-			})
+			}))
 			.push_bytes(b"foobar\0\0")
 			.build()
 	);

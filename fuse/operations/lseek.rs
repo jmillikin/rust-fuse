@@ -18,7 +18,7 @@
 
 use core::fmt;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -30,7 +30,7 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_LSEEK` operation.
 pub struct LseekRequest<'a> {
-	raw: &'a fuse_kernel::fuse_lseek_in,
+	raw: &'a kernel::fuse_lseek_in,
 	node_id: crate::NodeId,
 }
 
@@ -64,7 +64,7 @@ impl<'a> server::FuseRequest<'a> for LseekRequest<'a> {
 		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_LSEEK)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_LSEEK)?;
 		let raw = dec.next_sized()?;
 		Ok(Self {
 			raw,
@@ -111,14 +111,14 @@ impl fmt::Debug for LseekWhence {
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_LSEEK` operation.
 pub struct LseekResponse {
-	raw: fuse_kernel::fuse_lseek_out,
+	raw: kernel::fuse_lseek_out,
 }
 
 impl LseekResponse {
 	#[must_use]
 	pub fn new() -> LseekResponse {
 		Self {
-			raw: fuse_kernel::fuse_lseek_out { offset: 0 },
+			raw: kernel::fuse_lseek_out { offset: 0 },
 		}
 	}
 

@@ -19,7 +19,7 @@
 use core::fmt;
 use core::time;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::lock;
 use crate::server;
 use crate::server::decode;
@@ -32,8 +32,8 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_SETATTR` operation.
 pub struct SetattrRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	raw: &'a fuse_kernel::fuse_setattr_in,
+	header: &'a kernel::fuse_in_header,
+	raw: &'a kernel::fuse_setattr_in,
 }
 
 impl SetattrRequest<'_> {
@@ -67,18 +67,18 @@ impl SetattrRequest<'_> {
 
 	#[must_use]
 	pub fn handle(&self) -> Option<u64> {
-		self.get(fuse_kernel::FATTR_FH, self.raw.fh)
+		self.get(kernel::FATTR_FH, self.raw.fh)
 	}
 
 	#[must_use]
 	pub fn size(&self) -> Option<u64> {
-		self.get(fuse_kernel::FATTR_SIZE, self.raw.size)
+		self.get(kernel::FATTR_SIZE, self.raw.size)
 	}
 
 	#[must_use]
 	pub fn lock_owner(&self) -> Option<lock::Owner> {
 		self.get(
-			fuse_kernel::FATTR_LOCKOWNER,
+			kernel::FATTR_LOCKOWNER,
 			lock::Owner::new(self.raw.lock_owner),
 		)
 	}
@@ -86,7 +86,7 @@ impl SetattrRequest<'_> {
 	#[must_use]
 	pub fn atime(&self) -> Option<crate::UnixTime> {
 		self.get_timestamp(
-			fuse_kernel::FATTR_ATIME,
+			kernel::FATTR_ATIME,
 			self.raw.atime,
 			self.raw.atimensec,
 		)
@@ -94,13 +94,13 @@ impl SetattrRequest<'_> {
 
 	#[must_use]
 	pub fn atime_now(&self) -> bool {
-		self.raw.valid & fuse_kernel::FATTR_ATIME_NOW > 0
+		self.raw.valid & kernel::FATTR_ATIME_NOW > 0
 	}
 
 	#[must_use]
 	pub fn mtime(&self) -> Option<crate::UnixTime> {
 		self.get_timestamp(
-			fuse_kernel::FATTR_MTIME,
+			kernel::FATTR_MTIME,
 			self.raw.mtime,
 			self.raw.mtimensec,
 		)
@@ -108,13 +108,13 @@ impl SetattrRequest<'_> {
 
 	#[must_use]
 	pub fn mtime_now(&self) -> bool {
-		self.raw.valid & fuse_kernel::FATTR_MTIME_NOW > 0
+		self.raw.valid & kernel::FATTR_MTIME_NOW > 0
 	}
 
 	#[must_use]
 	pub fn ctime(&self) -> Option<crate::UnixTime> {
 		self.get_timestamp(
-			fuse_kernel::FATTR_CTIME,
+			kernel::FATTR_CTIME,
 			self.raw.ctime,
 			self.raw.ctimensec,
 		)
@@ -122,17 +122,17 @@ impl SetattrRequest<'_> {
 
 	#[must_use]
 	pub fn mode(&self) -> Option<crate::FileMode> {
-		self.get(fuse_kernel::FATTR_MODE, crate::FileMode::new(self.raw.mode))
+		self.get(kernel::FATTR_MODE, crate::FileMode::new(self.raw.mode))
 	}
 
 	#[must_use]
 	pub fn user_id(&self) -> Option<u32> {
-		self.get(fuse_kernel::FATTR_UID, self.raw.uid)
+		self.get(kernel::FATTR_UID, self.raw.uid)
 	}
 
 	#[must_use]
 	pub fn group_id(&self) -> Option<u32> {
-		self.get(fuse_kernel::FATTR_GID, self.raw.gid)
+		self.get(kernel::FATTR_GID, self.raw.gid)
 	}
 }
 
@@ -144,18 +144,18 @@ impl<'a> server::FuseRequest<'a> for SetattrRequest<'a> {
 		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_SETATTR)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_SETATTR)?;
 		let header = dec.header();
 		decode::node_id(header.nodeid)?;
-		let raw: &fuse_kernel::fuse_setattr_in = dec.next_sized()?;
+		let raw: &kernel::fuse_setattr_in = dec.next_sized()?;
 
-		if raw.valid & fuse_kernel::FATTR_ATIME > 0 {
+		if raw.valid & kernel::FATTR_ATIME > 0 {
 			decode::check_timespec_nanos(raw.atimensec)?;
 		}
-		if raw.valid & fuse_kernel::FATTR_MTIME > 0 {
+		if raw.valid & kernel::FATTR_MTIME > 0 {
 			decode::check_timespec_nanos(raw.mtimensec)?;
 		}
-		if raw.valid & fuse_kernel::FATTR_CTIME > 0 {
+		if raw.valid & kernel::FATTR_CTIME > 0 {
 			decode::check_timespec_nanos(raw.ctimensec)?;
 		}
 

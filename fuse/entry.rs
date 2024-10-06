@@ -19,14 +19,14 @@
 use core::fmt;
 use core::time;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::internal::timestamp;
 use crate::attributes::Attributes;
 
 /// Cacheable directory entry for a filesystem node.
 #[derive(Clone, Copy)]
 pub struct Entry {
-	raw: fuse_kernel::fuse_entry_out,
+	raw: kernel::fuse_entry_out,
 }
 
 impl Entry {
@@ -35,33 +35,33 @@ impl Entry {
 	#[must_use]
 	pub fn new(attributes: Attributes) -> Entry {
 		Self {
-			raw: fuse_kernel::fuse_entry_out {
+			raw: kernel::fuse_entry_out {
 				nodeid: attributes.raw.ino,
 				attr: attributes.raw,
-				..fuse_kernel::fuse_entry_out::zeroed()
+				..kernel::fuse_entry_out::new()
 			},
 		}
 	}
 
 	#[inline]
 	#[must_use]
-	pub(crate) unsafe fn from_ref(raw: &fuse_kernel::fuse_entry_out) -> &Self {
-		let raw_ptr = raw as *const fuse_kernel::fuse_entry_out;
+	pub(crate) unsafe fn from_ref(raw: &kernel::fuse_entry_out) -> &Self {
+		let raw_ptr = raw as *const kernel::fuse_entry_out;
 		&*(raw_ptr.cast::<Entry>())
 	}
 
 	#[inline]
 	#[must_use]
 	pub(crate) unsafe fn from_ref_mut(
-		raw: &mut fuse_kernel::fuse_entry_out,
+		raw: &mut kernel::fuse_entry_out,
 	) -> &mut Self {
-		let raw_ptr = raw as *mut fuse_kernel::fuse_entry_out;
+		let raw_ptr = raw as *mut kernel::fuse_entry_out;
 		&mut *(raw_ptr.cast::<Entry>())
 	}
 
 	#[inline]
 	#[must_use]
-	pub(crate) fn into_entry_out(self) -> fuse_kernel::fuse_entry_out {
+	pub(crate) fn into_entry_out(self) -> kernel::fuse_entry_out {
 		self.raw
 	}
 
@@ -124,18 +124,18 @@ impl Entry {
 
 	#[inline]
 	#[must_use]
-	pub(crate) fn as_v7p9(&self) -> &fuse_kernel::fuse_entry_out {
+	pub(crate) fn as_v7p9(&self) -> &kernel::fuse_entry_out {
 		let self_ptr = self as *const Entry;
-		unsafe { &*(self_ptr.cast::<fuse_kernel::fuse_entry_out>()) }
+		unsafe { &*(self_ptr.cast::<kernel::fuse_entry_out>()) }
 	}
 
 	#[inline]
 	#[must_use]
 	pub(crate) fn as_v7p1(
 		&self,
-	) -> &[u8; fuse_kernel::FUSE_COMPAT_ENTRY_OUT_SIZE] {
+	) -> &[u8; kernel::FUSE_COMPAT_ENTRY_OUT_SIZE] {
 		let self_ptr = self as *const Entry;
-		const OUT_SIZE: usize = fuse_kernel::FUSE_COMPAT_ENTRY_OUT_SIZE;
+		const OUT_SIZE: usize = kernel::FUSE_COMPAT_ENTRY_OUT_SIZE;
 		unsafe { &*(self_ptr.cast::<[u8; OUT_SIZE]>()) }
 	}
 }

@@ -19,7 +19,7 @@
 use core::fmt;
 use core::marker::PhantomData;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::encode;
 
@@ -41,9 +41,9 @@ impl<'a> server::FuseRequest<'a> for SyncfsRequest<'a> {
 		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_SYNCFS)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_SYNCFS)?;
 
-		let _body: &'a fuse_kernel::fuse_syncfs_in = dec.next_sized()?;
+		let _body: &'a kernel::fuse_syncfs_in = dec.next_sized()?;
 		Ok(SyncfsRequest {
 			phantom: PhantomData,
 		})

@@ -19,7 +19,7 @@
 use core::fmt;
 
 use crate::internal::debug;
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -31,8 +31,8 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_OPEN` operation.
 pub struct OpenRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	body: &'a fuse_kernel::fuse_open_in,
+	header: &'a kernel::fuse_in_header,
+	body: &'a kernel::fuse_open_in,
 }
 
 impl OpenRequest<'_> {
@@ -80,7 +80,7 @@ impl<'a> OpenRequest<'a> {
 		is_cuse: bool,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_OPEN)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_OPEN)?;
 
 		let header = dec.header();
 		let body = dec.next_sized()?;
@@ -110,14 +110,14 @@ impl fmt::Debug for OpenRequest<'_> {
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_OPEN` operation.
 pub struct OpenResponse {
-	raw: fuse_kernel::fuse_open_out,
+	raw: kernel::fuse_open_out,
 }
 
 impl OpenResponse {
 	#[must_use]
 	pub fn new() -> OpenResponse {
 		Self {
-			raw: fuse_kernel::fuse_open_out::zeroed(),
+			raw: kernel::fuse_open_out::new(),
 		}
 	}
 
@@ -195,9 +195,9 @@ pub struct OpenRequestFlag {
 }
 
 mod request_flags {
-	use crate::internal::fuse_kernel;
+	use crate::kernel;
 	bitflags!(OpenRequestFlag, OpenRequestFlags, u32, {
-		KILL_SUIDGID = fuse_kernel::FUSE_OPEN_KILL_SUIDGID;
+		KILL_SUIDGID = kernel::FUSE_OPEN_KILL_SUIDGID;
 	});
 }
 
@@ -216,14 +216,14 @@ pub struct OpenResponseFlag {
 }
 
 mod response_flags {
-	use crate::internal::fuse_kernel;
+	use crate::kernel;
 	bitflags!(OpenResponseFlag, OpenResponseFlags, u32, {
-		DIRECT_IO = fuse_kernel::FOPEN_DIRECT_IO;
-		KEEP_CACHE = fuse_kernel::FOPEN_KEEP_CACHE;
-		NONSEEKABLE = fuse_kernel::FOPEN_NONSEEKABLE;
-		CACHE_DIR = fuse_kernel::FOPEN_CACHE_DIR;
-		STREAM = fuse_kernel::FOPEN_STREAM;
-		NOFLUSH = fuse_kernel::FOPEN_NOFLUSH;
+		DIRECT_IO = kernel::FOPEN_DIRECT_IO;
+		KEEP_CACHE = kernel::FOPEN_KEEP_CACHE;
+		NONSEEKABLE = kernel::FOPEN_NONSEEKABLE;
+		CACHE_DIR = kernel::FOPEN_CACHE_DIR;
+		STREAM = kernel::FOPEN_STREAM;
+		NOFLUSH = kernel::FOPEN_NOFLUSH;
 	});
 }
 

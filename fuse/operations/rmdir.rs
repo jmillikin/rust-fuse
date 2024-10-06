@@ -18,7 +18,7 @@
 
 use core::fmt;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -55,7 +55,7 @@ impl<'a> server::FuseRequest<'a> for RmdirRequest<'a> {
 		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_RMDIR)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_RMDIR)?;
 		Ok(Self {
 			parent_id: decode::node_id(dec.header().nodeid)?,
 			name: dec.next_node_name()?,

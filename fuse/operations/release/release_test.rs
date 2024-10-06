@@ -16,9 +16,11 @@
 
 use core::mem::size_of;
 
+use fuse::kernel;
 use fuse::lock;
 use fuse::operations::release::{ReleaseRequest, ReleaseResponse};
 
+use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 const DUMMY_RELEASE_FLAG: u32 = 0x80000000;
@@ -27,7 +29,7 @@ const DUMMY_RELEASE_FLAG: u32 = 0x80000000;
 fn request_v7p1() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_RELEASE;
+			h.opcode = kernel::fuse_opcode::FUSE_RELEASE;
 			h.nodeid = 123;
 		})
 		.push_sized(&123u64) // fuse_release_in::fh
@@ -48,15 +50,13 @@ fn request_v7p1() {
 fn request_v7p8() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_RELEASE;
+			h.opcode = kernel::fuse_opcode::FUSE_RELEASE;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_release_in {
+		.push_sized(&testutil::new!(kernel::fuse_release_in {
 			fh: 123,
 			flags: 0xFF,
-			release_flags: 0,
-			lock_owner: 0,
-		})
+		}))
 		.build_aligned();
 
 	let req = decode_request!(ReleaseRequest, buf, {
@@ -72,16 +72,16 @@ fn request_v7p8() {
 fn request_lock_owner() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_RELEASE;
+			h.opcode = kernel::fuse_opcode::FUSE_RELEASE;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_release_in {
+		.push_sized(&testutil::new!(kernel::fuse_release_in {
 			fh: 123,
 			flags: 0xFF,
 			release_flags: DUMMY_RELEASE_FLAG
-				| fuse_kernel::FUSE_RELEASE_FLOCK_UNLOCK,
+				| kernel::FUSE_RELEASE_FLOCK_UNLOCK,
 			lock_owner: 123,
-		})
+		}))
 		.build_aligned();
 
 	let req = decode_request!(ReleaseRequest, buf, {
@@ -96,15 +96,13 @@ fn request_impl_debug() {
 	let buf;
 	let request = fuse_testutil::build_request!(buf, ReleaseRequest, {
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_RELEASE;
-			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+			h.opcode = kernel::fuse_opcode::FUSE_RELEASE;
+			h.nodeid = kernel::FUSE_ROOT_ID;
 		})
-		.push_sized(&fuse_kernel::fuse_release_in {
+		.push_sized(&testutil::new!(kernel::fuse_release_in {
 			fh: 3,
 			flags: 0x4,
-			release_flags: 0,
-			lock_owner: 0,
-		})
+		}))
 	});
 
 	assert_eq!(
@@ -128,11 +126,10 @@ fn response() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: size_of::<fuse_kernel::fuse_out_header>() as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: size_of::<kernel::fuse_out_header>() as u32,
 				unique: 0xAABBCCDD,
-			})
+			}))
 			.build()
 	);
 }

@@ -18,20 +18,20 @@ use core::mem;
 use core::ptr;
 use core::slice;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 
 pub(crate) trait Dirent: Sized {
 	fn namelen(&self) -> u32;
 }
 
-impl Dirent for fuse_kernel::fuse_dirent {
+impl Dirent for kernel::fuse_dirent {
 	#[inline]
 	fn namelen(&self) -> u32 {
 		self.namelen
 	}
 }
 
-impl Dirent for fuse_kernel::fuse_direntplus {
+impl Dirent for kernel::fuse_direntplus {
 	#[inline]
 	fn namelen(&self) -> u32 {
 		self.dirent.namelen

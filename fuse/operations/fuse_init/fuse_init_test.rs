@@ -17,6 +17,7 @@
 use core::mem::size_of;
 
 use fuse::Version;
+use fuse::kernel;
 use fuse::operations::fuse_init::{
 	FuseInitFlag,
 	FuseInitFlags,
@@ -25,12 +26,13 @@ use fuse::operations::fuse_init::{
 };
 use fuse::server;
 
+use fuse_testutil as testutil;
 use fuse_testutil::{MessageBuilder, SendBufToVec};
 
 #[test]
 fn request_v7p1() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_INIT)
+		.set_opcode(kernel::fuse_opcode::FUSE_INIT)
 		.push_sized(&7u32) // fuse_init_in::major
 		.push_sized(&1u32) // fuse_init_in::minor
 		.build_aligned();
@@ -48,11 +50,11 @@ fn request_v7p1() {
 #[test]
 fn request_v7p6() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_INIT)
+		.set_opcode(kernel::fuse_opcode::FUSE_INIT)
 		.push_sized(&7u32) // fuse_init_in::major
 		.push_sized(&6u32) // fuse_init_in::minor
 		.push_sized(&9u32) // fuse_init_in::max_readahead
-		.push_sized(&fuse_kernel::FUSE_ASYNC_READ) // fuse_init_in::flags
+		.push_sized(&kernel::FUSE_ASYNC_READ) // fuse_init_in::flags
 		.build_aligned();
 
 	let req = FuseInitRequest::from_request(
@@ -68,15 +70,14 @@ fn request_v7p6() {
 #[test]
 fn request_v7p36() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_INIT)
-		.push_sized(&fuse_kernel::fuse_init_in {
+		.set_opcode(kernel::fuse_opcode::FUSE_INIT)
+		.push_sized(&testutil::new!(kernel::fuse_init_in {
 			major: 7,
 			minor: 36,
 			max_readahead: 9,
-			flags: fuse_kernel::FUSE_ASYNC_READ,
-			flags2: (fuse_kernel::FUSE_HAS_INODE_DAX >> 32) as u32,
-			unused: [0; 11],
-		})
+			flags: kernel::FUSE_ASYNC_READ,
+			flags2: (kernel::FUSE_HAS_INODE_DAX >> 32) as u32,
+		}))
 		.build_aligned();
 
 	let req = FuseInitRequest::from_request(
@@ -95,15 +96,14 @@ fn request_v7p36() {
 #[test]
 fn request_major_mismatch() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_INIT)
-		.push_sized(&fuse_kernel::fuse_init_in {
+		.set_opcode(kernel::fuse_opcode::FUSE_INIT)
+		.push_sized(&testutil::new!(kernel::fuse_init_in {
 			major: 0xFF,
 			minor: 0xFF,
 			max_readahead: 0xFF,
 			flags: 0xFFFFFFFF,
 			flags2: 0xFFFFFFFF,
-			unused: [0xFFFFFFFF; 11],
-		})
+		}))
 		.build_aligned();
 
 	let req = FuseInitRequest::from_request(
@@ -129,12 +129,11 @@ fn response_v7p1() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ fuse_kernel::FUSE_COMPAT_INIT_OUT_SIZE) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ kernel::FUSE_COMPAT_INIT_OUT_SIZE) as u32,
 				unique: 0xAABBCCDD,
-			})
+			}))
 			.push_sized(&7u32) // fuse_init_in::major
 			.push_sized(&1u32) // fuse_init_in::minor
 			.build()
@@ -154,12 +153,11 @@ fn response_v7p5() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ fuse_kernel::FUSE_COMPAT_22_INIT_OUT_SIZE) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ kernel::FUSE_COMPAT_22_INIT_OUT_SIZE) as u32,
 				unique: 0xAABBCCDD,
-			})
+			}))
 			.push_sized(&7u32) // fuse_init_out_v7p5::major
 			.push_sized(&5u32) // fuse_init_out_v7p5::minor
 			.push_sized(&[0u32; 3]) // fuse_init_out_v7p5::unused
@@ -186,26 +184,18 @@ fn response_v7p23() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ size_of::<fuse_kernel::fuse_init_out>()) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ size_of::<kernel::fuse_init_out>()) as u32,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::fuse_init_out {
+			}))
+			.push_sized(&testutil::new!(kernel::fuse_init_out {
 				major: 7,
 				minor: 23,
 				max_readahead: 4096,
-				flags: fuse_kernel::FUSE_ASYNC_READ,
-				max_background: 0,
-				congestion_threshold: 0,
-				max_write: 0,
-				time_gran: 0,
-				max_pages: 0,
-				map_alignment: 0,
-				flags2: (fuse_kernel::FUSE_HAS_INODE_DAX >> 32) as u32,
-				unused: [0; 7],
-			})
+				flags: kernel::FUSE_ASYNC_READ,
+				flags2: (kernel::FUSE_HAS_INODE_DAX >> 32) as u32,
+			}))
 			.build()
 	);
 }
@@ -213,15 +203,13 @@ fn response_v7p23() {
 #[test]
 fn init_flags() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_INIT)
-		.push_sized(&fuse_kernel::fuse_init_in {
-			major: fuse_testutil::VERSION.0,
-			minor: fuse_testutil::VERSION.1,
-			max_readahead: 0,
+		.set_opcode(kernel::fuse_opcode::FUSE_INIT)
+		.push_sized(&testutil::new!(kernel::fuse_init_in {
+			major: kernel::FUSE_KERNEL_VERSION,
+			minor: kernel::FUSE_KERNEL_MINOR_VERSION,
 			flags: 0x3,
 			flags2: 0x3 | (1u32 << 31),
-			unused: [0; 11],
-		})
+		}))
 		.build_aligned();
 
 	let request = FuseInitRequest::from_request(
@@ -247,15 +235,13 @@ fn init_flags() {
 #[test]
 fn request_impl_debug() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_INIT)
-		.push_sized(&fuse_kernel::fuse_init_in {
+		.set_opcode(kernel::fuse_opcode::FUSE_INIT)
+		.push_sized(&testutil::new!(kernel::fuse_init_in {
 			major: 7,
 			minor: 6,
 			max_readahead: 4096,
 			flags: 0x1,
-			flags2: 0,
-			unused: [0; 11],
-		})
+		}))
 		.build_aligned();
 
 	let request = FuseInitRequest::from_request(

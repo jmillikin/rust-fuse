@@ -19,7 +19,7 @@
 use core::fmt;
 
 use crate::internal::compat;
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -31,7 +31,7 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_MKNOD` operation.
 pub struct MknodRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
+	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_mknod_in<'a>>,
 	name: &'a crate::NodeName,
 }
@@ -82,7 +82,7 @@ impl<'a> server::FuseRequest<'a> for MknodRequest<'a> {
 	) -> Result<Self, server::RequestError> {
 		let version_minor = options.version_minor();
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_MKNOD)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_MKNOD)?;
 
 		let header = dec.header();
 		decode::node_id(dec.header().nodeid)?;

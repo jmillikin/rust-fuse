@@ -17,15 +17,17 @@
 use core::mem::size_of;
 use core::time;
 
+use fuse::kernel;
 use fuse::operations::getattr::{GetattrRequest, GetattrResponse};
 
+use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request_v7p1() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_GETATTR;
+			h.opcode = kernel::fuse_opcode::FUSE_GETATTR;
 			h.nodeid = 123;
 		})
 		.build_aligned();
@@ -41,14 +43,10 @@ fn request_v7p1() {
 fn request_v7p9() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_GETATTR;
+			h.opcode = kernel::fuse_opcode::FUSE_GETATTR;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_getattr_in {
-			getattr_flags: 0,
-			dummy: 0,
-			fh: 0,
-		})
+		.push_sized(&kernel::fuse_getattr_in::new())
 		.build_aligned();
 
 	let req = decode_request!(GetattrRequest, buf, {
@@ -62,14 +60,13 @@ fn request_v7p9() {
 fn request_v7p9_with_handle() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_GETATTR;
+			h.opcode = kernel::fuse_opcode::FUSE_GETATTR;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_getattr_in {
-			getattr_flags: fuse_kernel::FUSE_GETATTR_FH,
-			dummy: 0,
+		.push_sized(&testutil::new!(kernel::fuse_getattr_in {
+			getattr_flags: kernel::FUSE_GETATTR_FH,
 			fh: 123,
-		})
+		}))
 		.build_aligned();
 
 	let req = decode_request!(GetattrRequest, buf, {
@@ -84,14 +81,13 @@ fn request_impl_debug() {
 	let buf;
 	let request = fuse_testutil::build_request!(buf, GetattrRequest, {
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_GETATTR;
-			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+			h.opcode = kernel::fuse_opcode::FUSE_GETATTR;
+			h.nodeid = kernel::FUSE_ROOT_ID;
 		})
-		.push_sized(&fuse_kernel::fuse_getattr_in {
-			getattr_flags: fuse_kernel::FUSE_GETATTR_FH,
-			dummy: 0,
+		.push_sized(&testutil::new!(kernel::fuse_getattr_in {
+			getattr_flags: kernel::FUSE_GETATTR_FH,
 			fh: 123,
-		})
+		}))
 	});
 
 	assert_eq!(
@@ -117,24 +113,19 @@ fn response_v7p1() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ fuse_kernel::FUSE_COMPAT_ATTR_OUT_SIZE) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ kernel::FUSE_COMPAT_ATTR_OUT_SIZE) as u32,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::fuse_attr_out {
-				attr_valid: 0,
-				attr_valid_nsec: 0,
-				dummy: 0,
-				attr: fuse_kernel::fuse_attr {
+			}))
+			.push_sized(&testutil::new!(kernel::fuse_attr_out {
+				attr: testutil::new!(kernel::fuse_attr {
 					ino: node_id.get(),
-					..fuse_kernel::fuse_attr::zeroed()
-				},
-			})
+				}),
+			}))
 			.unpush(
-				size_of::<fuse_kernel::fuse_attr_out>()
-					- fuse_kernel::FUSE_COMPAT_ATTR_OUT_SIZE
+				size_of::<kernel::fuse_attr_out>()
+					- kernel::FUSE_COMPAT_ATTR_OUT_SIZE
 			)
 			.build()
 	);
@@ -156,22 +147,19 @@ fn response_v7p9() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ size_of::<fuse_kernel::fuse_attr_out>()) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ size_of::<kernel::fuse_attr_out>()) as u32,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::fuse_attr_out {
+			}))
+			.push_sized(&testutil::new!(kernel::fuse_attr_out {
 				attr_valid: 123,
 				attr_valid_nsec: 456,
-				dummy: 0,
-				attr: fuse_kernel::fuse_attr {
+				attr: testutil::new!(kernel::fuse_attr {
 					ino: node_id.get(),
 					size: 999,
-					..fuse_kernel::fuse_attr::zeroed()
-				},
-			})
+				}),
+			}))
 			.build()
 	);
 }

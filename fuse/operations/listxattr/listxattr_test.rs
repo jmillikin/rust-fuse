@@ -17,25 +17,26 @@
 use core::mem::size_of;
 use core::num;
 
+use fuse::kernel;
 use fuse::operations::listxattr::{
 	ListxattrNamesWriter,
 	ListxattrRequest,
 	ListxattrResponse,
 };
 
+use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request_sized() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_LISTXATTR;
+			h.opcode = kernel::fuse_opcode::FUSE_LISTXATTR;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_getxattr_in {
+		.push_sized(&testutil::new!(kernel::fuse_getxattr_in {
 			size: 10,
-			..fuse_kernel::fuse_getxattr_in::zeroed()
-		})
+		}))
 		.build_aligned();
 
 	let req = decode_request!(ListxattrRequest, buf);
@@ -47,13 +48,10 @@ fn request_sized() {
 fn request_unsized() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_LISTXATTR;
+			h.opcode = kernel::fuse_opcode::FUSE_LISTXATTR;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_getxattr_in {
-			size: 0,
-			..fuse_kernel::fuse_getxattr_in::zeroed()
-		})
+		.push_sized(&kernel::fuse_getxattr_in::new())
 		.build_aligned();
 
 	let req = decode_request!(ListxattrRequest, buf);
@@ -66,13 +64,12 @@ fn request_impl_debug() {
 	let buf;
 	let request = fuse_testutil::build_request!(buf, ListxattrRequest, {
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_LISTXATTR;
-			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+			h.opcode = kernel::fuse_opcode::FUSE_LISTXATTR;
+			h.nodeid = kernel::FUSE_ROOT_ID;
 		})
-		.push_sized(&fuse_kernel::fuse_getxattr_in {
+		.push_sized(&testutil::new!(kernel::fuse_getxattr_in {
 			size: 11,
-			..fuse_kernel::fuse_getxattr_in::zeroed()
-		})
+		}))
 	});
 
 	assert_eq!(
@@ -110,11 +107,10 @@ fn response_with_names() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>() + 8) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>() + 8) as u32,
 				unique: 0xAABBCCDD,
-			})
+			}))
 			.push_bytes(&[49, 50, 51, 0, 52, 53, 54, 0])
 			.build()
 	);
@@ -128,16 +124,14 @@ fn response_with_names_size() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ size_of::<fuse_kernel::fuse_getxattr_out>()) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ size_of::<kernel::fuse_getxattr_out>()) as u32,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::fuse_getxattr_out {
+			}))
+			.push_sized(&testutil::new!(kernel::fuse_getxattr_out {
 				size: 8,
-				padding: 0,
-			})
+			}))
 			.build()
 	);
 }

@@ -19,7 +19,7 @@
 use core::fmt;
 use core::num;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 
 // InterruptRequest {{{
@@ -29,7 +29,7 @@ use crate::server;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_INTERRUPT` operation.
 pub struct InterruptRequest<'a> {
-	body: &'a fuse_kernel::fuse_interrupt_in,
+	body: &'a kernel::fuse_interrupt_in,
 }
 
 impl InterruptRequest<'_> {
@@ -64,8 +64,8 @@ impl<'a> InterruptRequest<'a> {
 		request: server::Request<'a>,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_INTERRUPT)?;
-		let body: &fuse_kernel::fuse_interrupt_in = dec.next_sized()?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_INTERRUPT)?;
+		let body: &kernel::fuse_interrupt_in = dec.next_sized()?;
 		if body.unique == 0 {
 			return Err(server::RequestError::MissingRequestId);
 		}

@@ -1,3 +1,5 @@
+// @generated
+
 /* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-2-Clause) */
 /*
     This file defines the kernel interface of FUSE
@@ -196,8 +198,6 @@
  *  - add FUSE_HAS_INODE_DAX, FUSE_ATTR_DAX
  */
 
-fuse_kernel_decls! {
-
 /*
  * Version negotiation:
  *
@@ -218,74 +218,104 @@ fuse_kernel_decls! {
  * supported minor version).
  */
 
-/** Version number of this interface */
-#define FUSE_KERNEL_VERSION 7
+/* Version number of this interface */
+pub const FUSE_KERNEL_VERSION: u32 = 7;
 
-/** Minor version number of this interface */
-#define FUSE_KERNEL_MINOR_VERSION 36
+/* Minor version number of this interface */
+pub const FUSE_KERNEL_MINOR_VERSION: u32 = 36;
 
-/** The node ID of the root inode */
-#define FUSE_ROOT_ID 1
+/* The node ID of the root inode */
+pub const FUSE_ROOT_ID: u64 = 1;
 
 /* Make sure all structures are padded to 64bit boundary, so 32bit
    userspace works under 64bit kernels */
 
-struct fuse_attr {
-	uint64_t	ino;
-	uint64_t	size;
-	uint64_t	blocks;
-	uint64_t	atime;
-	uint64_t	mtime;
-	uint64_t	ctime;
-	uint32_t	atimensec;
-	uint32_t	mtimensec;
-	uint32_t	ctimensec;
-	uint32_t	mode;
-	uint32_t	nlink;
-	uint32_t	uid;
-	uint32_t	gid;
-	uint32_t	rdev;
-	uint32_t	blksize;
-	uint32_t	flags;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_attr {
+	pub ino: u64,
+	pub size: u64,
+	pub blocks: u64,
+	pub atime: u64,
+	pub mtime: u64,
+	pub ctime: u64,
+	pub atimensec: u32,
+	pub mtimensec: u32,
+	pub ctimensec: u32,
+	pub mode: u32,
+	pub nlink: u32,
+	pub uid: u32,
+	pub gid: u32,
+	pub rdev: u32,
+	pub blksize: u32,
+	pub flags: u32,
+}
 
-struct fuse_kstatfs {
-	uint64_t	blocks;
-	uint64_t	bfree;
-	uint64_t	bavail;
-	uint64_t	files;
-	uint64_t	ffree;
-	uint32_t	bsize;
-	uint32_t	namelen;
-	uint32_t	frsize;
-	uint32_t	padding;
-	uint32_t	spare[6];
-};
+impl fuse_attr {
+	#[must_use]
+	pub const fn new() -> fuse_attr {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_file_lock {
-	uint64_t	start;
-	uint64_t	end;
-	uint32_t	r#type;
-	uint32_t	pid; /* tgid */
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_kstatfs {
+	pub blocks: u64,
+	pub bfree: u64,
+	pub bavail: u64,
+	pub files: u64,
+	pub ffree: u64,
+	pub bsize: u32,
+	pub namelen: u32,
+	pub frsize: u32,
+	pub(self) padding: u32,
+	pub(self) spare: [u32; 6],
+}
 
-/**
+impl fuse_kstatfs {
+	#[must_use]
+	pub const fn new() -> fuse_kstatfs {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_file_lock {
+	pub start: u64,
+	pub end: u64,
+	pub r#type: u32,
+	pub pid: u32,
+}
+
+impl fuse_file_lock {
+	#[must_use]
+	pub const fn new() -> fuse_file_lock {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+/*
  * Bitmasks for fuse_setattr_in.valid
  */
-#define FATTR_MODE	(1 << 0)
-#define FATTR_UID	(1 << 1)
-#define FATTR_GID	(1 << 2)
-#define FATTR_SIZE	(1 << 3)
-#define FATTR_ATIME	(1 << 4)
-#define FATTR_MTIME	(1 << 5)
-#define FATTR_FH	(1 << 6)
-#define FATTR_ATIME_NOW	(1 << 7)
-#define FATTR_MTIME_NOW	(1 << 8)
-#define FATTR_LOCKOWNER	(1 << 9)
-#define FATTR_CTIME	(1 << 10)
-#define FATTR_KILL_SUIDGID	(1 << 11)
+pub const FATTR_MODE: u32 = (1 << 0);
+pub const FATTR_UID: u32 = (1 << 1);
+pub const FATTR_GID: u32 = (1 << 2);
+pub const FATTR_SIZE: u32 = (1 << 3);
+pub const FATTR_ATIME: u32 = (1 << 4);
+pub const FATTR_MTIME: u32 = (1 << 5);
+pub const FATTR_FH: u32 = (1 << 6);
+pub const FATTR_ATIME_NOW: u32 = (1 << 7);
+pub const FATTR_MTIME_NOW: u32 = (1 << 8);
+pub const FATTR_LOCKOWNER: u32 = (1 << 9);
+pub const FATTR_CTIME: u32 = (1 << 10);
+pub const FATTR_KILL_SUIDGID: u32 = (1 << 11);
 
-/**
+/*
  * Flags returned by the OPEN request
  *
  * FOPEN_DIRECT_IO: bypass page cache for this open file
@@ -295,14 +325,14 @@ struct fuse_file_lock {
  * FOPEN_STREAM: the file is stream-like (no file position at all)
  * FOPEN_NOFLUSH: don't flush data cache on close (unless FUSE_WRITEBACK_CACHE)
  */
-#define FOPEN_DIRECT_IO		(1 << 0)
-#define FOPEN_KEEP_CACHE	(1 << 1)
-#define FOPEN_NONSEEKABLE	(1 << 2)
-#define FOPEN_CACHE_DIR		(1 << 3)
-#define FOPEN_STREAM		(1 << 4)
-#define FOPEN_NOFLUSH		(1 << 5)
+pub const FOPEN_DIRECT_IO: u32 = (1 << 0);
+pub const FOPEN_KEEP_CACHE: u32 = (1 << 1);
+pub const FOPEN_NONSEEKABLE: u32 = (1 << 2);
+pub const FOPEN_CACHE_DIR: u32 = (1 << 3);
+pub const FOPEN_STREAM: u32 = (1 << 4);
+pub const FOPEN_NOFLUSH: u32 = (1 << 5);
 
-/**
+/*
  * INIT request/reply flags
  *
  * FUSE_ASYNC_READ: asynchronous read requests
@@ -332,100 +362,100 @@ struct fuse_file_lock {
  * FUSE_NO_OPENDIR_SUPPORT: kernel supports zero-message opendir
  * FUSE_EXPLICIT_INVAL_DATA: only invalidate cached pages on explicit request
  * FUSE_MAP_ALIGNMENT: init_out.map_alignment contains log2(byte alignment) for
- *                     foffset and moffset fields in struct
- *                     fuse_setupmapping_out and fuse_removemapping_one.
+ *		       foffset and moffset fields in struct
+ *		       fuse_setupmapping_out and fuse_removemapping_one.
  * FUSE_SUBMOUNTS: kernel supports auto-mounting directory submounts
  * FUSE_HANDLE_KILLPRIV_V2: fs kills suid/sgid/cap on write/chown/trunc.
- *                      Upon write/truncate suid/sgid is only killed if caller
- *                      does not have CAP_FSETID. Additionally upon
- *                      write/truncate sgid is killed only if file has group
- *                      execute permission. (Same as Linux VFS behavior).
- * FUSE_SETXATTR_EXT:   Server supports extended struct fuse_setxattr_in
+ *			Upon write/truncate suid/sgid is only killed if caller
+ *			does not have CAP_FSETID. Additionally upon
+ *			write/truncate sgid is killed only if file has group
+ *			execute permission. (Same as Linux VFS behavior).
+ * FUSE_SETXATTR_EXT:	Server supports extended struct fuse_setxattr_in
  * FUSE_INIT_EXT: extended fuse_init_in request
  * FUSE_INIT_RESERVED: reserved, do not use
- * FUSE_SECURITY_CTX:   add security context to create, mkdir, symlink, and
- *                      mknod
+ * FUSE_SECURITY_CTX:	add security context to create, mkdir, symlink, and
+ *			mknod
  * FUSE_HAS_INODE_DAX:  use per inode DAX
  */
-#define FUSE_ASYNC_READ		(1 << 0)
-#define FUSE_POSIX_LOCKS	(1 << 1)
-#define FUSE_FILE_OPS		(1 << 2)
-#define FUSE_ATOMIC_O_TRUNC	(1 << 3)
-#define FUSE_EXPORT_SUPPORT	(1 << 4)
-#define FUSE_BIG_WRITES		(1 << 5)
-#define FUSE_DONT_MASK		(1 << 6)
-#define FUSE_SPLICE_WRITE	(1 << 7)
-#define FUSE_SPLICE_MOVE	(1 << 8)
-#define FUSE_SPLICE_READ	(1 << 9)
-#define FUSE_FLOCK_LOCKS	(1 << 10)
-#define FUSE_HAS_IOCTL_DIR	(1 << 11)
-#define FUSE_AUTO_INVAL_DATA	(1 << 12)
-#define FUSE_DO_READDIRPLUS	(1 << 13)
-#define FUSE_READDIRPLUS_AUTO	(1 << 14)
-#define FUSE_ASYNC_DIO		(1 << 15)
-#define FUSE_WRITEBACK_CACHE	(1 << 16)
-#define FUSE_NO_OPEN_SUPPORT	(1 << 17)
-#define FUSE_PARALLEL_DIROPS    (1 << 18)
-#define FUSE_HANDLE_KILLPRIV	(1 << 19)
-#define FUSE_POSIX_ACL		(1 << 20)
-#define FUSE_ABORT_ERROR	(1 << 21)
-#define FUSE_MAX_PAGES		(1 << 22)
-#define FUSE_CACHE_SYMLINKS	(1 << 23)
-#define FUSE_NO_OPENDIR_SUPPORT (1 << 24)
-#define FUSE_EXPLICIT_INVAL_DATA (1 << 25)
-#define FUSE_MAP_ALIGNMENT	(1 << 26)
-#define FUSE_SUBMOUNTS		(1 << 27)
-#define FUSE_HANDLE_KILLPRIV_V2	(1 << 28)
-#define FUSE_SETXATTR_EXT	(1 << 29)
-#define FUSE_INIT_EXT		(1 << 30)
-#define FUSE_INIT_RESERVED	(1 << 31)
+pub const FUSE_ASYNC_READ: u32 = (1 << 0);
+pub const FUSE_POSIX_LOCKS: u32 = (1 << 1);
+pub const FUSE_FILE_OPS: u32 = (1 << 2);
+pub const FUSE_ATOMIC_O_TRUNC: u32 = (1 << 3);
+pub const FUSE_EXPORT_SUPPORT: u32 = (1 << 4);
+pub const FUSE_BIG_WRITES: u32 = (1 << 5);
+pub const FUSE_DONT_MASK: u32 = (1 << 6);
+pub const FUSE_SPLICE_WRITE: u32 = (1 << 7);
+pub const FUSE_SPLICE_MOVE: u32 = (1 << 8);
+pub const FUSE_SPLICE_READ: u32 = (1 << 9);
+pub const FUSE_FLOCK_LOCKS: u32 = (1 << 10);
+pub const FUSE_HAS_IOCTL_DIR: u32 = (1 << 11);
+pub const FUSE_AUTO_INVAL_DATA: u32 = (1 << 12);
+pub const FUSE_DO_READDIRPLUS: u32 = (1 << 13);
+pub const FUSE_READDIRPLUS_AUTO: u32 = (1 << 14);
+pub const FUSE_ASYNC_DIO: u32 = (1 << 15);
+pub const FUSE_WRITEBACK_CACHE: u32 = (1 << 16);
+pub const FUSE_NO_OPEN_SUPPORT: u32 = (1 << 17);
+pub const FUSE_PARALLEL_DIROPS: u32 = (1 << 18);
+pub const FUSE_HANDLE_KILLPRIV: u32 = (1 << 19);
+pub const FUSE_POSIX_ACL: u32 = (1 << 20);
+pub const FUSE_ABORT_ERROR: u32 = (1 << 21);
+pub const FUSE_MAX_PAGES: u32 = (1 << 22);
+pub const FUSE_CACHE_SYMLINKS: u32 = (1 << 23);
+pub const FUSE_NO_OPENDIR_SUPPORT: u32 = (1 << 24);
+pub const FUSE_EXPLICIT_INVAL_DATA: u32 = (1 << 25);
+pub const FUSE_MAP_ALIGNMENT: u32 = (1 << 26);
+pub const FUSE_SUBMOUNTS: u32 = (1 << 27);
+pub const FUSE_HANDLE_KILLPRIV_V2: u32 = (1 << 28);
+pub const FUSE_SETXATTR_EXT: u32 = (1 << 29);
+pub const FUSE_INIT_EXT: u32 = (1 << 30);
+pub const FUSE_INIT_RESERVED: u32 = (1 << 31);
 /* bits 32..63 get shifted down 32 bits into the flags2 field */
-#define FUSE_SECURITY_CTX	(1ULL << 32)
-#define FUSE_HAS_INODE_DAX	(1ULL << 33)
+pub const FUSE_SECURITY_CTX: u64 = (1u64 << 32);
+pub const FUSE_HAS_INODE_DAX: u64 = (1u64 << 33);
 
-/**
+/*
  * CUSE INIT request/reply flags
  *
  * CUSE_UNRESTRICTED_IOCTL:  use unrestricted ioctl
  */
-#define CUSE_UNRESTRICTED_IOCTL	(1 << 0)
+pub const CUSE_UNRESTRICTED_IOCTL: u32 = (1 << 0);
 
-/**
+/*
  * Release flags
  */
-#define FUSE_RELEASE_FLUSH	(1 << 0)
-#define FUSE_RELEASE_FLOCK_UNLOCK	(1 << 1)
+pub const FUSE_RELEASE_FLUSH: u32 = (1 << 0);
+pub const FUSE_RELEASE_FLOCK_UNLOCK: u32 = (1 << 1);
 
-/**
+/*
  * Getattr flags
  */
-#define FUSE_GETATTR_FH		(1 << 0)
+pub const FUSE_GETATTR_FH: u32 = (1 << 0);
 
-/**
+/*
  * Lock flags
  */
-#define FUSE_LK_FLOCK		(1 << 0)
+pub const FUSE_LK_FLOCK: u32 = (1 << 0);
 
-/**
+/*
  * WRITE flags
  *
  * FUSE_WRITE_CACHE: delayed write from page cache, file handle is guessed
  * FUSE_WRITE_LOCKOWNER: lock_owner field is valid
  * FUSE_WRITE_KILL_SUIDGID: kill suid and sgid bits
  */
-#define FUSE_WRITE_CACHE	(1 << 0)
-#define FUSE_WRITE_LOCKOWNER	(1 << 1)
-#define FUSE_WRITE_KILL_SUIDGID (1 << 2)
+pub const FUSE_WRITE_CACHE: u32 = (1 << 0);
+pub const FUSE_WRITE_LOCKOWNER: u32 = (1 << 1);
+pub const FUSE_WRITE_KILL_SUIDGID: u32 = (1 << 2);
 
 /* Obsolete alias; this flag implies killing suid/sgid only. */
-#define FUSE_WRITE_KILL_PRIV	FUSE_WRITE_KILL_SUIDGID
+pub const FUSE_WRITE_KILL_PRIV: u32 = FUSE_WRITE_KILL_SUIDGID;
 
-/**
+/*
  * Read flags
  */
-#define FUSE_READ_LOCKOWNER	(1 << 1)
+pub const FUSE_READ_LOCKOWNER: u32 = (1 << 1);
 
-/**
+/*
  * Ioctl flags
  *
  * FUSE_IOCTL_COMPAT: 32bit compat ioctl on 64bit machine
@@ -437,552 +467,1238 @@ struct fuse_file_lock {
  *
  * FUSE_IOCTL_MAX_IOV: maximum of in_iovecs + out_iovecs
  */
-#define FUSE_IOCTL_COMPAT	(1 << 0)
-#define FUSE_IOCTL_UNRESTRICTED	(1 << 1)
-#define FUSE_IOCTL_RETRY	(1 << 2)
-#define FUSE_IOCTL_32BIT	(1 << 3)
-#define FUSE_IOCTL_DIR		(1 << 4)
-#define FUSE_IOCTL_COMPAT_X32	(1 << 5)
+pub const FUSE_IOCTL_COMPAT: u32 = (1 << 0);
+pub const FUSE_IOCTL_UNRESTRICTED: u32 = (1 << 1);
+pub const FUSE_IOCTL_RETRY: u32 = (1 << 2);
+pub const FUSE_IOCTL_32BIT: u32 = (1 << 3);
+pub const FUSE_IOCTL_DIR: u32 = (1 << 4);
+pub const FUSE_IOCTL_COMPAT_X32: u32 = (1 << 5);
 
-#define FUSE_IOCTL_MAX_IOV	256
+pub const FUSE_IOCTL_MAX_IOV: usize = 256;
 
-/**
+/*
  * Poll flags
  *
  * FUSE_POLL_SCHEDULE_NOTIFY: request poll notify
  */
-#define FUSE_POLL_SCHEDULE_NOTIFY (1 << 0)
+pub const FUSE_POLL_SCHEDULE_NOTIFY: u32 = (1 << 0);
 
-/**
+/*
  * Fsync flags
  *
  * FUSE_FSYNC_FDATASYNC: Sync data only, not metadata
  */
-#define FUSE_FSYNC_FDATASYNC	(1 << 0)
+pub const FUSE_FSYNC_FDATASYNC: u32 = (1 << 0);
 
-/**
+/*
  * fuse_attr flags
  *
  * FUSE_ATTR_SUBMOUNT: Object is a submount root
  * FUSE_ATTR_DAX: Enable DAX for this file in per inode DAX mode
  */
-#define FUSE_ATTR_SUBMOUNT      (1 << 0)
-#define FUSE_ATTR_DAX		(1 << 1)
+pub const FUSE_ATTR_SUBMOUNT: u32 = (1 << 0);
+pub const FUSE_ATTR_DAX: u32 = (1 << 1);
 
-/**
+/*
  * Open flags
  * FUSE_OPEN_KILL_SUIDGID: Kill suid and sgid if executable
  */
-#define FUSE_OPEN_KILL_SUIDGID	(1 << 0)
+pub const FUSE_OPEN_KILL_SUIDGID: u32 = (1 << 0);
 
-/**
+/*
  * setxattr flags
  * FUSE_SETXATTR_ACL_KILL_SGID: Clear SGID when system.posix_acl_access is set
  */
-#define FUSE_SETXATTR_ACL_KILL_SGID	(1 << 0)
+pub const FUSE_SETXATTR_ACL_KILL_SGID: u32 = (1 << 0);
 
-enum fuse_opcode {
-	FUSE_LOOKUP		= 1,
-	FUSE_FORGET		= 2,  /* no reply */
-	FUSE_GETATTR		= 3,
-	FUSE_SETATTR		= 4,
-	FUSE_READLINK		= 5,
-	FUSE_SYMLINK		= 6,
-	FUSE_MKNOD		= 8,
-	FUSE_MKDIR		= 9,
-	FUSE_UNLINK		= 10,
-	FUSE_RMDIR		= 11,
-	FUSE_RENAME		= 12,
-	FUSE_LINK		= 13,
-	FUSE_OPEN		= 14,
-	FUSE_READ		= 15,
-	FUSE_WRITE		= 16,
-	FUSE_STATFS		= 17,
-	FUSE_RELEASE		= 18,
-	FUSE_FSYNC		= 20,
-	FUSE_SETXATTR		= 21,
-	FUSE_GETXATTR		= 22,
-	FUSE_LISTXATTR		= 23,
-	FUSE_REMOVEXATTR	= 24,
-	FUSE_FLUSH		= 25,
-	FUSE_INIT		= 26,
-	FUSE_OPENDIR		= 27,
-	FUSE_READDIR		= 28,
-	FUSE_RELEASEDIR		= 29,
-	FUSE_FSYNCDIR		= 30,
-	FUSE_GETLK		= 31,
-	FUSE_SETLK		= 32,
-	FUSE_SETLKW		= 33,
-	FUSE_ACCESS		= 34,
-	FUSE_CREATE		= 35,
-	FUSE_INTERRUPT		= 36,
-	FUSE_BMAP		= 37,
-	FUSE_DESTROY		= 38,
-	FUSE_IOCTL		= 39,
-	FUSE_POLL		= 40,
-	FUSE_NOTIFY_REPLY	= 41,
-	FUSE_BATCH_FORGET	= 42,
-	FUSE_FALLOCATE		= 43,
-	FUSE_READDIRPLUS	= 44,
-	FUSE_RENAME2		= 45,
-	FUSE_LSEEK		= 46,
-	FUSE_COPY_FILE_RANGE	= 47,
-	FUSE_SETUPMAPPING	= 48,
-	FUSE_REMOVEMAPPING	= 49,
-	FUSE_SYNCFS		= 50,
+#[repr(transparent)]
+#[derive(Copy, Clone, PartialEq, Eq)]
+#[allow(clippy::exhaustive_structs)]
+pub struct fuse_opcode(pub u32);
+
+impl fuse_opcode {
+	pub const FUSE_LOOKUP: fuse_opcode = fuse_opcode(1);
+	pub const FUSE_FORGET: fuse_opcode = fuse_opcode(2);
+	pub const FUSE_GETATTR: fuse_opcode = fuse_opcode(3);
+	pub const FUSE_SETATTR: fuse_opcode = fuse_opcode(4);
+	pub const FUSE_READLINK: fuse_opcode = fuse_opcode(5);
+	pub const FUSE_SYMLINK: fuse_opcode = fuse_opcode(6);
+	pub const FUSE_MKNOD: fuse_opcode = fuse_opcode(8);
+	pub const FUSE_MKDIR: fuse_opcode = fuse_opcode(9);
+	pub const FUSE_UNLINK: fuse_opcode = fuse_opcode(10);
+	pub const FUSE_RMDIR: fuse_opcode = fuse_opcode(11);
+	pub const FUSE_RENAME: fuse_opcode = fuse_opcode(12);
+	pub const FUSE_LINK: fuse_opcode = fuse_opcode(13);
+	pub const FUSE_OPEN: fuse_opcode = fuse_opcode(14);
+	pub const FUSE_READ: fuse_opcode = fuse_opcode(15);
+	pub const FUSE_WRITE: fuse_opcode = fuse_opcode(16);
+	pub const FUSE_STATFS: fuse_opcode = fuse_opcode(17);
+	pub const FUSE_RELEASE: fuse_opcode = fuse_opcode(18);
+	pub const FUSE_FSYNC: fuse_opcode = fuse_opcode(20);
+	pub const FUSE_SETXATTR: fuse_opcode = fuse_opcode(21);
+	pub const FUSE_GETXATTR: fuse_opcode = fuse_opcode(22);
+	pub const FUSE_LISTXATTR: fuse_opcode = fuse_opcode(23);
+	pub const FUSE_REMOVEXATTR: fuse_opcode = fuse_opcode(24);
+	pub const FUSE_FLUSH: fuse_opcode = fuse_opcode(25);
+	pub const FUSE_INIT: fuse_opcode = fuse_opcode(26);
+	pub const FUSE_OPENDIR: fuse_opcode = fuse_opcode(27);
+	pub const FUSE_READDIR: fuse_opcode = fuse_opcode(28);
+	pub const FUSE_RELEASEDIR: fuse_opcode = fuse_opcode(29);
+	pub const FUSE_FSYNCDIR: fuse_opcode = fuse_opcode(30);
+	pub const FUSE_GETLK: fuse_opcode = fuse_opcode(31);
+	pub const FUSE_SETLK: fuse_opcode = fuse_opcode(32);
+	pub const FUSE_SETLKW: fuse_opcode = fuse_opcode(33);
+	pub const FUSE_ACCESS: fuse_opcode = fuse_opcode(34);
+	pub const FUSE_CREATE: fuse_opcode = fuse_opcode(35);
+	pub const FUSE_INTERRUPT: fuse_opcode = fuse_opcode(36);
+	pub const FUSE_BMAP: fuse_opcode = fuse_opcode(37);
+	pub const FUSE_DESTROY: fuse_opcode = fuse_opcode(38);
+	pub const FUSE_IOCTL: fuse_opcode = fuse_opcode(39);
+	pub const FUSE_POLL: fuse_opcode = fuse_opcode(40);
+	pub const FUSE_NOTIFY_REPLY: fuse_opcode = fuse_opcode(41);
+	pub const FUSE_BATCH_FORGET: fuse_opcode = fuse_opcode(42);
+	pub const FUSE_FALLOCATE: fuse_opcode = fuse_opcode(43);
+	pub const FUSE_READDIRPLUS: fuse_opcode = fuse_opcode(44);
+	pub const FUSE_RENAME2: fuse_opcode = fuse_opcode(45);
+	pub const FUSE_LSEEK: fuse_opcode = fuse_opcode(46);
+	pub const FUSE_COPY_FILE_RANGE: fuse_opcode = fuse_opcode(47);
+	pub const FUSE_SETUPMAPPING: fuse_opcode = fuse_opcode(48);
+	pub const FUSE_REMOVEMAPPING: fuse_opcode = fuse_opcode(49);
+	pub const FUSE_SYNCFS: fuse_opcode = fuse_opcode(50);
 
 	/* CUSE specific operations */
-	CUSE_INIT		= 4096,
+	pub const CUSE_INIT: fuse_opcode = fuse_opcode(4096);
 
 	/* Reserved opcodes: helpful to detect structure endian-ness */
-	CUSE_INIT_BSWAP_RESERVED	= 1048576,	/* CUSE_INIT << 8 */
-	FUSE_INIT_BSWAP_RESERVED	= 436207616,	/* FUSE_INIT << 24 */
-};
+	pub const CUSE_INIT_BSWAP_RESERVED: fuse_opcode = fuse_opcode(1048576);
+	pub const FUSE_INIT_BSWAP_RESERVED: fuse_opcode = fuse_opcode(436207616);
+}
 
-enum fuse_notify_code {
-	FUSE_NOTIFY_POLL   = 1,
-	FUSE_NOTIFY_INVAL_INODE = 2,
-	FUSE_NOTIFY_INVAL_ENTRY = 3,
-	FUSE_NOTIFY_STORE = 4,
-	FUSE_NOTIFY_RETRIEVE = 5,
-	FUSE_NOTIFY_DELETE = 6,
-	FUSE_NOTIFY_CODE_MAX = 7,
-};
+impl core::fmt::Debug for fuse_opcode {
+	fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
+		match self.0 {
+			1 => fmt.write_str("FUSE_LOOKUP"),
+			2 => fmt.write_str("FUSE_FORGET"),
+			3 => fmt.write_str("FUSE_GETATTR"),
+			4 => fmt.write_str("FUSE_SETATTR"),
+			5 => fmt.write_str("FUSE_READLINK"),
+			6 => fmt.write_str("FUSE_SYMLINK"),
+			8 => fmt.write_str("FUSE_MKNOD"),
+			9 => fmt.write_str("FUSE_MKDIR"),
+			10 => fmt.write_str("FUSE_UNLINK"),
+			11 => fmt.write_str("FUSE_RMDIR"),
+			12 => fmt.write_str("FUSE_RENAME"),
+			13 => fmt.write_str("FUSE_LINK"),
+			14 => fmt.write_str("FUSE_OPEN"),
+			15 => fmt.write_str("FUSE_READ"),
+			16 => fmt.write_str("FUSE_WRITE"),
+			17 => fmt.write_str("FUSE_STATFS"),
+			18 => fmt.write_str("FUSE_RELEASE"),
+			20 => fmt.write_str("FUSE_FSYNC"),
+			21 => fmt.write_str("FUSE_SETXATTR"),
+			22 => fmt.write_str("FUSE_GETXATTR"),
+			23 => fmt.write_str("FUSE_LISTXATTR"),
+			24 => fmt.write_str("FUSE_REMOVEXATTR"),
+			25 => fmt.write_str("FUSE_FLUSH"),
+			26 => fmt.write_str("FUSE_INIT"),
+			27 => fmt.write_str("FUSE_OPENDIR"),
+			28 => fmt.write_str("FUSE_READDIR"),
+			29 => fmt.write_str("FUSE_RELEASEDIR"),
+			30 => fmt.write_str("FUSE_FSYNCDIR"),
+			31 => fmt.write_str("FUSE_GETLK"),
+			32 => fmt.write_str("FUSE_SETLK"),
+			33 => fmt.write_str("FUSE_SETLKW"),
+			34 => fmt.write_str("FUSE_ACCESS"),
+			35 => fmt.write_str("FUSE_CREATE"),
+			36 => fmt.write_str("FUSE_INTERRUPT"),
+			37 => fmt.write_str("FUSE_BMAP"),
+			38 => fmt.write_str("FUSE_DESTROY"),
+			39 => fmt.write_str("FUSE_IOCTL"),
+			40 => fmt.write_str("FUSE_POLL"),
+			41 => fmt.write_str("FUSE_NOTIFY_REPLY"),
+			42 => fmt.write_str("FUSE_BATCH_FORGET"),
+			43 => fmt.write_str("FUSE_FALLOCATE"),
+			44 => fmt.write_str("FUSE_READDIRPLUS"),
+			45 => fmt.write_str("FUSE_RENAME2"),
+			46 => fmt.write_str("FUSE_LSEEK"),
+			47 => fmt.write_str("FUSE_COPY_FILE_RANGE"),
+			48 => fmt.write_str("FUSE_SETUPMAPPING"),
+			49 => fmt.write_str("FUSE_REMOVEMAPPING"),
+			50 => fmt.write_str("FUSE_SYNCFS"),
+			4096 => fmt.write_str("CUSE_INIT"),
+			1048576 => fmt.write_str("CUSE_INIT_BSWAP_RESERVED"),
+			436207616 => fmt.write_str("FUSE_INIT_BSWAP_RESERVED"),
+			_ => write!(fmt, "fuse_opcode({})", self.0),
+		}
+	}
+}
+
+#[repr(transparent)]
+#[derive(Copy, Clone, PartialEq, Eq)]
+#[allow(clippy::exhaustive_structs)]
+pub struct fuse_notify_code(pub u32);
+
+impl fuse_notify_code {
+	pub const FUSE_NOTIFY_POLL: fuse_notify_code = fuse_notify_code(1);
+	pub const FUSE_NOTIFY_INVAL_INODE: fuse_notify_code = fuse_notify_code(2);
+	pub const FUSE_NOTIFY_INVAL_ENTRY: fuse_notify_code = fuse_notify_code(3);
+	pub const FUSE_NOTIFY_STORE: fuse_notify_code = fuse_notify_code(4);
+	pub const FUSE_NOTIFY_RETRIEVE: fuse_notify_code = fuse_notify_code(5);
+	pub const FUSE_NOTIFY_DELETE: fuse_notify_code = fuse_notify_code(6);
+	pub const FUSE_NOTIFY_CODE_MAX: fuse_notify_code = fuse_notify_code(7);
+}
+
+impl core::fmt::Debug for fuse_notify_code {
+	fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
+		match self.0 {
+			1 => fmt.write_str("FUSE_NOTIFY_POLL"),
+			2 => fmt.write_str("FUSE_NOTIFY_INVAL_INODE"),
+			3 => fmt.write_str("FUSE_NOTIFY_INVAL_ENTRY"),
+			4 => fmt.write_str("FUSE_NOTIFY_STORE"),
+			5 => fmt.write_str("FUSE_NOTIFY_RETRIEVE"),
+			6 => fmt.write_str("FUSE_NOTIFY_DELETE"),
+			7 => fmt.write_str("FUSE_NOTIFY_CODE_MAX"),
+			_ => write!(fmt, "fuse_notify_code({})", self.0),
+		}
+	}
+}
 
 /* The read buffer is required to be at least 8k, but may be much larger */
-#define FUSE_MIN_READ_BUFFER 8192
+pub const FUSE_MIN_READ_BUFFER: usize = 8192;
 
-#define FUSE_COMPAT_ENTRY_OUT_SIZE 120
+pub const FUSE_COMPAT_ENTRY_OUT_SIZE: usize = 120;
 
-struct fuse_entry_out {
-	uint64_t	nodeid;		/* Inode ID */
-	uint64_t	generation;	/* Inode generation: nodeid:gen must
-					   be unique for the fs's lifetime */
-	uint64_t	entry_valid;	/* Cache timeout for the name */
-	uint64_t	attr_valid;	/* Cache timeout for the attributes */
-	uint32_t	entry_valid_nsec;
-	uint32_t	attr_valid_nsec;
-	struct fuse_attr attr;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_entry_out {
+	pub nodeid: u64,
+	pub generation: u64,
+	pub entry_valid: u64,
+	pub attr_valid: u64,
+	pub entry_valid_nsec: u32,
+	pub attr_valid_nsec: u32,
+	pub attr: fuse_attr,
+}
 
-struct fuse_forget_in {
-	uint64_t	nlookup;
-};
+impl fuse_entry_out {
+	#[must_use]
+	pub const fn new() -> fuse_entry_out {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_forget_one {
-	uint64_t	nodeid;
-	uint64_t	nlookup;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_forget_in {
+	pub nlookup: u64,
+}
 
-struct fuse_batch_forget_in {
-	uint32_t	count;
-	uint32_t	dummy;
-};
+impl fuse_forget_in {
+	#[must_use]
+	pub const fn new() -> fuse_forget_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_getattr_in {
-	uint32_t	getattr_flags;
-	uint32_t	dummy;
-	uint64_t	fh;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_forget_one {
+	pub nodeid: u64,
+	pub nlookup: u64,
+}
 
-#define FUSE_COMPAT_ATTR_OUT_SIZE 96
+impl fuse_forget_one {
+	#[must_use]
+	pub const fn new() -> fuse_forget_one {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_attr_out {
-	uint64_t	attr_valid;	/* Cache timeout for the attributes */
-	uint32_t	attr_valid_nsec;
-	uint32_t	dummy;
-	struct fuse_attr attr;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_batch_forget_in {
+	pub count: u32,
+	pub(self) dummy: u32,
+}
 
-#define FUSE_COMPAT_MKNOD_IN_SIZE 8
+impl fuse_batch_forget_in {
+	#[must_use]
+	pub const fn new() -> fuse_batch_forget_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_mknod_in {
-	uint32_t	mode;
-	uint32_t	rdev;
-	uint32_t	umask;
-	uint32_t	padding;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_getattr_in {
+	pub getattr_flags: u32,
+	pub(self) dummy: u32,
+	pub fh: u64,
+}
 
-struct fuse_mkdir_in {
-	uint32_t	mode;
-	uint32_t	umask;
-};
+impl fuse_getattr_in {
+	#[must_use]
+	pub const fn new() -> fuse_getattr_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_rename_in {
-	uint64_t	newdir;
-};
+pub const FUSE_COMPAT_ATTR_OUT_SIZE: usize = 96;
 
-struct fuse_rename2_in {
-	uint64_t	newdir;
-	uint32_t	flags;
-	uint32_t	padding;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_attr_out {
+	pub attr_valid: u64,
+	pub attr_valid_nsec: u32,
+	pub(self) dummy: u32,
+	pub attr: fuse_attr,
+}
 
-struct fuse_link_in {
-	uint64_t	oldnodeid;
-};
+impl fuse_attr_out {
+	#[must_use]
+	pub const fn new() -> fuse_attr_out {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_setattr_in {
-	uint32_t	valid;
-	uint32_t	padding;
-	uint64_t	fh;
-	uint64_t	size;
-	uint64_t	lock_owner;
-	uint64_t	atime;
-	uint64_t	mtime;
-	uint64_t	ctime;
-	uint32_t	atimensec;
-	uint32_t	mtimensec;
-	uint32_t	ctimensec;
-	uint32_t	mode;
-	uint32_t	unused4;
-	uint32_t	uid;
-	uint32_t	gid;
-	uint32_t	unused5;
-};
+pub const FUSE_COMPAT_MKNOD_IN_SIZE: usize = 8;
 
-struct fuse_open_in {
-	uint32_t	flags;
-	uint32_t	open_flags;	/* FUSE_OPEN_... */
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_mknod_in {
+	pub mode: u32,
+	pub rdev: u32,
+	pub umask: u32,
+	pub(self) padding: u32,
+}
 
-struct fuse_create_in {
-	uint32_t	flags;
-	uint32_t	mode;
-	uint32_t	umask;
-	uint32_t	open_flags;	/* FUSE_OPEN_... */
-};
+impl fuse_mknod_in {
+	#[must_use]
+	pub const fn new() -> fuse_mknod_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_open_out {
-	uint64_t	fh;
-	uint32_t	open_flags;
-	uint32_t	padding;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_mkdir_in {
+	pub mode: u32,
+	pub umask: u32,
+}
 
-struct fuse_release_in {
-	uint64_t	fh;
-	uint32_t	flags;
-	uint32_t	release_flags;
-	uint64_t	lock_owner;
-};
+impl fuse_mkdir_in {
+	#[must_use]
+	pub const fn new() -> fuse_mkdir_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_flush_in {
-	uint64_t	fh;
-	uint32_t	unused;
-	uint32_t	padding;
-	uint64_t	lock_owner;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_rename_in {
+	pub newdir: u64,
+}
 
-struct fuse_read_in {
-	uint64_t	fh;
-	uint64_t	offset;
-	uint32_t	size;
-	uint32_t	read_flags;
-	uint64_t	lock_owner;
-	uint32_t	flags;
-	uint32_t	padding;
-};
+impl fuse_rename_in {
+	#[must_use]
+	pub const fn new() -> fuse_rename_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-#define FUSE_COMPAT_WRITE_IN_SIZE 24
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_rename2_in {
+	pub newdir: u64,
+	pub flags: u32,
+	pub(self) padding: u32,
+}
 
-struct fuse_write_in {
-	uint64_t	fh;
-	uint64_t	offset;
-	uint32_t	size;
-	uint32_t	write_flags;
-	uint64_t	lock_owner;
-	uint32_t	flags;
-	uint32_t	padding;
-};
+impl fuse_rename2_in {
+	#[must_use]
+	pub const fn new() -> fuse_rename2_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_write_out {
-	uint32_t	size;
-	uint32_t	padding;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_link_in {
+	pub oldnodeid: u64,
+}
 
-#define FUSE_COMPAT_STATFS_SIZE 48
+impl fuse_link_in {
+	#[must_use]
+	pub const fn new() -> fuse_link_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_statfs_out {
-	struct fuse_kstatfs st;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_setattr_in {
+	pub valid: u32,
+	pub(self) padding: u32,
+	pub fh: u64,
+	pub size: u64,
+	pub lock_owner: u64,
+	pub atime: u64,
+	pub mtime: u64,
+	pub ctime: u64,
+	pub atimensec: u32,
+	pub mtimensec: u32,
+	pub ctimensec: u32,
+	pub mode: u32,
+	pub(self) unused4: u32,
+	pub uid: u32,
+	pub gid: u32,
+	pub(self) unused5: u32,
+}
 
-struct fuse_fsync_in {
-	uint64_t	fh;
-	uint32_t	fsync_flags;
-	uint32_t	padding;
-};
+impl fuse_setattr_in {
+	#[must_use]
+	pub const fn new() -> fuse_setattr_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-#define FUSE_COMPAT_SETXATTR_IN_SIZE 8
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_open_in {
+	pub flags: u32,
+	pub open_flags: u32,
+}
 
-struct fuse_setxattr_in {
-	uint32_t	size;
-	uint32_t	flags;
-	uint32_t	setxattr_flags;
-	uint32_t	padding;
-};
+impl fuse_open_in {
+	#[must_use]
+	pub const fn new() -> fuse_open_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_getxattr_in {
-	uint32_t	size;
-	uint32_t	padding;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_create_in {
+	pub flags: u32,
+	pub mode: u32,
+	pub umask: u32,
+	pub open_flags: u32,
+}
 
-struct fuse_getxattr_out {
-	uint32_t	size;
-	uint32_t	padding;
-};
+impl fuse_create_in {
+	#[must_use]
+	pub const fn new() -> fuse_create_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_lk_in {
-	uint64_t	fh;
-	uint64_t	owner;
-	struct fuse_file_lock lk;
-	uint32_t	lk_flags;
-	uint32_t	padding;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_open_out {
+	pub fh: u64,
+	pub open_flags: u32,
+	pub(self) padding: u32,
+}
 
-struct fuse_lk_out {
-	struct fuse_file_lock lk;
-};
+impl fuse_open_out {
+	#[must_use]
+	pub const fn new() -> fuse_open_out {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_access_in {
-	uint32_t	mask;
-	uint32_t	padding;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_release_in {
+	pub fh: u64,
+	pub flags: u32,
+	pub release_flags: u32,
+	pub lock_owner: u64,
+}
 
-struct fuse_init_in {
-	uint32_t	major;
-	uint32_t	minor;
-	uint32_t	max_readahead;
-	uint32_t	flags;
-	uint32_t	flags2;
-	uint32_t	unused[11];
-};
+impl fuse_release_in {
+	#[must_use]
+	pub const fn new() -> fuse_release_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-#define FUSE_COMPAT_INIT_OUT_SIZE 8
-#define FUSE_COMPAT_22_INIT_OUT_SIZE 24
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_flush_in {
+	pub fh: u64,
+	pub(self) unused: u32,
+	pub(self) padding: u32,
+	pub lock_owner: u64,
+}
 
-struct fuse_init_out {
-	uint32_t	major;
-	uint32_t	minor;
-	uint32_t	max_readahead;
-	uint32_t	flags;
-	uint16_t	max_background;
-	uint16_t	congestion_threshold;
-	uint32_t	max_write;
-	uint32_t	time_gran;
-	uint16_t	max_pages;
-	uint16_t	map_alignment;
-	uint32_t	flags2;
-	uint32_t	unused[7];
-};
+impl fuse_flush_in {
+	#[must_use]
+	pub const fn new() -> fuse_flush_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-#define CUSE_INIT_INFO_MAX 4096
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_read_in {
+	pub fh: u64,
+	pub offset: u64,
+	pub size: u32,
+	pub read_flags: u32,
+	pub lock_owner: u64,
+	pub flags: u32,
+	pub(self) padding: u32,
+}
 
-struct cuse_init_in {
-	uint32_t	major;
-	uint32_t	minor;
-	uint32_t	unused;
-	uint32_t	flags;
-};
+impl fuse_read_in {
+	#[must_use]
+	pub const fn new() -> fuse_read_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct cuse_init_out {
-	uint32_t	major;
-	uint32_t	minor;
-	uint32_t	unused;
-	uint32_t	flags;
-	uint32_t	max_read;
-	uint32_t	max_write;
-	uint32_t	dev_major;		/* chardev major */
-	uint32_t	dev_minor;		/* chardev minor */
-	uint32_t	spare[10];
-};
+pub const FUSE_COMPAT_WRITE_IN_SIZE: usize = 24;
 
-struct fuse_interrupt_in {
-	uint64_t	unique;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_write_in {
+	pub fh: u64,
+	pub offset: u64,
+	pub size: u32,
+	pub write_flags: u32,
+	pub lock_owner: u64,
+	pub flags: u32,
+	pub(self) padding: u32,
+}
 
-struct fuse_bmap_in {
-	uint64_t	block;
-	uint32_t	blocksize;
-	uint32_t	padding;
-};
+impl fuse_write_in {
+	#[must_use]
+	pub const fn new() -> fuse_write_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_bmap_out {
-	uint64_t	block;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_write_out {
+	pub size: u32,
+	pub(self) padding: u32,
+}
 
-struct fuse_ioctl_in {
-	uint64_t	fh;
-	uint32_t	flags;
-	uint32_t	cmd;
-	uint64_t	arg;
-	uint32_t	in_size;
-	uint32_t	out_size;
-};
+impl fuse_write_out {
+	#[must_use]
+	pub const fn new() -> fuse_write_out {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_ioctl_iovec {
-	uint64_t	base;
-	uint64_t	len;
-};
+pub const FUSE_COMPAT_STATFS_SIZE: usize = 48;
 
-struct fuse_ioctl_out {
-	int32_t		result;
-	uint32_t	flags;
-	uint32_t	in_iovs;
-	uint32_t	out_iovs;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_statfs_out {
+	pub st: fuse_kstatfs,
+}
 
-struct fuse_poll_in {
-	uint64_t	fh;
-	uint64_t	kh;
-	uint32_t	flags;
-	uint32_t	events;
-};
+impl fuse_statfs_out {
+	#[must_use]
+	pub const fn new() -> fuse_statfs_out {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_poll_out {
-	uint32_t	revents;
-	uint32_t	padding;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_fsync_in {
+	pub fh: u64,
+	pub fsync_flags: u32,
+	pub(self) padding: u32,
+}
 
-struct fuse_notify_poll_wakeup_out {
-	uint64_t	kh;
-};
+impl fuse_fsync_in {
+	#[must_use]
+	pub const fn new() -> fuse_fsync_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_fallocate_in {
-	uint64_t	fh;
-	uint64_t	offset;
-	uint64_t	length;
-	uint32_t	mode;
-	uint32_t	padding;
-};
+pub const FUSE_COMPAT_SETXATTR_IN_SIZE: usize = 8;
 
-struct fuse_in_header {
-	uint32_t	len;
-	fuse_opcode	opcode;
-	uint64_t	unique;
-	uint64_t	nodeid;
-	uint32_t	uid;
-	uint32_t	gid;
-	uint32_t	pid;
-	uint32_t	padding;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_setxattr_in {
+	pub size: u32,
+	pub flags: u32,
+	pub setxattr_flags: u32,
+	pub(self) padding: u32,
+}
 
-struct fuse_out_header {
-	uint32_t	len;
-	int32_t		error;
-	uint64_t	unique;
-};
+impl fuse_setxattr_in {
+	#[must_use]
+	pub const fn new() -> fuse_setxattr_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_dirent {
-	uint64_t	ino;
-	uint64_t	off;
-	uint32_t	namelen;
-	uint32_t	r#type;
-	char name[];
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_getxattr_in {
+	pub size: u32,
+	pub(self) padding: u32,
+}
 
-struct fuse_direntplus {
-	struct fuse_entry_out entry_out;
-	struct fuse_dirent dirent;
-};
+impl fuse_getxattr_in {
+	#[must_use]
+	pub const fn new() -> fuse_getxattr_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_notify_inval_inode_out {
-	uint64_t	ino;
-	int64_t		off;
-	int64_t		len;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_getxattr_out {
+	pub size: u32,
+	pub(self) padding: u32,
+}
 
-struct fuse_notify_inval_entry_out {
-	uint64_t	parent;
-	uint32_t	namelen;
-	uint32_t	padding;
-};
+impl fuse_getxattr_out {
+	#[must_use]
+	pub const fn new() -> fuse_getxattr_out {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_notify_delete_out {
-	uint64_t	parent;
-	uint64_t	child;
-	uint32_t	namelen;
-	uint32_t	padding;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_lk_in {
+	pub fh: u64,
+	pub owner: u64,
+	pub lk: fuse_file_lock,
+	pub lk_flags: u32,
+	pub(self) padding: u32,
+}
 
-struct fuse_notify_store_out {
-	uint64_t	nodeid;
-	uint64_t	offset;
-	uint32_t	size;
-	uint32_t	padding;
-};
+impl fuse_lk_in {
+	#[must_use]
+	pub const fn new() -> fuse_lk_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_notify_retrieve_out {
-	uint64_t	notify_unique;
-	uint64_t	nodeid;
-	uint64_t	offset;
-	uint32_t	size;
-	uint32_t	padding;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_lk_out {
+	pub lk: fuse_file_lock,
+}
+
+impl fuse_lk_out {
+	#[must_use]
+	pub const fn new() -> fuse_lk_out {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_access_in {
+	pub mask: u32,
+	pub(self) padding: u32,
+}
+
+impl fuse_access_in {
+	#[must_use]
+	pub const fn new() -> fuse_access_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_init_in {
+	pub major: u32,
+	pub minor: u32,
+	pub max_readahead: u32,
+	pub flags: u32,
+	pub flags2: u32,
+	pub(self) unused: [u32; 11],
+}
+
+impl fuse_init_in {
+	#[must_use]
+	pub const fn new() -> fuse_init_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+pub const FUSE_COMPAT_INIT_OUT_SIZE: usize = 8;
+pub const FUSE_COMPAT_22_INIT_OUT_SIZE: usize = 24;
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_init_out {
+	pub major: u32,
+	pub minor: u32,
+	pub max_readahead: u32,
+	pub flags: u32,
+	pub max_background: u16,
+	pub congestion_threshold: u16,
+	pub max_write: u32,
+	pub time_gran: u32,
+	pub max_pages: u16,
+	pub map_alignment: u16,
+	pub flags2: u32,
+	pub(self) unused: [u32; 7],
+}
+
+impl fuse_init_out {
+	#[must_use]
+	pub const fn new() -> fuse_init_out {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+pub const CUSE_INIT_INFO_MAX: usize = 4096;
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct cuse_init_in {
+	pub major: u32,
+	pub minor: u32,
+	pub(self) unused: u32,
+	pub flags: u32,
+}
+
+impl cuse_init_in {
+	#[must_use]
+	pub const fn new() -> cuse_init_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct cuse_init_out {
+	pub major: u32,
+	pub minor: u32,
+	pub(self) unused: u32,
+	pub flags: u32,
+	pub max_read: u32,
+	pub max_write: u32,
+	pub dev_major: u32,
+	pub dev_minor: u32,
+	pub(self) spare: [u32; 10],
+}
+
+impl cuse_init_out {
+	#[must_use]
+	pub const fn new() -> cuse_init_out {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_interrupt_in {
+	pub unique: u64,
+}
+
+impl fuse_interrupt_in {
+	#[must_use]
+	pub const fn new() -> fuse_interrupt_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_bmap_in {
+	pub block: u64,
+	pub blocksize: u32,
+	pub(self) padding: u32,
+}
+
+impl fuse_bmap_in {
+	#[must_use]
+	pub const fn new() -> fuse_bmap_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_bmap_out {
+	pub block: u64,
+}
+
+impl fuse_bmap_out {
+	#[must_use]
+	pub const fn new() -> fuse_bmap_out {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_ioctl_in {
+	pub fh: u64,
+	pub flags: u32,
+	pub cmd: u32,
+	pub arg: u64,
+	pub in_size: u32,
+	pub out_size: u32,
+}
+
+impl fuse_ioctl_in {
+	#[must_use]
+	pub const fn new() -> fuse_ioctl_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_ioctl_iovec {
+	pub base: u64,
+	pub len: u64,
+}
+
+impl fuse_ioctl_iovec {
+	#[must_use]
+	pub const fn new() -> fuse_ioctl_iovec {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_ioctl_out {
+	pub result: i32,
+	pub flags: u32,
+	pub in_iovs: u32,
+	pub out_iovs: u32,
+}
+
+impl fuse_ioctl_out {
+	#[must_use]
+	pub const fn new() -> fuse_ioctl_out {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_poll_in {
+	pub fh: u64,
+	pub kh: u64,
+	pub flags: u32,
+	pub events: u32,
+}
+
+impl fuse_poll_in {
+	#[must_use]
+	pub const fn new() -> fuse_poll_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_poll_out {
+	pub revents: u32,
+	pub(self) padding: u32,
+}
+
+impl fuse_poll_out {
+	#[must_use]
+	pub const fn new() -> fuse_poll_out {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_notify_poll_wakeup_out {
+	pub kh: u64,
+}
+
+impl fuse_notify_poll_wakeup_out {
+	#[must_use]
+	pub const fn new() -> fuse_notify_poll_wakeup_out {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_fallocate_in {
+	pub fh: u64,
+	pub offset: u64,
+	pub length: u64,
+	pub mode: u32,
+	pub(self) padding: u32,
+}
+
+impl fuse_fallocate_in {
+	#[must_use]
+	pub const fn new() -> fuse_fallocate_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_in_header {
+	pub len: u32,
+	pub opcode: fuse_opcode,
+	pub unique: u64,
+	pub nodeid: u64,
+	pub uid: u32,
+	pub gid: u32,
+	pub pid: u32,
+	pub(self) padding: u32,
+}
+
+impl fuse_in_header {
+	#[must_use]
+	pub const fn new() -> fuse_in_header {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_out_header {
+	pub len: u32,
+	pub error: i32,
+	pub unique: u64,
+}
+
+impl fuse_out_header {
+	#[must_use]
+	pub const fn new() -> fuse_out_header {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_dirent {
+	pub ino: u64,
+	pub off: u64,
+	pub namelen: u32,
+	pub r#type: u32,
+	pub name: [u8; 0],
+}
+
+impl fuse_dirent {
+	#[must_use]
+	pub const fn new() -> fuse_dirent {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+/* Align variable length records to 64bit boundary */
+// #define FUSE_REC_ALIGN(x) 	(((x) + sizeof(uint64_t) - 1) & ~(sizeof(uint64_t) - 1))
+
+// #define FUSE_NAME_OFFSET offsetof(struct fuse_dirent, name)
+// #define FUSE_DIRENT_ALIGN(x) FUSE_REC_ALIGN(x)
+// #define FUSE_DIRENT_SIZE(d) 	FUSE_DIRENT_ALIGN(FUSE_NAME_OFFSET + (d)->namelen)
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_direntplus {
+	pub entry_out: fuse_entry_out,
+	pub dirent: fuse_dirent,
+}
+
+impl fuse_direntplus {
+	#[must_use]
+	pub const fn new() -> fuse_direntplus {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+// #define FUSE_NAME_OFFSET_DIRENTPLUS 	offsetof(struct fuse_direntplus, dirent.name)
+// #define FUSE_DIRENTPLUS_SIZE(d) 	FUSE_DIRENT_ALIGN(FUSE_NAME_OFFSET_DIRENTPLUS + (d)->dirent.namelen)
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_notify_inval_inode_out {
+	pub ino: u64,
+	pub off: i64,
+	pub len: i64,
+}
+
+impl fuse_notify_inval_inode_out {
+	#[must_use]
+	pub const fn new() -> fuse_notify_inval_inode_out {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_notify_inval_entry_out {
+	pub parent: u64,
+	pub namelen: u32,
+	pub(self) padding: u32,
+}
+
+impl fuse_notify_inval_entry_out {
+	#[must_use]
+	pub const fn new() -> fuse_notify_inval_entry_out {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_notify_delete_out {
+	pub parent: u64,
+	pub child: u64,
+	pub namelen: u32,
+	pub(self) padding: u32,
+}
+
+impl fuse_notify_delete_out {
+	#[must_use]
+	pub const fn new() -> fuse_notify_delete_out {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_notify_store_out {
+	pub nodeid: u64,
+	pub offset: u64,
+	pub size: u32,
+	pub(self) padding: u32,
+}
+
+impl fuse_notify_store_out {
+	#[must_use]
+	pub const fn new() -> fuse_notify_store_out {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_notify_retrieve_out {
+	pub notify_unique: u64,
+	pub nodeid: u64,
+	pub offset: u64,
+	pub size: u32,
+	pub(self) padding: u32,
+}
+
+impl fuse_notify_retrieve_out {
+	#[must_use]
+	pub const fn new() -> fuse_notify_retrieve_out {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
 /* Matches the size of fuse_write_in */
-struct fuse_notify_retrieve_in {
-	uint64_t	dummy1;
-	uint64_t	offset;
-	uint32_t	size;
-	uint32_t	dummy2;
-	uint64_t	dummy3;
-	uint64_t	dummy4;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_notify_retrieve_in {
+	pub(self) dummy1: u64,
+	pub offset: u64,
+	pub size: u32,
+	pub(self) dummy2: u32,
+	pub(self) dummy3: u64,
+	pub(self) dummy4: u64,
+}
+
+impl fuse_notify_retrieve_in {
+	#[must_use]
+	pub const fn new() -> fuse_notify_retrieve_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
 /* Device ioctls: */
-#define FUSE_DEV_IOC_MAGIC             229
+pub const FUSE_DEV_IOC_MAGIC: u32 = 229;
+// #define FUSE_DEV_IOC_CLONE		_IOR(FUSE_DEV_IOC_MAGIC, 0, uint32_t)
 
-struct fuse_lseek_in {
-	uint64_t	fh;
-	uint64_t	offset;
-	uint32_t	whence;
-	uint32_t	padding;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_lseek_in {
+	pub fh: u64,
+	pub offset: u64,
+	pub whence: u32,
+	pub(self) padding: u32,
+}
 
-struct fuse_lseek_out {
-	uint64_t	offset;
-};
+impl fuse_lseek_in {
+	#[must_use]
+	pub const fn new() -> fuse_lseek_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
-struct fuse_copy_file_range_in {
-	uint64_t	fh_in;
-	uint64_t	off_in;
-	uint64_t	nodeid_out;
-	uint64_t	fh_out;
-	uint64_t	off_out;
-	uint64_t	len;
-	uint64_t	flags;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_lseek_out {
+	pub offset: u64,
+}
 
-#define FUSE_SETUPMAPPING_FLAG_WRITE (1ull << 0)
-#define FUSE_SETUPMAPPING_FLAG_READ (1ull << 1)
-struct fuse_setupmapping_in {
+impl fuse_lseek_out {
+	#[must_use]
+	pub const fn new() -> fuse_lseek_out {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_copy_file_range_in {
+	pub fh_in: u64,
+	pub off_in: u64,
+	pub nodeid_out: u64,
+	pub fh_out: u64,
+	pub off_out: u64,
+	pub len: u64,
+	pub flags: u64,
+}
+
+impl fuse_copy_file_range_in {
+	#[must_use]
+	pub const fn new() -> fuse_copy_file_range_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+pub const FUSE_SETUPMAPPING_FLAG_WRITE: u64 = (1u64 << 0);
+pub const FUSE_SETUPMAPPING_FLAG_READ: u64 = (1u64 << 1);
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_setupmapping_in {
 	/* An already open handle */
-	uint64_t	fh;
+	pub fh: u64,
 	/* Offset into the file to start the mapping */
-	uint64_t	foffset;
+	pub foffset: u64,
 	/* Length of mapping required */
-	uint64_t	len;
+	pub len: u64,
 	/* Flags, FUSE_SETUPMAPPING_FLAG_* */
-	uint64_t	flags;
+	pub flags: u64,
 	/* Offset in Memory Window */
-	uint64_t	moffset;
-};
+	pub moffset: u64,
+}
 
-struct fuse_removemapping_in {
+impl fuse_setupmapping_in {
+	#[must_use]
+	pub const fn new() -> fuse_setupmapping_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_removemapping_in {
 	/* number of fuse_removemapping_one follows */
-	uint32_t        count;
-};
+	pub count: u32,
+}
 
-struct fuse_removemapping_one {
+impl fuse_removemapping_in {
+	#[must_use]
+	pub const fn new() -> fuse_removemapping_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_removemapping_one {
 	/* Offset into the dax window start the unmapping */
-	uint64_t        moffset;
+	pub moffset: u64,
 	/* Length of mapping required */
-	uint64_t	len;
-};
+	pub len: u64,
+}
 
-struct fuse_syncfs_in {
-	uint64_t	padding;
-};
+impl fuse_removemapping_one {
+	#[must_use]
+	pub const fn new() -> fuse_removemapping_one {
+		unsafe { core::mem::zeroed() }
+	}
+}
+
+// #define FUSE_REMOVEMAPPING_MAX_ENTRY   		(PAGE_SIZE / sizeof(struct fuse_removemapping_one))
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_syncfs_in {
+	pub(self) padding: u64,
+}
+
+impl fuse_syncfs_in {
+	#[must_use]
+	pub const fn new() -> fuse_syncfs_in {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
 /*
  * For each security context, send fuse_secctx with size of security context
@@ -990,10 +1706,20 @@ struct fuse_syncfs_in {
  * will be followed by actual context label.
  * fuse_secctx, name, context
  */
-struct fuse_secctx {
-	uint32_t	size;
-	uint32_t	padding;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_secctx {
+	pub size: u32,
+	pub(self) padding: u32,
+}
+
+impl fuse_secctx {
+	#[must_use]
+	pub const fn new() -> fuse_secctx {
+		unsafe { core::mem::zeroed() }
+	}
+}
 
 /*
  * Contains the information about how many fuse_secctx structures are being
@@ -1001,9 +1727,18 @@ struct fuse_secctx {
  * size of fuse_secctx_header).
  *
  */
-struct fuse_secctx_header {
-	uint32_t	size;
-	uint32_t	nr_secctx;
-};
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_secctx_header {
+	pub size: u32,
+	pub nr_secctx: u32,
+}
 
-}  // fuse_kernel_decls
+impl fuse_secctx_header {
+	#[must_use]
+	pub const fn new() -> fuse_secctx_header {
+		unsafe { core::mem::zeroed() }
+	}
+}
+

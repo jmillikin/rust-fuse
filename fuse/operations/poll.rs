@@ -19,7 +19,7 @@
 use core::fmt;
 
 use crate::internal::debug;
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -46,8 +46,8 @@ impl fmt::Debug for PollHandle {
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_POLL` operation.
 pub struct PollRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	body: &'a fuse_kernel::fuse_poll_in,
+	header: &'a kernel::fuse_in_header,
+	body: &'a kernel::fuse_poll_in,
 }
 
 impl PollRequest<'_> {
@@ -99,7 +99,7 @@ impl<'a> PollRequest<'a> {
 		request: server::Request<'a>,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_POLL)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_POLL)?;
 
 		let header = dec.header();
 		let body = dec.next_sized()?;
@@ -128,14 +128,14 @@ impl fmt::Debug for PollRequest<'_> {
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_COPY_FILE_RANGE` operation.
 pub struct PollResponse {
-	raw: fuse_kernel::fuse_poll_out,
+	raw: kernel::fuse_poll_out,
 }
 
 impl PollResponse {
 	#[must_use]
 	pub fn new() -> PollResponse {
 		Self {
-			raw: fuse_kernel::fuse_poll_out::zeroed(),
+			raw: kernel::fuse_poll_out::new(),
 		}
 	}
 
@@ -195,9 +195,9 @@ pub struct PollRequestFlag {
 }
 
 mod request_flags {
-	use crate::internal::fuse_kernel;
+	use crate::kernel;
 	bitflags!(PollRequestFlag, PollRequestFlags, u32, {
-		SCHEDULE_NOTIFY = fuse_kernel::FUSE_POLL_SCHEDULE_NOTIFY;
+		SCHEDULE_NOTIFY = kernel::FUSE_POLL_SCHEDULE_NOTIFY;
 	});
 }
 

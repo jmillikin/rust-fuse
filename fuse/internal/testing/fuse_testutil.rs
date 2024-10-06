@@ -17,13 +17,10 @@
 use std::mem::size_of;
 use std::slice;
 
-pub const VERSION: (u32, u32) = (
-	fuse_kernel::FUSE_KERNEL_VERSION,
-	fuse_kernel::FUSE_KERNEL_MINOR_VERSION,
-);
+use fuse::kernel;
 
 pub struct MessageBuilder {
-	header: Option<fuse_kernel::fuse_in_header>,
+	header: Option<kernel::fuse_in_header>,
 	buf: Vec<u8>,
 }
 
@@ -41,7 +38,7 @@ impl MessageBuilder {
 			Some(h) => {
 				let mut h = h;
 				h.len = (self.buf.len()
-					+ size_of::<fuse_kernel::fuse_in_header>()) as u32;
+					+ size_of::<kernel::fuse_in_header>()) as u32;
 				MessageBuilder::new().push_sized(&h).build()
 			},
 		};
@@ -56,7 +53,7 @@ impl MessageBuilder {
 		out
 	}
 
-	pub fn set_opcode(self, opcode: fuse_kernel::fuse_opcode) -> Self {
+	pub fn set_opcode(self, opcode: kernel::fuse_opcode) -> Self {
 		self.set_header(|h| {
 			h.opcode = opcode;
 		})
@@ -64,21 +61,14 @@ impl MessageBuilder {
 
 	pub fn set_header<HeaderFn>(mut self, header_fn: HeaderFn) -> Self
 	where
-		HeaderFn: FnOnce(&mut fuse_kernel::fuse_in_header),
+		HeaderFn: FnOnce(&mut kernel::fuse_in_header),
 	{
-		let mut header = match self.header {
-			None => fuse_kernel::fuse_in_header {
-				len: 0,
-				opcode: fuse_kernel::fuse_opcode(0),
-				unique: 0xAABBCCDD,
-				nodeid: 0,
-				uid: 0,
-				gid: 0,
-				pid: 0,
-				padding: 0,
-			},
-			Some(h) => h,
+		const DEFAULT_HEADER: kernel::fuse_in_header = {
+			let mut h = kernel::fuse_in_header::new();
+			h.unique = 0xAABBCCDD;
+			h
 		};
+		let mut header = self.header.unwrap_or(DEFAULT_HEADER);
 		header_fn(&mut header);
 		self.header = Some(header);
 		self
@@ -139,7 +129,10 @@ pub struct DecodeRequestOpts {
 macro_rules! decode_request_opts {
 	({}) => {
 		DecodeRequestOpts {
-			protocol_version: $crate::VERSION,
+			protocol_version: (
+				fuse::kernel::FUSE_KERNEL_VERSION,
+				fuse::kernel::FUSE_KERNEL_MINOR_VERSION,
+			),
 		}
 	};
 	({
@@ -203,7 +196,10 @@ pub struct EncodeRequestOpts {
 macro_rules! encode_request_opts {
 	({}) => {
 		EncodeRequestOpts {
-			protocol_version: $crate::VERSION,
+			protocol_version: (
+				fuse::kernel::FUSE_KERNEL_VERSION,
+				fuse::kernel::FUSE_KERNEL_MINOR_VERSION,
+			),
 		}
 	};
 	({
@@ -225,4 +221,15 @@ macro_rules! build_request {
 		$buf = builder.build_aligned();
 		$crate::decode_request!($t, $buf)
 	}};
+}
+
+#[macro_export]
+macro_rules! new {
+	($t:ty { $( $field:ident : $value:expr , )+ }) => {{
+		let mut value = <$t>::new();
+		$(
+			value.$field = $value;
+		)+
+		value
+	}}
 }

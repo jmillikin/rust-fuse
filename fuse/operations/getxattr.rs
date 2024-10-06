@@ -20,7 +20,7 @@ use core::convert::TryFrom;
 use core::fmt;
 use core::num;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -32,8 +32,8 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_GETXATTR` operation.
 pub struct GetxattrRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	body: &'a fuse_kernel::fuse_getxattr_in,
+	header: &'a kernel::fuse_in_header,
+	body: &'a kernel::fuse_getxattr_in,
 	name: &'a crate::XattrName,
 }
 
@@ -66,7 +66,7 @@ impl<'a> server::FuseRequest<'a> for GetxattrRequest<'a> {
 		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_GETXATTR)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_GETXATTR)?;
 
 		let header = dec.header();
 		decode::node_id(header.nodeid)?;
@@ -102,7 +102,7 @@ pub struct GetxattrResponse<'a> {
 
 enum GetxattrOutput<'a> {
 	Value(&'a crate::XattrValue),
-	Size(fuse_kernel::fuse_getxattr_out),
+	Size(kernel::fuse_getxattr_out),
 	ErrTooBig(usize),
 }
 
@@ -119,10 +119,10 @@ impl<'a> GetxattrResponse<'a> {
 	#[must_use]
 	pub fn with_value_size(value_size: usize) -> GetxattrResponse<'a> {
 		if let Some(size_u32) = check_value_size(value_size) {
-			let output = GetxattrOutput::Size(fuse_kernel::fuse_getxattr_out {
+			let raw = new!(kernel::fuse_getxattr_out {
 				size: size_u32,
-				..fuse_kernel::fuse_getxattr_out::zeroed()
 			});
+			let output = GetxattrOutput::Size(raw);
 			return GetxattrResponse { output };
 		}
 		GetxattrResponse {

@@ -14,18 +14,22 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use fuse::kernel;
 use fuse::operations::forget::{ForgetRequest, ForgetRequestItem};
 
+use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, MessageBuilder};
 
 #[test]
 fn request_single() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_FORGET;
+			h.opcode = kernel::fuse_opcode::FUSE_FORGET;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_forget_in { nlookup: 456 })
+		.push_sized(&testutil::new!(kernel::fuse_forget_in {
+			nlookup: 456,
+		}))
 		.build_aligned();
 
 	let req = decode_request!(ForgetRequest, buf);
@@ -39,16 +43,18 @@ fn request_single() {
 #[test]
 fn request_batch() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::FUSE_BATCH_FORGET)
-		.push_sized(&fuse_kernel::fuse_batch_forget_in { count: 2, dummy: 0 })
-		.push_sized(&fuse_kernel::fuse_forget_one {
+		.set_opcode(kernel::fuse_opcode::FUSE_BATCH_FORGET)
+		.push_sized(&testutil::new!(kernel::fuse_batch_forget_in {
+			count: 2,
+		}))
+		.push_sized(&testutil::new!(kernel::fuse_forget_one {
 			nodeid: 12,
 			nlookup: 34,
-		})
-		.push_sized(&fuse_kernel::fuse_forget_one {
+		}))
+		.push_sized(&testutil::new!(kernel::fuse_forget_one {
 			nodeid: 56,
 			nlookup: 78,
-		})
+		}))
 		.build_aligned();
 
 	let req = decode_request!(ForgetRequest, buf);
@@ -65,10 +71,12 @@ fn request_batch() {
 fn request_impl_debug() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_FORGET;
+			h.opcode = kernel::fuse_opcode::FUSE_FORGET;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_forget_in { nlookup: 456 })
+		.push_sized(&testutil::new!(kernel::fuse_forget_in {
+			nlookup: 456,
+		}))
 		.build_aligned();
 
 	let request = decode_request!(ForgetRequest, buf);

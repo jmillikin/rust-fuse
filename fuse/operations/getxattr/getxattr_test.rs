@@ -17,21 +17,22 @@
 use core::mem::size_of;
 use core::num;
 
+use fuse::kernel;
 use fuse::operations::getxattr::{GetxattrRequest, GetxattrResponse};
 
+use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request_sized() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_GETXATTR;
+			h.opcode = kernel::fuse_opcode::FUSE_GETXATTR;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_getxattr_in {
+		.push_sized(&testutil::new!(kernel::fuse_getxattr_in {
 			size: 10,
-			..fuse_kernel::fuse_getxattr_in::zeroed()
-		})
+		}))
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 
@@ -46,13 +47,10 @@ fn request_sized() {
 fn request_unsized() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_GETXATTR;
+			h.opcode = kernel::fuse_opcode::FUSE_GETXATTR;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_getxattr_in {
-			size: 0,
-			..fuse_kernel::fuse_getxattr_in::zeroed()
-		})
+		.push_sized(&kernel::fuse_getxattr_in::new())
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 
@@ -68,13 +66,12 @@ fn request_impl_debug() {
 	let buf;
 	let request = fuse_testutil::build_request!(buf, GetxattrRequest, {
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_GETXATTR;
-			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+			h.opcode = kernel::fuse_opcode::FUSE_GETXATTR;
+			h.nodeid = kernel::FUSE_ROOT_ID;
 		})
-		.push_sized(&fuse_kernel::fuse_getxattr_in {
+		.push_sized(&testutil::new!(kernel::fuse_getxattr_in {
 			size: 11,
-			..fuse_kernel::fuse_getxattr_in::zeroed()
-		})
+		}))
 		.push_bytes(b"hello.world!\x00")
 	});
 
@@ -99,11 +96,10 @@ fn response_with_value() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>() + 3) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>() + 3) as u32,
 				unique: 0xAABBCCDD,
-			})
+			}))
 			.push_bytes(&[255, 0, 255])
 			.build()
 	);
@@ -117,16 +113,14 @@ fn response_with_value_size() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ size_of::<fuse_kernel::fuse_getxattr_out>()) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ size_of::<kernel::fuse_getxattr_out>()) as u32,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::fuse_getxattr_out {
+			}))
+			.push_sized(&testutil::new!(kernel::fuse_getxattr_out {
 				size: 4,
-				padding: 0,
-			})
+			}))
 			.build()
 	);
 }

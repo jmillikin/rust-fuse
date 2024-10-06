@@ -16,18 +16,22 @@
 
 use core::mem::size_of;
 
+use fuse::kernel;
 use fuse::operations::rename::{RenameRequest, RenameResponse};
 
+use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request_rename() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_RENAME;
+			h.opcode = kernel::fuse_opcode::FUSE_RENAME;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_rename_in { newdir: 456 })
+		.push_sized(&testutil::new!(kernel::fuse_rename_in {
+			newdir: 456,
+		}))
 		.push_bytes(b"old\x00")
 		.push_bytes(b"new\x00")
 		.build_aligned();
@@ -47,14 +51,13 @@ fn request_rename() {
 fn request_rename2() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_RENAME2;
+			h.opcode = kernel::fuse_opcode::FUSE_RENAME2;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_rename2_in {
+		.push_sized(&testutil::new!(kernel::fuse_rename2_in {
 			newdir: 456,
 			flags: 0b111,
-			padding: 0,
-		})
+		}))
 		.push_bytes(b"old\x00")
 		.push_bytes(b"new\x00")
 		.build_aligned();
@@ -74,14 +77,13 @@ fn request_rename2() {
 fn request_impl_debug() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_RENAME2;
+			h.opcode = kernel::fuse_opcode::FUSE_RENAME2;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_rename2_in {
+		.push_sized(&testutil::new!(kernel::fuse_rename2_in {
 			newdir: 456,
 			flags: 0b111,
-			padding: 0,
-		})
+		}))
 		.push_bytes(b"old\x00")
 		.push_bytes(b"new\x00")
 		.build_aligned();
@@ -109,11 +111,10 @@ fn response_empty() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: size_of::<fuse_kernel::fuse_out_header>() as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: size_of::<kernel::fuse_out_header>() as u32,
 				unique: 0xAABBCCDD,
-			})
+			}))
 			.build()
 	);
 }

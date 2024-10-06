@@ -16,8 +16,10 @@
 
 use core::mem::size_of;
 
+use fuse::kernel;
 use fuse::operations::mknod::{MknodRequest, MknodResponse};
 
+use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 const S_IFBLK: u32 = 0o60000;
@@ -26,7 +28,7 @@ const S_IFBLK: u32 = 0o60000;
 fn request_v7p1() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_MKNOD;
+			h.opcode = kernel::fuse_opcode::FUSE_MKNOD;
 			h.nodeid = 100;
 		})
 		.push_sized(&0o644u32)
@@ -50,15 +52,13 @@ fn request_v7p1() {
 fn request_v7p12() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_MKNOD;
+			h.opcode = kernel::fuse_opcode::FUSE_MKNOD;
 			h.nodeid = 100;
 		})
-		.push_sized(&fuse_kernel::fuse_mknod_in {
+		.push_sized(&testutil::new!(kernel::fuse_mknod_in {
 			mode: 0o644,
-			rdev: 0,
 			umask: 0o111,
-			padding: 0,
-		})
+		}))
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 
@@ -78,15 +78,14 @@ fn request_v7p12() {
 fn request_device_number() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_MKNOD;
+			h.opcode = kernel::fuse_opcode::FUSE_MKNOD;
 			h.nodeid = 100;
 		})
-		.push_sized(&fuse_kernel::fuse_mknod_in {
+		.push_sized(&testutil::new!(kernel::fuse_mknod_in {
 			mode: S_IFBLK | 0o644,
 			rdev: 123,
 			umask: 0o111,
-			padding: 0,
-		})
+		}))
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 
@@ -106,15 +105,14 @@ fn request_device_number() {
 fn request_impl_debug() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_MKNOD;
+			h.opcode = kernel::fuse_opcode::FUSE_MKNOD;
 			h.nodeid = 100;
 		})
-		.push_sized(&fuse_kernel::fuse_mknod_in {
+		.push_sized(&testutil::new!(kernel::fuse_mknod_in {
 			mode: S_IFBLK | 0o644,
 			rdev: 123,
 			umask: 0o111,
-			padding: 0,
-		})
+		}))
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 	let request = decode_request!(MknodRequest, buf);
@@ -147,27 +145,21 @@ fn response_v7p1() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ fuse_kernel::FUSE_COMPAT_ENTRY_OUT_SIZE) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ kernel::FUSE_COMPAT_ENTRY_OUT_SIZE) as u32,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::fuse_entry_out {
+			}))
+			.push_sized(&testutil::new!(kernel::fuse_entry_out {
 				nodeid: 11,
 				generation: 22,
-				entry_valid: 0,
-				attr_valid: 0,
-				entry_valid_nsec: 0,
-				attr_valid_nsec: 0,
-				attr: fuse_kernel::fuse_attr {
+				attr: testutil::new!(kernel::fuse_attr {
 					ino: 11,
-					..fuse_kernel::fuse_attr::zeroed()
-				}
-			})
+				}),
+			}))
 			.unpush(
-				size_of::<fuse_kernel::fuse_entry_out>()
-					- fuse_kernel::FUSE_COMPAT_ENTRY_OUT_SIZE
+				size_of::<kernel::fuse_entry_out>()
+					- kernel::FUSE_COMPAT_ENTRY_OUT_SIZE
 			)
 			.build()
 	);
@@ -187,24 +179,18 @@ fn response_v7p9() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ size_of::<fuse_kernel::fuse_entry_out>()) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ size_of::<kernel::fuse_entry_out>()) as u32,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::fuse_entry_out {
+			}))
+			.push_sized(&testutil::new!(kernel::fuse_entry_out {
 				nodeid: 11,
 				generation: 22,
-				entry_valid: 0,
-				attr_valid: 0,
-				entry_valid_nsec: 0,
-				attr_valid_nsec: 0,
-				attr: fuse_kernel::fuse_attr {
+				attr: testutil::new!(kernel::fuse_attr {
 					ino: 11,
-					..fuse_kernel::fuse_attr::zeroed()
-				}
-			})
+				}),
+			}))
 			.build()
 	);
 }

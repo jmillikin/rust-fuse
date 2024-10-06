@@ -17,8 +17,12 @@
 use core::mem::size_of;
 use core::time;
 
+use fuse::kernel;
 use fuse::lock;
 use fuse::operations::setattr::{SetattrRequest, SetattrResponse};
+
+use fuse_testutil as testutil;
+use fuse_testutil::{encode_response, MessageBuilder};
 
 const S_IFREG: u32 = 0o100000;
 
@@ -27,12 +31,11 @@ fn request() {
 	let buf;
 	let request = fuse_testutil::build_request!(buf, SetattrRequest, {
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_SETATTR;
+			h.opcode = kernel::fuse_opcode::FUSE_SETATTR;
 			h.nodeid = 1000;
 		})
-		.push_sized(&fuse_kernel::fuse_setattr_in {
+		.push_sized(&testutil::new!(kernel::fuse_setattr_in {
 			valid: 0xFFFF,
-			padding: 0,
 			fh: 1,
 			size: 2,
 			lock_owner: 3,
@@ -43,11 +46,9 @@ fn request() {
 			mtimensec: 8,
 			ctimensec: 9,
 			mode: S_IFREG | 0o644,
-			unused4: 11,
 			uid: 12,
 			gid: 13,
-			unused5: 14,
-		})
+		}))
 	});
 
 	assert_eq!(request.node_id(), fuse::NodeId::new(1000).unwrap());
@@ -72,10 +73,10 @@ fn request_negative_unix_times() {
 	let buf;
 	let request = fuse_testutil::build_request!(buf, SetattrRequest, {
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_SETATTR;
+			h.opcode = kernel::fuse_opcode::FUSE_SETATTR;
 			h.nodeid = 1000;
 		})
-		.push_sized(&fuse_kernel::fuse_setattr_in {
+		.push_sized(&testutil::new!(kernel::fuse_setattr_in {
 			valid: 0xFFFF,
 			atime: -4_i64 as u64,
 			mtime: -5_i64 as u64,
@@ -83,8 +84,7 @@ fn request_negative_unix_times() {
 			atimensec: 7,
 			mtimensec: 8,
 			ctimensec: 9,
-			..fuse_kernel::fuse_setattr_in::zeroed()
-		})
+		}))
 	});
 
 	assert_eq!(request.atime(), fuse::UnixTime::new(-4, 7));
@@ -97,12 +97,11 @@ fn request_impl_debug() {
 	let buf;
 	let request = fuse_testutil::build_request!(buf, SetattrRequest, {
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_SETATTR;
+			h.opcode = kernel::fuse_opcode::FUSE_SETATTR;
 			h.nodeid = 1000;
 		})
-		.push_sized(&fuse_kernel::fuse_setattr_in {
+		.push_sized(&testutil::new!(kernel::fuse_setattr_in {
 			valid: 0xFFFF,
-			padding: 0,
 			fh: 1,
 			size: 2,
 			lock_owner: 3,
@@ -113,11 +112,9 @@ fn request_impl_debug() {
 			mtimensec: 8,
 			ctimensec: 9,
 			mode: S_IFREG | 0o644,
-			unused4: 11,
 			uid: 12,
 			gid: 13,
-			unused5: 14,
-		})
+		}))
 	});
 
 	assert_eq!(
@@ -151,34 +148,31 @@ fn response_v7p1() {
 	let mut response = SetattrResponse::new(attr);
 	response.set_cache_timeout(time::Duration::new(123, 456));
 
-	let encoded = fuse_testutil::encode_response!(response, {
+	let encoded = encode_response!(response, {
 		protocol_version: (7, 1),
 	});
 
 	assert_eq!(
 		encoded,
-		fuse_testutil::MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ fuse_kernel::FUSE_COMPAT_ATTR_OUT_SIZE) as u32,
-				error: 0,
+		MessageBuilder::new()
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ kernel::FUSE_COMPAT_ATTR_OUT_SIZE) as u32,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::fuse_attr_out {
+			}))
+			.push_sized(&testutil::new!(kernel::fuse_attr_out {
 				attr_valid: 123,
 				attr_valid_nsec: 456,
-				dummy: 0,
-				attr: fuse_kernel::fuse_attr {
+				attr: testutil::new!(kernel::fuse_attr {
 					ino: 2,
 					size: 999,
 					mode: S_IFREG | 0o644,
 					nlink: 1,
-					..fuse_kernel::fuse_attr::zeroed()
-				},
-			})
+				}),
+			}))
 			.unpush(
-				size_of::<fuse_kernel::fuse_attr_out>()
-					- fuse_kernel::FUSE_COMPAT_ATTR_OUT_SIZE
+				size_of::<kernel::fuse_attr_out>()
+					- kernel::FUSE_COMPAT_ATTR_OUT_SIZE
 			)
 			.build()
 	);
@@ -194,31 +188,28 @@ fn response_v7p9() {
 	let mut response = SetattrResponse::new(attr);
 	response.set_cache_timeout(time::Duration::new(123, 456));
 
-	let encoded = fuse_testutil::encode_response!(response, {
+	let encoded = encode_response!(response, {
 		protocol_version: (7, 9),
 	});
 
 	assert_eq!(
 		encoded,
-		fuse_testutil::MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ size_of::<fuse_kernel::fuse_attr_out>()) as u32,
-				error: 0,
+		MessageBuilder::new()
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ size_of::<kernel::fuse_attr_out>()) as u32,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::fuse_attr_out {
+			}))
+			.push_sized(&testutil::new!(kernel::fuse_attr_out {
 				attr_valid: 123,
 				attr_valid_nsec: 456,
-				dummy: 0,
-				attr: fuse_kernel::fuse_attr {
+				attr: testutil::new!(kernel::fuse_attr {
 					ino: 2,
 					size: 999,
 					mode: S_IFREG | 0o644,
 					nlink: 1,
-					..fuse_kernel::fuse_attr::zeroed()
-				},
-			})
+				}),
+			}))
 			.build()
 	);
 }

@@ -19,7 +19,7 @@
 use core::fmt;
 use core::marker::PhantomData;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::lock;
 use crate::server;
 use crate::server::decode;
@@ -81,7 +81,7 @@ impl<'a> FlushRequest<'a> {
 		is_cuse: bool,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_FLUSH)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_FLUSH)?;
 
 		let node_id = if is_cuse {
 			crate::NodeId::ROOT
@@ -89,7 +89,7 @@ impl<'a> FlushRequest<'a> {
 			decode::node_id(dec.header().nodeid)?
 		};
 
-		let raw: &fuse_kernel::fuse_flush_in = dec.next_sized()?;
+		let raw: &kernel::fuse_flush_in = dec.next_sized()?;
 		Ok(Self {
 			phantom: PhantomData,
 			node_id,

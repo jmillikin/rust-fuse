@@ -19,7 +19,7 @@
 use core::fmt;
 use core::time;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::internal::timestamp;
 use crate::server;
 use crate::server::decode;
@@ -57,7 +57,7 @@ impl<'a> server::FuseRequest<'a> for LookupRequest<'a> {
 		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_LOOKUP)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_LOOKUP)?;
 		Ok(Self {
 			parent_id: decode::node_id(dec.header().nodeid)?,
 			name: dec.next_node_name()?,
@@ -74,7 +74,7 @@ impl<'a> server::FuseRequest<'a> for LookupRequest<'a> {
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_LOOKUP` operation.
 pub struct LookupResponse {
-	entry_out: fuse_kernel::fuse_entry_out,
+	entry_out: kernel::fuse_entry_out,
 }
 
 impl LookupResponse {
@@ -84,7 +84,7 @@ impl LookupResponse {
 		Self {
 			entry_out: match entry {
 				Some(entry) => entry.into_entry_out(),
-				None => fuse_kernel::fuse_entry_out::zeroed(),
+				None => kernel::fuse_entry_out::new(),
 			},
 		}
 	}

@@ -16,19 +16,21 @@
 
 use core::mem::size_of;
 
+use fuse::kernel;
 use fuse::operations::statfs::{
 	StatfsAttributes,
 	StatfsRequest,
 	StatfsResponse,
 };
 
+use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_STATFS;
+			h.opcode = kernel::fuse_opcode::FUSE_STATFS;
 			h.nodeid = 123;
 		})
 		.build_aligned();
@@ -41,8 +43,8 @@ fn request_impl_debug() {
 	let buf;
 	let request = fuse_testutil::build_request!(buf, StatfsRequest, {
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_STATFS;
-			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+			h.opcode = kernel::fuse_opcode::FUSE_STATFS;
+			h.nodeid = kernel::FUSE_ROOT_ID;
 		})
 	});
 
@@ -72,14 +74,13 @@ fn response_v7p1() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ fuse_kernel::FUSE_COMPAT_STATFS_SIZE) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ kernel::FUSE_COMPAT_STATFS_SIZE) as u32,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::fuse_statfs_out {
-				st: fuse_kernel::fuse_kstatfs {
+			}))
+			.push_sized(&testutil::new!(kernel::fuse_statfs_out {
+				st: testutil::new!(kernel::fuse_kstatfs {
 					blocks: 10,
 					bsize: 20,
 					bavail: 30,
@@ -88,12 +89,11 @@ fn response_v7p1() {
 					files: 60,
 					ffree: 70,
 					namelen: 80,
-					..fuse_kernel::fuse_kstatfs::zeroed()
-				},
-			})
+				}),
+			}))
 			.unpush(
-				size_of::<fuse_kernel::fuse_statfs_out>()
-					- fuse_kernel::FUSE_COMPAT_STATFS_SIZE
+				size_of::<kernel::fuse_statfs_out>()
+					- kernel::FUSE_COMPAT_STATFS_SIZE
 			)
 			.build()
 	);
@@ -119,14 +119,13 @@ fn response_v7p4() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ size_of::<fuse_kernel::fuse_statfs_out>()) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ size_of::<kernel::fuse_statfs_out>()) as u32,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::fuse_statfs_out {
-				st: fuse_kernel::fuse_kstatfs {
+			}))
+			.push_sized(&testutil::new!(kernel::fuse_statfs_out {
+				st: testutil::new!(kernel::fuse_kstatfs {
 					blocks: 10,
 					bsize: 20,
 					bavail: 30,
@@ -135,9 +134,8 @@ fn response_v7p4() {
 					files: 60,
 					ffree: 70,
 					namelen: 80,
-					..fuse_kernel::fuse_kstatfs::zeroed()
-				},
-			})
+				}),
+			}))
 			.build()
 	);
 }

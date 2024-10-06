@@ -70,6 +70,8 @@
 #[macro_use]
 mod internal;
 
+pub use crate::internal::fuse_kernel as kernel;
+
 mod error;
 
 mod node_id;
@@ -147,7 +149,7 @@ pub use self::error::Error;
 /// The header of a FUSE request.
 #[derive(Clone, Copy)]
 pub struct RequestHeader {
-	raw: internal::fuse_kernel::fuse_in_header,
+	raw: kernel::fuse_in_header,
 }
 
 impl RequestHeader {
@@ -168,10 +170,8 @@ impl RequestHeader {
 	/// Returns the opcode of this request.
 	#[inline]
 	#[must_use]
-	pub fn opcode(&self) -> Opcode {
-		Opcode {
-			bits: self.raw.opcode.0,
-		}
+	pub fn opcode(&self) -> crate::kernel::fuse_opcode {
+		self.raw.opcode
 	}
 
 	/// Returns the ID of this request's primary node, if present.
@@ -232,11 +232,11 @@ impl core::fmt::Debug for RequestHeader {
 /// The header of a FUSE response.
 #[derive(Copy, Clone)]
 pub struct ResponseHeader {
-	raw: internal::fuse_kernel::fuse_out_header,
+	raw: kernel::fuse_out_header,
 }
 
 const HEADER_LEN_U32: u32 =
-	core::mem::size_of::<internal::fuse_kernel::fuse_out_header>() as u32;
+	core::mem::size_of::<kernel::fuse_out_header>() as u32;
 
 impl ResponseHeader {
 	/// Creates a new `ResponseHeader` with the given request ID.
@@ -246,7 +246,7 @@ impl ResponseHeader {
 	#[must_use]
 	pub fn new(request_id: core::num::NonZeroU64) -> ResponseHeader {
 		Self {
-			raw: internal::fuse_kernel::fuse_out_header {
+			raw: kernel::fuse_out_header {
 				len: HEADER_LEN_U32,
 				unique: request_id.get(),
 				error: 0,
@@ -261,7 +261,7 @@ impl ResponseHeader {
 	#[must_use]
 	pub fn new_notification() -> ResponseHeader {
 		Self {
-			raw: internal::fuse_kernel::fuse_out_header {
+			raw: kernel::fuse_out_header {
 				len: HEADER_LEN_U32,
 				unique: 0,
 				error: 0,
@@ -479,8 +479,8 @@ pub struct Version {
 
 impl Version {
 	const LATEST: Version = Version {
-		major: internal::fuse_kernel::FUSE_KERNEL_VERSION,
-		minor: internal::fuse_kernel::FUSE_KERNEL_MINOR_VERSION,
+		major: kernel::FUSE_KERNEL_VERSION,
+		minor: kernel::FUSE_KERNEL_MINOR_VERSION,
 	};
 
 	/// Create a new `Version` with the given major and minor version numbers.
@@ -503,97 +503,6 @@ impl Version {
 	pub const fn minor(&self) -> u32 {
 		self.minor
 	}
-}
-
-// }}}
-
-// Opcode {{{
-
-/// FUSE operation type codes.
-#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Opcode {
-	bits: u32,
-}
-
-impl core::fmt::Debug for Opcode {
-	fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
-		internal::fuse_kernel::fuse_opcode(self.bits).fmt(fmt)
-	}
-}
-
-macro_rules! export_opcodes {
-	( $( $(#[$meta:meta])* $name:ident , )+ ) => {
-		mod fuse_opcode {
-			$(
-				pub const $name: crate::Opcode = crate::Opcode {
-					bits: crate::internal::fuse_kernel::$name.0,
-				};
-			)+
-		}
-		#[allow(missing_docs)] // TODO
-		impl Opcode {
-			$(
-				$(#[$meta])*
-				pub const $name: Opcode = fuse_opcode::$name;
-			)+
-		}
-	};
-}
-
-export_opcodes! {
-	FUSE_LOOKUP,
-	FUSE_FORGET,
-	FUSE_GETATTR,
-	FUSE_SETATTR,
-	FUSE_READLINK,
-	FUSE_SYMLINK,
-	FUSE_MKNOD,
-	FUSE_MKDIR,
-	FUSE_UNLINK,
-	FUSE_RMDIR,
-	FUSE_RENAME,
-	FUSE_LINK,
-	FUSE_OPEN,
-	FUSE_READ,
-	FUSE_WRITE,
-	FUSE_STATFS,
-	FUSE_RELEASE,
-	FUSE_FSYNC,
-	FUSE_SETXATTR,
-	FUSE_GETXATTR,
-	FUSE_LISTXATTR,
-	FUSE_REMOVEXATTR,
-	FUSE_FLUSH,
-	FUSE_INIT,
-	FUSE_OPENDIR,
-	FUSE_READDIR,
-	FUSE_RELEASEDIR,
-	FUSE_FSYNCDIR,
-	FUSE_GETLK,
-	FUSE_SETLK,
-	FUSE_SETLKW,
-	FUSE_ACCESS,
-	FUSE_CREATE,
-	FUSE_INTERRUPT,
-	FUSE_BMAP,
-	FUSE_DESTROY,
-	FUSE_IOCTL,
-	FUSE_POLL,
-	FUSE_NOTIFY_REPLY,
-	FUSE_BATCH_FORGET,
-	FUSE_FALLOCATE,
-	FUSE_READDIRPLUS,
-	FUSE_RENAME2,
-	FUSE_LSEEK,
-	FUSE_COPY_FILE_RANGE,
-	FUSE_SETUPMAPPING,
-	FUSE_REMOVEMAPPING,
-	FUSE_SYNCFS,
-
-	CUSE_INIT,
-
-	CUSE_INIT_BSWAP_RESERVED,
-	FUSE_INIT_BSWAP_RESERVED,
 }
 
 // }}}

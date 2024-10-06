@@ -14,6 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+use fuse::kernel;
 use fuse::operations::fuse_init;
 use fuse::operations::read;
 use fuse::operations::write;
@@ -73,18 +74,15 @@ impl fuse_rpc::Handlers<FakeSocket> for FakeHandlers {
 fn benchmark_read(c: &mut criterion::Criterion) {
 	let buf = fuse_testutil::MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_READ;
+			h.opcode = kernel::fuse_opcode::FUSE_READ;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_read_in {
+		.push_sized(&fuse_testutil::new!(kernel::fuse_read_in {
 			fh: 123,
 			offset: 45,
 			size: 12,
-			read_flags: 0,
-			lock_owner: 0,
 			flags: 67,
-			padding: 0,
-		})
+		}))
 		.build_aligned();
 
 	let socket = FakeSocket {
@@ -130,18 +128,15 @@ fn benchmark_read(c: &mut criterion::Criterion) {
 fn benchmark_write(c: &mut criterion::Criterion) {
 	let buf = fuse_testutil::MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_WRITE;
+			h.opcode = kernel::fuse_opcode::FUSE_WRITE;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_write_in {
+		.push_sized(&fuse_testutil::new!(kernel::fuse_write_in {
 			fh: 123,
 			offset: 45,
 			size: 4096,
-			write_flags: 0,
-			lock_owner: 0,
 			flags: 67,
-			padding: 0,
-		})
+		}))
 		.push_bytes(&[0u8; 4096])
 		.build_aligned();
 

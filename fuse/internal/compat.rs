@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 
 #[derive(Clone, Copy)]
 pub(crate) struct Versioned<U> {
@@ -28,7 +28,7 @@ pub(crate) struct Versioned<U> {
 #[repr(C)]
 pub(crate) union fuse_create_in<'a> {
 	v7p1: &'a fuse_create_in_v7p1,
-	v7p12: &'a fuse_kernel::fuse_create_in,
+	v7p12: &'a kernel::fuse_create_in,
 }
 
 #[repr(C)]
@@ -52,7 +52,7 @@ impl<'a> Versioned<fuse_create_in<'a>> {
 	#[inline]
 	pub(crate) fn new_create_v7p12(
 		version_minor: u32,
-		v7p12: &'a fuse_kernel::fuse_create_in,
+		v7p12: &'a kernel::fuse_create_in,
 	) -> Self {
 		Self {
 			version_minor,
@@ -66,7 +66,7 @@ impl<'a> Versioned<fuse_create_in<'a>> {
 	}
 
 	#[inline]
-	pub(crate) fn as_v7p12(self) -> Option<&'a fuse_kernel::fuse_create_in> {
+	pub(crate) fn as_v7p12(self) -> Option<&'a kernel::fuse_create_in> {
 		if self.version_minor >= 12 {
 			return Some(unsafe { self.u.v7p12 });
 		}
@@ -82,7 +82,7 @@ impl<'a> Versioned<fuse_create_in<'a>> {
 #[repr(C)]
 pub(crate) union fuse_getattr_in<'a> {
 	v7p1: &'a (),
-	v7p9: &'a fuse_kernel::fuse_getattr_in,
+	v7p9: &'a kernel::fuse_getattr_in,
 }
 
 impl<'a> Versioned<fuse_getattr_in<'a>> {
@@ -99,7 +99,7 @@ impl<'a> Versioned<fuse_getattr_in<'a>> {
 	#[inline]
 	pub(crate) fn new_getattr_v7p9(
 		version_minor: u32,
-		v7p9: &'a fuse_kernel::fuse_getattr_in,
+		v7p9: &'a kernel::fuse_getattr_in,
 	) -> Self {
 		Self {
 			version_minor,
@@ -108,7 +108,7 @@ impl<'a> Versioned<fuse_getattr_in<'a>> {
 	}
 
 	#[inline]
-	pub(crate) fn as_v7p9(self) -> Option<&'a fuse_kernel::fuse_getattr_in> {
+	pub(crate) fn as_v7p9(self) -> Option<&'a kernel::fuse_getattr_in> {
 		if self.version_minor >= 9 {
 			return Some(unsafe { self.u.v7p9 });
 		}
@@ -124,7 +124,7 @@ impl<'a> Versioned<fuse_getattr_in<'a>> {
 #[repr(C)]
 pub(crate) union fuse_mknod_in<'a> {
 	v7p1: &'a fuse_mknod_in_v7p1,
-	v7p12: &'a fuse_kernel::fuse_mknod_in,
+	v7p12: &'a kernel::fuse_mknod_in,
 }
 
 #[repr(C)]
@@ -148,7 +148,7 @@ impl<'a> Versioned<fuse_mknod_in<'a>> {
 	#[inline]
 	pub(crate) fn new_mknod_v7p12(
 		version_minor: u32,
-		v7p12: &'a fuse_kernel::fuse_mknod_in,
+		v7p12: &'a kernel::fuse_mknod_in,
 	) -> Self {
 		Self {
 			version_minor,
@@ -162,7 +162,7 @@ impl<'a> Versioned<fuse_mknod_in<'a>> {
 	}
 
 	#[inline]
-	pub(crate) fn as_v7p12(self) -> Option<&'a fuse_kernel::fuse_mknod_in> {
+	pub(crate) fn as_v7p12(self) -> Option<&'a kernel::fuse_mknod_in> {
 		if self.version_minor >= 12 {
 			return Some(unsafe { self.u.v7p12 });
 		}
@@ -178,7 +178,7 @@ impl<'a> Versioned<fuse_mknod_in<'a>> {
 #[repr(C)]
 pub(crate) union fuse_setxattr_in<'a> {
 	v7p1: &'a fuse_setxattr_in_v7p1,
-	v7p33: &'a fuse_kernel::fuse_setxattr_in,
+	v7p33: &'a kernel::fuse_setxattr_in,
 }
 
 #[repr(C)]
@@ -200,7 +200,7 @@ impl<'a> Versioned<fuse_setxattr_in<'a>> {
 
 	#[inline]
 	pub(crate) fn new_setxattr_v7p33(
-		v7p33: &'a fuse_kernel::fuse_setxattr_in,
+		v7p33: &'a kernel::fuse_setxattr_in,
 	) -> Self {
 		Self {
 			version_minor: 33,
@@ -214,7 +214,7 @@ impl<'a> Versioned<fuse_setxattr_in<'a>> {
 	}
 
 	#[inline]
-	pub(crate) fn as_v7p33(self) -> Option<&'a fuse_kernel::fuse_setxattr_in> {
+	pub(crate) fn as_v7p33(self) -> Option<&'a kernel::fuse_setxattr_in> {
 		if self.version_minor >= 33 {
 			return Some(unsafe { self.u.v7p33 });
 		}
@@ -230,7 +230,7 @@ impl<'a> Versioned<fuse_setxattr_in<'a>> {
 #[repr(C)]
 pub(crate) union fuse_read_in<'a> {
 	v7p1: &'a fuse_read_in_v7p1,
-	v7p9: &'a fuse_kernel::fuse_read_in,
+	v7p9: &'a kernel::fuse_read_in,
 }
 
 #[repr(C)]
@@ -256,7 +256,7 @@ impl<'a> Versioned<fuse_read_in<'a>> {
 	#[inline]
 	pub(crate) fn new_read_v7p9(
 		version_minor: u32,
-		v7p9: &'a fuse_kernel::fuse_read_in,
+		v7p9: &'a kernel::fuse_read_in,
 	) -> Self {
 		Self {
 			version_minor,
@@ -270,7 +270,7 @@ impl<'a> Versioned<fuse_read_in<'a>> {
 	}
 
 	#[inline]
-	pub(crate) fn as_v7p9(self) -> Option<&'a fuse_kernel::fuse_read_in> {
+	pub(crate) fn as_v7p9(self) -> Option<&'a kernel::fuse_read_in> {
 		if self.version_minor >= 9 {
 			return Some(unsafe { self.u.v7p9 });
 		}
@@ -286,7 +286,7 @@ impl<'a> Versioned<fuse_read_in<'a>> {
 #[repr(C)]
 pub(crate) union fuse_release_in<'a> {
 	v7p1: &'a fuse_release_in_v7p1,
-	v7p8: &'a fuse_kernel::fuse_release_in,
+	v7p8: &'a kernel::fuse_release_in,
 }
 
 #[repr(C)]
@@ -311,7 +311,7 @@ impl<'a> Versioned<fuse_release_in<'a>> {
 	#[inline]
 	pub(crate) fn new_release_v7p8(
 		version_minor: u32,
-		v7p8: &'a fuse_kernel::fuse_release_in,
+		v7p8: &'a kernel::fuse_release_in,
 	) -> Self {
 		Self {
 			version_minor,
@@ -325,7 +325,7 @@ impl<'a> Versioned<fuse_release_in<'a>> {
 	}
 
 	#[inline]
-	pub(crate) fn as_v7p8(self) -> Option<&'a fuse_kernel::fuse_release_in> {
+	pub(crate) fn as_v7p8(self) -> Option<&'a kernel::fuse_release_in> {
 		if self.version_minor >= 8 {
 			return Some(unsafe { self.u.v7p8 });
 		}

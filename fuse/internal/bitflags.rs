@@ -18,20 +18,15 @@ macro_rules! bitflags {
 	($flag:ident, $flags:ident, $bits:ident, {
 		$(
 			$( #[$item_doc:meta] )*
-			$item_pub_name:ident = fuse_kernel::$item_name:ident ;
+			$item_name:ident = $item_value:path ;
 		)*
 	}) => {
 		use super::{$flag, $flags};
 
-		$(
-			$( #[$item_doc] )*
-			const $item_name: $flag = $flag::new(fuse_kernel::$item_name as $bits);
-		)*
-
 		impl $flag {
 			$(
 				$( #[$item_doc] )*
-				pub const $item_pub_name: $flag = $item_name;
+				pub const $item_name: $flag = $flag::new($item_value as _);
 			)*
 
 			#[allow(dead_code)]
@@ -45,7 +40,7 @@ macro_rules! bitflags {
 			const fn flag_name(mask: $bits) -> Option<&'static str> {
 				match ($flag { mask }) {
 				$(
-					$item_name => Some(stringify!($item_pub_name)),
+					Self::$item_name => Some(stringify!($item_name)),
 				)*
 				_ => None,
 				}

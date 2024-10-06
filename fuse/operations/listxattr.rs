@@ -21,7 +21,7 @@ use core::fmt;
 use core::num;
 use core::ptr;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -45,8 +45,8 @@ const NAMES_LIST_MAX_SIZE: Option<usize> = xattr_name_list_max_size!();
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_LISTXATTR` operation.
 pub struct ListxattrRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	body: &'a fuse_kernel::fuse_getxattr_in,
+	header: &'a kernel::fuse_in_header,
+	body: &'a kernel::fuse_getxattr_in,
 }
 
 impl ListxattrRequest<'_> {
@@ -72,7 +72,7 @@ impl<'a> server::FuseRequest<'a> for ListxattrRequest<'a> {
 		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_LISTXATTR)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_LISTXATTR)?;
 
 		let header = dec.header();
 		decode::node_id(header.nodeid)?;
@@ -105,7 +105,7 @@ pub struct ListxattrResponse<'a> {
 
 enum ListxattrOutput<'a> {
 	Names(ListxattrNames<'a>),
-	Size(fuse_kernel::fuse_getxattr_out),
+	Size(kernel::fuse_getxattr_out),
 	ErrTooBig(usize),
 }
 
@@ -124,10 +124,10 @@ impl<'a> ListxattrResponse<'a> {
 	#[must_use]
 	pub fn with_names_size(names_size: usize) -> ListxattrResponse<'a> {
 		if let Some(size_u32) = check_list_size(names_size) {
-			let output = ListxattrOutput::Size(fuse_kernel::fuse_getxattr_out {
+			let raw = new!(kernel::fuse_getxattr_out {
 				size: size_u32,
-				..fuse_kernel::fuse_getxattr_out::zeroed()
 			});
+			let output = ListxattrOutput::Size(raw);
 			return ListxattrResponse { output };
 		}
 		ListxattrResponse {

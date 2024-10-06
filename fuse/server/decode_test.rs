@@ -18,7 +18,7 @@ use core::mem::size_of;
 
 use fuse_testutil::MessageBuilder;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode::RequestDecoder;
 
@@ -39,7 +39,7 @@ fn request_decoder_new() {
 
 	assert_eq!(
 		decoder.consumed,
-		size_of::<fuse_kernel::fuse_in_header>()
+		size_of::<kernel::fuse_in_header>()
 	);
 }
 

@@ -18,6 +18,7 @@ use core::mem::size_of;
 
 use fuse::Version;
 use fuse::cuse;
+use fuse::kernel;
 use fuse::operations::cuse_init::{
 	CuseInitFlag,
 	CuseInitRequest,
@@ -25,18 +26,18 @@ use fuse::operations::cuse_init::{
 };
 use fuse::server;
 
+use fuse_testutil as testutil;
 use fuse_testutil::{MessageBuilder, SendBufToVec};
 
 #[test]
 fn request() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::CUSE_INIT)
-		.push_sized(&fuse_kernel::cuse_init_in {
+		.set_opcode(kernel::fuse_opcode::CUSE_INIT)
+		.push_sized(&testutil::new!(kernel::cuse_init_in {
 			major: 7,
 			minor: 6,
-			unused: 0,
-			flags: fuse_kernel::CUSE_UNRESTRICTED_IOCTL,
-		})
+			flags: kernel::CUSE_UNRESTRICTED_IOCTL,
+		}))
 		.build_aligned();
 
 	let req = CuseInitRequest::from_request(
@@ -51,13 +52,12 @@ fn request() {
 #[test]
 fn request_impl_debug() {
 	let buf = MessageBuilder::new()
-		.set_opcode(fuse_kernel::CUSE_INIT)
-		.push_sized(&fuse_kernel::cuse_init_in {
+		.set_opcode(kernel::fuse_opcode::CUSE_INIT)
+		.push_sized(&testutil::new!(kernel::cuse_init_in {
 			major: 7,
 			minor: 1,
-			unused: 0,
 			flags: 0x1,
-		})
+		}))
 		.build_aligned();
 
 	let request = CuseInitRequest::from_request(
@@ -98,24 +98,18 @@ fn response() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ size_of::<fuse_kernel::cuse_init_out>()
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ size_of::<kernel::cuse_init_out>()
 					+ b"DEVNAME=test-device\x00".len()) as u32,
-				error: 0,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::cuse_init_out {
+			}))
+			.push_sized(&testutil::new!(kernel::cuse_init_out {
 				major: 7,
 				minor: 23,
-				unused: 0,
-				flags: fuse_kernel::CUSE_UNRESTRICTED_IOCTL,
-				max_read: 0,
+				flags: kernel::CUSE_UNRESTRICTED_IOCTL,
 				max_write: 4096,
-				dev_major: 0,
-				dev_minor: 0,
-				spare: [0; 10],
-			})
+			}))
 			.push_bytes(b"DEVNAME=test-device\x00")
 			.build()
 	);

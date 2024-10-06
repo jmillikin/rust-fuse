@@ -17,7 +17,7 @@
 use core::fmt;
 use core::num::NonZeroU64;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 
 /// Node IDs are per-mount unique identifiers for filesystem nodes.
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -25,13 +25,11 @@ pub struct NodeId {
 	bits: NonZeroU64,
 }
 
-const FUSE_ROOT_ID: NodeId = unsafe {
-	NodeId::new_unchecked(fuse_kernel::FUSE_ROOT_ID)
-};
-
 impl NodeId {
 	/// The node ID of the root directory.
-	pub const ROOT: NodeId = FUSE_ROOT_ID;
+	pub const ROOT: NodeId = unsafe {
+		NodeId::new_unchecked(kernel::FUSE_ROOT_ID)
+	};
 
 	/// Creates a new `NodeId` if the given value is not zero.
 	#[inline]
@@ -68,7 +66,7 @@ impl NodeId {
 	#[inline]
 	#[must_use]
 	pub const fn is_root(&self) -> bool {
-		self.bits.get() == fuse_kernel::FUSE_ROOT_ID
+		self.bits.get() == kernel::FUSE_ROOT_ID
 	}
 }
 

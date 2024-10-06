@@ -22,7 +22,7 @@ use core::slice;
 
 use crate::internal::compat;
 use crate::internal::debug;
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::lock;
 use crate::server;
 use crate::server::decode;
@@ -41,27 +41,27 @@ pub struct WriteRequest<'a> {
 
 #[repr(C)]
 struct write_msg {
-	header: fuse_kernel::fuse_in_header,
+	header: kernel::fuse_in_header,
 	body: fuse_write_in,
 }
 
 #[repr(C)]
 union fuse_write_in {
 	v7p1: compat::fuse_write_in_v7p1,
-	v7p9: fuse_kernel::fuse_write_in,
+	v7p9: kernel::fuse_write_in,
 }
 
 const VALUE_OFFSET_V7P1: usize =
-	  mem::size_of::<fuse_kernel::fuse_in_header>()
+	  mem::size_of::<kernel::fuse_in_header>()
 	+ mem::size_of::<compat::fuse_write_in_v7p1>();
 
 const VALUE_OFFSET_V7P9: usize =
-	  mem::size_of::<fuse_kernel::fuse_in_header>()
-	+ mem::size_of::<fuse_kernel::fuse_write_in>();
+	  mem::size_of::<kernel::fuse_in_header>()
+	+ mem::size_of::<kernel::fuse_write_in>();
 
 impl<'a> WriteRequest<'a> {
 	#[inline]
-	fn header(&self) -> &'a fuse_kernel::fuse_in_header {
+	fn header(&self) -> &'a kernel::fuse_in_header {
 		&self.msg.header
 	}
 
@@ -71,7 +71,7 @@ impl<'a> WriteRequest<'a> {
 	}
 
 	#[inline]
-	fn body_v7p9(&self) -> Option<&'a fuse_kernel::fuse_write_in> {
+	fn body_v7p9(&self) -> Option<&'a kernel::fuse_write_in> {
 		if self.version_minor >= 9 {
 			return Some(unsafe { &self.msg.body.v7p9 });
 		}
@@ -126,7 +126,7 @@ impl WriteRequest<'_> {
 	#[must_use]
 	pub fn lock_owner(&self) -> Option<lock::Owner> {
 		let body = self.body_v7p9()?;
-		if body.write_flags & fuse_kernel::FUSE_WRITE_LOCKOWNER == 0 {
+		if body.write_flags & kernel::FUSE_WRITE_LOCKOWNER == 0 {
 			return None;
 		}
 		Some(lock::Owner::new(body.lock_owner))
@@ -168,7 +168,7 @@ impl<'a> WriteRequest<'a> {
 		is_cuse: bool,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_WRITE)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_WRITE)?;
 
 		let header = dec.header();
 		if !is_cuse {
@@ -176,7 +176,7 @@ impl<'a> WriteRequest<'a> {
 		}
 
 		let value_len = if version_minor >= 9 {
-			let body: &fuse_kernel::fuse_write_in = dec.next_sized()?;
+			let body: &kernel::fuse_write_in = dec.next_sized()?;
 			body.size
 		} else {
 			let body: &compat::fuse_write_in_v7p1 = dec.next_sized()?;
@@ -184,7 +184,7 @@ impl<'a> WriteRequest<'a> {
 		};
 		dec.next_bytes(value_len)?;
 
-		let header_ptr = header as *const fuse_kernel::fuse_in_header;
+		let header_ptr = header as *const kernel::fuse_in_header;
 		Ok(Self {
 			msg: unsafe { &*(header_ptr.cast()) },
 			version_minor,
@@ -215,17 +215,14 @@ impl fmt::Debug for WriteRequest<'_> {
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_WRITE` operation.
 pub struct WriteResponse {
-	raw: fuse_kernel::fuse_write_out,
+	raw: kernel::fuse_write_out,
 }
 
 impl WriteResponse {
 	#[must_use]
 	pub fn new() -> WriteResponse {
 		Self {
-			raw: fuse_kernel::fuse_write_out {
-				size: 0,
-				padding: 0,
-			},
+			raw: kernel::fuse_write_out::new(),
 		}
 	}
 
@@ -279,11 +276,11 @@ pub struct WriteRequestFlag {
 }
 
 mod request_flags {
-	use crate::internal::fuse_kernel;
+	use crate::kernel;
 	bitflags!(WriteRequestFlag, WriteRequestFlags, u32, {
-		WRITE_CACHE = fuse_kernel::FUSE_WRITE_CACHE;
-		WRITE_LOCKOWNER = fuse_kernel::FUSE_WRITE_LOCKOWNER;
-		WRITE_KILL_SUIDGID = fuse_kernel::FUSE_WRITE_KILL_SUIDGID;
+		WRITE_CACHE = kernel::FUSE_WRITE_CACHE;
+		WRITE_LOCKOWNER = kernel::FUSE_WRITE_LOCKOWNER;
+		WRITE_KILL_SUIDGID = kernel::FUSE_WRITE_KILL_SUIDGID;
 	});
 }
 

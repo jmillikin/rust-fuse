@@ -16,15 +16,17 @@
 
 use core::mem::size_of;
 
+use fuse::kernel;
 use fuse::operations::readlink::{ReadlinkRequest, ReadlinkResponse};
 
+use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request_empty() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_READLINK;
+			h.opcode = kernel::fuse_opcode::FUSE_READLINK;
 			h.nodeid = 123;
 		})
 		.build_aligned();
@@ -37,8 +39,8 @@ fn request_impl_debug() {
 	let buf;
 	let request = fuse_testutil::build_request!(buf, ReadlinkRequest, {
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_READLINK;
-			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+			h.opcode = kernel::fuse_opcode::FUSE_READLINK;
+			h.nodeid = kernel::FUSE_ROOT_ID;
 		})
 	});
 
@@ -61,11 +63,10 @@ fn response() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>() + 12) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>() + 12) as u32,
 				unique: 0xAABBCCDD,
-			})
+			}))
 			.push_bytes(b"hello.world!")
 			.build()
 	);

@@ -18,7 +18,7 @@
 
 use core::fmt;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -32,7 +32,7 @@ use crate::server::encode;
 pub struct MkdirRequest<'a> {
 	parent_id: crate::NodeId,
 	name: &'a crate::NodeName,
-	raw: fuse_kernel::fuse_mkdir_in,
+	raw: kernel::fuse_mkdir_in,
 }
 
 impl MkdirRequest<'_> {
@@ -65,9 +65,9 @@ impl<'a> server::FuseRequest<'a> for MkdirRequest<'a> {
 		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_MKDIR)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_MKDIR)?;
 
-		let raw: &fuse_kernel::fuse_mkdir_in = dec.next_sized()?;
+		let raw: &kernel::fuse_mkdir_in = dec.next_sized()?;
 		let name = dec.next_node_name()?;
 		Ok(Self {
 			parent_id: decode::node_id(dec.header().nodeid)?,

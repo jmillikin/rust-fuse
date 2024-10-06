@@ -19,7 +19,7 @@
 use core::fmt;
 
 use crate::internal::debug;
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -77,13 +77,13 @@ impl<'a> server::FuseRequest<'a> for RenameRequest<'a> {
 
 		let mut rename_flags = 0;
 		let new_dir: u64;
-		if header.opcode == fuse_kernel::FUSE_RENAME2 {
-			let parsed: &fuse_kernel::fuse_rename2_in = dec.next_sized()?;
+		if header.opcode == kernel::fuse_opcode::FUSE_RENAME2 {
+			let parsed: &kernel::fuse_rename2_in = dec.next_sized()?;
 			rename_flags = parsed.flags;
 			new_dir = parsed.newdir;
 		} else {
-			dec.expect_opcode(fuse_kernel::FUSE_RENAME)?;
-			let parsed: &fuse_kernel::fuse_rename_in = dec.next_sized()?;
+			dec.expect_opcode(kernel::fuse_opcode::FUSE_RENAME)?;
+			let parsed: &kernel::fuse_rename_in = dec.next_sized()?;
 			new_dir = parsed.newdir;
 		}
 		let old_name = dec.next_node_name()?;

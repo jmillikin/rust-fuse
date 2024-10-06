@@ -21,7 +21,7 @@ use core::fmt;
 use core::mem;
 use core::num;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::operations::poll;
 use crate::server::encode;
 use crate::server::io;
@@ -63,25 +63,25 @@ impl FuseNotification<'_> {
 		match self {
 			FuseNotification::Poll(poll) => encode_notify(
 				header,
-				fuse_kernel::FUSE_NOTIFY_POLL,
+				kernel::fuse_notify_code::FUSE_NOTIFY_POLL,
 				&poll.raw,
 				None,
 			),
 			FuseNotification::InvalidateEntry(inval_entry) => encode_notify(
 				header,
-				fuse_kernel::FUSE_NOTIFY_INVAL_ENTRY,
+				kernel::fuse_notify_code::FUSE_NOTIFY_INVAL_ENTRY,
 				&inval_entry.raw,
 				Some(inval_entry.name.as_bytes()),
 			),
 			FuseNotification::InvalidateInode(inval_inode) => encode_notify(
 				header,
-				fuse_kernel::FUSE_NOTIFY_INVAL_INODE,
+				kernel::fuse_notify_code::FUSE_NOTIFY_INVAL_INODE,
 				&inval_inode.raw,
 				None,
 			),
 			FuseNotification::Delete(delete) => encode_notify(
 				header,
-				fuse_kernel::FUSE_NOTIFY_DELETE,
+				kernel::fuse_notify_code::FUSE_NOTIFY_DELETE,
 				&delete.raw,
 				Some(delete.name.as_bytes()),
 			),
@@ -91,11 +91,11 @@ impl FuseNotification<'_> {
 
 fn encode_notify<'a, T: Sized>(
 	header: &'a mut crate::ResponseHeader,
-	notify_code: fuse_kernel::fuse_notify_code,
+	notify_code: kernel::fuse_notify_code,
 	body: &'a T,
 	name_bytes: Option<&'a [u8]>,
 ) -> crate::io::SendBuf<'a> {
-	let mut message_len = mem::size_of::<fuse_kernel::fuse_out_header>();
+	let mut message_len = mem::size_of::<kernel::fuse_out_header>();
 	message_len += mem::size_of::<T>();
 	if let Some(name_bytes) = name_bytes {
 		message_len += name_bytes.len();
@@ -130,7 +130,7 @@ fn encode_notify<'a, T: Sized>(
 
 /// Notification message for `FUSE_NOTIFY_DELETE`.
 pub struct Delete<'a> {
-	raw: fuse_kernel::fuse_notify_delete_out,
+	raw: kernel::fuse_notify_delete_out,
 	name: &'a crate::NodeName,
 }
 
@@ -142,12 +142,11 @@ impl<'a> Delete<'a> {
 		name: &'a crate::NodeName,
 	) -> Delete<'a> {
 		Self {
-			raw: fuse_kernel::fuse_notify_delete_out {
+			raw: new!(kernel::fuse_notify_delete_out {
 				parent: parent_id.get(),
 				child: node_id.get(),
 				namelen: name.as_bytes().len() as u32,
-				padding: 0,
-			},
+			}),
 			name,
 		}
 	}
@@ -184,7 +183,7 @@ impl fmt::Debug for Delete<'_> {
 
 /// Notification message for `FUSE_NOTIFY_INVAL_ENTRY`.
 pub struct InvalidateEntry<'a> {
-	raw: fuse_kernel::fuse_notify_inval_entry_out,
+	raw: kernel::fuse_notify_inval_entry_out,
 	name: &'a crate::NodeName,
 }
 
@@ -195,11 +194,10 @@ impl<'a> InvalidateEntry<'a> {
 		name: &'a crate::NodeName,
 	) -> InvalidateEntry<'a> {
 		Self {
-			raw: fuse_kernel::fuse_notify_inval_entry_out {
+			raw: new!(kernel::fuse_notify_inval_entry_out {
 				parent: parent_id.get(),
 				namelen: name.as_bytes().len() as u32,
-				padding: 0,
-			},
+			}),
 			name,
 		}
 	}
@@ -230,14 +228,14 @@ impl fmt::Debug for InvalidateEntry<'_> {
 
 /// Notification message for `FUSE_NOTIFY_INVAL_INODE`.
 pub struct InvalidateInode {
-	raw: fuse_kernel::fuse_notify_inval_inode_out,
+	raw: kernel::fuse_notify_inval_inode_out,
 }
 
 impl InvalidateInode {
 	#[must_use]
 	pub fn new(node_id: crate::NodeId) -> InvalidateInode {
 		Self {
-			raw: fuse_kernel::fuse_notify_inval_inode_out {
+			raw: kernel::fuse_notify_inval_inode_out {
 				ino: node_id.get(),
 				off: 0,
 				len: 0,
@@ -297,14 +295,14 @@ impl fmt::Debug for InvalidateInode {
 
 /// Notification message for `FUSE_NOTIFY_POLL`.
 pub struct Poll {
-	raw: fuse_kernel::fuse_notify_poll_wakeup_out,
+	raw: kernel::fuse_notify_poll_wakeup_out,
 }
 
 impl Poll {
 	#[must_use]
 	pub fn new(poll_handle: poll::PollHandle) -> Poll {
 		Self {
-			raw: fuse_kernel::fuse_notify_poll_wakeup_out {
+			raw: kernel::fuse_notify_poll_wakeup_out {
 				kh: poll_handle.bits,
 			},
 		}

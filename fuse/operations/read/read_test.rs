@@ -16,9 +16,11 @@
 
 use core::mem::size_of;
 
+use fuse::kernel;
 use fuse::lock;
 use fuse::operations::read::{ReadRequest, ReadResponse};
 
+use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 const DUMMY_READ_FLAG: u32 = 0x80000000;
@@ -27,7 +29,7 @@ const DUMMY_READ_FLAG: u32 = 0x80000000;
 fn request_v7p1() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_READ;
+			h.opcode = kernel::fuse_opcode::FUSE_READ;
 			h.nodeid = 123;
 		})
 		.push_sized(&123u64) // fuse_read_in::
@@ -51,18 +53,15 @@ fn request_v7p1() {
 fn request_v7p9() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_READ;
+			h.opcode = kernel::fuse_opcode::FUSE_READ;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_read_in {
+		.push_sized(&testutil::new!(kernel::fuse_read_in {
 			fh: 123,
 			offset: 45,
 			size: 12,
-			read_flags: 0,
-			lock_owner: 0,
 			flags: 67,
-			padding: 0,
-		})
+		}))
 		.build_aligned();
 
 	let req = decode_request!(ReadRequest, buf, {
@@ -80,18 +79,17 @@ fn request_v7p9() {
 fn request_lock_owner() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_READ;
+			h.opcode = kernel::fuse_opcode::FUSE_READ;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_read_in {
+		.push_sized(&testutil::new!(kernel::fuse_read_in {
 			fh: 123,
 			offset: 45,
 			size: 12,
-			read_flags: DUMMY_READ_FLAG | fuse_kernel::FUSE_READ_LOCKOWNER,
+			read_flags: DUMMY_READ_FLAG | kernel::FUSE_READ_LOCKOWNER,
 			lock_owner: 123,
 			flags: 67,
-			padding: 0,
-		})
+		}))
 		.build_aligned();
 
 	let req = decode_request!(ReadRequest, buf);
@@ -104,18 +102,15 @@ fn request_impl_debug() {
 	let buf;
 	let request = fuse_testutil::build_request!(buf, ReadRequest, {
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_READ;
-			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+			h.opcode = kernel::fuse_opcode::FUSE_READ;
+			h.nodeid = kernel::FUSE_ROOT_ID;
 		})
-		.push_sized(&fuse_kernel::fuse_read_in {
+		.push_sized(&testutil::new!(kernel::fuse_read_in {
 			fh: 3,
 			offset: 2,
 			size: 1,
-			read_flags: 0,
-			lock_owner: 0,
 			flags: 0x4,
-			padding: 0,
-		})
+		}))
 	});
 
 	assert_eq!(
@@ -142,12 +137,11 @@ fn response() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
 					+ resp_bytes.len()) as u32,
-				error: 0,
 				unique: 0xAABBCCDD,
-			})
+			}))
 			.push_bytes(&[255, 0, 255])
 			.build()
 	);

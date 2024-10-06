@@ -18,7 +18,7 @@
 
 use core::fmt;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -30,8 +30,8 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_BMAP` operation.
 pub struct BmapRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	body: &'a fuse_kernel::fuse_bmap_in,
+	header: &'a kernel::fuse_in_header,
+	body: &'a kernel::fuse_bmap_in,
 }
 
 impl BmapRequest<'_> {
@@ -59,7 +59,7 @@ impl<'a> server::FuseRequest<'a> for BmapRequest<'a> {
 		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_BMAP)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_BMAP)?;
 
 		let header = dec.header();
 		let body = dec.next_sized()?;
@@ -87,14 +87,14 @@ impl fmt::Debug for BmapRequest<'_> {
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_BMAP` operation.
 pub struct BmapResponse {
-	raw: fuse_kernel::fuse_bmap_out,
+	raw: kernel::fuse_bmap_out,
 }
 
 impl BmapResponse {
 	#[must_use]
 	pub fn new() -> BmapResponse {
 		Self {
-			raw: fuse_kernel::fuse_bmap_out::zeroed(),
+			raw: kernel::fuse_bmap_out::new(),
 		}
 	}
 

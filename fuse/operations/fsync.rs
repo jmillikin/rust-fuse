@@ -19,7 +19,7 @@
 use core::fmt;
 use core::marker::PhantomData;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -31,8 +31,8 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_FSYNC` operation.
 pub struct FsyncRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	body: &'a fuse_kernel::fuse_fsync_in,
+	header: &'a kernel::fuse_in_header,
+	body: &'a kernel::fuse_fsync_in,
 }
 
 impl FsyncRequest<'_> {
@@ -80,7 +80,7 @@ impl<'a> FsyncRequest<'a> {
 		is_cuse: bool,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_FSYNC)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_FSYNC)?;
 
 		let header = dec.header();
 		let body = dec.next_sized()?;
@@ -166,9 +166,9 @@ pub struct FsyncRequestFlag {
 }
 
 mod request_flags {
-	use crate::internal::fuse_kernel;
+	use crate::kernel;
 	bitflags!(FsyncRequestFlag, FsyncRequestFlags, u32, {
-		FDATASYNC = fuse_kernel::FUSE_FSYNC_FDATASYNC;
+		FDATASYNC = kernel::FUSE_FSYNC_FDATASYNC;
 	});
 }
 

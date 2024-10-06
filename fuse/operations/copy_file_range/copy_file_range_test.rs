@@ -16,30 +16,31 @@
 
 use core::mem::size_of;
 
+use fuse::kernel;
 use fuse::operations::copy_file_range::{
 	CopyFileRangeRequest,
 	CopyFileRangeRequestFlags,
 	CopyFileRangeResponse,
 };
 
+use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_COPY_FILE_RANGE;
+			h.opcode = kernel::fuse_opcode::FUSE_COPY_FILE_RANGE;
 			h.nodeid = 10;
 		})
-		.push_sized(&fuse_kernel::fuse_copy_file_range_in {
+		.push_sized(&testutil::new!(kernel::fuse_copy_file_range_in {
 			fh_in: 11,
 			off_in: 12,
 			nodeid_out: 13,
 			fh_out: 14,
 			off_out: 15,
 			len: 16,
-			flags: 0,
-		})
+		}))
 		.build_aligned();
 
 	let req = decode_request!(CopyFileRangeRequest, buf);
@@ -59,18 +60,17 @@ fn request_impl_debug() {
 	let buf;
 	let request = fuse_testutil::build_request!(buf, CopyFileRangeRequest, {
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_COPY_FILE_RANGE;
+			h.opcode = kernel::fuse_opcode::FUSE_COPY_FILE_RANGE;
 			h.nodeid = 10;
 		})
-		.push_sized(&fuse_kernel::fuse_copy_file_range_in {
+		.push_sized(&testutil::new!(kernel::fuse_copy_file_range_in {
 			fh_in: 11,
 			off_in: 12,
 			nodeid_out: 13,
 			fh_out: 14,
 			off_out: 15,
 			len: 16,
-			flags: 0,
-		})
+		}))
 	});
 
 	assert_eq!(
@@ -100,16 +100,14 @@ fn response() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ size_of::<fuse_kernel::fuse_write_out>()) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ size_of::<kernel::fuse_write_out>()) as u32,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::fuse_write_out {
+			}))
+			.push_sized(&testutil::new!(kernel::fuse_write_out {
 				size: 123,
-				padding: 0,
-			})
+			}))
 			.build()
 	);
 }

@@ -16,24 +16,24 @@
 
 use core::mem::size_of;
 
+use fuse::kernel;
 use fuse::lock;
 use fuse::operations::flush::{FlushRequest, FlushResponse};
 
+use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_FLUSH;
+			h.opcode = kernel::fuse_opcode::FUSE_FLUSH;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_flush_in {
+		.push_sized(&testutil::new!(kernel::fuse_flush_in {
 			fh: 123,
-			unused: 0,
-			padding: 0,
 			lock_owner: 456,
-		})
+		}))
 		.build_aligned();
 
 	let req = decode_request!(FlushRequest, buf);
@@ -47,15 +47,13 @@ fn request_impl_debug() {
 	let buf;
 	let request = fuse_testutil::build_request!(buf, FlushRequest, {
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_FLUSH;
-			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+			h.opcode = kernel::fuse_opcode::FUSE_FLUSH;
+			h.nodeid = kernel::FUSE_ROOT_ID;
 		})
-		.push_sized(&fuse_kernel::fuse_flush_in {
+		.push_sized(&testutil::new!(kernel::fuse_flush_in {
 			fh: 12,
-			unused: 0,
-			padding: 0,
 			lock_owner: 34,
-		})
+		}))
 	});
 	assert_eq!(
 		format!("{:#?}", request),
@@ -77,11 +75,10 @@ fn response_empty() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: size_of::<fuse_kernel::fuse_out_header>() as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: size_of::<kernel::fuse_out_header>() as u32,
 				unique: 0xAABBCCDD,
-			})
+			}))
 			.build()
 	);
 }

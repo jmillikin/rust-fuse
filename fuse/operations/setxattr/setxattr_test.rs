@@ -16,15 +16,17 @@
 
 use core::mem::size_of;
 
+use fuse::kernel;
 use fuse::operations::setxattr::{SetxattrRequest, SetxattrResponse};
 
+use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_SETXATTR;
+			h.opcode = kernel::fuse_opcode::FUSE_SETXATTR;
 			h.nodeid = 123;
 		})
 		.push_sized(&10u32) // fuse_setxattr_in::size
@@ -46,8 +48,8 @@ fn request_impl_debug() {
 	let buf;
 	let request = fuse_testutil::build_request!(buf, SetxattrRequest, {
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_SETXATTR;
-			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+			h.opcode = kernel::fuse_opcode::FUSE_SETXATTR;
+			h.nodeid = kernel::FUSE_ROOT_ID;
 		})
 		.push_sized(&10u32) // fuse_setxattr_in::size
 		.push_sized(&0u32) // fuse_setxattr_in::flags
@@ -88,11 +90,10 @@ fn response_empty() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: size_of::<fuse_kernel::fuse_out_header>() as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: size_of::<kernel::fuse_out_header>() as u32,
 				unique: 0xAABBCCDD,
-			})
+			}))
 			.build()
 	);
 }

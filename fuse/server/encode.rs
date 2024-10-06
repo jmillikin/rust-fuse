@@ -18,11 +18,11 @@ use core::convert::TryFrom;
 use core::mem;
 use core::num;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::io::SendBuf;
 use crate::server;
 
-const HEADER_LEN: usize = mem::size_of::<fuse_kernel::fuse_out_header>();
+const HEADER_LEN: usize = mem::size_of::<kernel::fuse_out_header>();
 
 #[inline]
 #[must_use]
@@ -210,7 +210,7 @@ impl ResponseLen {
 #[inline]
 #[must_use]
 pub(crate) fn checked_response_len(payload_len: usize) -> Option<ResponseLen> {
-	let header_len = mem::size_of::<fuse_kernel::fuse_out_header>();
+	let header_len = mem::size_of::<kernel::fuse_out_header>();
 	let response_len = header_len.checked_add(payload_len)?;
 	u32::try_from(response_len).ok()?;
 	Some(ResponseLen(response_len))

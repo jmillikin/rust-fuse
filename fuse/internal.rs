@@ -21,10 +21,28 @@ pub(crate) mod compat;
 pub(crate) mod debug;
 pub(crate) mod dirent;
 
-#[macro_use]
-mod fuse_kernel_util;
-
-#[allow(dead_code, non_camel_case_types)]
-pub(crate) mod fuse_kernel;
+/// Types and constants defined by the FUSE kernel interface.
+///
+/// This module is automatically generated from [`fuse.h`] in the Linux kernel
+/// source tree.
+///
+/// [`fuse.h`]: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/uapi/linux/fuse.h?h=v5.19
+#[allow(
+	dead_code,
+	missing_docs,
+	non_camel_case_types,
+	unused_parens,
+)]
+pub mod fuse_kernel;
 
 pub(crate) mod timestamp;
+
+macro_rules! new {
+	($t:ty { $( $field:ident : $value:expr , )+ }) => {{
+		let mut value = <$t>::new();
+		$(
+			value.$field = $value;
+		)+
+		value
+	}}
+}

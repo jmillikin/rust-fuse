@@ -20,7 +20,7 @@ use core::fmt;
 
 use crate::internal::compat;
 use crate::internal::debug;
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::lock;
 use crate::server;
 use crate::server::decode;
@@ -33,7 +33,7 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_READ` operation.
 pub struct ReadRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
+	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_read_in<'a>>,
 }
 
@@ -64,7 +64,7 @@ impl ReadRequest<'_> {
 	#[must_use]
 	pub fn lock_owner(&self) -> Option<lock::Owner> {
 		let body = self.body.as_v7p9()?;
-		if body.read_flags & fuse_kernel::FUSE_READ_LOCKOWNER == 0 {
+		if body.read_flags & kernel::FUSE_READ_LOCKOWNER == 0 {
 			return None;
 		}
 		Some(lock::Owner::new(body.lock_owner))
@@ -106,7 +106,7 @@ impl<'a> ReadRequest<'a> {
 		is_cuse: bool,
 	) -> Result<ReadRequest<'a>, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_READ)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_READ)?;
 		let header = dec.header();
 
 		if !is_cuse {

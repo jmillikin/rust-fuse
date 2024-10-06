@@ -18,7 +18,7 @@
 
 use core::fmt;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -30,7 +30,7 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_REMOVEXATTR` operation.
 pub struct RemovexattrRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
+	header: &'a kernel::fuse_in_header,
 	name: &'a crate::XattrName,
 }
 
@@ -56,7 +56,7 @@ impl<'a> server::FuseRequest<'a> for RemovexattrRequest<'a> {
 		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_REMOVEXATTR)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_REMOVEXATTR)?;
 
 		let header = dec.header();
 		decode::node_id(header.nodeid)?;

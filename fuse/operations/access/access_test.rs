@@ -16,21 +16,22 @@
 
 use core::mem::size_of;
 
+use fuse::kernel;
 use fuse::operations::access::{AccessRequest, AccessResponse};
 
+use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_ACCESS;
+			h.opcode = kernel::fuse_opcode::FUSE_ACCESS;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_access_in {
+		.push_sized(&testutil::new!(kernel::fuse_access_in {
 			mask: 0xFF,
-			padding: 0,
-		})
+		}))
 		.build_aligned();
 	let req = decode_request!(AccessRequest, buf);
 
@@ -42,13 +43,10 @@ fn request_impl_debug() {
 	let buf;
 	let request = fuse_testutil::build_request!(buf, AccessRequest, {
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_ACCESS;
-			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+			h.opcode = kernel::fuse_opcode::FUSE_ACCESS;
+			h.nodeid = kernel::FUSE_ROOT_ID;
 		})
-		.push_sized(&fuse_kernel::fuse_access_in {
-			mask: 0,
-			padding: 0,
-		})
+		.push_sized(&kernel::fuse_access_in::new())
 	});
 
 	assert_eq!(
@@ -70,11 +68,10 @@ fn response() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: size_of::<fuse_kernel::fuse_out_header>() as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: size_of::<kernel::fuse_out_header>() as u32,
 				unique: 0xAABBCCDD,
-			})
+			}))
 			.build()
 	);
 }

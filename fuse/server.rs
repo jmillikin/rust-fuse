@@ -21,7 +21,7 @@ use core::mem;
 use core::num;
 
 use crate::cuse;
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::lock;
 use crate::operations::cuse_init::{
 	CuseInitFlag,
@@ -204,11 +204,11 @@ impl<'a> Request<'a> {
 		slice: crate::io::AlignedSlice<'a>,
 	) -> Result<Request<'a>, RequestError> {
 		let bytes = slice.get();
-		if bytes.len() < mem::size_of::<fuse_kernel::fuse_in_header>() {
+		if bytes.len() < mem::size_of::<kernel::fuse_in_header>() {
 			return Err(RequestError::UnexpectedEof);
 		}
 
-		let header_ptr = bytes.as_ptr().cast::<fuse_kernel::fuse_in_header>();
+		let header_ptr = bytes.as_ptr().cast::<kernel::fuse_in_header>();
 		let header = unsafe { &*header_ptr };
 
 		if header.unique == 0 {
@@ -505,12 +505,12 @@ pub trait Hooks {
 	/// Called when decoding a [`Request`] as an operation-specific type fails.
 	fn request_error(&self, request: Request, error: RequestError) {}
 
-	/// Called when a [`Request`] is received with an unknown [`Opcode`].
+	/// Called when a [`Request`] is received with an unknown [`fuse_opcode`].
 	///
-	/// This might happen when the request's `Opcode` isn't recognized by
+	/// This might happen when the request's `fuse_opcode` isn't recognized by
 	/// the library, or when a FUSE-specific request is sent to a CUSE server.
 	///
-	/// [`Opcode`]: crate::Opcode
+	/// [`fuse_opcode`]: crate::kernel::fuse_opcode
 	fn unknown_opcode(&self, request: Request) {}
 
 	/// Called when a [`Request`] is received for an unimplemented operation.

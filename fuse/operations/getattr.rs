@@ -20,7 +20,7 @@ use core::fmt;
 use core::time;
 
 use crate::internal::compat;
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -32,7 +32,7 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_GETATTR` operation.
 pub struct GetattrRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
+	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_getattr_in<'a>>,
 }
 
@@ -45,7 +45,7 @@ impl GetattrRequest<'_> {
 	#[must_use]
 	pub fn handle(&self) -> Option<u64> {
 		let body = self.body.as_v7p9()?;
-		if (body.getattr_flags & fuse_kernel::FUSE_GETATTR_FH) > 0 {
+		if (body.getattr_flags & kernel::FUSE_GETATTR_FH) > 0 {
 			return Some(body.fh);
 		}
 		None
@@ -61,7 +61,7 @@ impl<'a> server::FuseRequest<'a> for GetattrRequest<'a> {
 	) -> Result<Self, server::RequestError> {
 		let version_minor = options.version_minor();
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_GETATTR)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_GETATTR)?;
 
 		let header = dec.header();
 		decode::node_id(header.nodeid)?;

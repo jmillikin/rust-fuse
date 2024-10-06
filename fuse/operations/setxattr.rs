@@ -20,7 +20,7 @@ use core::fmt;
 
 use crate::internal::compat;
 use crate::internal::debug;
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -32,7 +32,7 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_SETXATTR` operation.
 pub struct SetxattrRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
+	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_setxattr_in<'a>>,
 	name: &'a crate::XattrName,
 	value: &'a crate::XattrValue,
@@ -83,7 +83,7 @@ impl<'a> server::FuseRequest<'a> for SetxattrRequest<'a> {
 		options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_SETXATTR)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_SETXATTR)?;
 
 		let header = dec.header();
 		decode::node_id(header.nodeid)?;
@@ -171,9 +171,9 @@ pub struct SetxattrRequestFlag {
 }
 
 mod request_flags {
-	use crate::internal::fuse_kernel;
+	use crate::kernel;
 	bitflags!(SetxattrRequestFlag, SetxattrRequestFlags, u32, {
-		ACL_KILL_SGID = fuse_kernel::FUSE_SETXATTR_ACL_KILL_SGID;
+		ACL_KILL_SGID = kernel::FUSE_SETXATTR_ACL_KILL_SGID;
 	});
 }
 

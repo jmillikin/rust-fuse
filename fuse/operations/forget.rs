@@ -20,7 +20,7 @@ use core::fmt;
 use core::mem::size_of;
 use core::slice;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 
 // ForgetRequest {{{
@@ -48,8 +48,8 @@ impl ForgetRequestItem {
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_FORGET` and `FUSE_BATCH_FORGET` operations.
 pub struct ForgetRequest<'a> {
-	forget: Option<fuse_kernel::fuse_forget_one>,
-	batch_forgets: &'a [fuse_kernel::fuse_forget_one],
+	forget: Option<kernel::fuse_forget_one>,
+	batch_forgets: &'a [kernel::fuse_forget_one],
 }
 
 impl<'a> ForgetRequest<'a> {
@@ -74,15 +74,15 @@ impl<'a> server::FuseRequest<'a> for ForgetRequest<'a> {
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
 		let header = dec.header();
-		if header.opcode == fuse_kernel::FUSE_BATCH_FORGET {
-			let raw: &'a fuse_kernel::fuse_batch_forget_in =
+		if header.opcode == kernel::fuse_opcode::FUSE_BATCH_FORGET {
+			let raw: &'a kernel::fuse_batch_forget_in =
 				dec.next_sized()?;
 			let batch_size =
-				raw.count * size_of::<fuse_kernel::fuse_forget_one>() as u32;
+				raw.count * size_of::<kernel::fuse_forget_one>() as u32;
 			let batch_bytes = dec.next_bytes(batch_size)?;
-			let batch_forgets: &'a [fuse_kernel::fuse_forget_one] = unsafe {
+			let batch_forgets: &'a [kernel::fuse_forget_one] = unsafe {
 				slice::from_raw_parts(
-					batch_bytes.as_ptr().cast::<fuse_kernel::fuse_forget_one>(),
+					batch_bytes.as_ptr().cast::<kernel::fuse_forget_one>(),
 					raw.count as usize,
 				)
 			};
@@ -92,10 +92,10 @@ impl<'a> server::FuseRequest<'a> for ForgetRequest<'a> {
 			});
 		}
 
-		dec.expect_opcode(fuse_kernel::FUSE_FORGET)?;
-		let raw: &fuse_kernel::fuse_forget_in = dec.next_sized()?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_FORGET)?;
+		let raw: &kernel::fuse_forget_in = dec.next_sized()?;
 		Ok(Self {
-			forget: Some(fuse_kernel::fuse_forget_one {
+			forget: Some(kernel::fuse_forget_one {
 				nodeid: header.nodeid,
 				nlookup: raw.nlookup,
 			}),
@@ -117,8 +117,8 @@ impl fmt::Debug for ForgetRequest<'_> {
 // ForgetRequestIter {{{
 
 enum ForgetRequestIter<'a> {
-	One(Option<fuse_kernel::fuse_forget_one>),
-	Batch(&'a [fuse_kernel::fuse_forget_one]),
+	One(Option<kernel::fuse_forget_one>),
+	Batch(&'a [kernel::fuse_forget_one]),
 }
 
 impl ForgetRequestIter<'_> {
@@ -155,8 +155,8 @@ impl Iterator for ForgetRequestIter<'_> {
 }
 
 fn next_batch_item(
-	mut items: &[fuse_kernel::fuse_forget_one],
-) -> (Option<ForgetRequestItem>, &[fuse_kernel::fuse_forget_one]) {
+	mut items: &[kernel::fuse_forget_one],
+) -> (Option<ForgetRequestItem>, &[kernel::fuse_forget_one]) {
 	loop {
 		match items.split_first() {
 			None => return (None, &[]),

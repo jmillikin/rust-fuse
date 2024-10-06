@@ -19,7 +19,7 @@
 use core::fmt;
 use core::marker::PhantomData;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -50,7 +50,7 @@ impl<'a> server::FuseRequest<'a> for StatfsRequest<'a> {
 		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_STATFS)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_STATFS)?;
 
 		Ok(Self {
 			phantom: PhantomData,
@@ -127,7 +127,7 @@ impl server::FuseResponse for StatfsResponse {
 			return encode::sized(header, &self.attr.raw);
 		}
 
-		let raw_ptr = &self.attr.raw as *const fuse_kernel::fuse_statfs_out;
+		let raw_ptr = &self.attr.raw as *const kernel::fuse_statfs_out;
 		encode::sized(header, unsafe {
 			&*(raw_ptr.cast::<fuse_statfs_out_v7p1>())
 		})
@@ -140,14 +140,14 @@ impl server::FuseResponse for StatfsResponse {
 
 #[derive(Clone, Copy)]
 pub struct StatfsAttributes {
-	raw: fuse_kernel::fuse_statfs_out,
+	raw: kernel::fuse_statfs_out,
 }
 
 impl StatfsAttributes {
 	#[must_use]
 	pub fn new() -> StatfsAttributes {
 		Self {
-			raw: fuse_kernel::fuse_statfs_out::zeroed(),
+			raw: kernel::fuse_statfs_out::new(),
 		}
 	}
 

@@ -18,7 +18,7 @@
 
 use core::fmt;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -61,9 +61,9 @@ impl<'a> server::FuseRequest<'a> for LinkRequest<'a> {
 		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_LINK)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_LINK)?;
 
-		let raw: &fuse_kernel::fuse_link_in = dec.next_sized()?;
+		let raw: &kernel::fuse_link_in = dec.next_sized()?;
 		let name = dec.next_node_name()?;
 		Ok(Self {
 			node_id: decode::node_id(raw.oldnodeid)?,

@@ -17,7 +17,7 @@
 use core::fmt;
 use core::time;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::internal::timestamp;
 use crate::node_id::NodeId;
 use crate::file_mode::FileMode;
@@ -25,7 +25,7 @@ use crate::file_mode::FileMode;
 /// Attributes of a filesystem node.
 #[derive(Clone, Copy)]
 pub struct Attributes {
-	pub(crate) raw: fuse_kernel::fuse_attr,
+	pub(crate) raw: kernel::fuse_attr,
 }
 
 impl Attributes {
@@ -34,26 +34,26 @@ impl Attributes {
 	#[must_use]
 	pub fn new(node_id: NodeId) -> Attributes {
 		Self {
-			raw: fuse_kernel::fuse_attr {
+			raw: kernel::fuse_attr {
 				ino: node_id.get(),
-				..fuse_kernel::fuse_attr::zeroed()
+				..kernel::fuse_attr::new()
 			},
 		}
 	}
 
 	#[inline]
 	#[must_use]
-	pub(crate) unsafe fn from_ref(raw: &fuse_kernel::fuse_attr) -> &Self {
-		let raw_ptr = raw as *const fuse_kernel::fuse_attr;
+	pub(crate) unsafe fn from_ref(raw: &kernel::fuse_attr) -> &Self {
+		let raw_ptr = raw as *const kernel::fuse_attr;
 		&*(raw_ptr.cast::<Attributes>())
 	}
 
 	#[inline]
 	#[must_use]
 	pub(crate) unsafe fn from_ref_mut(
-		raw: &mut fuse_kernel::fuse_attr,
+		raw: &mut kernel::fuse_attr,
 	) -> &mut Self {
-		let raw_ptr = raw as *mut fuse_kernel::fuse_attr;
+		let raw_ptr = raw as *mut kernel::fuse_attr;
 		&mut *(raw_ptr.cast::<Attributes>())
 	}
 
@@ -313,16 +313,16 @@ struct AttributeFlag {
 }
 
 mod attr_flags {
-	use crate::internal::fuse_kernel;
+	use crate::kernel;
 	bitflags!(AttributeFlag, AttributeFlags, u32, {
-		FUSE_ATTR_SUBMOUNT = fuse_kernel::FUSE_ATTR_SUBMOUNT;
-		FUSE_ATTR_DAX = fuse_kernel::FUSE_ATTR_DAX;
+		FUSE_ATTR_SUBMOUNT = kernel::FUSE_ATTR_SUBMOUNT;
+		FUSE_ATTR_DAX = kernel::FUSE_ATTR_DAX;
 	});
 }
 
 #[derive(Clone, Copy)]
 pub(crate) struct FuseAttrOut {
-	raw: fuse_kernel::fuse_attr_out,
+	raw: kernel::fuse_attr_out,
 }
 
 impl FuseAttrOut {
@@ -330,12 +330,9 @@ impl FuseAttrOut {
 	#[must_use]
 	pub(crate) fn new(attributes: Attributes) -> FuseAttrOut {
 		Self {
-			raw: fuse_kernel::fuse_attr_out {
-				attr_valid: 0,
-				attr_valid_nsec: 0,
-				dummy: 0,
+			raw: new!(kernel::fuse_attr_out {
 				attr: attributes.raw,
-			},
+			}),
 		}
 	}
 
@@ -366,18 +363,18 @@ impl FuseAttrOut {
 
 	#[inline]
 	#[must_use]
-	pub(crate) fn as_v7p9(&self) -> &fuse_kernel::fuse_attr_out {
+	pub(crate) fn as_v7p9(&self) -> &kernel::fuse_attr_out {
 		let self_ptr = self as *const FuseAttrOut;
-		unsafe { &*(self_ptr.cast::<fuse_kernel::fuse_attr_out>()) }
+		unsafe { &*(self_ptr.cast::<kernel::fuse_attr_out>()) }
 	}
 
 	#[inline]
 	#[must_use]
 	pub(crate) fn as_v7p1(
 		&self,
-	) -> &[u8; fuse_kernel::FUSE_COMPAT_ATTR_OUT_SIZE] {
+	) -> &[u8; kernel::FUSE_COMPAT_ATTR_OUT_SIZE] {
 		let self_ptr = self as *const FuseAttrOut;
-		const OUT_SIZE: usize = fuse_kernel::FUSE_COMPAT_ATTR_OUT_SIZE;
+		const OUT_SIZE: usize = kernel::FUSE_COMPAT_ATTR_OUT_SIZE;
 		unsafe { &*(self_ptr.cast::<[u8; OUT_SIZE]>()) }
 	}
 }

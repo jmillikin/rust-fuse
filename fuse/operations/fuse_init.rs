@@ -20,7 +20,7 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::Version;
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::encode;
 
@@ -73,7 +73,7 @@ impl<'a> FuseInitRequest<'a> {
 		request: server::Request<'a>,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_INIT)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_INIT)?;
 
 		// There are two cases where we can't read past the version fields:
 		//
@@ -87,7 +87,7 @@ impl<'a> FuseInitRequest<'a> {
 		//   containing the library's major version.
 		let raw_v7p1: &'a fuse_init_in_v7p1 = dec.peek_sized()?;
 		if raw_v7p1.minor < 6
-			|| raw_v7p1.major != fuse_kernel::FUSE_KERNEL_VERSION
+			|| raw_v7p1.major != kernel::FUSE_KERNEL_VERSION
 		{
 			return Ok(FuseInitRequest {
 				phantom: PhantomData,
@@ -109,7 +109,7 @@ impl<'a> FuseInitRequest<'a> {
 			});
 		}
 
-		let raw: &'a fuse_kernel::fuse_init_in = dec.next_sized()?;
+		let raw: &'a kernel::fuse_init_in = dec.next_sized()?;
 		let mut flags = u64::from(raw.flags);
 		flags |= u64::from(raw.flags2) << 32;
 		Ok(FuseInitRequest {
@@ -140,27 +140,14 @@ impl fmt::Debug for FuseInitRequest<'_> {
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_INIT` operation.
 pub struct FuseInitResponse {
-	raw: fuse_kernel::fuse_init_out,
+	raw: kernel::fuse_init_out,
 }
 
 impl FuseInitResponse {
 	#[must_use]
 	pub fn new() -> FuseInitResponse {
 		Self {
-			raw: fuse_kernel::fuse_init_out {
-				major: 0,
-				minor: 0,
-				max_readahead: 0,
-				flags: 0,
-				max_background: 0,
-				congestion_threshold: 0,
-				max_write: 0,
-				time_gran: 0,
-				max_pages: 0,
-				map_alignment: 0,
-				flags2: 0,
-				unused: [0; 7],
-			},
+			raw: kernel::fuse_init_out::new(),
 		}
 	}
 
@@ -278,7 +265,7 @@ impl FuseInitResponse {
 			return encode::sized(header, &self.raw);
 		}
 
-		let raw_ptr = &self.raw as *const fuse_kernel::fuse_init_out;
+		let raw_ptr = &self.raw as *const kernel::fuse_init_out;
 		if self.raw.minor >= 5 {
 			return encode::sized(header, unsafe {
 				&*(raw_ptr.cast::<fuse_init_out_v7p5>())
@@ -306,43 +293,43 @@ pub struct FuseInitFlag {
 }
 
 mod flags {
-	use crate::internal::fuse_kernel;
+	use crate::kernel;
 
 	bitflags!(FuseInitFlag, FuseInitFlags, u64, {
-		ASYNC_READ = fuse_kernel::FUSE_ASYNC_READ;
-		POSIX_LOCKS = fuse_kernel::FUSE_POSIX_LOCKS;
-		FILE_OPS = fuse_kernel::FUSE_FILE_OPS;
-		ATOMIC_O_TRUNC = fuse_kernel::FUSE_ATOMIC_O_TRUNC;
-		EXPORT_SUPPORT = fuse_kernel::FUSE_EXPORT_SUPPORT;
-		BIG_WRITES = fuse_kernel::FUSE_BIG_WRITES;
-		DONT_MASK = fuse_kernel::FUSE_DONT_MASK;
-		SPLICE_WRITE = fuse_kernel::FUSE_SPLICE_WRITE;
-		SPLICE_MOVE = fuse_kernel::FUSE_SPLICE_MOVE;
-		SPLICE_READ = fuse_kernel::FUSE_SPLICE_READ;
-		FLOCK_LOCKS = fuse_kernel::FUSE_FLOCK_LOCKS;
-		HAS_IOCTL_DIR = fuse_kernel::FUSE_HAS_IOCTL_DIR;
-		AUTO_INVAL_DATA = fuse_kernel::FUSE_AUTO_INVAL_DATA;
-		DO_READDIRPLUS = fuse_kernel::FUSE_DO_READDIRPLUS;
-		READDIRPLUS_AUTO = fuse_kernel::FUSE_READDIRPLUS_AUTO;
-		ASYNC_DIO = fuse_kernel::FUSE_ASYNC_DIO;
-		WRITEBACK_CACHE = fuse_kernel::FUSE_WRITEBACK_CACHE;
-		NO_OPEN_SUPPORT = fuse_kernel::FUSE_NO_OPEN_SUPPORT;
-		PARALLEL_DIROPS = fuse_kernel::FUSE_PARALLEL_DIROPS;
-		HANDLE_KILLPRIV = fuse_kernel::FUSE_HANDLE_KILLPRIV;
-		POSIX_ACL = fuse_kernel::FUSE_POSIX_ACL;
-		ABORT_ERROR = fuse_kernel::FUSE_ABORT_ERROR;
-		MAX_PAGES = fuse_kernel::FUSE_MAX_PAGES;
-		CACHE_SYMLINKS = fuse_kernel::FUSE_CACHE_SYMLINKS;
-		NO_OPENDIR_SUPPORT = fuse_kernel::FUSE_NO_OPENDIR_SUPPORT;
-		EXPLICIT_INVAL_DATA = fuse_kernel::FUSE_EXPLICIT_INVAL_DATA;
-		MAP_ALIGNMENT = fuse_kernel::FUSE_MAP_ALIGNMENT;
-		SUBMOUNTS = fuse_kernel::FUSE_SUBMOUNTS;
-		HANDLE_KILLPRIV_V2 = fuse_kernel::FUSE_HANDLE_KILLPRIV_V2;
-		SETXATTR_EXT = fuse_kernel::FUSE_SETXATTR_EXT;
-		INIT_EXT = fuse_kernel::FUSE_INIT_EXT;
-		INIT_RESERVED = fuse_kernel::FUSE_INIT_RESERVED;
-		SECURITY_CTX = fuse_kernel::FUSE_SECURITY_CTX;
-		HAS_INODE_DAX = fuse_kernel::FUSE_HAS_INODE_DAX;
+		ASYNC_READ = kernel::FUSE_ASYNC_READ;
+		POSIX_LOCKS = kernel::FUSE_POSIX_LOCKS;
+		FILE_OPS = kernel::FUSE_FILE_OPS;
+		ATOMIC_O_TRUNC = kernel::FUSE_ATOMIC_O_TRUNC;
+		EXPORT_SUPPORT = kernel::FUSE_EXPORT_SUPPORT;
+		BIG_WRITES = kernel::FUSE_BIG_WRITES;
+		DONT_MASK = kernel::FUSE_DONT_MASK;
+		SPLICE_WRITE = kernel::FUSE_SPLICE_WRITE;
+		SPLICE_MOVE = kernel::FUSE_SPLICE_MOVE;
+		SPLICE_READ = kernel::FUSE_SPLICE_READ;
+		FLOCK_LOCKS = kernel::FUSE_FLOCK_LOCKS;
+		HAS_IOCTL_DIR = kernel::FUSE_HAS_IOCTL_DIR;
+		AUTO_INVAL_DATA = kernel::FUSE_AUTO_INVAL_DATA;
+		DO_READDIRPLUS = kernel::FUSE_DO_READDIRPLUS;
+		READDIRPLUS_AUTO = kernel::FUSE_READDIRPLUS_AUTO;
+		ASYNC_DIO = kernel::FUSE_ASYNC_DIO;
+		WRITEBACK_CACHE = kernel::FUSE_WRITEBACK_CACHE;
+		NO_OPEN_SUPPORT = kernel::FUSE_NO_OPEN_SUPPORT;
+		PARALLEL_DIROPS = kernel::FUSE_PARALLEL_DIROPS;
+		HANDLE_KILLPRIV = kernel::FUSE_HANDLE_KILLPRIV;
+		POSIX_ACL = kernel::FUSE_POSIX_ACL;
+		ABORT_ERROR = kernel::FUSE_ABORT_ERROR;
+		MAX_PAGES = kernel::FUSE_MAX_PAGES;
+		CACHE_SYMLINKS = kernel::FUSE_CACHE_SYMLINKS;
+		NO_OPENDIR_SUPPORT = kernel::FUSE_NO_OPENDIR_SUPPORT;
+		EXPLICIT_INVAL_DATA = kernel::FUSE_EXPLICIT_INVAL_DATA;
+		MAP_ALIGNMENT = kernel::FUSE_MAP_ALIGNMENT;
+		SUBMOUNTS = kernel::FUSE_SUBMOUNTS;
+		HANDLE_KILLPRIV_V2 = kernel::FUSE_HANDLE_KILLPRIV_V2;
+		SETXATTR_EXT = kernel::FUSE_SETXATTR_EXT;
+		INIT_EXT = kernel::FUSE_INIT_EXT;
+		INIT_RESERVED = kernel::FUSE_INIT_RESERVED;
+		SECURITY_CTX = kernel::FUSE_SECURITY_CTX;
+		HAS_INODE_DAX = kernel::FUSE_HAS_INODE_DAX;
 	});
 }
 

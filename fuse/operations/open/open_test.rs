@@ -16,6 +16,7 @@
 
 use core::mem::size_of;
 
+use fuse::kernel;
 use fuse::operations::open::{
 	OpenRequest,
 	OpenRequestFlag,
@@ -23,19 +24,20 @@ use fuse::operations::open::{
 	OpenResponseFlag,
 };
 
+use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_OPEN;
+			h.opcode = kernel::fuse_opcode::FUSE_OPEN;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_open_in {
+		.push_sized(&testutil::new!(kernel::fuse_open_in {
 			flags: 0xFF,
-			open_flags: fuse_kernel::FUSE_OPEN_KILL_SUIDGID,
-		})
+			open_flags: kernel::FUSE_OPEN_KILL_SUIDGID,
+		}))
 		.build_aligned();
 
 	let req = decode_request!(OpenRequest, buf);
@@ -49,13 +51,13 @@ fn request_impl_debug() {
 	let buf;
 	let request = fuse_testutil::build_request!(buf, OpenRequest, {
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_OPEN;
-			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+			h.opcode = kernel::fuse_opcode::FUSE_OPEN;
+			h.nodeid = kernel::FUSE_ROOT_ID;
 		})
-		.push_sized(&fuse_kernel::fuse_open_in {
+		.push_sized(&testutil::new!(kernel::fuse_open_in {
 			flags: 0xFF,
-			open_flags: fuse_kernel::FUSE_OPEN_KILL_SUIDGID,
-		})
+			open_flags: kernel::FUSE_OPEN_KILL_SUIDGID,
+		}))
 	});
 
 	assert_eq!(
@@ -85,17 +87,15 @@ fn response() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ size_of::<fuse_kernel::fuse_open_out>()) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ size_of::<kernel::fuse_open_out>()) as u32,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::fuse_open_out {
+			}))
+			.push_sized(&testutil::new!(kernel::fuse_open_out {
 				fh: 123,
 				open_flags: 0x2,
-				padding: 0,
-			})
+			}))
 			.build()
 	);
 }

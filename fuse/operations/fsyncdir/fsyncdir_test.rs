@@ -16,26 +16,27 @@
 
 use core::mem::size_of;
 
+use fuse::kernel;
 use fuse::operations::fsyncdir::{
 	FsyncdirRequest,
 	FsyncdirRequestFlag,
 	FsyncdirResponse,
 };
 
+use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_FSYNCDIR;
+			h.opcode = kernel::fuse_opcode::FUSE_FSYNCDIR;
 			h.nodeid = 123;
 		})
-		.push_sized(&fuse_kernel::fuse_fsync_in {
+		.push_sized(&testutil::new!(kernel::fuse_fsync_in {
 			fh: 3,
 			fsync_flags: 0x1,
-			padding: 0,
-		})
+		}))
 		.build_aligned();
 
 	let req = decode_request!(FsyncdirRequest, buf, {
@@ -51,14 +52,13 @@ fn request_impl_debug() {
 	let buf;
 	let request = fuse_testutil::build_request!(buf, FsyncdirRequest, {
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_FSYNCDIR;
-			h.nodeid = fuse_kernel::FUSE_ROOT_ID;
+			h.opcode = kernel::fuse_opcode::FUSE_FSYNCDIR;
+			h.nodeid = kernel::FUSE_ROOT_ID;
 		})
-		.push_sized(&fuse_kernel::fuse_fsync_in {
+		.push_sized(&testutil::new!(kernel::fuse_fsync_in {
 			fh: 3,
 			fsync_flags: 0x1,
-			padding: 0,
-		})
+		}))
 	});
 
 	assert_eq!(
@@ -83,11 +83,10 @@ fn response_empty() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: size_of::<fuse_kernel::fuse_out_header>() as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: size_of::<kernel::fuse_out_header>() as u32,
 				unique: 0xAABBCCDD,
-			})
+			}))
 			.build()
 	);
 }

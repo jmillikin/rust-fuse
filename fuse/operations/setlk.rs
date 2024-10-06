@@ -18,7 +18,7 @@
 
 use core::fmt;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::lock;
 use crate::server;
 use crate::server::decode;
@@ -31,8 +31,8 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_SETLK` and `FUSE_SETLKW` operations.
 pub struct SetlkRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
-	body: &'a fuse_kernel::fuse_lk_in,
+	header: &'a kernel::fuse_in_header,
+	body: &'a kernel::fuse_lk_in,
 	lock: Option<lock::Lock>,
 	lock_range: lock::Range,
 }
@@ -53,7 +53,7 @@ impl SetlkRequest<'_> {
 	#[inline]
 	#[must_use]
 	pub fn may_block(&self) -> bool {
-		self.header.opcode == fuse_kernel::FUSE_SETLKW
+		self.header.opcode == kernel::fuse_opcode::FUSE_SETLKW
 	}
 
 	#[inline]
@@ -93,13 +93,13 @@ impl<'a> server::FuseRequest<'a> for SetlkRequest<'a> {
 		let mut dec = request.decoder();
 
 		let header = dec.header();
-		if header.opcode != fuse_kernel::FUSE_SETLKW {
-			dec.expect_opcode(fuse_kernel::FUSE_SETLK)?;
+		if header.opcode != kernel::fuse_opcode::FUSE_SETLKW {
+			dec.expect_opcode(kernel::fuse_opcode::FUSE_SETLK)?;
 		}
 
 		decode::node_id(header.nodeid)?;
 
-		let body: &fuse_kernel::fuse_lk_in = dec.next_sized()?;
+		let body: &kernel::fuse_lk_in = dec.next_sized()?;
 
 		let lock;
 		let lock_range;
@@ -128,9 +128,9 @@ pub struct SetlkRequestFlag {
 }
 
 mod flags {
-	use crate::internal::fuse_kernel;
+	use crate::kernel;
 	bitflags!(SetlkRequestFlag, SetlkRequestFlags, u32, {
-		LK_FLOCK = fuse_kernel::FUSE_LK_FLOCK;
+		LK_FLOCK = kernel::FUSE_LK_FLOCK;
 	});
 }
 

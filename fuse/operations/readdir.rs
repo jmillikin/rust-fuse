@@ -23,7 +23,7 @@ use core::num;
 use crate::internal::compat;
 use crate::internal::debug;
 use crate::internal::dirent;
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -35,7 +35,7 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_READDIR` operation.
 pub struct ReaddirRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
+	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_read_in<'a>>,
 }
 
@@ -81,7 +81,7 @@ impl<'a> server::FuseRequest<'a> for ReaddirRequest<'a> {
 	) -> Result<Self, server::RequestError> {
 		let version_minor = options.version_minor();
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_READDIR)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_READDIR)?;
 
 		let header = dec.header();
 		decode::node_id(header.nodeid)?;
@@ -174,7 +174,7 @@ impl server::FuseResponse for ReaddirResponse<'_> {
 
 #[derive(Clone, Copy)]
 pub struct ReaddirEntry<'a> {
-	dirent: fuse_kernel::fuse_dirent,
+	dirent: kernel::fuse_dirent,
 	name: &'a crate::NodeName,
 }
 
@@ -187,11 +187,11 @@ impl<'a> ReaddirEntry<'a> {
 		offset: num::NonZeroU64,
 	) -> ReaddirEntry<'a> {
 		Self {
-			dirent: fuse_kernel::fuse_dirent {
+			dirent: kernel::fuse_dirent {
 				ino: node_id.get(),
 				off: offset.get(),
 				namelen: name.as_bytes().len() as u32,
-				..fuse_kernel::fuse_dirent::zeroed()
+				..kernel::fuse_dirent::new()
 			},
 			name,
 		}
@@ -310,7 +310,7 @@ impl<'a> ReaddirEntriesWriter<'a> {
 	#[inline]
 	#[must_use]
 	pub fn entry_size(entry: &ReaddirEntry) -> usize {
-		dirent::entry_size::<fuse_kernel::fuse_dirent>(entry.name)
+		dirent::entry_size::<kernel::fuse_dirent>(entry.name)
 	}
 
 	pub fn try_push(
@@ -358,7 +358,7 @@ impl<'a> Iterator for ReaddirEntriesIter<'a> {
 			return None;
 		}
 
-		use fuse_kernel::fuse_dirent as T;
+		use kernel::fuse_dirent as T;
 		unsafe {
 			let (dirent, name) = dirent::read_unchecked::<T>(self.buf);
 			let entry_size = dirent::entry_size::<T>(name);

@@ -18,29 +18,7 @@
 
 use core::mem;
 
-use crate::internal::fuse_kernel;
-
-/// The minimum buffer size (in bytes) for receiving a FUSE message.
-///
-/// The FUSE client may reject reads into buffers smaller than
-/// `FUSE_MIN_READ_BUFFER` bytes.
-///
-/// Note that the minimum buffer size is *not* the maximum size of a FUSE
-/// message:
-///
-/// * The server is allowed to negotiate a larger `max_write` than the default
-///   of `4096`, in which case the minimum size of a `FUSE_WRITE` message will
-///   be `max_write` + `size_of::<fuse_in_header>` + `size_of::<fuse_write_in>`.
-///
-///   In this case the client may reject reads into buffers that aren't large
-///   enough to store the largest possible `FUSE_WRITE` message.
-///
-/// * A `FUSE_SETXATTR` message may contain values up to 64 KiB (on Linux), or
-///   even of unlimited size (on FreeBSD). See [`crate::XattrValue::MAX_LEN`] for
-///   details.
-///
-/// [`crate::XattrValue::MAX_LEN`]: crate::XattrValue::MAX_LEN
-pub const FUSE_MIN_READ_BUFFER: usize = fuse_kernel::FUSE_MIN_READ_BUFFER;
+use crate::kernel;
 
 // AlignedSlice {{{
 
@@ -185,6 +163,24 @@ impl<'a> From<AlignedSliceMut<'a>> for AlignedSlice<'a> {
 // MinReadBuffer {{{
 
 /// A fixed-size aligned buffer of [`FUSE_MIN_READ_BUFFER`] bytes.
+///
+/// The FUSE client may reject reads into buffers smaller than
+/// `FUSE_MIN_READ_BUFFER`. Note that the minimum buffer size is *not* the
+/// maximum size of a FUSE message:
+///
+/// * The server is allowed to negotiate a larger `max_write` than the default
+///   of `4096`, in which case the minimum size of a `FUSE_WRITE` message will
+///   be `max_write` + `size_of::<fuse_in_header>` + `size_of::<fuse_write_in>`.
+///
+///   In this case the client may reject reads into buffers that aren't large
+///   enough to store the largest possible `FUSE_WRITE` message.
+///
+/// * A `FUSE_SETXATTR` message may contain values up to 64 KiB (on Linux), or
+///   even of unlimited size (on FreeBSD). See [`XattrValue::MAX_LEN`] for
+///   details.
+///
+/// [`FUSE_MIN_READ_BUFFER`]: kernel::FUSE_MIN_READ_BUFFER
+/// [`XattrValue::MAX_LEN`]: crate::XattrValue::MAX_LEN
 #[derive(Clone, Copy, Debug)]
 #[repr(align(8))]
 pub struct MinReadBuffer {
@@ -195,7 +191,9 @@ impl MinReadBuffer {
 	/// The length of a `MinReadBuffer`.
 	///
 	/// This is a convenience alias for [`FUSE_MIN_READ_BUFFER`].
-	pub const LEN: usize = FUSE_MIN_READ_BUFFER;
+	///
+	/// [`FUSE_MIN_READ_BUFFER`]: kernel::FUSE_MIN_READ_BUFFER
+	pub const LEN: usize = kernel::FUSE_MIN_READ_BUFFER;
 
 	/// Creates a new `MinReadBuffer` initialized with zeros.
 	#[inline]

@@ -9,10 +9,7 @@ rust_library(
     name = "fuse_testutil",
     srcs = ["fuse_testutil.rs"],
     edition = "2021",
-    deps = [
-        "//fuse",
-        "//fuse/internal:fuse_kernel",
-    ],
+    deps = ["//fuse"],
 )
 
 rust_library(
@@ -49,7 +46,6 @@ rust_binary(
     tags = ["manual"],
     deps = [
         "//fuse",
-        "//fuse/internal:fuse_kernel",
         "//fuse/internal/testing:fuse_testutil",
         "@rust_criterion//:criterion",
     ],

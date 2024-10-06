@@ -16,18 +16,22 @@
 
 use core::mem::size_of;
 
+use fuse::kernel;
 use fuse::operations::link::{LinkRequest, LinkResponse};
 
+use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_LINK;
+			h.opcode = kernel::fuse_opcode::FUSE_LINK;
 			h.nodeid = 100;
 		})
-		.push_sized(&fuse_kernel::fuse_link_in { oldnodeid: 123 })
+		.push_sized(&testutil::new!(kernel::fuse_link_in {
+			oldnodeid: 123,
+		}))
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 
@@ -43,10 +47,12 @@ fn request() {
 fn request_impl_debug() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_LINK;
+			h.opcode = kernel::fuse_opcode::FUSE_LINK;
 			h.nodeid = 100;
 		})
-		.push_sized(&fuse_kernel::fuse_link_in { oldnodeid: 123 })
+		.push_sized(&testutil::new!(kernel::fuse_link_in {
+			oldnodeid: 123,
+		}))
 		.push_bytes(b"hello.world!\x00")
 		.build_aligned();
 	let request = decode_request!(LinkRequest, buf);
@@ -77,27 +83,21 @@ fn response_v7p1() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ fuse_kernel::FUSE_COMPAT_ENTRY_OUT_SIZE) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ kernel::FUSE_COMPAT_ENTRY_OUT_SIZE) as u32,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::fuse_entry_out {
+			}))
+			.push_sized(&testutil::new!(kernel::fuse_entry_out {
 				nodeid: 11,
 				generation: 22,
-				entry_valid: 0,
-				attr_valid: 0,
-				entry_valid_nsec: 0,
-				attr_valid_nsec: 0,
-				attr: fuse_kernel::fuse_attr {
+				attr: testutil::new!(kernel::fuse_attr {
 					ino: 11,
-					..fuse_kernel::fuse_attr::zeroed()
-				}
-			})
+				}),
+			}))
 			.unpush(
-				size_of::<fuse_kernel::fuse_entry_out>()
-					- fuse_kernel::FUSE_COMPAT_ENTRY_OUT_SIZE
+				size_of::<kernel::fuse_entry_out>()
+					- kernel::FUSE_COMPAT_ENTRY_OUT_SIZE
 			)
 			.build()
 	);
@@ -117,24 +117,18 @@ fn response_v7p9() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ size_of::<fuse_kernel::fuse_entry_out>()) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ size_of::<kernel::fuse_entry_out>()) as u32,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::fuse_entry_out {
+			}))
+			.push_sized(&testutil::new!(kernel::fuse_entry_out {
 				nodeid: 11,
 				generation: 22,
-				entry_valid: 0,
-				attr_valid: 0,
-				entry_valid_nsec: 0,
-				attr_valid_nsec: 0,
-				attr: fuse_kernel::fuse_attr {
+				attr: testutil::new!(kernel::fuse_attr {
 					ino: 11,
-					..fuse_kernel::fuse_attr::zeroed()
-				}
-			})
+				}),
+			}))
 			.build()
 	);
 }

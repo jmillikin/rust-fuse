@@ -22,15 +22,17 @@ use linux_errno as os_errno;
 #[cfg(target_os = "freebsd")]
 use freebsd_errno as os_errno;
 
+use fuse::kernel;
 use fuse::operations::lookup::{LookupRequest, LookupResponse};
 
+use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_LOOKUP;
+			h.opcode = kernel::fuse_opcode::FUSE_LOOKUP;
 			h.nodeid = 123;
 		})
 		.push_bytes(b"hello.world!\x00")
@@ -45,7 +47,7 @@ fn request() {
 fn request_impl_debug() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_LOOKUP;
+			h.opcode = kernel::fuse_opcode::FUSE_LOOKUP;
 			h.nodeid = 123;
 		})
 		.push_bytes(b"hello.world!\x00")
@@ -78,28 +80,22 @@ fn response_v7p1() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ fuse_kernel::FUSE_COMPAT_ENTRY_OUT_SIZE) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ kernel::FUSE_COMPAT_ENTRY_OUT_SIZE) as u32,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::fuse_entry_out {
+			}))
+			.push_sized(&testutil::new!(kernel::fuse_entry_out {
 				nodeid: 11,
 				generation: 22,
-				entry_valid: 0,
-				attr_valid: 0,
-				entry_valid_nsec: 0,
-				attr_valid_nsec: 0,
-				attr: fuse_kernel::fuse_attr {
+				attr: testutil::new!(kernel::fuse_attr {
 					ino: 11,
 					mode: 0o100644,
-					..fuse_kernel::fuse_attr::zeroed()
-				}
-			})
+				}),
+			}))
 			.unpush(
-				size_of::<fuse_kernel::fuse_entry_out>()
-					- fuse_kernel::FUSE_COMPAT_ENTRY_OUT_SIZE
+				size_of::<kernel::fuse_entry_out>()
+					- kernel::FUSE_COMPAT_ENTRY_OUT_SIZE
 			)
 			.build()
 	);
@@ -120,25 +116,19 @@ fn response_v7p9() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ size_of::<fuse_kernel::fuse_entry_out>()) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ size_of::<kernel::fuse_entry_out>()) as u32,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::fuse_entry_out {
+			}))
+			.push_sized(&testutil::new!(kernel::fuse_entry_out {
 				nodeid: 11,
 				generation: 22,
-				entry_valid: 0,
-				attr_valid: 0,
-				entry_valid_nsec: 0,
-				attr_valid_nsec: 0,
-				attr: fuse_kernel::fuse_attr {
+				attr: testutil::new!(kernel::fuse_attr {
 					ino: 11,
 					mode: 0o100644,
-					..fuse_kernel::fuse_attr::zeroed()
-				}
-			})
+				}),
+			}))
 			.build()
 	);
 }
@@ -153,11 +143,11 @@ fn response_noexist_v7p1() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: size_of::<fuse_kernel::fuse_out_header>() as u32,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: size_of::<kernel::fuse_out_header>() as u32,
 				error: -(os_errno::ENOENT.get() as i32),
 				unique: 0xAABBCCDD,
-			})
+			}))
 			.build()
 	);
 }
@@ -172,24 +162,15 @@ fn response_noexist_v7p4() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: (size_of::<fuse_kernel::fuse_out_header>()
-					+ fuse_kernel::FUSE_COMPAT_ENTRY_OUT_SIZE) as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: (size_of::<kernel::fuse_out_header>()
+					+ kernel::FUSE_COMPAT_ENTRY_OUT_SIZE) as u32,
 				unique: 0xAABBCCDD,
-			})
-			.push_sized(&fuse_kernel::fuse_entry_out {
-				nodeid: 0,
-				generation: 0,
-				entry_valid: 0,
-				attr_valid: 0,
-				entry_valid_nsec: 0,
-				attr_valid_nsec: 0,
-				attr: fuse_kernel::fuse_attr::zeroed(),
-			})
+			}))
+			.push_sized(&kernel::fuse_entry_out::new())
 			.unpush(
-				size_of::<fuse_kernel::fuse_entry_out>()
-					- fuse_kernel::FUSE_COMPAT_ENTRY_OUT_SIZE
+				size_of::<kernel::fuse_entry_out>()
+					- kernel::FUSE_COMPAT_ENTRY_OUT_SIZE
 			)
 			.build()
 	);

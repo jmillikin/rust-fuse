@@ -19,7 +19,7 @@
 use core::fmt;
 
 use crate::internal::debug;
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -61,7 +61,7 @@ impl<'a> server::FuseRequest<'a> for SymlinkRequest<'a> {
 		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_SYMLINK)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_SYMLINK)?;
 		let content = dec.next_nul_terminated_bytes()?.to_bytes_without_nul();
 		let name = dec.next_node_name()?;
 		Ok(Self {

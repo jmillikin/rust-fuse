@@ -20,7 +20,7 @@ use core::marker::PhantomData;
 use core::mem::size_of;
 use core::slice::from_raw_parts;
 
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::internal::timestamp;
 use crate::server::RequestError;
 
@@ -32,7 +32,7 @@ mod decode_test;
 union RequestBuf<'a> {
 	slice: Slice<'a>,
 	header: &'a crate::RequestHeader,
-	raw_header: &'a fuse_kernel::fuse_in_header,
+	raw_header: &'a kernel::fuse_in_header,
 }
 
 #[repr(C)]
@@ -70,13 +70,13 @@ impl<'a> RequestDecoder<'a> {
 		Self {
 			buf,
 			header_len,
-			consumed: size_of::<fuse_kernel::fuse_in_header>(),
+			consumed: size_of::<kernel::fuse_in_header>(),
 		}
 	}
 
 	pub(crate) fn expect_opcode(
 		&self,
-		opcode: fuse_kernel::fuse_opcode,
+		opcode: kernel::fuse_opcode,
 	) -> Result<(), RequestError> {
 		if self.header().opcode != opcode {
 			return Err(RequestError::OpcodeMismatch);
@@ -84,7 +84,7 @@ impl<'a> RequestDecoder<'a> {
 		Ok(())
 	}
 
-	pub(crate) fn header(&self) -> &'a fuse_kernel::fuse_in_header {
+	pub(crate) fn header(&self) -> &'a kernel::fuse_in_header {
 		unsafe { self.buf.raw_header }
 	}
 

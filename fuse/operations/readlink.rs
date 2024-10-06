@@ -21,7 +21,7 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::internal::debug;
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -52,7 +52,7 @@ impl<'a> server::FuseRequest<'a> for ReadlinkRequest<'a> {
 		_options: server::FuseRequestOptions,
 	) -> Result<Self, server::RequestError> {
 		let dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_READLINK)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_READLINK)?;
 		Ok(Self {
 			phantom: PhantomData,
 			node_id: decode::node_id(dec.header().nodeid)?,

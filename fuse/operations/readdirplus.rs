@@ -23,7 +23,7 @@ use core::num;
 use crate::internal::compat;
 use crate::internal::debug;
 use crate::internal::dirent;
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -35,7 +35,7 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_READDIRPLUS` operation.
 pub struct ReaddirplusRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
+	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_read_in<'a>>,
 }
 
@@ -81,7 +81,7 @@ impl<'a> server::FuseRequest<'a> for ReaddirplusRequest<'a> {
 	) -> Result<Self, server::RequestError> {
 		let version_minor = options.version_minor();
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_READDIRPLUS)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_READDIRPLUS)?;
 
 		let header = dec.header();
 		decode::node_id(header.nodeid)?;
@@ -174,7 +174,7 @@ impl server::FuseResponse for ReaddirplusResponse<'_> {
 
 #[derive(Clone, Copy)]
 pub struct ReaddirplusEntry<'a> {
-	dirent: fuse_kernel::fuse_direntplus,
+	dirent: kernel::fuse_direntplus,
 	name: &'a crate::NodeName,
 }
 
@@ -189,13 +189,13 @@ impl<'a> ReaddirplusEntry<'a> {
 		let node_id = entry.attributes().node_id();
 		let mode = entry.attributes().mode();
 		Self {
-			dirent: fuse_kernel::fuse_direntplus {
-				dirent: fuse_kernel::fuse_dirent {
+			dirent: kernel::fuse_direntplus {
+				dirent: kernel::fuse_dirent {
 					ino: node_id.get(),
 					off: offset.get(),
 					r#type: mode.type_bits(),
 					namelen: name.as_bytes().len() as u32,
-					..fuse_kernel::fuse_dirent::zeroed()
+					..kernel::fuse_dirent::new()
 				},
 				entry_out: entry.into_entry_out(),
 			},
@@ -304,7 +304,7 @@ impl<'a> ReaddirplusEntriesWriter<'a> {
 	#[inline]
 	#[must_use]
 	pub fn entry_size(entry: &ReaddirplusEntry) -> usize {
-		dirent::entry_size::<fuse_kernel::fuse_direntplus>(entry.name)
+		dirent::entry_size::<kernel::fuse_direntplus>(entry.name)
 	}
 
 	pub fn try_push(
@@ -352,7 +352,7 @@ impl<'a> Iterator for ReaddirplusEntriesIter<'a> {
 			return None;
 		}
 
-		use fuse_kernel::fuse_direntplus as T;
+		use kernel::fuse_direntplus as T;
 		unsafe {
 			let (dirent, name) = dirent::read_unchecked::<T>(self.buf);
 			let entry_size = dirent::entry_size::<T>(name);

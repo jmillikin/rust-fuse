@@ -20,7 +20,7 @@ use core::fmt;
 
 use crate::internal::compat;
 use crate::internal::debug;
-use crate::internal::fuse_kernel;
+use crate::kernel;
 use crate::server;
 use crate::server::decode;
 use crate::server::encode;
@@ -32,7 +32,7 @@ use crate::server::encode;
 /// See the [module-level documentation](self) for an overview of the
 /// `FUSE_CREATE` operation.
 pub struct CreateRequest<'a> {
-	header: &'a fuse_kernel::fuse_in_header,
+	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_create_in<'a>>,
 	name: &'a crate::NodeName,
 }
@@ -89,7 +89,7 @@ impl<'a> server::FuseRequest<'a> for CreateRequest<'a> {
 	) -> Result<Self, server::RequestError> {
 		let version_minor = options.version_minor();
 		let mut dec = request.decoder();
-		dec.expect_opcode(fuse_kernel::FUSE_CREATE)?;
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_CREATE)?;
 
 		let header = dec.header();
 		decode::node_id(header.nodeid)?;
@@ -131,7 +131,7 @@ impl fmt::Debug for CreateRequest<'_> {
 /// `FUSE_CREATE` operation.
 pub struct CreateResponse {
 	entry: crate::Entry,
-	open_out: fuse_kernel::fuse_open_out,
+	open_out: kernel::fuse_open_out,
 }
 
 impl CreateResponse {
@@ -140,7 +140,7 @@ impl CreateResponse {
 	pub fn new(entry: crate::Entry) -> CreateResponse {
 		Self {
 			entry,
-			open_out: fuse_kernel::fuse_open_out::zeroed(),
+			open_out: kernel::fuse_open_out::new(),
 		}
 	}
 
@@ -230,9 +230,9 @@ pub struct CreateRequestFlag {
 }
 
 mod request_flags {
-	use crate::internal::fuse_kernel;
+	use crate::kernel;
 	bitflags!(CreateRequestFlag, CreateRequestFlags, u32, {
-		KILL_SUIDGID = fuse_kernel::FUSE_OPEN_KILL_SUIDGID;
+		KILL_SUIDGID = kernel::FUSE_OPEN_KILL_SUIDGID;
 	});
 }
 
@@ -252,14 +252,14 @@ pub struct CreateResponseFlag {
 }
 
 mod response_flags {
-	use crate::internal::fuse_kernel;
+	use crate::kernel;
 	bitflags!(CreateResponseFlag, CreateResponseFlags, u32, {
-		DIRECT_IO = fuse_kernel::FOPEN_DIRECT_IO;
-		KEEP_CACHE = fuse_kernel::FOPEN_KEEP_CACHE;
-		NONSEEKABLE = fuse_kernel::FOPEN_NONSEEKABLE;
-		CACHE_DIR = fuse_kernel::FOPEN_CACHE_DIR;
-		STREAM = fuse_kernel::FOPEN_STREAM;
-		NOFLUSH = fuse_kernel::FOPEN_NOFLUSH;
+		DIRECT_IO = kernel::FOPEN_DIRECT_IO;
+		KEEP_CACHE = kernel::FOPEN_KEEP_CACHE;
+		NONSEEKABLE = kernel::FOPEN_NONSEEKABLE;
+		CACHE_DIR = kernel::FOPEN_CACHE_DIR;
+		STREAM = kernel::FOPEN_STREAM;
+		NOFLUSH = kernel::FOPEN_NOFLUSH;
 	});
 }
 

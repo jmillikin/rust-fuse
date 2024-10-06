@@ -16,15 +16,17 @@
 
 use core::mem::size_of;
 
+use fuse::kernel;
 use fuse::operations::unlink::{UnlinkRequest, UnlinkResponse};
 
+use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, encode_response, MessageBuilder};
 
 #[test]
 fn request() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_UNLINK;
+			h.opcode = kernel::fuse_opcode::FUSE_UNLINK;
 			h.nodeid = 100;
 		})
 		.push_bytes(b"hello.world!\x00")
@@ -40,7 +42,7 @@ fn request() {
 fn request_impl_debug() {
 	let buf = MessageBuilder::new()
 		.set_header(|h| {
-			h.opcode = fuse_kernel::FUSE_UNLINK;
+			h.opcode = kernel::fuse_opcode::FUSE_UNLINK;
 			h.nodeid = 100;
 		})
 		.push_bytes(b"hello.world!\x00")
@@ -66,11 +68,10 @@ fn response_empty() {
 	assert_eq!(
 		encoded,
 		MessageBuilder::new()
-			.push_sized(&fuse_kernel::fuse_out_header {
-				len: size_of::<fuse_kernel::fuse_out_header>() as u32,
-				error: 0,
+			.push_sized(&testutil::new!(kernel::fuse_out_header {
+				len: size_of::<kernel::fuse_out_header>() as u32,
 				unique: 0xAABBCCDD,
-			})
+			}))
 			.build()
 	);
 }

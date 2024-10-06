@@ -16,6 +16,7 @@
 
 //! RPC-style FUSE servers.
 
+use crate::kernel::fuse_opcode;
 use crate::operations as ops;
 use crate::server;
 use crate::server::io;
@@ -195,13 +196,12 @@ impl<S: io::FuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 		&self,
 		request: server::Request,
 	) -> Result<(), io::SendError<S::Error>> {
-		use crate::Opcode;
 		if let Some(hooks) = self.hooks {
 			hooks.request(request);
 		}
 		let result = match request.header().opcode() {
-			Opcode::FUSE_READ => self.do_read(request),
-			Opcode::FUSE_WRITE => self.do_write(request),
+			fuse_opcode::FUSE_READ => self.do_read(request),
+			fuse_opcode::FUSE_WRITE => self.do_write(request),
 			_ => self.do_other(request),
 		};
 		match result {
@@ -257,7 +257,7 @@ impl<S: io::FuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 		request: server::Request,
 	) -> Result<(), io::SendError<S::Error>> {
 		use crate::server::FuseRequest;
-		use crate::Opcode as Op;
+		use crate::kernel::fuse_opcode as op;
 
 		let call = self.new_call(request);
 
@@ -271,14 +271,14 @@ impl<S: io::FuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 		}
 
 		match request.header().opcode() {
-			Op::FUSE_ACCESS => do_dispatch!(access),
-			Op::FUSE_BMAP => do_dispatch!(bmap),
-			Op::FUSE_COPY_FILE_RANGE => do_dispatch!(copy_file_range),
-			Op::FUSE_CREATE => do_dispatch!(create),
-			Op::FUSE_DESTROY => do_dispatch!(destroy),
-			Op::FUSE_FALLOCATE => do_dispatch!(fallocate),
-			Op::FUSE_FLUSH => do_dispatch!(flush),
-			Op::FUSE_FORGET | Op::FUSE_BATCH_FORGET => {
+			op::FUSE_ACCESS => do_dispatch!(access),
+			op::FUSE_BMAP => do_dispatch!(bmap),
+			op::FUSE_COPY_FILE_RANGE => do_dispatch!(copy_file_range),
+			op::FUSE_CREATE => do_dispatch!(create),
+			op::FUSE_DESTROY => do_dispatch!(destroy),
+			op::FUSE_FALLOCATE => do_dispatch!(fallocate),
+			op::FUSE_FLUSH => do_dispatch!(flush),
+			op::FUSE_FORGET | op::FUSE_BATCH_FORGET => {
 				match FuseRequest::from_request(request, self.request_options) {
 					Ok(request) => self.handlers.forget(call, &request),
 					Err(err) => if let Some(hooks) = self.hooks {
@@ -287,12 +287,12 @@ impl<S: io::FuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 				};
 				Ok(())
 			},
-			Op::FUSE_FSYNC => do_dispatch!(fsync),
-			Op::FUSE_FSYNCDIR => do_dispatch!(fsyncdir),
-			Op::FUSE_GETATTR => do_dispatch!(getattr),
-			Op::FUSE_GETLK => do_dispatch!(getlk),
-			Op::FUSE_GETXATTR => do_dispatch!(getxattr),
-			Op::FUSE_INTERRUPT => {
+			op::FUSE_FSYNC => do_dispatch!(fsync),
+			op::FUSE_FSYNCDIR => do_dispatch!(fsyncdir),
+			op::FUSE_GETATTR => do_dispatch!(getattr),
+			op::FUSE_GETLK => do_dispatch!(getlk),
+			op::FUSE_GETXATTR => do_dispatch!(getxattr),
+			op::FUSE_INTERRUPT => {
 				match FuseRequest::from_request(request, self.request_options) {
 					Ok(request) => self.handlers.interrupt(call, &request),
 					Err(err) => if let Some(hooks) = self.hooks {
@@ -301,31 +301,31 @@ impl<S: io::FuseSocket, H: Handlers<S>> Dispatcher<'_, S, H> {
 				};
 				Ok(())
 			},
-			Op::FUSE_IOCTL => do_dispatch!(ioctl),
-			Op::FUSE_LINK => do_dispatch!(link),
-			Op::FUSE_LISTXATTR => do_dispatch!(listxattr),
-			Op::FUSE_LOOKUP => do_dispatch!(lookup),
-			Op::FUSE_LSEEK => do_dispatch!(lseek),
-			Op::FUSE_MKDIR => do_dispatch!(mkdir),
-			Op::FUSE_MKNOD => do_dispatch!(mknod),
-			Op::FUSE_OPEN => do_dispatch!(open),
-			Op::FUSE_OPENDIR => do_dispatch!(opendir),
-			Op::FUSE_POLL => do_dispatch!(poll),
-			Op::FUSE_READDIR => do_dispatch!(readdir),
-			Op::FUSE_READDIRPLUS => do_dispatch!(readdirplus),
-			Op::FUSE_READLINK => do_dispatch!(readlink),
-			Op::FUSE_RELEASE => do_dispatch!(release),
-			Op::FUSE_RELEASEDIR => do_dispatch!(releasedir),
-			Op::FUSE_REMOVEXATTR => do_dispatch!(removexattr),
-			Op::FUSE_RENAME | Op::FUSE_RENAME2 => do_dispatch!(rename),
-			Op::FUSE_RMDIR => do_dispatch!(rmdir),
-			Op::FUSE_SETATTR => do_dispatch!(setattr),
-			Op::FUSE_SETLK | Op::FUSE_SETLKW => do_dispatch!(setlk),
-			Op::FUSE_SETXATTR => do_dispatch!(setxattr),
-			Op::FUSE_STATFS => do_dispatch!(statfs),
-			Op::FUSE_SYMLINK => do_dispatch!(symlink),
-			Op::FUSE_SYNCFS => do_dispatch!(syncfs),
-			Op::FUSE_UNLINK => do_dispatch!(unlink),
+			op::FUSE_IOCTL => do_dispatch!(ioctl),
+			op::FUSE_LINK => do_dispatch!(link),
+			op::FUSE_LISTXATTR => do_dispatch!(listxattr),
+			op::FUSE_LOOKUP => do_dispatch!(lookup),
+			op::FUSE_LSEEK => do_dispatch!(lseek),
+			op::FUSE_MKDIR => do_dispatch!(mkdir),
+			op::FUSE_MKNOD => do_dispatch!(mknod),
+			op::FUSE_OPEN => do_dispatch!(open),
+			op::FUSE_OPENDIR => do_dispatch!(opendir),
+			op::FUSE_POLL => do_dispatch!(poll),
+			op::FUSE_READDIR => do_dispatch!(readdir),
+			op::FUSE_READDIRPLUS => do_dispatch!(readdirplus),
+			op::FUSE_READLINK => do_dispatch!(readlink),
+			op::FUSE_RELEASE => do_dispatch!(release),
+			op::FUSE_RELEASEDIR => do_dispatch!(releasedir),
+			op::FUSE_REMOVEXATTR => do_dispatch!(removexattr),
+			op::FUSE_RENAME | op::FUSE_RENAME2 => do_dispatch!(rename),
+			op::FUSE_RMDIR => do_dispatch!(rmdir),
+			op::FUSE_SETATTR => do_dispatch!(setattr),
+			op::FUSE_SETLK | op::FUSE_SETLKW => do_dispatch!(setlk),
+			op::FUSE_SETXATTR => do_dispatch!(setxattr),
+			op::FUSE_STATFS => do_dispatch!(statfs),
+			op::FUSE_SYMLINK => do_dispatch!(symlink),
+			op::FUSE_SYNCFS => do_dispatch!(syncfs),
+			op::FUSE_UNLINK => do_dispatch!(unlink),
 			_ => self.on_request_unknown(request),
 		}
 	}
@@ -396,7 +396,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::access`] module for an overview of the
 	/// `FUSE_ACCESS` operation.
 	///
-	/// [`FUSE_ACCESS`]: crate::Opcode::FUSE_ACCESS
+	/// [`FUSE_ACCESS`]: fuse_opcode::FUSE_ACCESS
 	/// [`fuse::operations::access`]: crate::operations::access
 	fn access(
 		&self,
@@ -411,7 +411,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::bmap`] module for an overview of the
 	/// `FUSE_BMAP` operation.
 	///
-	/// [`FUSE_BMAP`]: crate::Opcode::FUSE_BMAP
+	/// [`FUSE_BMAP`]: fuse_opcode::FUSE_BMAP
 	/// [`fuse::operations::bmap`]: crate::operations::bmap
 	fn bmap(
 		&self,
@@ -426,7 +426,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::copy_file_range`] module for an overview
 	/// of the `FUSE_COPY_FILE_RANGE` operation.
 	///
-	/// [`FUSE_COPY_FILE_RANGE`]: crate::Opcode::FUSE_COPY_FILE_RANGE
+	/// [`FUSE_COPY_FILE_RANGE`]: fuse_opcode::FUSE_COPY_FILE_RANGE
 	/// [`fuse::operations::copy_file_range`]: crate::operations::copy_file_range
 	fn copy_file_range(
 		&self,
@@ -441,7 +441,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::create`] module for an overview of the
 	/// `FUSE_CREATE` operation.
 	///
-	/// [`FUSE_CREATE`]: crate::Opcode::FUSE_CREATE
+	/// [`FUSE_CREATE`]: fuse_opcode::FUSE_CREATE
 	/// [`fuse::operations::create`]: crate::operations::create
 	fn create(
 		&self,
@@ -456,7 +456,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::destroy`] module for an overview of the
 	/// `FUSE_DESTROY` operation.
 	///
-	/// [`FUSE_DESTROY`]: crate::Opcode::FUSE_DESTROY
+	/// [`FUSE_DESTROY`]: fuse_opcode::FUSE_DESTROY
 	/// [`fuse::operations::destroy`]: crate::operations::destroy
 	fn destroy(
 		&self,
@@ -471,7 +471,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::fallocate`] module for an overview of the
 	/// `FUSE_FALLOCATE` operation.
 	///
-	/// [`FUSE_FALLOCATE`]: crate::Opcode::FUSE_FALLOCATE
+	/// [`FUSE_FALLOCATE`]: fuse_opcode::FUSE_FALLOCATE
 	/// [`fuse::operations::fallocate`]: crate::operations::fallocate
 	fn fallocate(
 		&self,
@@ -486,7 +486,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::flush`] module for an overview of the
 	/// `FUSE_FLUSH` operation.
 	///
-	/// [`FUSE_FLUSH`]: crate::Opcode::FUSE_FLUSH
+	/// [`FUSE_FLUSH`]: fuse_opcode::FUSE_FLUSH
 	/// [`fuse::operations::flush`]: crate::operations::flush
 	fn flush(
 		&self,
@@ -501,8 +501,8 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::forget`] module for an overview of the
 	/// `FUSE_FORGET` and `FUSE_BATCH_FORGET` operations.
 	///
-	/// [`FUSE_FORGET`]: crate::Opcode::FUSE_FORGET
-	/// [`FUSE_BATCH_FORGET`]: crate::Opcode::FUSE_BATCH_FORGET
+	/// [`FUSE_FORGET`]: fuse_opcode::FUSE_FORGET
+	/// [`FUSE_BATCH_FORGET`]: fuse_opcode::FUSE_BATCH_FORGET
 	/// [`fuse::operations::forget`]: crate::operations::forget
 	fn forget(&self, call: Call<S>, request: &ops::forget::ForgetRequest) {
 		if let Some(hooks) = call.hooks {
@@ -515,7 +515,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::fsync`] module for an overview of the
 	/// `FUSE_FSYNC` operation.
 	///
-	/// [`FUSE_FSYNC`]: crate::Opcode::FUSE_FSYNC
+	/// [`FUSE_FSYNC`]: fuse_opcode::FUSE_FSYNC
 	/// [`fuse::operations::fsync`]: crate::operations::fsync
 	fn fsync(
 		&self,
@@ -530,7 +530,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::fsyncdir`] module for an overview of the
 	/// `FUSE_FSYNCDIR` operation.
 	///
-	/// [`FUSE_FSYNCDIR`]: crate::Opcode::FUSE_FSYNCDIR
+	/// [`FUSE_FSYNCDIR`]: fuse_opcode::FUSE_FSYNCDIR
 	/// [`fuse::operations::fsyncdir`]: crate::operations::fsyncdir
 	fn fsyncdir(
 		&self,
@@ -545,7 +545,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::getattr`] module for an overview of the
 	/// `FUSE_GETATTR` operation.
 	///
-	/// [`FUSE_GETATTR`]: crate::Opcode::FUSE_GETATTR
+	/// [`FUSE_GETATTR`]: fuse_opcode::FUSE_GETATTR
 	/// [`fuse::operations::getattr`]: crate::operations::getattr
 	fn getattr(
 		&self,
@@ -560,7 +560,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::getlk`] module for an overview of the
 	/// `FUSE_GETLK` operation.
 	///
-	/// [`FUSE_GETLK`]: crate::Opcode::FUSE_GETLK
+	/// [`FUSE_GETLK`]: fuse_opcode::FUSE_GETLK
 	/// [`fuse::operations::getlk`]: crate::operations::getlk
 	fn getlk(
 		&self,
@@ -575,7 +575,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::getxattr`] module for an overview of the
 	/// `FUSE_GETXATTR` operation.
 	///
-	/// [`FUSE_GETXATTR`]: crate::Opcode::FUSE_GETXATTR
+	/// [`FUSE_GETXATTR`]: fuse_opcode::FUSE_GETXATTR
 	/// [`fuse::operations::getxattr`]: crate::operations::getxattr
 	fn getxattr(
 		&self,
@@ -590,7 +590,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::interrupt`] module for an overview of the
 	/// `FUSE_INTERRUPT` operation.
 	///
-	/// [`FUSE_INTERRUPT`]: crate::Opcode::FUSE_INTERRUPT
+	/// [`FUSE_INTERRUPT`]: fuse_opcode::FUSE_INTERRUPT
 	/// [`fuse::operations::interrupt`]: crate::operations::interrupt
 	fn interrupt(
 		&self,
@@ -607,7 +607,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::ioctl`] module for an overview of the
 	/// `FUSE_IOCTL` operation.
 	///
-	/// [`FUSE_IOCTL`]: crate::Opcode::FUSE_IOCTL
+	/// [`FUSE_IOCTL`]: fuse_opcode::FUSE_IOCTL
 	/// [`fuse::operations::ioctl`]: crate::operations::ioctl
 	fn ioctl(
 		&self,
@@ -622,7 +622,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::link`] module for an overview of the
 	/// `FUSE_LINK` operation.
 	///
-	/// [`FUSE_LINK`]: crate::Opcode::FUSE_LINK
+	/// [`FUSE_LINK`]: fuse_opcode::FUSE_LINK
 	/// [`fuse::operations::link`]: crate::operations::link
 	fn link(
 		&self,
@@ -637,7 +637,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::listxattr`] module for an overview of the
 	/// `FUSE_LISTXATTR` operation.
 	///
-	/// [`FUSE_LISTXATTR`]: crate::Opcode::FUSE_LISTXATTR
+	/// [`FUSE_LISTXATTR`]: fuse_opcode::FUSE_LISTXATTR
 	/// [`fuse::operations::listxattr`]: crate::operations::listxattr
 	fn listxattr(
 		&self,
@@ -652,7 +652,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::lookup`] module for an overview of the
 	/// `FUSE_LOOKUP` operation.
 	///
-	/// [`FUSE_LOOKUP`]: crate::Opcode::FUSE_LOOKUP
+	/// [`FUSE_LOOKUP`]: fuse_opcode::FUSE_LOOKUP
 	/// [`fuse::operations::lookup`]: crate::operations::lookup
 	fn lookup(
 		&self,
@@ -667,7 +667,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::lseek`] module for an overview of the
 	/// `FUSE_LSEEK` operation.
 	///
-	/// [`FUSE_LSEEK`]: crate::Opcode::FUSE_LSEEK
+	/// [`FUSE_LSEEK`]: fuse_opcode::FUSE_LSEEK
 	/// [`fuse::operations::lseek`]: crate::operations::lseek
 	fn lseek(
 		&self,
@@ -682,7 +682,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::mkdir`] module for an overview of the
 	/// `FUSE_MKDIR` operation.
 	///
-	/// [`FUSE_MKDIR`]: crate::Opcode::FUSE_MKDIR
+	/// [`FUSE_MKDIR`]: fuse_opcode::FUSE_MKDIR
 	/// [`fuse::operations::mkdir`]: crate::operations::mkdir
 	fn mkdir(
 		&self,
@@ -697,7 +697,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::mknod`] module for an overview of the
 	/// `FUSE_MKNOD` operation.
 	///
-	/// [`FUSE_MKNOD`]: crate::Opcode::FUSE_MKNOD
+	/// [`FUSE_MKNOD`]: fuse_opcode::FUSE_MKNOD
 	/// [`fuse::operations::mknod`]: crate::operations::mknod
 	fn mknod(
 		&self,
@@ -712,7 +712,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::open`] module for an overview of the
 	/// `FUSE_OPEN` operation.
 	///
-	/// [`FUSE_OPEN`]: crate::Opcode::FUSE_OPEN
+	/// [`FUSE_OPEN`]: fuse_opcode::FUSE_OPEN
 	/// [`fuse::operations::open`]: crate::operations::open
 	fn open(
 		&self,
@@ -727,7 +727,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::opendir`] module for an overview of the
 	/// `FUSE_OPENDIR` operation.
 	///
-	/// [`FUSE_OPENDIR`]: crate::Opcode::FUSE_OPENDIR
+	/// [`FUSE_OPENDIR`]: fuse_opcode::FUSE_OPENDIR
 	/// [`fuse::operations::opendir`]: crate::operations::opendir
 	fn opendir(
 		&self,
@@ -742,7 +742,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::poll`] module for an overview of the
 	/// `FUSE_POLL` operation.
 	///
-	/// [`FUSE_POLL`]: crate::Opcode::FUSE_POLL
+	/// [`FUSE_POLL`]: fuse_opcode::FUSE_POLL
 	/// [`fuse::operations::poll`]: crate::operations::poll
 	fn poll(
 		&self,
@@ -757,7 +757,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::read`] module for an overview of the
 	/// `FUSE_READ` operation.
 	///
-	/// [`FUSE_READ`]: crate::Opcode::FUSE_READ
+	/// [`FUSE_READ`]: fuse_opcode::FUSE_READ
 	/// [`fuse::operations::read`]: crate::operations::read
 	fn read(
 		&self,
@@ -772,7 +772,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::readdir`] module for an overview of the
 	/// `FUSE_READDIR` operation.
 	///
-	/// [`FUSE_READDIR`]: crate::Opcode::FUSE_READDIR
+	/// [`FUSE_READDIR`]: fuse_opcode::FUSE_READDIR
 	/// [`fuse::operations::readdir`]: crate::operations::readdir
 	fn readdir(
 		&self,
@@ -787,7 +787,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::readdirplus`] module for an overview of the
 	/// `FUSE_READDIRPLUS` operation.
 	///
-	/// [`FUSE_READDIRPLUS`]: crate::Opcode::FUSE_READDIRPLUS
+	/// [`FUSE_READDIRPLUS`]: fuse_opcode::FUSE_READDIRPLUS
 	/// [`fuse::operations::readdirplus`]: crate::operations::readdirplus
 	fn readdirplus(
 		&self,
@@ -802,7 +802,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::readlink`] module for an overview of the
 	/// `FUSE_READLINK` operation.
 	///
-	/// [`FUSE_READLINK`]: crate::Opcode::FUSE_READLINK
+	/// [`FUSE_READLINK`]: fuse_opcode::FUSE_READLINK
 	/// [`fuse::operations::readlink`]: crate::operations::readlink
 	fn readlink(
 		&self,
@@ -817,7 +817,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::release`] module for an overview of the
 	/// `FUSE_RELEASE` operation.
 	///
-	/// [`FUSE_RELEASE`]: crate::Opcode::FUSE_RELEASE
+	/// [`FUSE_RELEASE`]: fuse_opcode::FUSE_RELEASE
 	/// [`fuse::operations::release`]: crate::operations::release
 	fn release(
 		&self,
@@ -832,7 +832,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::releasedir`] module for an overview of the
 	/// `FUSE_RELEASEDIR` operation.
 	///
-	/// [`FUSE_RELEASEDIR`]: crate::Opcode::FUSE_RELEASEDIR
+	/// [`FUSE_RELEASEDIR`]: fuse_opcode::FUSE_RELEASEDIR
 	/// [`fuse::operations::releasedir`]: crate::operations::releasedir
 	fn releasedir(
 		&self,
@@ -847,7 +847,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::removexattr`] module for an overview of the
 	/// `FUSE_REMOVEXATTR` operation.
 	///
-	/// [`FUSE_REMOVEXATTR`]: crate::Opcode::FUSE_REMOVEXATTR
+	/// [`FUSE_REMOVEXATTR`]: fuse_opcode::FUSE_REMOVEXATTR
 	/// [`fuse::operations::removexattr`]: crate::operations::removexattr
 	fn removexattr(
 		&self,
@@ -862,8 +862,8 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::rename`] module for an overview of the
 	/// `FUSE_RENAME` and `FUSE_RENAME2` operations.
 	///
-	/// [`FUSE_RENAME`]: crate::Opcode::FUSE_RENAME
-	/// [`FUSE_RENAME2`]: crate::Opcode::FUSE_RENAME2
+	/// [`FUSE_RENAME`]: fuse_opcode::FUSE_RENAME
+	/// [`FUSE_RENAME2`]: fuse_opcode::FUSE_RENAME2
 	/// [`fuse::operations::rename`]: crate::operations::rename
 	fn rename(
 		&self,
@@ -878,7 +878,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::rmdir`] module for an overview of the
 	/// `FUSE_RMDIR` operation.
 	///
-	/// [`FUSE_RMDIR`]: crate::Opcode::FUSE_RMDIR
+	/// [`FUSE_RMDIR`]: fuse_opcode::FUSE_RMDIR
 	/// [`fuse::operations::rmdir`]: crate::operations::rmdir
 	fn rmdir(
 		&self,
@@ -893,7 +893,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::setattr`] module for an overview of the
 	/// `FUSE_SETATTR` operation.
 	///
-	/// [`FUSE_SETATTR`]: crate::Opcode::FUSE_SETATTR
+	/// [`FUSE_SETATTR`]: fuse_opcode::FUSE_SETATTR
 	/// [`fuse::operations::setattr`]: crate::operations::setattr
 	fn setattr(
 		&self,
@@ -908,8 +908,8 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::setlk`] module for an overview of the
 	/// `FUSE_SETLK` and `FUSE_SETLKW` operations.
 	///
-	/// [`FUSE_SETLK`]: crate::Opcode::FUSE_SETLK
-	/// [`FUSE_SETLKW`]: crate::Opcode::FUSE_SETLKW
+	/// [`FUSE_SETLK`]: fuse_opcode::FUSE_SETLK
+	/// [`FUSE_SETLKW`]: fuse_opcode::FUSE_SETLKW
 	/// [`fuse::operations::setlk`]: crate::operations::setlk
 	fn setlk(
 		&self,
@@ -924,7 +924,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::setxattr`] module for an overview of the
 	/// `FUSE_SETXATTR` operation.
 	///
-	/// [`FUSE_SETXATTR`]: crate::Opcode::FUSE_SETXATTR
+	/// [`FUSE_SETXATTR`]: fuse_opcode::FUSE_SETXATTR
 	/// [`fuse::operations::setxattr`]: crate::operations::setxattr
 	fn setxattr(
 		&self,
@@ -939,7 +939,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::statfs`] module for an overview of the
 	/// `FUSE_STATFS` operation.
 	///
-	/// [`FUSE_STATFS`]: crate::Opcode::FUSE_STATFS
+	/// [`FUSE_STATFS`]: fuse_opcode::FUSE_STATFS
 	/// [`fuse::operations::statfs`]: crate::operations::statfs
 	fn statfs(
 		&self,
@@ -967,7 +967,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::symlink`] module for an overview of the
 	/// `FUSE_SYMLINK` operation.
 	///
-	/// [`FUSE_SYMLINK`]: crate::Opcode::FUSE_SYMLINK
+	/// [`FUSE_SYMLINK`]: fuse_opcode::FUSE_SYMLINK
 	/// [`fuse::operations::symlink`]: crate::operations::symlink
 	fn symlink(
 		&self,
@@ -982,7 +982,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::syncfs`] module for an overview of the
 	/// `FUSE_SYNCFS` operation.
 	///
-	/// [`FUSE_SYNCFS`]: crate::Opcode::FUSE_SYNCFS
+	/// [`FUSE_SYNCFS`]: fuse_opcode::FUSE_SYNCFS
 	/// [`fuse::operations::syncfs`]: crate::operations::syncfs
 	fn syncfs(
 		&self,
@@ -997,7 +997,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::unlink`] module for an overview of the
 	/// `FUSE_UNLINK` operation.
 	///
-	/// [`FUSE_UNLINK`]: crate::Opcode::FUSE_UNLINK
+	/// [`FUSE_UNLINK`]: fuse_opcode::FUSE_UNLINK
 	/// [`fuse::operations::unlink`]: crate::operations::unlink
 	fn unlink(
 		&self,
@@ -1012,7 +1012,7 @@ pub trait Handlers<S: io::FuseSocket> {
 	/// See the [`fuse::operations::write`] module for an overview of the
 	/// `FUSE_WRITE` operation.
 	///
-	/// [`FUSE_WRITE`]: crate::Opcode::FUSE_WRITE
+	/// [`FUSE_WRITE`]: fuse_opcode::FUSE_WRITE
 	/// [`fuse::operations::write`]: crate::operations::write
 	fn write(
 		&self,
