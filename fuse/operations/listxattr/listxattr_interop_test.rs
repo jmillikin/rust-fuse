@@ -22,8 +22,8 @@ use fuse::server::prelude::*;
 
 use interop_testutil::{
 	diff_str,
-	errno,
 	fuse_interop_test,
+	libc_errno,
 	path_cstr,
 	ErrorCode,
 };
@@ -266,7 +266,7 @@ fn listxattr_buffer_too_small() {
 		};
 
 		assert_eq!(rc, -1);
-		assert_eq!(errno(), libc::ERANGE);
+		assert_eq!(libc_errno(), libc::ERANGE);
 	});
 	assert_eq!(requests.len(), 1);
 
@@ -335,7 +335,7 @@ fn listxattr_oversize_name_list() {
 		};
 
 		assert_eq!(rc, -1);
-		assert_eq!(errno(), libc::E2BIG);
+		assert_eq!(libc_errno(), libc::E2BIG);
 	});
 	assert_eq!(requests.len(), 1);
 
@@ -366,7 +366,7 @@ fn extattr_list_oversize_name_list() {
 		};
 
 		assert_eq!(rc, -1);
-		assert_eq!(errno(), libc::E2BIG);
+		assert_eq!(libc_errno(), libc::E2BIG);
 	});
 	assert_eq!(requests.len(), 1);
 

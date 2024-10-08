@@ -22,8 +22,8 @@ use fuse::server::prelude::*;
 
 use interop_testutil::{
 	diff_str,
-	errno,
 	fuse_interop_test,
+	libc_errno,
 	path_cstr,
 	ErrorCode,
 };
@@ -117,7 +117,7 @@ fn link_err_eexist() {
 
 		let rc = unsafe { libc::link(target.as_ptr(), path.as_ptr()) };
 		assert_eq!(rc, -1);
-		assert_eq!(errno(), libc::EEXIST);
+		assert_eq!(libc_errno(), libc::EEXIST);
 	});
 	assert_eq!(requests.len(), 0);
 }

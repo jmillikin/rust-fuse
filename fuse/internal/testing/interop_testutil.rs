@@ -459,7 +459,7 @@ pub fn diff_str(want: &str, got: &str) -> Option<String> {
 	Some(out)
 }
 
-pub fn errno() -> libc::c_int {
+pub fn libc_errno() -> libc::c_int {
 	unsafe {
 		#[cfg(target_os = "linux")]
 		return *libc::__errno_location();

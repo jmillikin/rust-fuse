@@ -22,8 +22,8 @@ use fuse::server::prelude::*;
 
 use interop_testutil::{
 	diff_str,
-	errno,
 	fuse_interop_test,
+	libc_errno,
 	path_cstr,
 	ErrorCode,
 };
@@ -139,7 +139,7 @@ fn rename_err_enoent() {
 
 		let rc = unsafe { libc::rename(path_src.as_ptr(), path_dst.as_ptr()) };
 		assert_eq!(rc, -1);
-		assert_eq!(errno(), libc::ENOENT);
+		assert_eq!(libc_errno(), libc::ENOENT);
 	});
 	assert_eq!(requests.len(), 0);
 }
@@ -152,7 +152,7 @@ fn rename_err_eisdir() {
 
 		let rc = unsafe { libc::rename(path_src.as_ptr(), path_dst.as_ptr()) };
 		assert_eq!(rc, -1);
-		assert_eq!(errno(), libc::EISDIR);
+		assert_eq!(libc_errno(), libc::EISDIR);
 	});
 	assert_eq!(requests.len(), 0);
 }
