@@ -19,6 +19,17 @@
 use core::ffi;
 use core::fmt;
 
+use crate::LockMode;
+
+/// Shared (or 'read') locks may be held by any number of owners.
+pub const F_RDLCK: LockMode = LockMode(1);
+
+/// Exclusive (or 'write') locks may be held only by a single owner.
+pub const F_WRLCK: LockMode = LockMode(3);
+
+/// Absence or removal of a lock.
+pub const F_UNLCK: LockMode = LockMode(2);
+
 // FuseSubtype {{{
 
 /// A borrowed FUSE filesystem subtype.

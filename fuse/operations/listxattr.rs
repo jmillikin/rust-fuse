@@ -26,18 +26,6 @@ use crate::server;
 use crate::server::decode;
 use crate::server::encode;
 
-#[cfg(target_os = "freebsd")]
-macro_rules! xattr_name_list_max_size {
-	() => { None }
-}
-
-#[cfg(target_os = "linux")]
-macro_rules! xattr_name_list_max_size {
-	() => { Some(crate::XATTR_LIST_MAX) }
-}
-
-const NAMES_LIST_MAX_SIZE: Option<usize> = xattr_name_list_max_size!();
-
 // ListxattrRequest {{{
 
 /// Request type for `FUSE_LISTXATTR`.
@@ -174,7 +162,7 @@ impl server::FuseResponse for ListxattrResponse<'_> {
 #[inline]
 #[must_use]
 fn check_list_size(list_size: usize) -> Option<u32> {
-	if let Some(max_size) = NAMES_LIST_MAX_SIZE {
+	if let Some(max_size) = crate::os::XATTR_LIST_MAX {
 		if list_size > max_size {
 			return None;
 		}
@@ -245,7 +233,7 @@ impl<'a> ListxattrNamesWriter<'a> {
 	#[inline]
 	#[must_use]
 	pub fn new(mut buf: &'a mut [u8]) -> ListxattrNamesWriter<'a> {
-		if let Some(max_size) = NAMES_LIST_MAX_SIZE {
+		if let Some(max_size) = crate::os::XATTR_LIST_MAX {
 			if buf.len() > max_size {
 				buf = &mut buf[..max_size];
 			}

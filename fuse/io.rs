@@ -176,11 +176,11 @@ impl<'a> From<AlignedSliceMut<'a>> for AlignedSlice<'a> {
 ///   enough to store the largest possible `FUSE_WRITE` message.
 ///
 /// * A `FUSE_SETXATTR` message may contain values up to 64 KiB (on Linux), or
-///   even of unlimited size (on FreeBSD). See [`XattrValue::MAX_LEN`] for
+///   even of unlimited size (on FreeBSD). See [`XATTR_SIZE_MAX`] for
 ///   details.
 ///
 /// [`FUSE_MIN_READ_BUFFER`]: kernel::FUSE_MIN_READ_BUFFER
-/// [`XattrValue::MAX_LEN`]: crate::XattrValue::MAX_LEN
+/// [`XATTR_SIZE_MAX`]: crate::os::XATTR_SIZE_MAX
 #[derive(Clone, Copy, Debug)]
 #[repr(align(8))]
 pub struct MinReadBuffer {

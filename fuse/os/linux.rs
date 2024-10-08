@@ -20,6 +20,8 @@ use core::ffi;
 use core::fmt;
 use core::fmt::Write;
 
+use crate::LockMode;
+
 const CSTR_FUSE: &ffi::CStr = c"fuse";
 const CSTR_FUSEBLK: &ffi::CStr = c"fuseblk";
 
@@ -34,6 +36,69 @@ const MOUNT_TYPE_FUSE: &MountType = unsafe {
 const MOUNT_TYPE_FUSEBLK: &MountType = unsafe {
 	MountType::new_unchecked(CSTR_FUSEBLK)
 };
+
+/// Shared (or 'read') locks may be held by any number of owners.
+pub const F_RDLCK: LockMode = LockMode(fcntl_rdlck());
+
+const fn fcntl_rdlck() -> u32 {
+	#[cfg(target_arch = "alpha")]
+	return 1;
+
+	#[cfg(any(
+		target_arch = "sparc",
+		target_arch = "parisc",
+	))]
+	return 1;
+
+	#[cfg(not(any(
+		target_arch = "alpha",
+		target_arch = "sparc",
+		target_arch = "parisc",
+	)))]
+	return 0;
+}
+
+/// Exclusive (or 'write') locks may be held only by a single owner.
+pub const F_WRLCK: LockMode = LockMode(fcntl_wrlck());
+
+const fn fcntl_wrlck() -> u32 {
+	#[cfg(target_arch = "alpha")]
+	return 2;
+
+	#[cfg(any(
+		target_arch = "sparc",
+		target_arch = "parisc",
+	))]
+	return 2;
+
+	#[cfg(not(any(
+		target_arch = "alpha",
+		target_arch = "sparc",
+		target_arch = "parisc",
+	)))]
+	return 1;
+}
+
+/// Absence or removal of a lock.
+pub const F_UNLCK: LockMode = LockMode(fcntl_unlck());
+
+const fn fcntl_unlck() -> u32 {
+	#[cfg(target_arch = "alpha")]
+	return 8;
+
+	#[cfg(any(
+		target_arch = "sparc",
+		target_arch = "parisc",
+	))]
+	return 3;
+
+	#[cfg(not(any(
+		target_arch = "alpha",
+		target_arch = "sparc",
+		target_arch = "parisc",
+	)))]
+	return 2;
+}
 
 // FUSE_DEV_IOC_CLONE {{{
 

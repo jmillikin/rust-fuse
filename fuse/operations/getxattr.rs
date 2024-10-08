@@ -169,7 +169,7 @@ impl server::FuseResponse for GetxattrResponse<'_> {
 #[inline]
 #[must_use]
 fn check_value_size(value_size: usize) -> Option<u32> {
-	if let Some(max_len) = crate::XattrValue::MAX_LEN {
+	if let Some(max_len) = crate::os::XATTR_SIZE_MAX {
 		if value_size > max_len {
 			return None;
 		}

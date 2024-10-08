@@ -128,7 +128,7 @@ impl WriteRequest<'_> {
 		if body.write_flags & kernel::FUSE_WRITE_LOCKOWNER == 0 {
 			return None;
 		}
-		Some(crate::LockOwner::new(body.lock_owner))
+		Some(crate::LockOwner(body.lock_owner))
 	}
 
 	#[must_use]

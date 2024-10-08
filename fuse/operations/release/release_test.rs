@@ -87,7 +87,7 @@ fn request_lock_owner() {
 		protocol_version: (7, 8),
 	});
 
-	assert_eq!(req.lock_owner(), Some(fuse::LockOwner::new(123)));
+	assert_eq!(req.lock_owner(), Some(fuse::LockOwner(123)));
 }
 
 #[test]

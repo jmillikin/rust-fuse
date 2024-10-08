@@ -78,7 +78,7 @@ impl SetattrRequest<'_> {
 	pub fn lock_owner(&self) -> Option<crate::LockOwner> {
 		self.get(
 			kernel::FATTR_LOCKOWNER,
-			crate::LockOwner::new(self.raw.lock_owner),
+			crate::LockOwner(self.raw.lock_owner),
 		)
 	}
 

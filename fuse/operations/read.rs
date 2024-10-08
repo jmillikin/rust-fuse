@@ -66,7 +66,7 @@ impl ReadRequest<'_> {
 		if body.read_flags & kernel::FUSE_READ_LOCKOWNER == 0 {
 			return None;
 		}
-		Some(crate::LockOwner::new(body.lock_owner))
+		Some(crate::LockOwner(body.lock_owner))
 	}
 
 	#[must_use]

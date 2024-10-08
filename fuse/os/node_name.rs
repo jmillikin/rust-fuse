@@ -19,6 +19,27 @@ use core::fmt;
 
 use crate::internal::debug;
 
+/// The maximum length of a node name, in bytes.
+///
+/// This value is platform-specific. If `None`, then the platform does not
+/// impose a maximum length on node names.
+///
+/// | Platform | Symbolic constant | Value |
+/// |----------|-------------------|-------|
+/// | FreeBSD  | `NAME_MAX`        | 255   |
+/// | Linux    | `FUSE_NAME_MAX`   | 1024  |
+pub const NAME_MAX: Option<usize> = name_max();
+
+const fn name_max() -> Option<usize> {
+	if cfg!(target_os = "freebsd") {
+		Some(255) // NAME_MAX
+	} else if cfg!(target_os = "linux") {
+		Some(1024) // FUSE_NAME_MAX
+	} else {
+		None
+	}
+}
+
 /// Errors that may occur when validating the content of a node name.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[non_exhaustive]
@@ -29,7 +50,7 @@ pub enum NodeNameError {
 	ContainsNul,
 	/// The input contains `'/'`.
 	ContainsSlash,
-	/// The input length in bytes exceeds [`NodeName::MAX_LEN`].
+	/// The input length in bytes exceeds [`NAME_MAX`].
 	ExceedsMaxLen,
 }
 
@@ -40,47 +61,20 @@ pub enum NodeNameError {
 /// or `&[u8]` slice.
 ///
 /// An instance of this type is a static guarantee that the underlying byte
-/// array is non-empty, is less than [`NodeName::MAX_LEN`] bytes in length, and
+/// array is non-empty, is less than [`NAME_MAX`] bytes in length, and
 /// does not contain a forbidden character (`NUL` or `'/'`).
 #[derive(Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct NodeName {
 	bytes: [u8],
 }
 
-#[cfg(target_os = "freebsd")]
-const NAME_MAX: usize = 255;
-
-#[cfg(target_os = "freebsd")]
-macro_rules! node_name_max_len {
-	() => { Some(NAME_MAX) }
-}
-
-#[cfg(target_os = "linux")]
-const FUSE_NAME_MAX: usize = 1024;
-
-#[cfg(target_os = "linux")]
-macro_rules! node_name_max_len {
-	() => { Some(FUSE_NAME_MAX) }
-}
-
 impl NodeName {
-	/// The maximum length of a node name, in bytes.
-	///
-	/// This value is platform-specific. If `None`, then the platform does not
-	/// impose a maximum length on node names.
-	///
-	/// | Platform | Symbolic constant | Value |
-	/// |----------|-------------------|-------|
-	/// | FreeBSD  | `NAME_MAX`        | 255   |
-	/// | Linux    | `FUSE_NAME_MAX`   | 1024  |
-	pub const MAX_LEN: Option<usize> = node_name_max_len!();
-
 	/// Attempts to reborrow a string as a node name.
 	///
 	/// # Errors
 	///
 	/// Returns an error if the string is empty, is longer than
-	/// [`NodeName::MAX_LEN`] bytes, or contains a forbidden character
+	/// [`NAME_MAX`] bytes, or contains a forbidden character
 	/// (`NUL` or `'/'`).
 	#[inline]
 	pub fn new(name: &str) -> Result<&NodeName, NodeNameError> {
@@ -92,7 +86,7 @@ impl NodeName {
 	/// # Safety
 	///
 	/// The provided string must be non-empty, must be no longer than
-	/// [`NodeName::MAX_LEN`] bytes, and must not contain a forbidden character
+	/// [`NAME_MAX`] bytes, and must not contain a forbidden character
 	/// (`NUL` or `'/'`).
 	#[inline]
 	#[must_use]
@@ -105,14 +99,14 @@ impl NodeName {
 	/// # Errors
 	///
 	/// Returns an error if the slice is empty, is longer than
-	/// [`NodeName::MAX_LEN`] bytes, or contains a forbidden character
+	/// [`NAME_MAX`] bytes, or contains a forbidden character
 	/// (`NUL` or `'/'`).
 	#[inline]
 	pub fn from_bytes(bytes: &[u8]) -> Result<&NodeName, NodeNameError> {
 		if bytes.is_empty() {
 			return Err(NodeNameError::Empty);
 		}
-		if let Some(max_len) = NodeName::MAX_LEN {
+		if let Some(max_len) = NAME_MAX {
 			if bytes.len() > max_len {
 				return Err(NodeNameError::ExceedsMaxLen);
 			}
@@ -133,7 +127,7 @@ impl NodeName {
 	/// # Safety
 	///
 	/// The provided slice must be non-empty, must be no longer than
-	/// [`NodeName::MAX_LEN`] bytes, and must not contain a forbidden character
+	/// [`NAME_MAX`] bytes, and must not contain a forbidden character
 	/// (`NUL` or `'/'`).
 	#[inline]
 	#[must_use]

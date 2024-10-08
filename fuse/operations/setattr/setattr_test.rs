@@ -53,7 +53,7 @@ fn request() {
 	assert_eq!(request.node_id(), fuse::NodeId::new(1000).unwrap());
 	assert_eq!(request.handle(), Some(1));
 	assert_eq!(request.size(), Some(2));
-	assert_eq!(request.lock_owner(), Some(fuse::LockOwner::new(3)));
+	assert_eq!(request.lock_owner(), Some(fuse::LockOwner(3)));
 	assert_eq!(request.atime(), fuse::UnixTime::new(4, 7));
 	assert_eq!(request.atime_now(), true);
 	assert_eq!(request.mtime(), fuse::UnixTime::new(5, 8));

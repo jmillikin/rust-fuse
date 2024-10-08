@@ -93,7 +93,7 @@ impl<'a> FlushRequest<'a> {
 			phantom: PhantomData,
 			node_id,
 			handle: raw.fh,
-			lock_owner: crate::LockOwner::new(raw.lock_owner),
+			lock_owner: crate::LockOwner(raw.lock_owner),
 		})
 	}
 }

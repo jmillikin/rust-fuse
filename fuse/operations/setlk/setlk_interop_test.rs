@@ -176,19 +176,13 @@ fn setlk_fcntl_read() {
     handle: 12345,
     may_block: false,
     owner: 123456789123456789,
-    lock: Some(
-        Lock {{
-            mode: Shared,
-            range: LockRange {{
-                start: 100,
-                length: Some(50),
-            }},
-            process_id: Some({pid}),
+    lock: Lock {{
+        mode: F_RDLCK,
+        range: LockRange {{
+            start: 100,
+            length: Some(50),
         }},
-    ),
-    lock_range: LockRange {{
-        start: 100,
-        length: Some(50),
+        process_id: Some({pid}),
     }},
     flags: SetlkRequestFlags {{}},
 }}"#,
@@ -200,19 +194,29 @@ fn setlk_fcntl_read() {
 	}
 
 	if stlk_request_count >= 2 {
-		let expect = r#"SetlkRequest {
+		#[cfg(target_os = "freebsd")]
+		let lock_pid_str = format!("Some({})", lock_pid);
+		#[cfg(target_os = "linux")]
+		let lock_pid_str = "None";
+		let expect = format!(
+			r#"SetlkRequest {{
     node_id: 2,
     handle: 12345,
     may_block: false,
     owner: 123456789123456789,
-    lock: None,
-    lock_range: LockRange {
-        start: 0,
-        length: None,
-    },
-    flags: SetlkRequestFlags {},
-}"#;
-		if let Some(diff) = diff_str(expect, &requests[1]) {
+    lock: Lock {{
+        mode: F_UNLCK,
+        range: LockRange {{
+            start: 0,
+            length: None,
+        }},
+        process_id: {pid},
+    }},
+    flags: SetlkRequestFlags {{}},
+}}"#,
+			pid = lock_pid_str,
+		);
+		if let Some(diff) = diff_str(&expect, &requests[1]) {
 			println!("{}", diff);
 			assert!(false);
 		}
@@ -258,19 +262,13 @@ fn setlkw_fcntl_read() {
     handle: 12345,
     may_block: true,
     owner: 123456789123456789,
-    lock: Some(
-        Lock {{
-            mode: Shared,
-            range: LockRange {{
-                start: 100,
-                length: Some(50),
-            }},
-            process_id: Some({pid}),
+    lock: Lock {{
+        mode: F_RDLCK,
+        range: LockRange {{
+            start: 100,
+            length: Some(50),
         }},
-    ),
-    lock_range: LockRange {{
-        start: 100,
-        length: Some(50),
+        process_id: Some({pid}),
     }},
     flags: SetlkRequestFlags {{}},
 }}"#,
@@ -287,11 +285,14 @@ fn setlkw_fcntl_read() {
     handle: 12345,
     may_block: false,
     owner: 123456789123456789,
-    lock: None,
-    lock_range: LockRange {
-        start: 0,
-        length: None,
-    },
+    lock: Lock {{
+        mode: F_UNLCK,
+        range: LockRange {{
+            start: 0,
+            length: None,
+        }},
+        process_id: None,
+    }},
     flags: SetlkRequestFlags {},
 }"#;
 		if let Some(diff) = diff_str(expect, &requests[1]) {
@@ -335,19 +336,13 @@ fn setlk_fcntl_write() {
     handle: 12345,
     may_block: false,
     owner: 123456789123456789,
-    lock: Some(
-        Lock {{
-            mode: Exclusive,
-            range: LockRange {{
-                start: 100,
-                length: Some(50),
-            }},
-            process_id: Some({pid}),
+    lock: Lock {{
+        mode: F_WRLCK,
+        range: LockRange {{
+            start: 100,
+            length: Some(50),
         }},
-    ),
-    lock_range: LockRange {{
-        start: 100,
-        length: Some(50),
+        process_id: Some({pid}),
     }},
     flags: SetlkRequestFlags {{}},
 }}"#,
@@ -359,19 +354,29 @@ fn setlk_fcntl_write() {
 	}
 
 	if stlk_request_count >= 2 {
-		let expect = r#"SetlkRequest {
+		#[cfg(target_os = "freebsd")]
+		let lock_pid_str = format!("Some({})", lock_pid);
+		#[cfg(target_os = "linux")]
+		let lock_pid_str = "None";
+		let expect = format!(
+			r#"SetlkRequest {{
     node_id: 2,
     handle: 12345,
     may_block: false,
     owner: 123456789123456789,
-    lock: None,
-    lock_range: LockRange {
-        start: 0,
-        length: None,
-    },
-    flags: SetlkRequestFlags {},
-}"#;
-		if let Some(diff) = diff_str(expect, &requests[1]) {
+    lock: Lock {{
+        mode: F_UNLCK,
+        range: LockRange {{
+            start: 0,
+            length: None,
+        }},
+        process_id: {pid},
+    }},
+    flags: SetlkRequestFlags {{}},
+}}"#,
+			pid = lock_pid_str,
+		);
+		if let Some(diff) = diff_str(&expect, &requests[1]) {
 			println!("{}", diff);
 			assert!(false);
 		}
@@ -406,19 +411,13 @@ fn setlkw_fcntl_write() {
     handle: 12345,
     may_block: true,
     owner: 123456789123456789,
-    lock: Some(
-        Lock {{
-            mode: Exclusive,
-            range: LockRange {{
-                start: 100,
-                length: Some(50),
-            }},
-            process_id: Some({pid}),
+    lock: Lock {{
+        mode: F_WRLCK,
+        range: LockRange {{
+            start: 100,
+            length: Some(50),
         }},
-    ),
-    lock_range: LockRange {{
-        start: 100,
-        length: Some(50),
+        process_id: Some({pid}),
     }},
     flags: SetlkRequestFlags {{}},
 }}"#,
@@ -455,10 +454,13 @@ fn setlk_fcntl_unlock() {
     handle: 12345,
     may_block: false,
     owner: 123456789123456789,
-    lock: None,
-    lock_range: LockRange {
-        start: 100,
-        length: Some(50),
+    lock: Lock {
+        mode: F_UNLCK,
+        range: LockRange {
+            start: 100,
+            length: Some(50),
+        },
+        process_id: None,
     },
     flags: SetlkRequestFlags {},
 }"#;
@@ -493,10 +495,13 @@ fn setlkw_fcntl_unlock() {
     handle: 12345,
     may_block: true,
     owner: 123456789123456789,
-    lock: None,
-    lock_range: LockRange {
-        start: 100,
-        length: Some(50),
+    lock: Lock {
+        mode: F_UNLCK,
+        range: LockRange {
+            start: 100,
+            length: Some(50),
+        },
+        process_id: None,
     },
     flags: SetlkRequestFlags {},
 }"#;
@@ -523,19 +528,13 @@ fn setlk_flock_shared() {
     handle: 12345,
     may_block: false,
     owner: 123456789123456789,
-    lock: Some(
-        Lock {{
-            mode: Shared,
-            range: LockRange {{
-                start: 0,
-                length: None,
-            }},
-            process_id: Some({pid}),
+    lock: Lock {{
+        mode: F_RDLCK,
+        range: LockRange {{
+            start: 0,
+            length: None,
         }},
-    ),
-    lock_range: LockRange {{
-        start: 0,
-        length: None,
+        process_id: Some({pid}),
     }},
     flags: SetlkRequestFlags {{
         LK_FLOCK,
@@ -566,19 +565,13 @@ fn setlkw_flock_shared() {
     handle: 12345,
     may_block: true,
     owner: 123456789123456789,
-    lock: Some(
-        Lock {{
-            mode: Shared,
-            range: LockRange {{
-                start: 0,
-                length: None,
-            }},
-            process_id: Some({pid}),
+    lock: Lock {{
+        mode: F_RDLCK,
+        range: LockRange {{
+            start: 0,
+            length: None,
         }},
-    ),
-    lock_range: LockRange {{
-        start: 0,
-        length: None,
+        process_id: Some({pid}),
     }},
     flags: SetlkRequestFlags {{
         LK_FLOCK,
@@ -609,19 +602,13 @@ fn setlk_flock_exclusive() {
     handle: 12345,
     may_block: false,
     owner: 123456789123456789,
-    lock: Some(
-        Lock {{
-            mode: Exclusive,
-            range: LockRange {{
-                start: 0,
-                length: None,
-            }},
-            process_id: Some({pid}),
+    lock: Lock {{
+        mode: F_WRLCK,
+        range: LockRange {{
+            start: 0,
+            length: None,
         }},
-    ),
-    lock_range: LockRange {{
-        start: 0,
-        length: None,
+        process_id: Some({pid}),
     }},
     flags: SetlkRequestFlags {{
         LK_FLOCK,
@@ -652,19 +639,13 @@ fn setlkw_flock_exclusive() {
     handle: 12345,
     may_block: true,
     owner: 123456789123456789,
-    lock: Some(
-        Lock {{
-            mode: Exclusive,
-            range: LockRange {{
-                start: 0,
-                length: None,
-            }},
-            process_id: Some({pid}),
+    lock: Lock {{
+        mode: F_WRLCK,
+        range: LockRange {{
+            start: 0,
+            length: None,
         }},
-    ),
-    lock_range: LockRange {{
-        start: 0,
-        length: None,
+        process_id: Some({pid}),
     }},
     flags: SetlkRequestFlags {{
         LK_FLOCK,
@@ -692,10 +673,13 @@ fn setlk_flock_unlock() {
     handle: 12345,
     may_block: false,
     owner: 123456789123456789,
-    lock: None,
-    lock_range: LockRange {
-        start: 0,
-        length: None,
+    lock: Lock {
+        mode: F_UNLCK,
+        range: LockRange {
+            start: 0,
+            length: None,
+        },
+        process_id: None,
     },
     flags: SetlkRequestFlags {
         LK_FLOCK,
@@ -721,10 +705,13 @@ fn setlkw_flock_unlock() {
     handle: 12345,
     may_block: true,
     owner: 123456789123456789,
-    lock: None,
-    lock_range: LockRange {
-        start: 0,
-        length: None,
+    lock: Lock {
+        mode: F_UNLCK,
+        range: LockRange {
+            start: 0,
+            length: None,
+        },
+        process_id: None,
     },
     flags: SetlkRequestFlags {
         LK_FLOCK,

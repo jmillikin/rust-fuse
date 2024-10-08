@@ -56,7 +56,7 @@ impl ReleasedirRequest<'_> {
 		if body.release_flags & kernel::FUSE_RELEASE_FLOCK_UNLOCK == 0 {
 			return None;
 		}
-		Some(crate::LockOwner::new(body.lock_owner))
+		Some(crate::LockOwner(body.lock_owner))
 	}
 
 	#[must_use]

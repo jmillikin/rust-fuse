@@ -32,8 +32,7 @@ use crate::server::encode;
 pub struct SetlkRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_lk_in,
-	lock: Option<crate::Lock>,
-	lock_range: crate::LockRange,
+	lock: crate::Lock,
 }
 
 impl SetlkRequest<'_> {
@@ -58,19 +57,13 @@ impl SetlkRequest<'_> {
 	#[inline]
 	#[must_use]
 	pub fn owner(&self) -> crate::LockOwner {
-		crate::LockOwner::new(self.body.owner)
+		crate::LockOwner(self.body.owner)
 	}
 
 	#[inline]
 	#[must_use]
-	pub fn lock(&self) -> Option<crate::Lock> {
+	pub fn lock(&self) -> crate::Lock {
 		self.lock
-	}
-
-	#[inline]
-	#[must_use]
-	pub fn lock_range(&self) -> crate::LockRange {
-		self.lock_range
 	}
 
 	#[inline]
@@ -99,19 +92,8 @@ impl<'a> server::FuseRequest<'a> for SetlkRequest<'a> {
 		decode::node_id(header.nodeid)?;
 
 		let body: &kernel::fuse_lk_in = dec.next_sized()?;
-
-		let lock;
-		let lock_range;
-		if body.lk.r#type == crate::lock::F_UNLCK {
-			lock = None;
-			lock_range = crate::LockRange::decode(&body.lk)?;
-		} else {
-			let set_lock = crate::Lock::decode(&body.lk)?;
-			lock = Some(set_lock);
-			lock_range = set_lock.range();
-		};
-
-		Ok(Self { header, body, lock, lock_range })
+		let lock = crate::Lock::decode(&body.lk)?;
+		Ok(Self { header, body, lock })
 	}
 }
 
@@ -141,7 +123,6 @@ impl fmt::Debug for SetlkRequest<'_> {
 			.field("may_block", &self.may_block())
 			.field("owner", &self.owner())
 			.field("lock", &self.lock())
-			.field("lock_range", &self.lock_range())
 			.field("flags", &self.flags())
 			.finish()
 	}

@@ -93,7 +93,7 @@ fn request_lock_owner() {
 
 	let req = decode_request!(ReadRequest, buf);
 
-	assert_eq!(req.lock_owner(), Some(fuse::LockOwner::new(123)));
+	assert_eq!(req.lock_owner(), Some(fuse::LockOwner(123)));
 }
 
 #[test]

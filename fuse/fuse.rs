@@ -20,6 +20,7 @@
 
 #![allow(
 	clippy::collapsible_if,
+	clippy::if_same_then_else,
 	clippy::len_without_is_empty,
 	clippy::match_like_matches_macro,
 	clippy::needless_late_init,
@@ -73,9 +74,6 @@ mod error;
 mod node_id;
 pub use node_id::NodeId;
 
-mod node_name;
-pub use node_name::{NodeName, NodeNameError};
-
 mod file_mode;
 pub use file_mode::{FileMode, FileType};
 
@@ -125,46 +123,15 @@ pub use process_id::ProcessId;
 mod unix_time;
 pub use unix_time::UnixTime;
 
-mod xattr_name;
-pub use xattr_name::{XattrName, XattrNameError};
-
-mod xattr_value;
-pub use xattr_value::{XattrValue, XattrValueError};
-
-#[cfg(target_os = "linux")]
-pub(crate) const XATTR_LIST_MAX: usize = 65536;
-
-mod errno {
-	#[cfg(target_os = "freebsd")]
-	use freebsd_errno as os_errno;
-
-	#[cfg(target_os = "linux")]
-	use linux_errno as os_errno;
-
-	use crate::Error;
-
-	#[cfg(target_os = "linux")]
-	pub(super) const ENODATA: Error = Error::from_errno(os_errno::ENODATA);
-
-	#[cfg(target_os = "freebsd")]
-	pub(super) const ENOATTR: Error = Error::from_errno(os_errno::ENOATTR);
-}
-
-#[cfg(target_os = "linux")]
-macro_rules! enodata_or_enoattr {
-	() => { errno::ENODATA };
-}
-
-#[cfg(target_os = "freebsd")]
-macro_rules! enodata_or_enoattr {
-	() => { errno::ENOATTR };
-}
-
-/// The requested extended attribute does not exist.
-///
-/// This error maps to either `ENODATA` or `ENOATTR`, depending on the
-/// target platform.
-pub const XATTR_NOT_FOUND: crate::Error = enodata_or_enoattr!();
+// FIXME
+pub use crate::os::{
+	NodeName,
+	NodeNameError,
+	XattrName,
+	XattrNameError,
+	XattrValue,
+	XattrValueError,
+};
 
 pub mod client;
 pub mod cuse;

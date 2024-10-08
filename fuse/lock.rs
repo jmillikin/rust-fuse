@@ -22,87 +22,18 @@ use core::num;
 use crate::internal::debug;
 use crate::kernel;
 
-#[cfg(target_os = "freebsd")]
-mod sys_fcntl {
-	pub(crate) const F_RDLCK: u32 = 1;
-	pub(crate) const F_UNLCK: u32 = 2;
-	pub(crate) const F_WRLCK: u32 = 3;
-}
-
-#[cfg(all(
-	target_os = "linux",
-	target_arch = "alpha",
-))]
-mod sys_fcntl {
-	pub(crate) const F_RDLCK: u32 = 1;
-	pub(crate) const F_WRLCK: u32 = 2;
-	pub(crate) const F_UNLCK: u32 = 8;
-}
-
-#[cfg(all(
-	target_os = "linux",
-	any(
-		target_arch = "sparc",
-		target_arch = "parisc",
-	),
-))]
-mod sys_fcntl {
-	pub(crate) const F_RDLCK: u32 = 1;
-	pub(crate) const F_WRLCK: u32 = 2;
-	pub(crate) const F_UNLCK: u32 = 3;
-}
-
-#[cfg(all(
-	target_os = "linux",
-	not(any(
-		target_arch = "alpha",
-		target_arch = "sparc",
-		target_arch = "parisc",
-	)),
-))]
-mod sys_fcntl {
-	pub(crate) const F_RDLCK: u32 = 0;
-	pub(crate) const F_WRLCK: u32 = 1;
-	pub(crate) const F_UNLCK: u32 = 2;
-}
-
-pub(crate) use sys_fcntl::{F_RDLCK, F_UNLCK, F_WRLCK};
-
 pub(crate) const OFFSET_MAX: u64 = i64::MAX as u64;
 
-// LockOwner {{{
-
 /// Opaque identifier for the owner of advisory locks.
+#[allow(clippy::exhaustive_structs)]
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct LockOwner {
-	owner: u64,
-}
-
-impl LockOwner {
-	/// Creates a new `LockOwner` with the given lock owner.
-	#[inline]
-	#[must_use]
-	pub fn new(owner: u64) -> LockOwner {
-		LockOwner { owner }
-	}
-
-	/// Returns the lock owner as a primitive integer.
-	#[inline]
-	#[must_use]
-	pub fn get(&self) -> u64 {
-		self.owner
-	}
-}
+pub struct LockOwner(pub u64);
 
 impl fmt::Debug for LockOwner {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		debug::hex_u64(self.owner).fmt(fmt)
+		debug::hex_u64(self.0).fmt(fmt)
 	}
 }
-
-// }}}
-
-// LockRange {{{
 
 /// Represents a (possibly unbounded) range of bytes within a file.
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -240,32 +171,46 @@ impl fmt::Debug for ProcessId {
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[non_exhaustive]
 pub enum LockError {
-	/// The lock mode is not `F_RDLCK` or `F_WRLCK`.
-	UnknownMode,
-
 	/// A record lock's range is zero-length.
 	EmptyRange,
 }
 
 /// Whether a lock is an exclusive (write) or shared (read) lock.
-#[allow(clippy::exhaustive_enums)]
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum LockMode {
-	/// Exclusive locks may be held only by a single owner.
-	Exclusive,
+///
+/// The platform-specific constants `F_RDLCK`, `F_WRLCK`, and `F_UNLCK` may be
+/// found in module `fuse::os::{target_os}`.
+#[allow(clippy::exhaustive_structs)]
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct LockMode(pub u32);
 
-	/// Shared locks may be held by any number of owners.
-	Shared,
-}
+#[cfg(target_os = "freebsd")]
+const F_RDLCK: LockMode = crate::os::freebsd::F_RDLCK;
 
-impl LockMode {
-	pub(crate) fn decode(
-		raw: &kernel::fuse_file_lock,
-	) -> Result<LockMode, LockError> {
-		match raw.r#type {
-			F_WRLCK => Ok(LockMode::Exclusive),
-			F_RDLCK => Ok(LockMode::Shared),
-			_ => Err(LockError::UnknownMode),
+#[cfg(target_os = "freebsd")]
+const F_WRLCK: LockMode = crate::os::freebsd::F_WRLCK;
+
+#[cfg(target_os = "freebsd")]
+const F_UNLCK: LockMode = crate::os::freebsd::F_UNLCK;
+
+#[cfg(target_os = "linux")]
+const F_RDLCK: LockMode = crate::os::linux::F_RDLCK;
+
+#[cfg(target_os = "linux")]
+const F_WRLCK: LockMode = crate::os::linux::F_WRLCK;
+
+#[cfg(target_os = "linux")]
+const F_UNLCK: LockMode = crate::os::linux::F_UNLCK;
+
+impl fmt::Debug for LockMode {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		match *self {
+			#[cfg(any(target_os = "freebsd", target_os = "linux"))]
+			F_RDLCK => fmt.write_str("F_RDLCK"),
+			#[cfg(any(target_os = "freebsd", target_os = "linux"))]
+			F_WRLCK => fmt.write_str("F_WRLCK"),
+			#[cfg(any(target_os = "freebsd", target_os = "linux"))]
+			F_UNLCK => fmt.write_str("F_UNLCK"),
+			_ => write!(fmt, "LockMode({})", self.0),
 		}
 	}
 }
@@ -316,7 +261,7 @@ impl Lock {
 	pub(crate) fn decode(
 		raw: &kernel::fuse_file_lock,
 	) -> Result<Lock, LockError> {
-		let mode = LockMode::decode(raw)?;
+		let mode = LockMode(raw.r#type);
 		let range = LockRange::decode(raw)?;
 		let process_id = ProcessId::new(raw.pid);
 		Ok(Lock { mode, range, process_id })

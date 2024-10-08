@@ -21,3 +21,21 @@ pub mod freebsd;
 
 #[cfg(any(doc, target_os = "linux"))]
 pub mod linux;
+
+mod node_name;
+pub use node_name::{
+	NAME_MAX,
+	NodeName,
+	NodeNameError,
+};
+
+mod xattr;
+pub use xattr::{
+	XattrName,
+	XattrNameError,
+	XattrValue,
+	XattrValueError,
+	XATTR_LIST_MAX,
+	XATTR_NAME_MAX,
+	XATTR_SIZE_MAX,
+};

@@ -38,7 +38,7 @@ fn request() {
 	let req = decode_request!(FlushRequest, buf);
 
 	assert_eq!(req.handle(), 123);
-	assert_eq!(req.lock_owner(), fuse::LockOwner::new(456));
+	assert_eq!(req.lock_owner(), fuse::LockOwner(456));
 }
 
 #[test]
