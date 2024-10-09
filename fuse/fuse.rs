@@ -95,6 +95,7 @@ pub use entry::Entry;
 	missing_docs,
 	non_camel_case_types,
 	unused_parens,
+	clippy::exhaustive_structs,
 )]
 pub mod kernel;
 

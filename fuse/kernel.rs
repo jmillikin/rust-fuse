@@ -232,7 +232,7 @@ pub const FUSE_ROOT_ID: u64 = 1;
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_attr {
 	pub ino: u64,
 	pub size: u64,
@@ -253,15 +253,15 @@ pub struct fuse_attr {
 }
 
 impl fuse_attr {
-	#[must_use]
-	pub const fn new() -> fuse_attr {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_attr { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_kstatfs {
 	pub blocks: u64,
 	pub bfree: u64,
@@ -271,20 +271,20 @@ pub struct fuse_kstatfs {
 	pub bsize: u32,
 	pub namelen: u32,
 	pub frsize: u32,
-	pub(self) padding: u32,
-	pub(self) spare: [u32; 6],
+	padding: u32,
+	spare: [u32; 6],
 }
 
 impl fuse_kstatfs {
-	#[must_use]
-	pub const fn new() -> fuse_kstatfs {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_kstatfs { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_file_lock {
 	pub start: u64,
 	pub end: u64,
@@ -293,10 +293,10 @@ pub struct fuse_file_lock {
 }
 
 impl fuse_file_lock {
-	#[must_use]
-	pub const fn new() -> fuse_file_lock {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_file_lock { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 /*
@@ -513,7 +513,6 @@ pub const FUSE_SETXATTR_ACL_KILL_SGID: u32 = (1 << 0);
 
 #[repr(transparent)]
 #[derive(Copy, Clone, PartialEq, Eq)]
-#[allow(clippy::exhaustive_structs)]
 pub struct fuse_opcode(pub u32);
 
 impl fuse_opcode {
@@ -635,7 +634,6 @@ impl core::fmt::Debug for fuse_opcode {
 
 #[repr(transparent)]
 #[derive(Copy, Clone, PartialEq, Eq)]
-#[allow(clippy::exhaustive_structs)]
 pub struct fuse_notify_code(pub u32);
 
 impl fuse_notify_code {
@@ -670,7 +668,7 @@ pub const FUSE_COMPAT_ENTRY_OUT_SIZE: usize = 120;
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_entry_out {
 	pub nodeid: u64,
 	pub generation: u64,
@@ -682,175 +680,175 @@ pub struct fuse_entry_out {
 }
 
 impl fuse_entry_out {
-	#[must_use]
-	pub const fn new() -> fuse_entry_out {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_entry_out { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_forget_in {
 	pub nlookup: u64,
 }
 
 impl fuse_forget_in {
-	#[must_use]
-	pub const fn new() -> fuse_forget_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_forget_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_forget_one {
 	pub nodeid: u64,
 	pub nlookup: u64,
 }
 
 impl fuse_forget_one {
-	#[must_use]
-	pub const fn new() -> fuse_forget_one {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_forget_one { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_batch_forget_in {
 	pub count: u32,
-	pub(self) dummy: u32,
+	dummy: u32,
 }
 
 impl fuse_batch_forget_in {
-	#[must_use]
-	pub const fn new() -> fuse_batch_forget_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_batch_forget_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_getattr_in {
 	pub getattr_flags: u32,
-	pub(self) dummy: u32,
+	dummy: u32,
 	pub fh: u64,
 }
 
 impl fuse_getattr_in {
-	#[must_use]
-	pub const fn new() -> fuse_getattr_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_getattr_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 pub const FUSE_COMPAT_ATTR_OUT_SIZE: usize = 96;
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_attr_out {
 	pub attr_valid: u64,
 	pub attr_valid_nsec: u32,
-	pub(self) dummy: u32,
+	dummy: u32,
 	pub attr: fuse_attr,
 }
 
 impl fuse_attr_out {
-	#[must_use]
-	pub const fn new() -> fuse_attr_out {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_attr_out { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 pub const FUSE_COMPAT_MKNOD_IN_SIZE: usize = 8;
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_mknod_in {
 	pub mode: u32,
 	pub rdev: u32,
 	pub umask: u32,
-	pub(self) padding: u32,
+	padding: u32,
 }
 
 impl fuse_mknod_in {
-	#[must_use]
-	pub const fn new() -> fuse_mknod_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_mknod_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_mkdir_in {
 	pub mode: u32,
 	pub umask: u32,
 }
 
 impl fuse_mkdir_in {
-	#[must_use]
-	pub const fn new() -> fuse_mkdir_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_mkdir_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_rename_in {
 	pub newdir: u64,
 }
 
 impl fuse_rename_in {
-	#[must_use]
-	pub const fn new() -> fuse_rename_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_rename_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_rename2_in {
 	pub newdir: u64,
 	pub flags: u32,
-	pub(self) padding: u32,
+	padding: u32,
 }
 
 impl fuse_rename2_in {
-	#[must_use]
-	pub const fn new() -> fuse_rename2_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_rename2_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_link_in {
 	pub oldnodeid: u64,
 }
 
 impl fuse_link_in {
-	#[must_use]
-	pub const fn new() -> fuse_link_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_link_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_setattr_in {
 	pub valid: u32,
-	pub(self) padding: u32,
+	padding: u32,
 	pub fh: u64,
 	pub size: u64,
 	pub lock_owner: u64,
@@ -861,37 +859,37 @@ pub struct fuse_setattr_in {
 	pub mtimensec: u32,
 	pub ctimensec: u32,
 	pub mode: u32,
-	pub(self) unused4: u32,
+	unused4: u32,
 	pub uid: u32,
 	pub gid: u32,
-	pub(self) unused5: u32,
+	unused5: u32,
 }
 
 impl fuse_setattr_in {
-	#[must_use]
-	pub const fn new() -> fuse_setattr_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_setattr_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_open_in {
 	pub flags: u32,
 	pub open_flags: u32,
 }
 
 impl fuse_open_in {
-	#[must_use]
-	pub const fn new() -> fuse_open_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_open_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_create_in {
 	pub flags: u32,
 	pub mode: u32,
@@ -900,31 +898,31 @@ pub struct fuse_create_in {
 }
 
 impl fuse_create_in {
-	#[must_use]
-	pub const fn new() -> fuse_create_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_create_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_open_out {
 	pub fh: u64,
 	pub open_flags: u32,
-	pub(self) padding: u32,
+	padding: u32,
 }
 
 impl fuse_open_out {
-	#[must_use]
-	pub const fn new() -> fuse_open_out {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_open_out { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_release_in {
 	pub fh: u64,
 	pub flags: u32,
@@ -933,32 +931,32 @@ pub struct fuse_release_in {
 }
 
 impl fuse_release_in {
-	#[must_use]
-	pub const fn new() -> fuse_release_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_release_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_flush_in {
 	pub fh: u64,
-	pub(self) unused: u32,
-	pub(self) padding: u32,
+	unused: u32,
+	padding: u32,
 	pub lock_owner: u64,
 }
 
 impl fuse_flush_in {
-	#[must_use]
-	pub const fn new() -> fuse_flush_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_flush_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_read_in {
 	pub fh: u64,
 	pub offset: u64,
@@ -966,21 +964,21 @@ pub struct fuse_read_in {
 	pub read_flags: u32,
 	pub lock_owner: u64,
 	pub flags: u32,
-	pub(self) padding: u32,
+	padding: u32,
 }
 
 impl fuse_read_in {
-	#[must_use]
-	pub const fn new() -> fuse_read_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_read_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 pub const FUSE_COMPAT_WRITE_IN_SIZE: usize = 24;
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_write_in {
 	pub fh: u64,
 	pub offset: u64,
@@ -988,176 +986,176 @@ pub struct fuse_write_in {
 	pub write_flags: u32,
 	pub lock_owner: u64,
 	pub flags: u32,
-	pub(self) padding: u32,
+	padding: u32,
 }
 
 impl fuse_write_in {
-	#[must_use]
-	pub const fn new() -> fuse_write_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_write_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_write_out {
 	pub size: u32,
-	pub(self) padding: u32,
+	padding: u32,
 }
 
 impl fuse_write_out {
-	#[must_use]
-	pub const fn new() -> fuse_write_out {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_write_out { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 pub const FUSE_COMPAT_STATFS_SIZE: usize = 48;
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_statfs_out {
 	pub st: fuse_kstatfs,
 }
 
 impl fuse_statfs_out {
-	#[must_use]
-	pub const fn new() -> fuse_statfs_out {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_statfs_out { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_fsync_in {
 	pub fh: u64,
 	pub fsync_flags: u32,
-	pub(self) padding: u32,
+	padding: u32,
 }
 
 impl fuse_fsync_in {
-	#[must_use]
-	pub const fn new() -> fuse_fsync_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_fsync_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 pub const FUSE_COMPAT_SETXATTR_IN_SIZE: usize = 8;
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_setxattr_in {
 	pub size: u32,
 	pub flags: u32,
 	pub setxattr_flags: u32,
-	pub(self) padding: u32,
+	padding: u32,
 }
 
 impl fuse_setxattr_in {
-	#[must_use]
-	pub const fn new() -> fuse_setxattr_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_setxattr_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_getxattr_in {
 	pub size: u32,
-	pub(self) padding: u32,
+	padding: u32,
 }
 
 impl fuse_getxattr_in {
-	#[must_use]
-	pub const fn new() -> fuse_getxattr_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_getxattr_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_getxattr_out {
 	pub size: u32,
-	pub(self) padding: u32,
+	padding: u32,
 }
 
 impl fuse_getxattr_out {
-	#[must_use]
-	pub const fn new() -> fuse_getxattr_out {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_getxattr_out { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_lk_in {
 	pub fh: u64,
 	pub owner: u64,
 	pub lk: fuse_file_lock,
 	pub lk_flags: u32,
-	pub(self) padding: u32,
+	padding: u32,
 }
 
 impl fuse_lk_in {
-	#[must_use]
-	pub const fn new() -> fuse_lk_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_lk_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_lk_out {
 	pub lk: fuse_file_lock,
 }
 
 impl fuse_lk_out {
-	#[must_use]
-	pub const fn new() -> fuse_lk_out {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_lk_out { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_access_in {
 	pub mask: u32,
-	pub(self) padding: u32,
+	padding: u32,
 }
 
 impl fuse_access_in {
-	#[must_use]
-	pub const fn new() -> fuse_access_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_access_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_init_in {
 	pub major: u32,
 	pub minor: u32,
 	pub max_readahead: u32,
 	pub flags: u32,
 	pub flags2: u32,
-	pub(self) unused: [u32; 11],
+	unused: [u32; 11],
 }
 
 impl fuse_init_in {
-	#[must_use]
-	pub const fn new() -> fuse_init_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_init_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 pub const FUSE_COMPAT_INIT_OUT_SIZE: usize = 8;
@@ -1165,7 +1163,7 @@ pub const FUSE_COMPAT_22_INIT_OUT_SIZE: usize = 24;
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_init_out {
 	pub major: u32,
 	pub minor: u32,
@@ -1178,104 +1176,104 @@ pub struct fuse_init_out {
 	pub max_pages: u16,
 	pub map_alignment: u16,
 	pub flags2: u32,
-	pub(self) unused: [u32; 7],
+	unused: [u32; 7],
 }
 
 impl fuse_init_out {
-	#[must_use]
-	pub const fn new() -> fuse_init_out {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_init_out { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 pub const CUSE_INIT_INFO_MAX: usize = 4096;
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct cuse_init_in {
 	pub major: u32,
 	pub minor: u32,
-	pub(self) unused: u32,
+	unused: u32,
 	pub flags: u32,
 }
 
 impl cuse_init_in {
-	#[must_use]
-	pub const fn new() -> cuse_init_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> cuse_init_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct cuse_init_out {
 	pub major: u32,
 	pub minor: u32,
-	pub(self) unused: u32,
+	unused: u32,
 	pub flags: u32,
 	pub max_read: u32,
 	pub max_write: u32,
 	pub dev_major: u32,
 	pub dev_minor: u32,
-	pub(self) spare: [u32; 10],
+	spare: [u32; 10],
 }
 
 impl cuse_init_out {
-	#[must_use]
-	pub const fn new() -> cuse_init_out {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> cuse_init_out { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_interrupt_in {
 	pub unique: u64,
 }
 
 impl fuse_interrupt_in {
-	#[must_use]
-	pub const fn new() -> fuse_interrupt_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_interrupt_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_bmap_in {
 	pub block: u64,
 	pub blocksize: u32,
-	pub(self) padding: u32,
+	padding: u32,
 }
 
 impl fuse_bmap_in {
-	#[must_use]
-	pub const fn new() -> fuse_bmap_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_bmap_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_bmap_out {
 	pub block: u64,
 }
 
 impl fuse_bmap_out {
-	#[must_use]
-	pub const fn new() -> fuse_bmap_out {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_bmap_out { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_ioctl_in {
 	pub fh: u64,
 	pub flags: u32,
@@ -1286,30 +1284,30 @@ pub struct fuse_ioctl_in {
 }
 
 impl fuse_ioctl_in {
-	#[must_use]
-	pub const fn new() -> fuse_ioctl_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_ioctl_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_ioctl_iovec {
 	pub base: u64,
 	pub len: u64,
 }
 
 impl fuse_ioctl_iovec {
-	#[must_use]
-	pub const fn new() -> fuse_ioctl_iovec {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_ioctl_iovec { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_ioctl_out {
 	pub result: i32,
 	pub flags: u32,
@@ -1318,15 +1316,15 @@ pub struct fuse_ioctl_out {
 }
 
 impl fuse_ioctl_out {
-	#[must_use]
-	pub const fn new() -> fuse_ioctl_out {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_ioctl_out { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_poll_in {
 	pub fh: u64,
 	pub kh: u64,
@@ -1335,62 +1333,62 @@ pub struct fuse_poll_in {
 }
 
 impl fuse_poll_in {
-	#[must_use]
-	pub const fn new() -> fuse_poll_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_poll_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_poll_out {
 	pub revents: u32,
-	pub(self) padding: u32,
+	padding: u32,
 }
 
 impl fuse_poll_out {
-	#[must_use]
-	pub const fn new() -> fuse_poll_out {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_poll_out { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_notify_poll_wakeup_out {
 	pub kh: u64,
 }
 
 impl fuse_notify_poll_wakeup_out {
-	#[must_use]
-	pub const fn new() -> fuse_notify_poll_wakeup_out {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_notify_poll_wakeup_out { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_fallocate_in {
 	pub fh: u64,
 	pub offset: u64,
 	pub length: u64,
 	pub mode: u32,
-	pub(self) padding: u32,
+	padding: u32,
 }
 
 impl fuse_fallocate_in {
-	#[must_use]
-	pub const fn new() -> fuse_fallocate_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_fallocate_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_in_header {
 	pub len: u32,
 	pub opcode: fuse_opcode,
@@ -1399,19 +1397,19 @@ pub struct fuse_in_header {
 	pub uid: u32,
 	pub gid: u32,
 	pub pid: u32,
-	pub(self) padding: u32,
+	padding: u32,
 }
 
 impl fuse_in_header {
-	#[must_use]
-	pub const fn new() -> fuse_in_header {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_in_header { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_out_header {
 	pub len: u32,
 	pub error: i32,
@@ -1419,15 +1417,15 @@ pub struct fuse_out_header {
 }
 
 impl fuse_out_header {
-	#[must_use]
-	pub const fn new() -> fuse_out_header {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_out_header { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_dirent {
 	pub ino: u64,
 	pub off: u64,
@@ -1437,40 +1435,40 @@ pub struct fuse_dirent {
 }
 
 impl fuse_dirent {
-	#[must_use]
-	pub const fn new() -> fuse_dirent {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_dirent { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 /* Align variable length records to 64bit boundary */
-// #define FUSE_REC_ALIGN(x) 	(((x) + sizeof(uint64_t) - 1) & ~(sizeof(uint64_t) - 1))
+// #define FUSE_REC_ALIGN(x) (((x) + sizeof(uint64_t) - 1) & ~(sizeof(uint64_t) - 1))
 
 // #define FUSE_NAME_OFFSET offsetof(struct fuse_dirent, name)
 // #define FUSE_DIRENT_ALIGN(x) FUSE_REC_ALIGN(x)
-// #define FUSE_DIRENT_SIZE(d) 	FUSE_DIRENT_ALIGN(FUSE_NAME_OFFSET + (d)->namelen)
+// #define FUSE_DIRENT_SIZE(d) FUSE_DIRENT_ALIGN(FUSE_NAME_OFFSET + (d)->namelen)
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_direntplus {
 	pub entry_out: fuse_entry_out,
 	pub dirent: fuse_dirent,
 }
 
 impl fuse_direntplus {
-	#[must_use]
-	pub const fn new() -> fuse_direntplus {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_direntplus { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
-// #define FUSE_NAME_OFFSET_DIRENTPLUS 	offsetof(struct fuse_direntplus, dirent.name)
-// #define FUSE_DIRENTPLUS_SIZE(d) 	FUSE_DIRENT_ALIGN(FUSE_NAME_OFFSET_DIRENTPLUS + (d)->dirent.namelen)
+// #define FUSE_NAME_OFFSET_DIRENTPLUS offsetof(struct fuse_direntplus, dirent.name)
+// #define FUSE_DIRENTPLUS_SIZE(d) FUSE_DIRENT_ALIGN(FUSE_NAME_OFFSET_DIRENTPLUS + (d)->dirent.namelen)
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_notify_inval_inode_out {
 	pub ino: u64,
 	pub off: i64,
@@ -1478,98 +1476,98 @@ pub struct fuse_notify_inval_inode_out {
 }
 
 impl fuse_notify_inval_inode_out {
-	#[must_use]
-	pub const fn new() -> fuse_notify_inval_inode_out {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_notify_inval_inode_out { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_notify_inval_entry_out {
 	pub parent: u64,
 	pub namelen: u32,
-	pub(self) padding: u32,
+	padding: u32,
 }
 
 impl fuse_notify_inval_entry_out {
-	#[must_use]
-	pub const fn new() -> fuse_notify_inval_entry_out {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_notify_inval_entry_out { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_notify_delete_out {
 	pub parent: u64,
 	pub child: u64,
 	pub namelen: u32,
-	pub(self) padding: u32,
+	padding: u32,
 }
 
 impl fuse_notify_delete_out {
-	#[must_use]
-	pub const fn new() -> fuse_notify_delete_out {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_notify_delete_out { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_notify_store_out {
 	pub nodeid: u64,
 	pub offset: u64,
 	pub size: u32,
-	pub(self) padding: u32,
+	padding: u32,
 }
 
 impl fuse_notify_store_out {
-	#[must_use]
-	pub const fn new() -> fuse_notify_store_out {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_notify_store_out { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_notify_retrieve_out {
 	pub notify_unique: u64,
 	pub nodeid: u64,
 	pub offset: u64,
 	pub size: u32,
-	pub(self) padding: u32,
+	padding: u32,
 }
 
 impl fuse_notify_retrieve_out {
-	#[must_use]
-	pub const fn new() -> fuse_notify_retrieve_out {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_notify_retrieve_out { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 /* Matches the size of fuse_write_in */
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_notify_retrieve_in {
-	pub(self) dummy1: u64,
+	dummy1: u64,
 	pub offset: u64,
 	pub size: u32,
-	pub(self) dummy2: u32,
-	pub(self) dummy3: u64,
-	pub(self) dummy4: u64,
+	dummy2: u32,
+	dummy3: u64,
+	dummy4: u64,
 }
 
 impl fuse_notify_retrieve_in {
-	#[must_use]
-	pub const fn new() -> fuse_notify_retrieve_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_notify_retrieve_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 /* Device ioctls: */
@@ -1578,38 +1576,38 @@ pub const FUSE_DEV_IOC_MAGIC: u32 = 229;
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_lseek_in {
 	pub fh: u64,
 	pub offset: u64,
 	pub whence: u32,
-	pub(self) padding: u32,
+	padding: u32,
 }
 
 impl fuse_lseek_in {
-	#[must_use]
-	pub const fn new() -> fuse_lseek_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_lseek_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_lseek_out {
 	pub offset: u64,
 }
 
 impl fuse_lseek_out {
-	#[must_use]
-	pub const fn new() -> fuse_lseek_out {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_lseek_out { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_copy_file_range_in {
 	pub fh_in: u64,
 	pub off_in: u64,
@@ -1621,17 +1619,17 @@ pub struct fuse_copy_file_range_in {
 }
 
 impl fuse_copy_file_range_in {
-	#[must_use]
-	pub const fn new() -> fuse_copy_file_range_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_copy_file_range_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 pub const FUSE_SETUPMAPPING_FLAG_WRITE: u64 = (1u64 << 0);
 pub const FUSE_SETUPMAPPING_FLAG_READ: u64 = (1u64 << 1);
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_setupmapping_in {
 	/* An already open handle */
 	pub fh: u64,
@@ -1646,30 +1644,30 @@ pub struct fuse_setupmapping_in {
 }
 
 impl fuse_setupmapping_in {
-	#[must_use]
-	pub const fn new() -> fuse_setupmapping_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_setupmapping_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_removemapping_in {
 	/* number of fuse_removemapping_one follows */
 	pub count: u32,
 }
 
 impl fuse_removemapping_in {
-	#[must_use]
-	pub const fn new() -> fuse_removemapping_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_removemapping_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_removemapping_one {
 	/* Offset into the dax window start the unmapping */
 	pub moffset: u64,
@@ -1678,26 +1676,26 @@ pub struct fuse_removemapping_one {
 }
 
 impl fuse_removemapping_one {
-	#[must_use]
-	pub const fn new() -> fuse_removemapping_one {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_removemapping_one { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
-// #define FUSE_REMOVEMAPPING_MAX_ENTRY   		(PAGE_SIZE / sizeof(struct fuse_removemapping_one))
+// #define FUSE_REMOVEMAPPING_MAX_ENTRY   (PAGE_SIZE / sizeof(struct fuse_removemapping_one))
 
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_syncfs_in {
-	pub(self) padding: u64,
+	padding: u64,
 }
 
 impl fuse_syncfs_in {
-	#[must_use]
-	pub const fn new() -> fuse_syncfs_in {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_syncfs_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 /*
@@ -1708,17 +1706,17 @@ impl fuse_syncfs_in {
  */
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_secctx {
 	pub size: u32,
-	pub(self) padding: u32,
+	padding: u32,
 }
 
 impl fuse_secctx {
-	#[must_use]
-	pub const fn new() -> fuse_secctx {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_secctx { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
 /*
@@ -1729,16 +1727,23 @@ impl fuse_secctx {
  */
 #[repr(C)]
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_secctx_header {
 	pub size: u32,
 	pub nr_secctx: u32,
 }
 
 impl fuse_secctx_header {
-	#[must_use]
-	pub const fn new() -> fuse_secctx_header {
-		unsafe { core::mem::zeroed() }
-	}
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_secctx_header { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
+////////////////////////////////////////
+
+#[inline]
+const unsafe fn as_bytes<T>(t: &T) -> &[u8] {
+	let ptr = core::ptr::from_ref(t).cast::<u8>();
+	core::slice::from_raw_parts(ptr, core::mem::size_of::<T>())
+}
