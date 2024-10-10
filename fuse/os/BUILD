@@ -19,6 +19,7 @@ rust_test(
     ],
     crate = "//fuse",
     edition = "2021",
+    rustc_flags = ["--deny=warnings"],
     target_compatible_with = [
         "@platforms//os:linux",
     ],

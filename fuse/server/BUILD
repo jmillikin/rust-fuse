@@ -19,7 +19,10 @@ rust_test(
     timeout = "short",
     srcs = ["decode_test.rs"],
     crate = "//fuse",
-    rustc_flags = ['--cfg=rust_fuse_test="decode_test"'],
+    rustc_flags = [
+        '--cfg=rust_fuse_test="decode_test"',
+        "--deny=warnings",
+    ],
     deps = [
         "//fuse",
         "//fuse/internal/testing:fuse_testutil",

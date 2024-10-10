@@ -19,6 +19,7 @@ def _operation_test(filename):
         srcs = [filename],
         size = "small",
         timeout = "short",
+        rustc_flags = ["--deny=warnings"],
         deps = [
             "//fuse",
             "//fuse/internal/testing:fuse_testutil",
@@ -43,6 +44,7 @@ def _operation_interop_test(filename, interop_test_os):
         srcs = [filename],
         size = "medium",
         timeout = "short",
+        rustc_flags = ["--deny=warnings"],
         deps = [
             "//fuse",
             "//fuse/internal/testing:interop_testutil",
