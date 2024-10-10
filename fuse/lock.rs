@@ -131,11 +131,18 @@ impl fmt::Debug for LockRange {
 
 /// Represents a process that owns a POSIX-style advisory lock.
 ///
-/// This type represents a different notion of "process ID" than the
-/// [`fuse::ProcessId`](crate::ProcessId) struct, although on some platforms
-/// they may be equivalent.
+/// The concept of a "process ID" is not fully specified by POSIX, and some
+/// platforms may report process IDs that don't match the intuitive userland
+/// meaning. For example, platforms that represent processes as a group of
+/// threads might populate a request's process ID from the thread ID (TID)
+/// rather than the thread group ID (TGID).
 ///
-/// For representing lock ownership the [`LockOwner`] type should be used instead.
+/// This type represents a different notion of "process ID" than the
+/// [`RequestHeader::process_id`](crate::RequestHeader::process_id), although
+/// on some platforms they may be equivalent.
+///
+/// For representing lock ownership the [`LockOwner`] type should be used
+/// instead.
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ProcessId {
 	pid: num::NonZeroU32,

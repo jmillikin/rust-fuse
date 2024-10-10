@@ -116,9 +116,6 @@ pub use lock::{
 	ProcessId as LockOwnerProcessId,
 };
 
-mod process_id;
-pub use process_id::ProcessId;
-
 mod unix_time;
 pub use unix_time::UnixTime;
 
@@ -176,66 +173,76 @@ impl Error {
 
 /// The header of a FUSE request.
 #[derive(Clone, Copy)]
-pub struct RequestHeader {
-	raw: kernel::fuse_in_header,
-}
+pub struct RequestHeader(kernel::fuse_in_header);
 
 impl RequestHeader {
+	/// Returns the raw [`fuse_in_header`] for this request.
+	///
+	/// [`fuse_in_header`]: kernel::fuse_in_header
+	#[inline]
+	#[must_use]
+	pub fn raw(&self) -> &kernel::fuse_in_header {
+		&self.0
+	}
+
 	/// Returns the unique ID for this request.
 	#[inline]
 	#[must_use]
 	pub fn request_id(&self) -> core::num::NonZeroU64 {
-		unsafe { core::num::NonZeroU64::new_unchecked(self.raw.unique) }
+		unsafe { core::num::NonZeroU64::new_unchecked(self.0.unique) }
 	}
 
 	/// Returns the length of this request, including the header.
 	#[inline]
 	#[must_use]
 	pub fn request_len(&self) -> core::num::NonZeroU32 {
-		unsafe { core::num::NonZeroU32::new_unchecked(self.raw.len) }
+		unsafe { core::num::NonZeroU32::new_unchecked(self.0.len) }
 	}
 
 	/// Returns the opcode of this request.
 	#[inline]
 	#[must_use]
-	pub fn opcode(&self) -> crate::kernel::fuse_opcode {
-		self.raw.opcode
+	pub fn opcode(&self) -> kernel::fuse_opcode {
+		self.0.opcode
 	}
 
 	/// Returns the ID of this request's primary node, if present.
 	#[inline]
 	#[must_use]
-	pub fn node_id(&self) -> Option<crate::NodeId> {
-		crate::NodeId::new(self.raw.nodeid)
+	pub fn node_id(&self) -> Option<NodeId> {
+		NodeId::new(self.0.nodeid)
 	}
 
 	/// Returns the user ID of the process that initiated this request.
 	#[inline]
 	#[must_use]
 	pub fn user_id(&self) -> u32 {
-		self.raw.uid
+		self.0.uid
 	}
 
 	/// Returns the group ID of the process that initiated this request.
 	#[inline]
 	#[must_use]
 	pub fn group_id(&self) -> u32 {
-		self.raw.gid
+		self.0.gid
 	}
 
 	/// Returns the process ID of the process that initiated this request,
 	/// if present.
 	///
-	/// See the documentation of [`ProcessId`] for details on the semantics of
-	/// this value.
+	/// The concept of a "process ID" is not fully specified by POSIX, and some
+	/// platforms may report process IDs that don't match the intuitive userland
+	/// meaning. For example, platforms that represent processes as a group of
+	/// threads might populate a request's process ID from the thread ID (TID)
+	/// rather than the thread group ID (TGID).
 	///
 	/// A request might not have a process ID, for example if it was generated
 	/// internally by the kernel, or if the client's PID isn't visible in the
 	/// server's PID namespace.
 	#[inline]
 	#[must_use]
-	pub fn process_id(&self) -> Option<ProcessId> {
-		ProcessId::new(self.raw.pid)
+	pub fn process_id(&self) -> Option<core::num::NonZeroU32> {
+		core::num::NonZeroU32::new(self.0.pid)
 	}
 }
 
