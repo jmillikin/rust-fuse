@@ -92,13 +92,7 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 			return call.respond_err(OsError::from(errno::E2BIG));
 		}
 
-		#[cfg(target_os = "linux")]
-		let err = OsError::from(errno::ENODATA);
-
-		#[cfg(target_os = "freebsd")]
-		let err = OsError::from(errno::ENOATTR);
-
-		call.respond_err(err)
+		call.respond_err(OsError::XATTR_NOT_FOUND)
 	}
 }
 

@@ -82,6 +82,7 @@ mod errno {
 	pub const EPROTO: Error = Error;
 	pub const EAGAIN: Error = Error;
 	pub const ENOSYS: Error = Error;
+	pub const ENOATTR: Error = Error;
 }
 
 impl OsError {
@@ -124,6 +125,11 @@ impl OsError {
 	///
 	/// This error maps to `ENOSYS`.
 	pub const UNIMPLEMENTED: crate::Error = fuse_error(errno::ENOSYS);
+
+	/// The requested extended attribute does not exist.
+	///
+	/// This error maps to `ENOATTR`.
+	pub const XATTR_NOT_FOUND: crate::Error = fuse_error(errno::ENOATTR);
 }
 
 // FuseSubtype {{{
