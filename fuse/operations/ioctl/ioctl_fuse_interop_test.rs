@@ -21,7 +21,12 @@ use std::sync::mpsc;
 use fuse::server::fuse_rpc;
 use fuse::server::prelude::*;
 
-use interop_testutil::{diff_str, path_cstr, ErrorCode};
+use interop_testutil::{
+	diff_str,
+	errno,
+	path_cstr,
+	OsError,
+};
 
 struct TestFS {
 	requests: mpsc::Sender<String>,
@@ -36,10 +41,10 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		request: &LookupRequest,
 	) -> fuse_rpc::SendResult<LookupResponse, S::Error> {
 		if !request.parent_id().is_root() {
-			return call.respond_err(ErrorCode::ENOENT);
+			return call.respond_err(OsError::NOT_FOUND);
 		}
 		if request.name() != "file.txt" {
-			return call.respond_err(ErrorCode::ENOENT);
+			return call.respond_err(OsError::NOT_FOUND);
 		}
 
 		let mut attr = fuse::Attributes::new(fuse::NodeId::new(2).unwrap());
@@ -76,7 +81,7 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 			return call.respond_ok(&resp);
 		}
 
-		call.respond_err(ErrorCode::ENOENT)
+		call.respond_err(OsError::NOT_FOUND)
 	}
 
 	fn ioctl(
@@ -125,7 +130,7 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 			return call.respond_ok(&resp);
 		}
 
-		call.respond_err(ErrorCode::EOPNOTSUPP)
+		call.respond_err(OsError::from(errno::EOPNOTSUPP))
 	}
 
 	fn open(
@@ -139,7 +144,7 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 			resp.set_handle(1002);
 			return call.respond_ok(&resp);
 		}
-		call.respond_err(ErrorCode::ENOENT)
+		call.respond_err(OsError::NOT_FOUND)
 	}
 }
 

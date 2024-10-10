@@ -24,7 +24,7 @@ use interop_testutil::{
 	diff_str,
 	fuse_interop_test,
 	path_cstr,
-	ErrorCode,
+	OsError,
 };
 
 struct TestFS {
@@ -40,10 +40,10 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		request: &LookupRequest,
 	) -> fuse_rpc::SendResult<LookupResponse, S::Error> {
 		if !request.parent_id().is_root() {
-			return call.respond_err(ErrorCode::ENOENT);
+			return call.respond_err(OsError::NOT_FOUND);
 		}
 		if request.name() != "opendir.d" {
-			return call.respond_err(ErrorCode::ENOENT);
+			return call.respond_err(OsError::NOT_FOUND);
 		}
 
 		let mut attr = fuse::Attributes::new(fuse::NodeId::new(2).unwrap());

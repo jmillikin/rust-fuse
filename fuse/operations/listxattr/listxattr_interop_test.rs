@@ -22,10 +22,11 @@ use fuse::server::prelude::*;
 
 use interop_testutil::{
 	diff_str,
+	errno,
 	fuse_interop_test,
 	libc_errno,
 	path_cstr,
-	ErrorCode,
+	OsError,
 };
 
 struct TestFS {
@@ -41,7 +42,7 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		request: &LookupRequest,
 	) -> fuse_rpc::SendResult<LookupResponse, S::Error> {
 		if !request.parent_id().is_root() {
-			return call.respond_err(ErrorCode::ENOENT);
+			return call.respond_err(OsError::NOT_FOUND);
 		}
 
 		let node_id;
@@ -50,7 +51,7 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		} else if request.name() == "xattrs_toobig.txt" {
 			node_id = fuse::NodeId::new(3).unwrap();
 		} else {
-			return call.respond_err(ErrorCode::ENOENT);
+			return call.respond_err(OsError::NOT_FOUND);
 		}
 
 		let mut attr = fuse::Attributes::new(node_id);
@@ -72,7 +73,7 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		self.requests.send(format!("{:#?}", request)).unwrap();
 
 		if request.node_id() == fuse::NodeId::new(3).unwrap() {
-			return call.respond_err(ErrorCode::E2BIG);
+			return call.respond_err(OsError::from(errno::E2BIG));
 		}
 
 		let xattr_small = fuse::XattrName::new("user.xattr_small").unwrap();
@@ -92,10 +93,10 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		let mut names = ListxattrNamesWriter::new(&mut buf);
 
 		if names.try_push(xattr_small).is_err() {
-			return call.respond_err(ErrorCode::ERANGE);
+			return call.respond_err(OsError::from(errno::ERANGE));
 		}
 		if names.try_push(xattr_toobig).is_err() {
-			return call.respond_err(ErrorCode::ERANGE);
+			return call.respond_err(OsError::from(errno::ERANGE));
 		}
 
 		let resp = ListxattrResponse::with_names(names);

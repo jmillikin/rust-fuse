@@ -41,7 +41,7 @@ pub(crate) fn error<'a>(
 	header: &'a mut crate::ResponseHeader,
 	err: crate::Error,
 ) -> server::Response<'a> {
-	header.set_error(err.raw_fuse_error_code());
+	header.set_error(err.0);
 	header_only(header)
 }
 

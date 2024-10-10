@@ -24,7 +24,7 @@ use interop_testutil::{
 	diff_str,
 	fuse_interop_test,
 	path_cstr,
-	ErrorCode,
+	OsError,
 };
 
 struct TestFS {
@@ -39,7 +39,7 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		call: fuse_rpc::Call<S>,
 		_request: &LookupRequest,
 	) -> fuse_rpc::SendResult<LookupResponse, S::Error> {
-		call.respond_err(ErrorCode::ENOENT)
+		call.respond_err(OsError::NOT_FOUND)
 	}
 
 	fn create(

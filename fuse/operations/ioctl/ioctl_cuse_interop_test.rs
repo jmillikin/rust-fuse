@@ -21,7 +21,12 @@ use std::sync::mpsc;
 use fuse::server::cuse_rpc;
 use fuse::server::prelude::*;
 
-use interop_testutil::{diff_str, path_cstr, ErrorCode};
+use interop_testutil::{
+	diff_str,
+	errno,
+	path_cstr,
+	OsError,
+};
 
 struct TestCharDev {
 	requests: mpsc::Sender<String>,
@@ -94,7 +99,7 @@ impl<S: CuseSocket> cuse_rpc::Handlers<S> for TestCharDev {
 			return call.respond_ok(&resp);
 		}
 
-		call.respond_err(ErrorCode::EOPNOTSUPP)
+		call.respond_err(OsError::from(errno::EOPNOTSUPP))
 	}
 
 	fn open(

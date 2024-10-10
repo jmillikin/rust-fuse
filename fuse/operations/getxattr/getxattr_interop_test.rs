@@ -22,10 +22,11 @@ use fuse::server::prelude::*;
 
 use interop_testutil::{
 	diff_str,
+	errno,
 	fuse_interop_test,
 	libc_errno,
 	path_cstr,
-	ErrorCode,
+	OsError,
 };
 
 struct TestFS {
@@ -41,10 +42,10 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		request: &LookupRequest,
 	) -> fuse_rpc::SendResult<LookupResponse, S::Error> {
 		if !request.parent_id().is_root() {
-			return call.respond_err(ErrorCode::ENOENT);
+			return call.respond_err(OsError::NOT_FOUND);
 		}
 		if request.name() != "xattrs.txt" {
-			return call.respond_err(ErrorCode::ENOENT);
+			return call.respond_err(OsError::NOT_FOUND);
 		}
 
 		let mut attr = fuse::Attributes::new(fuse::NodeId::new(2).unwrap());
@@ -78,7 +79,7 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 				},
 				Some(request_size) => {
 					if value.size() > request_size.get() {
-						return call.respond_err(ErrorCode::ERANGE);
+						return call.respond_err(OsError::from(errno::ERANGE));
 					}
 				},
 			};
@@ -88,14 +89,14 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		}
 
 		if request.name() == xattr_toobig {
-			return call.respond_err(ErrorCode::E2BIG);
+			return call.respond_err(OsError::from(errno::E2BIG));
 		}
 
 		#[cfg(target_os = "linux")]
-		let err = ErrorCode::ENODATA;
+		let err = OsError::from(errno::ENODATA);
 
 		#[cfg(target_os = "freebsd")]
-		let err = ErrorCode::ENOATTR;
+		let err = OsError::from(errno::ENOATTR);
 
 		call.respond_err(err)
 	}

@@ -28,10 +28,16 @@ use fuse::server::io::{SendError, RecvError};
 use fuse_testutil::SendBufToVec;
 
 #[cfg(target_os = "linux")]
-pub use linux_errno as ErrorCode;
+pub use linux_errno as errno;
+
+#[cfg(target_os = "linux")]
+pub use fuse::os::linux::OsError;
 
 #[cfg(target_os = "freebsd")]
-pub use freebsd_errno as ErrorCode;
+pub use freebsd_errno as errno;
+
+#[cfg(target_os = "freebsd")]
+pub use fuse::os::freebsd::OsError;
 
 struct PrintHooks {}
 

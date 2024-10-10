@@ -69,8 +69,6 @@
 #[macro_use]
 mod internal;
 
-mod error;
-
 mod node_id;
 pub use node_id::NodeId;
 
@@ -141,7 +139,38 @@ pub mod operations;
 pub mod os;
 pub mod server;
 
-pub use self::error::Error;
+/// The error type for FUSE operations.
+///
+/// The FUSE protocol represents errors as 32-bit signed integers, but the
+/// client implementation in Linux rejects error numbers outside the
+/// interval `[1, 512)`. Other implementations impose similar limits.
+///
+/// To provide an ergonomic API it must be possible for the user to pass
+/// OS-specific error numbers to FUSE functions, but the size and signedness
+/// of these error numbers varies between OSes. This means it's not appropriate
+/// to use `Into<NonZeroI32>` trait bounds for error-related functions.
+///
+/// The `Error` type solves this by providing an unambiguous and
+/// platform-independent encoding of error values, with the modules under
+/// [`fuse::os`](crate::os) mapping OS-specific error codes into FUSE errors.
+#[allow(clippy::exhaustive_structs)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct Error(pub core::num::NonZeroI32);
+
+// FIXME
+#[cfg(target_os = "freebsd")]
+use crate::os::freebsd::OsError;
+#[cfg(target_os = "linux")]
+use crate::os::linux::OsError;
+
+impl Error {
+	pub(crate) const E2BIG: Error = OsError::E2BIG;
+	pub(crate) const NOT_FOUND: Error = OsError::NOT_FOUND;
+	pub(crate) const PROTOCOL_ERROR: Error = OsError::PROTOCOL_ERROR;
+	pub(crate) const UNIMPLEMENTED: Error = OsError::UNIMPLEMENTED;
+	pub(crate) const INVALID_ARGUMENT: Error = OsError::INVALID_ARGUMENT;
+	pub(crate) const OVERFLOW: Error = OsError::OVERFLOW;
+}
 
 // RequestHeader {{{
 

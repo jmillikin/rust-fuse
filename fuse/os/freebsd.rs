@@ -19,6 +19,9 @@
 use core::ffi;
 use core::fmt;
 
+#[cfg(target_os = "freebsd")]
+use freebsd_errno as errno;
+
 use crate::LockMode;
 
 /// Shared (or 'read') locks may be held by any number of owners.
@@ -29,6 +32,99 @@ pub const F_WRLCK: LockMode = LockMode(3);
 
 /// Absence or removal of a lock.
 pub const F_UNLCK: LockMode = LockMode(2);
+
+/// Adapter from FreeBSD error codes to FUSE errors.
+#[allow(clippy::exhaustive_structs)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct OsError(pub errno::Error);
+
+#[inline]
+#[must_use]
+const fn fuse_error(errno: errno::Error) -> crate::Error {
+	use core::num::NonZeroI32;
+
+	let errno = errno.get();
+	let errno_neg = if errno < 0 || errno > u16::MAX as i32 {
+		-(u16::MAX as i32)
+	} else {
+		errno.wrapping_neg()
+	};
+	crate::Error(unsafe { NonZeroI32::new_unchecked(errno_neg) })
+}
+
+impl From<errno::Error> for OsError {
+	#[inline]
+	fn from(errno: errno::Error) -> OsError {
+		OsError(errno)
+	}
+}
+
+impl From<OsError> for crate::Error {
+	#[inline]
+	fn from(errno: OsError) -> crate::Error {
+		fuse_error(errno.0)
+	}
+}
+
+#[cfg(all(doc, not(target_os = "freebsd")))]
+mod errno {
+	#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+	pub struct Error;
+	impl Error {
+		pub const fn get(self) -> i32 { 1 }
+	}
+
+	pub const E2BIG: Error = Error;
+	pub const EINTR: Error = Error;
+	pub const EINVAL: Error = Error;
+	pub const ENOENT: Error = Error;
+	pub const EOVERFLOW: Error = Error;
+	pub const EPROTO: Error = Error;
+	pub const EAGAIN: Error = Error;
+	pub const ENOSYS: Error = Error;
+}
+
+impl OsError {
+	pub(crate) const E2BIG: crate::Error = fuse_error(errno::E2BIG);
+
+	/// An operation was interrupted.
+	///
+	/// This error can be returned from an operation to signal that it was
+	/// interrupted by a `FUSE_INTERRUPT` request.
+	///
+	///  This error maps to `EINTR`.
+	pub const INTERRUPTED: crate::Error = fuse_error(errno::EINTR);
+
+	/// The client specified an invalid argument.
+	///
+	/// This error maps to `EINVAL`.
+	pub const INVALID_ARGUMENT: crate::Error = fuse_error(errno::EINVAL);
+
+	/// The requested file or directory does not exist.
+	///
+	/// This error maps to `ENOENT`.
+	pub const NOT_FOUND: crate::Error = fuse_error(errno::ENOENT);
+
+	/// A value is too large to store in its data type.
+	///
+	/// This error maps to `EOVERFLOW`.
+	pub const OVERFLOW: crate::Error = fuse_error(errno::EOVERFLOW);
+
+	/// A message that violates the FUSE protocol was sent or received.
+	///
+	/// This error maps to `EPROTO`.
+	pub const PROTOCOL_ERROR: crate::Error = fuse_error(errno::EPROTO);
+
+	/// The requested operation is temporarily unavailable.
+	///
+	/// This error maps to `EAGAIN`.
+	pub const UNAVAILABLE: crate::Error = fuse_error(errno::EAGAIN);
+
+	/// The requested operation is not implemented in this server.
+	///
+	/// This error maps to `ENOSYS`.
+	pub const UNIMPLEMENTED: crate::Error = fuse_error(errno::ENOSYS);
+}
 
 // FuseSubtype {{{
 
