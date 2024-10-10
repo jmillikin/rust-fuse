@@ -69,6 +69,14 @@
 #[macro_use]
 mod internal;
 
+mod cuse;
+pub use cuse::{
+	// FIXME
+	DeviceName as CuseDeviceName,
+	DeviceNameError as CuseDeviceNameError,
+	DeviceNumber as CuseDeviceNumber,
+};
+
 mod node_id;
 pub use node_id::NodeId;
 
@@ -130,7 +138,6 @@ pub use crate::os::{
 };
 
 pub mod client;
-pub mod cuse;
 pub mod io;
 pub mod operations;
 pub mod os;

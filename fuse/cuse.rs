@@ -14,28 +14,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Character devices in userspace (CUSE).
-//!
-//! A CUSE device is a character device that proxies operations through the
-//! kernel into a userspace server process. The protocol is approximately a
-//! subset of FUSE, except for the CUSE-only "unrestricted ioctl" feature.
-//!
-//! At present only Linux supports creating CUSE devices. The FreeBSD kernel
-//! contains a driver for userspace character devices, which they also call
-//! CUSE, but it implements a different API that is unrelated to FUSE.
-
 use core::fmt;
 
 use crate::internal::debug;
-
-// Matches the `limits.h` constant for Linux.
-//
-// Note that the kernel doesn't enforce a limit on character device names
-// other than needing to fit within the CUSE_INIT response. Setting a lower
-// limit in this library avoids creating sysfs entries that are too long for
-// some programs name, and also leaves a path open to formatting CUSE_INIT
-// response data into a stack-allocated `[u8; PAGE_SIZE]` buffer in the future.
-const NAME_MAX: usize = 255;
 
 // DeviceNameError {{{
 
@@ -47,10 +28,6 @@ pub enum DeviceNameError {
 	Empty,
 	/// The input contains `NUL`.
 	ContainsNul,
-	/// The input contains `'/'`.
-	ContainsSlash,
-	/// The input length in bytes exceeds `NAME_MAX`.
-	ExceedsMaxLen,
 }
 
 // }}}
@@ -64,8 +41,7 @@ pub enum DeviceNameError {
 /// `&[u8]` slice.
 ///
 /// An instance of this type is a static guarantee that the underlying byte
-/// array is non-empty, is less than `NAME_MAX` bytes in length, and does not
-/// contain a forbidden character (`NUL` or `'/'`).
+/// array is non-empty and does not contain `NUL`.
 #[derive(Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct DeviceName {
 	bytes: [u8],
@@ -76,8 +52,7 @@ impl DeviceName {
 	///
 	/// # Errors
 	///
-	/// Returns an error if the string is empty, is longer than
-	/// `NAME_MAX` bytes, or contains a forbidden character (`NUL` or `'/'`).
+	/// Returns an error if the string is empty or contains `NUL`.
 	#[inline]
 	pub fn new(name: &str) -> Result<&DeviceName, DeviceNameError> {
 		Self::from_bytes(name.as_bytes())
@@ -87,9 +62,7 @@ impl DeviceName {
 	///
 	/// # Safety
 	///
-	/// The provided string must be non-empty, must be no longer than
-	/// `NAME_MAX` bytes, and must not contain a forbidden character
-	/// (`NUL` or `'/'`).
+	/// The provided string must be non-empty and must not contain `NUL`.
 	#[inline]
 	#[must_use]
 	pub const unsafe fn new_unchecked(name: &str) -> &DeviceName {
@@ -100,23 +73,14 @@ impl DeviceName {
 	///
 	/// # Errors
 	///
-	/// Returns an error if the slice is empty, is longer than
-	/// `NAME_MAX` bytes, or contains a forbidden byte (`0x00` or `0x2F`).
+	/// Returns an error if the slice is empty or contains `0x00`.
 	#[inline]
 	pub fn from_bytes(bytes: &[u8]) -> Result<&DeviceName, DeviceNameError> {
 		if bytes.is_empty() {
 			return Err(DeviceNameError::Empty);
 		}
-		if bytes.len() > NAME_MAX {
-			return Err(DeviceNameError::ExceedsMaxLen);
-		}
-		for &byte in bytes {
-			if byte == 0 {
-				return Err(DeviceNameError::ContainsNul);
-			}
-			if byte == b'/' {
-				return Err(DeviceNameError::ContainsSlash);
-			}
+		if bytes.contains(&0) {
+			return Err(DeviceNameError::ContainsNul);
 		}
 		Ok(unsafe { Self::from_bytes_unchecked(bytes) })
 	}
@@ -126,9 +90,7 @@ impl DeviceName {
 	///
 	/// # Safety
 	///
-	/// The provided `&[u8]` must be non-empty, must be no longer than
-	/// `NAME_MAX` bytes, and must not contain a forbidden byte
-	/// (`0x00` or `0x2F`).
+	/// The provided slice must be non-empty and must not contain `0x00`.
 	#[inline]
 	#[must_use]
 	pub const unsafe fn from_bytes_unchecked(bytes: &[u8]) -> &DeviceName {
@@ -193,10 +155,12 @@ impl PartialEq<DeviceName> for [u8] {
 /// semantics of these values are platform-specific, but in general the major
 /// number identifies a category of device driver and the minor number
 /// identifies a specific device.
+#[allow(clippy::exhaustive_structs)]
+#[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct DeviceNumber {
-	major: u32,
-	minor: u32,
+	pub major: u32,
+	pub minor: u32,
 }
 
 impl DeviceNumber {
@@ -219,18 +183,6 @@ impl DeviceNumber {
 	#[must_use]
 	pub const fn minor(&self) -> u32 {
 		self.minor
-	}
-}
-
-impl PartialEq<(u32, u32)> for DeviceNumber {
-	fn eq(&self, other: &(u32, u32)) -> bool {
-		(self.major, self.minor) == *other
-	}
-}
-
-impl PartialEq<DeviceNumber> for (u32, u32) {
-	fn eq(&self, other: &DeviceNumber) -> bool {
-		(other.major, other.minor) == *self
 	}
 }
 

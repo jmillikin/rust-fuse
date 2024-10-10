@@ -17,7 +17,10 @@
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::{env, ffi, fs, io, panic, path, sync, thread};
 
-use fuse::cuse;
+use fuse::{
+	CuseDeviceName,
+	CuseDeviceNumber,
+};
 use fuse::operations::cuse_init;
 use fuse::operations::fuse_init;
 use fuse::server;
@@ -339,11 +342,12 @@ pub fn cuse_interop_test<H: TestDev + Send + 'static>(
 	test_fn: impl FnOnce(&path::Path) + panic::UnwindSafe,
 ) {
 	let mut mktemp_template = {
-		let mut tmp = path::PathBuf::from("/dev/");
+		let mut tmp = path::PathBuf::from("/dev/subdir/");
 		tmp.push("rust-cuse.XXXXXX\x00");
 		tmp.into_os_string().into_vec()
 	};
 
+	unsafe { libc::mkdir(c"/dev/subdir".as_ptr(), 0o777) };
 	{
 		let template_ptr = mktemp_template.as_mut_ptr() as *mut libc::c_char;
 		let mktemp_ret = unsafe { libc_mktemp(template_ptr) };
@@ -371,12 +375,12 @@ pub fn cuse_interop_test<H: TestDev + Send + 'static>(
 	let server_thread = {
 		let ready = sync::Arc::clone(&server_ready);
 		thread::spawn(move || {
-			let dev_name = cuse::DeviceName::from_bytes(&mktemp_template)
+			let dev_name = CuseDeviceName::from_bytes(&mktemp_template)
 				.unwrap();
-			let dev_number = cuse::DeviceNumber::new(
-				CUSE_DEV_MAJOR,
-				CUSE_DEV_MINOR,
-			);
+			let dev_number = CuseDeviceNumber {
+				major: CUSE_DEV_MAJOR,
+				minor: CUSE_DEV_MINOR,
+			};
 
 			let conn_or_err = server::CuseServer::new(dev_name, dev_number)
 				.update_flags(H::cuse_init_flags)

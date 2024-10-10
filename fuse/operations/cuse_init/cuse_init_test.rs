@@ -16,8 +16,11 @@
 
 use core::mem::size_of;
 
-use fuse::Version;
-use fuse::cuse;
+use fuse::{
+	CuseDeviceName,
+	CuseDeviceNumber,
+	Version,
+};
 use fuse::kernel;
 use fuse::operations::cuse_init::{
 	CuseInitFlag,
@@ -82,7 +85,7 @@ fn request_impl_debug() {
 
 #[test]
 fn response() {
-	let device_name = cuse::DeviceName::new("test-device").unwrap();
+	let device_name = CuseDeviceName::new("test-device").unwrap();
 	let mut resp = CuseInitResponse::new(device_name);
 	resp.set_version(Version::new(7, 23));
 	resp.set_max_write(4096);
@@ -117,12 +120,12 @@ fn response() {
 
 #[test]
 fn response_impl_debug() {
-	let device_name = cuse::DeviceName::new("test-device").unwrap();
+	let device_name = CuseDeviceName::new("test-device").unwrap();
 	let mut response = CuseInitResponse::new(device_name);
 	response.set_version(fuse::Version::new(123, 456));
 	response.set_max_read(4096);
 	response.set_max_write(8192);
-	response.set_device_number(cuse::DeviceNumber::new(10, 11));
+	response.set_device_number(CuseDeviceNumber::new(10, 11));
 	response.update_flags(|flags| {
 		flags.set(CuseInitFlag::UNRESTRICTED_IOCTL);
 	});
