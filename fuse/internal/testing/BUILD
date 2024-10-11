@@ -16,6 +16,7 @@ rust_library(
     name = "interop_testutil",
     srcs = ["interop_testutil.rs"],
     edition = "2021",
+    tags = ["manual"],
     deps = [
         ":fuse_testutil",
         "//fuse",
