@@ -14,17 +14,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::mem::size_of;
-
 use fuse::kernel;
-use fuse::operations::fsync::{
-	FsyncRequest,
-	FsyncRequestFlag,
-	FsyncResponse,
-};
+use fuse::server::FsyncRequest;
 
 use fuse_testutil as testutil;
-use fuse_testutil::{decode_request, encode_response, MessageBuilder};
+use fuse_testutil::{decode_request, MessageBuilder};
 
 #[test]
 fn request() {
@@ -42,7 +36,7 @@ fn request() {
 	let req = decode_request!(FsyncRequest, buf);
 
 	assert_eq!(req.handle(), 3);
-	assert_eq!(req.flags().get(FsyncRequestFlag::FDATASYNC), true);
+	assert_eq!(req.flags().get(fuse::FsyncRequestFlag::FDATASYNC), true);
 }
 
 #[test]
@@ -71,26 +65,4 @@ fn request_impl_debug() {
 			"}",
 		),
 	);
-}
-
-#[test]
-fn response_empty() {
-	let resp = FsyncResponse::new();
-	let encoded = encode_response!(resp);
-
-	assert_eq!(
-		encoded,
-		MessageBuilder::new()
-			.push_sized(&testutil::new!(kernel::fuse_out_header {
-				len: size_of::<kernel::fuse_out_header>() as u32,
-				unique: 0xAABBCCDD,
-			}))
-			.build()
-	);
-}
-
-#[test]
-fn response_impl_debug() {
-	let response = FsyncResponse::new();
-	assert_eq!(format!("{:#?}", response), "FsyncResponse",);
 }

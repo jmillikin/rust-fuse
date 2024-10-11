@@ -187,8 +187,6 @@ mod errno {
 }
 
 impl OsError {
-	pub(crate) const E2BIG: crate::Error = fuse_error(errno::E2BIG);
-
 	/// An operation was interrupted.
 	///
 	/// This error can be returned from an operation to signal that it was

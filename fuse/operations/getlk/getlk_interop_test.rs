@@ -18,8 +18,12 @@ use core::num;
 use std::sync::mpsc;
 use std::{fmt, panic};
 
-use fuse::server::fuse_rpc;
-use fuse::server::prelude::*;
+use fuse::{
+	FuseInitFlag,
+	FuseInitFlags,
+};
+use fuse::server;
+use fuse::server::FuseRequest;
 
 #[cfg(target_os = "freebsd")]
 use fuse::os::freebsd::{F_RDLCK, F_WRLCK, F_UNLCK};
@@ -38,20 +42,41 @@ struct TestFS {
 	requests: mpsc::Sender<String>,
 }
 
+struct TestHandlers<'a, S> {
+	fs: &'a TestFS,
+	conn: &'a server::FuseConnection<S>,
+}
+
 impl interop_testutil::TestFS for TestFS {
+	fn dispatch_request(
+		&self,
+		conn: &server::FuseConnection<interop_testutil::DevFuse>,
+		request: FuseRequest<'_>,
+	) {
+		use fuse::server::FuseHandlers;
+		(TestHandlers{fs: self, conn}).dispatch(request);
+	}
+
 	fn fuse_init_flags(flags: &mut FuseInitFlags) {
 		flags.set(FuseInitFlag::POSIX_LOCKS);
 	}
 }
 
-impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
-	fn lookup(
-		&self,
-		call: fuse_rpc::Call<S>,
-		request: &LookupRequest,
-	) -> fuse_rpc::SendResult<LookupResponse, S::Error> {
+impl<'a, S> server::FuseHandlers for TestHandlers<'a, S>
+where
+	S: server::FuseSocket,
+	S::Error: core::fmt::Debug,
+{
+	fn unimplemented(&self, request: FuseRequest<'_>) {
+		self.conn.reply(request.id()).err(OsError::UNIMPLEMENTED).unwrap();
+	}
+
+	fn lookup(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::LookupRequest::try_from(request).unwrap();
+
 		if !request.parent_id().is_root() {
-			return call.respond_err(OsError::NOT_FOUND);
+			return send_reply.err(OsError::NOT_FOUND).unwrap();
 		}
 
 		let node_id;
@@ -62,7 +87,7 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		} else if request.name() == "getlk_w.txt" {
 			node_id = fuse::NodeId::new(4).unwrap();
 		} else {
-			return call.respond_err(OsError::NOT_FOUND);
+			return send_reply.err(OsError::NOT_FOUND).unwrap();
 		}
 
 		let mut attr = fuse::Attributes::new(node_id);
@@ -72,25 +97,19 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		let mut entry = fuse::Entry::new(attr);
 		entry.set_cache_timeout(std::time::Duration::from_secs(60));
 
-		let resp = LookupResponse::new(Some(entry));
-		call.respond_ok(&resp)
+		send_reply.ok(&entry).unwrap();
 	}
 
-	fn open(
-		&self,
-		call: fuse_rpc::Call<S>,
-		request: &OpenRequest,
-	) -> fuse_rpc::SendResult<OpenResponse, S::Error> {
-		let mut resp = OpenResponse::new();
-		resp.set_handle(1000 + request.node_id().get());
-		call.respond_ok(&resp)
+	fn open(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let mut reply = fuse::kernel::fuse_open_out::new();
+		reply.fh = 1000 + request.header().raw().nodeid;
+		send_reply.ok(&reply).unwrap();
 	}
 
-	fn getlk(
-		&self,
-		call: fuse_rpc::Call<S>,
-		request: &GetlkRequest,
-	) -> fuse_rpc::SendResult<GetlkResponse, S::Error> {
+	fn getlk(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::GetlkRequest::try_from(request).unwrap();
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the lock owner, which is non-deterministic.
@@ -102,7 +121,7 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 			"owner: 123456789123456789,",
 		);
 
-		self.requests.send(request_str).unwrap();
+		self.fs.requests.send(request_str).unwrap();
 
 		let range = fuse::LockRange::new(1024, num::NonZeroU64::new(3072));
 		let pid = fuse::LockOwnerProcessId::new(std::process::id());
@@ -114,8 +133,17 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		} else {
 			fuse::Lock::new(F_UNLCK, fuse::LockRange::new(0, None), None)
 		};
-		let resp = GetlkResponse::new(lock);
-		call.respond_ok(&resp)
+
+		// FIXME
+		let mut reply = fuse::kernel::fuse_lk_out::new();
+		reply.lk.start = lock.range().start();
+		reply.lk.end = lock.range().end().unwrap_or(i64::MAX as u64);
+		reply.lk.r#type = lock.mode().0;
+		if lock.mode() != F_UNLCK {
+			reply.lk.pid = pid.unwrap().get();
+		}
+
+		send_reply.ok(&reply).unwrap();
 	}
 }
 

@@ -14,17 +14,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::mem::size_of;
-
 use fuse::kernel;
-use fuse::operations::opendir::{
-	OpendirRequest,
-	OpendirResponse,
-	OpendirResponseFlag,
-};
+use fuse::server::OpendirRequest;
 
 use fuse_testutil as testutil;
-use fuse_testutil::{decode_request, encode_response, MessageBuilder};
+use fuse_testutil::{decode_request, MessageBuilder};
 
 #[test]
 fn request() {
@@ -68,70 +62,3 @@ fn request_impl_debug() {
 		),
 	);
 }
-
-#[test]
-fn response() {
-	let mut response = OpendirResponse::new();
-	response.set_handle(123);
-	response.update_flags(|flags| {
-		flags.set(OpendirResponseFlag::KEEP_CACHE);
-	});
-
-	let encoded = encode_response!(response, {
-		protocol_version: (7, 1),
-	});
-
-	assert_eq!(
-		encoded,
-		MessageBuilder::new()
-			.push_sized(&testutil::new!(kernel::fuse_out_header {
-				len: (size_of::<kernel::fuse_out_header>()
-					+ size_of::<kernel::fuse_open_out>()) as u32,
-				unique: 0xAABBCCDD,
-			}))
-			.push_sized(&testutil::new!(kernel::fuse_open_out {
-				fh: 123,
-				open_flags: 0x2,
-			}))
-			.build()
-	);
-}
-
-#[test]
-fn response_impl_debug() {
-	let mut response = OpendirResponse::new();
-	response.set_handle(123);
-	response.update_flags(|flags| {
-		flags.set(OpendirResponseFlag::KEEP_CACHE);
-	});
-
-	assert_eq!(
-		format!("{:#?}", response),
-		concat!(
-			"OpendirResponse {\n",
-			"    handle: 123,\n",
-			"    flags: OpendirResponseFlags {\n",
-			"        KEEP_CACHE,\n",
-			"    },\n",
-			"}",
-		),
-	);
-}
-
-/*
-#[test]
-fn open_flags() {
-	// Flag sets render as a struct, with unknown flags falling back
-	// to hex.
-	assert_eq!(
-		format!("{:#?}", OpendirResponseFlags::from_bits(0x2 | (1u32 << 31))),
-		concat!(
-			"OpendirResponseFlags {\n",
-			"    keep_cache: true,\n",
-			"    nonseekable: false,\n",
-			"    0x80000000: true,\n",
-			"}",
-		),
-	);
-}
-*/

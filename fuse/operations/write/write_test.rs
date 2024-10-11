@@ -14,17 +14,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::mem::size_of;
-
 use fuse::kernel;
-use fuse::operations::write::{
-	WriteRequest,
-	WriteRequestFlag,
-	WriteResponse,
-};
+use fuse::server::WriteRequest;
 
 use fuse_testutil as testutil;
-use fuse_testutil::{decode_request, encode_response, MessageBuilder};
+use fuse_testutil::{decode_request, MessageBuilder};
 
 const DUMMY_WRITE_FLAG: u32 = 0x80000000;
 
@@ -49,7 +43,7 @@ fn request_v7p1() {
 	assert_eq!(req.handle(), 123);
 	assert_eq!(req.offset(), 45);
 	assert_eq!(req.lock_owner(), None);
-	assert_eq!(req.flags().get(WriteRequestFlag::WRITE_CACHE), false);
+	assert_eq!(req.flags().get(fuse::WriteRequestFlag::WRITE_CACHE), false);
 	assert_eq!(req.open_flags(), 0);
 	assert_eq!(req.value(), b"hello.world!");
 }
@@ -77,7 +71,7 @@ fn request_v7p9() {
 	assert_eq!(req.handle(), 123);
 	assert_eq!(req.offset(), 45);
 	assert_eq!(req.lock_owner(), None);
-	assert_eq!(req.flags().get(WriteRequestFlag::WRITE_CACHE), false);
+	assert_eq!(req.flags().get(fuse::WriteRequestFlag::WRITE_CACHE), false);
 	assert_eq!(req.open_flags(), 67);
 	assert_eq!(req.value(), b"hello.world!");
 }
@@ -114,42 +108,5 @@ fn request_page_cache() {
 
 	let req = decode_request!(WriteRequest, buf);
 
-	assert_eq!(req.flags().get(WriteRequestFlag::WRITE_CACHE), true);
-}
-
-#[test]
-fn response() {
-	let mut resp = WriteResponse::new();
-	resp.set_size(123);
-
-	let encoded = encode_response!(resp);
-
-	assert_eq!(
-		encoded,
-		MessageBuilder::new()
-			.push_sized(&testutil::new!(kernel::fuse_out_header {
-				len: (size_of::<kernel::fuse_out_header>()
-					+ size_of::<kernel::fuse_write_out>()) as u32,
-				unique: 0xAABBCCDD,
-			}))
-			.push_sized(&testutil::new!(kernel::fuse_write_out {
-				size: 123,
-			}))
-			.build()
-	);
-}
-
-#[test]
-fn response_impl_debug() {
-	let mut response = WriteResponse::new();
-	response.set_size(123);
-
-	assert_eq!(
-		format!("{:#?}", response),
-		concat!(
-			"WriteResponse {\n",
-			"    size: 123,\n",
-			"}",
-		),
-	);
+	assert_eq!(req.flags().get(fuse::WriteRequestFlag::WRITE_CACHE), true);
 }

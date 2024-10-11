@@ -19,9 +19,10 @@
 use core::fmt;
 use core::time;
 
-use crate::kernel;
-use crate::internal::timestamp;
 use crate::attributes::Attributes;
+use crate::internal::timestamp;
+use crate::kernel;
+use crate::server;
 
 /// Cacheable directory entry for a filesystem node.
 #[derive(Clone, Copy)]
@@ -50,19 +51,13 @@ impl Entry {
 		&*(raw_ptr.cast::<Entry>())
 	}
 
+	/// Returns the raw [`fuse_entry_out`] for the node entry.
+	///
+	/// [`fuse_entry_out`]: kernel::fuse_entry_out
 	#[inline]
 	#[must_use]
-	pub(crate) unsafe fn from_ref_mut(
-		raw: &mut kernel::fuse_entry_out,
-	) -> &mut Self {
-		let raw_ptr = raw as *mut kernel::fuse_entry_out;
-		&mut *(raw_ptr.cast::<Entry>())
-	}
-
-	#[inline]
-	#[must_use]
-	pub(crate) fn into_entry_out(self) -> kernel::fuse_entry_out {
-		self.raw
+	pub fn raw(&self) -> &kernel::fuse_entry_out {
+		&self.raw
 	}
 
 	/// Returns the generation number for this entry.
@@ -121,23 +116,6 @@ impl Entry {
 		self.raw.attr_valid = seconds;
 		self.raw.attr_valid_nsec = nanos;
 	}
-
-	#[inline]
-	#[must_use]
-	pub(crate) fn as_v7p9(&self) -> &kernel::fuse_entry_out {
-		let self_ptr = self as *const Entry;
-		unsafe { &*(self_ptr.cast::<kernel::fuse_entry_out>()) }
-	}
-
-	#[inline]
-	#[must_use]
-	pub(crate) fn as_v7p1(
-		&self,
-	) -> &[u8; kernel::FUSE_COMPAT_ENTRY_OUT_SIZE] {
-		let self_ptr = self as *const Entry;
-		const OUT_SIZE: usize = kernel::FUSE_COMPAT_ENTRY_OUT_SIZE;
-		unsafe { &*(self_ptr.cast::<[u8; OUT_SIZE]>()) }
-	}
 }
 
 impl fmt::Debug for Entry {
@@ -148,5 +126,15 @@ impl fmt::Debug for Entry {
 			.field("cache_timeout", &self.cache_timeout())
 			.field("attribute_cache_timeout", &self.attribute_cache_timeout())
 			.finish()
+	}
+}
+
+impl server::FuseReply for Entry {
+	#[inline]
+	fn send_to<S: server::FuseSocket>(
+		&self,
+		reply_sender: server::FuseReplySender<'_, S>,
+	) -> Result<(), server::SendError<S::Error>> {
+		self.raw.send_to(reply_sender)
 	}
 }

@@ -14,21 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_MKDIR` operation.
-
 use core::fmt;
 
 use crate::kernel;
-use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // MkdirRequest {{{
 
 /// Request type for `FUSE_MKDIR`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_MKDIR` operation.
 pub struct MkdirRequest<'a> {
 	parent_id: crate::NodeId,
 	name: &'a crate::NodeName,
@@ -57,25 +50,18 @@ impl MkdirRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for MkdirRequest<'_> {}
+try_from_fuse_request!(MkdirRequest<'a>, |request| {
+	let mut dec = request.decoder();
+	dec.expect_opcode(kernel::fuse_opcode::FUSE_MKDIR)?;
 
-impl<'a> server::FuseRequest<'a> for MkdirRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::FUSE_MKDIR)?;
-
-		let raw: &kernel::fuse_mkdir_in = dec.next_sized()?;
-		let name = dec.next_node_name()?;
-		Ok(Self {
-			parent_id: decode::node_id(dec.header().nodeid)?,
-			name,
-			raw: *raw,
-		})
-	}
-}
+	let raw: &kernel::fuse_mkdir_in = dec.next_sized()?;
+	let name = dec.next_node_name()?;
+	Ok(Self {
+		parent_id: decode::node_id(dec.header().nodeid)?,
+		name,
+		raw: *raw,
+	})
+});
 
 impl fmt::Debug for MkdirRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -85,61 +71,6 @@ impl fmt::Debug for MkdirRequest<'_> {
 			.field("mode", &self.mode())
 			.field("umask", &format_args!("{:#o}", &self.raw.umask))
 			.finish()
-	}
-}
-
-// }}}
-
-// MkdirResponse {{{
-
-/// Response type for `FUSE_MKDIR`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_MKDIR` operation.
-pub struct MkdirResponse {
-	entry: crate::Entry,
-}
-
-impl MkdirResponse {
-	#[inline]
-	#[must_use]
-	pub fn new(entry: crate::Entry) -> MkdirResponse {
-		Self { entry }
-	}
-
-	#[inline]
-	#[must_use]
-	pub fn entry(&self) -> &crate::Entry {
-		&self.entry
-	}
-
-	#[inline]
-	#[must_use]
-	pub fn entry_mut(&mut self) -> &mut crate::Entry {
-		&mut self.entry
-	}
-}
-
-impl fmt::Debug for MkdirResponse {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("MkdirResponse")
-			.field("entry", &self.entry())
-			.finish()
-	}
-}
-
-impl server::sealed::Sealed for MkdirResponse {}
-
-impl server::FuseResponse for MkdirResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		if options.version_minor() >= 9 {
-			return encode::sized(header, self.entry.as_v7p9());
-		}
-		encode::sized(header, self.entry.as_v7p1())
 	}
 }
 

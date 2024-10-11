@@ -3,12 +3,7 @@ load("@rules_rust//rust:defs.bzl", "rust_test")
 filegroup(
     name = "srcs",
     srcs = [
-        "cuse_rpc.rs",
         "decode.rs",
-        "encode.rs",
-        "fuse_rpc.rs",
-        "io.rs",
-        "prelude.rs",
     ],
     visibility = ["//fuse:__subpackages__"],
 )

@@ -14,22 +14,16 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_OPEN` operation.
-
 use core::fmt;
 
 use crate::internal::debug;
 use crate::kernel;
 use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // OpenRequest {{{
 
 /// Request type for `FUSE_OPEN`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_OPEN` operation.
 pub struct OpenRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_open_in,
@@ -55,28 +49,16 @@ impl OpenRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for OpenRequest<'_> {}
+try_from_cuse_request!(OpenRequest<'a>, |request| {
+	Self::try_from(request.inner, true)
+});
 
-impl<'a> server::CuseRequest<'a> for OpenRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::CuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		Self::decode_request(request, true)
-	}
-}
-
-impl<'a> server::FuseRequest<'a> for OpenRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		Self::decode_request(request, false)
-	}
-}
+try_from_fuse_request!(OpenRequest<'a>, |request| {
+	Self::try_from(request.inner, false)
+});
 
 impl<'a> OpenRequest<'a> {
-	fn decode_request(
+	fn try_from(
 		request: server::Request<'a>,
 		is_cuse: bool,
 	) -> Result<Self, server::RequestError> {
@@ -99,85 +81,6 @@ impl fmt::Debug for OpenRequest<'_> {
 			.field("flags", &self.flags())
 			.field("open_flags", &debug::hex_u32(self.open_flags()))
 			.finish()
-	}
-}
-
-// }}}
-
-// OpenResponse {{{
-
-/// Response type for `FUSE_OPEN`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_OPEN` operation.
-pub struct OpenResponse {
-	raw: kernel::fuse_open_out,
-}
-
-impl OpenResponse {
-	#[must_use]
-	pub fn new() -> OpenResponse {
-		Self {
-			raw: kernel::fuse_open_out::new(),
-		}
-	}
-
-	#[must_use]
-	pub fn handle(&self) -> u64 {
-		self.raw.fh
-	}
-
-	pub fn set_handle(&mut self, handle: u64) {
-		self.raw.fh = handle;
-	}
-
-	#[must_use]
-	pub fn flags(&self) -> OpenResponseFlags {
-		OpenResponseFlags {
-			bits: self.raw.open_flags,
-		}
-	}
-
-	pub fn set_flags(&mut self, flags: OpenResponseFlags) {
-		self.raw.open_flags = flags.bits
-	}
-
-	#[inline]
-	pub fn update_flags(&mut self, f: impl FnOnce(&mut OpenResponseFlags)) {
-		let mut flags = self.flags();
-		f(&mut flags);
-		self.set_flags(flags)
-	}
-}
-
-impl fmt::Debug for OpenResponse {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("OpenResponse")
-			.field("handle", &self.handle())
-			.field("flags", &self.flags())
-			.finish()
-	}
-}
-
-impl server::sealed::Sealed for OpenResponse {}
-
-impl server::CuseResponse for OpenResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::CuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::sized(header, &self.raw)
-	}
-}
-
-impl server::FuseResponse for OpenResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::sized(header, &self.raw)
 	}
 }
 

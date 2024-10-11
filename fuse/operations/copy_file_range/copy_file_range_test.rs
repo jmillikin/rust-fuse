@@ -14,17 +14,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::mem::size_of;
-
 use fuse::kernel;
-use fuse::operations::copy_file_range::{
-	CopyFileRangeRequest,
-	CopyFileRangeRequestFlags,
-	CopyFileRangeResponse,
-};
+use fuse::server::CopyFileRangeRequest;
 
 use fuse_testutil as testutil;
-use fuse_testutil::{decode_request, encode_response, MessageBuilder};
+use fuse_testutil::{decode_request, MessageBuilder};
 
 #[test]
 fn request() {
@@ -52,7 +46,7 @@ fn request() {
 	assert_eq!(req.output_handle(), 14);
 	assert_eq!(req.output_offset(), 15);
 	assert_eq!(req.len(), 16);
-	assert_eq!(req.flags(), CopyFileRangeRequestFlags::new());
+	assert_eq!(req.flags(), fuse::CopyFileRangeRequestFlags::new());
 }
 
 #[test]
@@ -85,43 +79,6 @@ fn request_impl_debug() {
 			"    output_offset: 15,\n",
 			"    len: 16,\n",
 			"    flags: CopyFileRangeRequestFlags {},\n",
-			"}",
-		),
-	);
-}
-
-#[test]
-fn response() {
-	let mut resp = CopyFileRangeResponse::new();
-	resp.set_size(123);
-
-	let encoded = encode_response!(resp);
-
-	assert_eq!(
-		encoded,
-		MessageBuilder::new()
-			.push_sized(&testutil::new!(kernel::fuse_out_header {
-				len: (size_of::<kernel::fuse_out_header>()
-					+ size_of::<kernel::fuse_write_out>()) as u32,
-				unique: 0xAABBCCDD,
-			}))
-			.push_sized(&testutil::new!(kernel::fuse_write_out {
-				size: 123,
-			}))
-			.build()
-	);
-}
-
-#[test]
-fn response_impl_debug() {
-	let mut response = CopyFileRangeResponse::new();
-	response.set_size(123);
-
-	assert_eq!(
-		format!("{:#?}", response),
-		concat!(
-			"CopyFileRangeResponse {\n",
-			"    size: 123,\n",
 			"}",
 		),
 	);

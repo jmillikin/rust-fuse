@@ -17,8 +17,8 @@
 use std::panic;
 use std::sync::mpsc;
 
-use fuse::server::fuse_rpc;
-use fuse::server::prelude::*;
+use fuse::server;
+use fuse::server::FuseRequest;
 
 use interop_testutil::{
 	diff_str,
@@ -36,19 +36,40 @@ struct TestOptions {
 	stub_lock_owner: bool,
 }
 
-impl interop_testutil::TestFS for TestFS {}
+struct TestHandlers<'a, S> {
+	fs: &'a TestFS,
+	conn: &'a server::FuseConnection<S>,
+}
 
-impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
-	fn lookup(
+impl interop_testutil::TestFS for TestFS {
+	fn dispatch_request(
 		&self,
-		call: fuse_rpc::Call<S>,
-		request: &LookupRequest,
-	) -> fuse_rpc::SendResult<LookupResponse, S::Error> {
+		conn: &server::FuseConnection<interop_testutil::DevFuse>,
+		request: FuseRequest<'_>,
+	) {
+		use fuse::server::FuseHandlers;
+		(TestHandlers{fs: self, conn}).dispatch(request);
+	}
+}
+
+impl<'a, S> server::FuseHandlers for TestHandlers<'a, S>
+where
+	S: server::FuseSocket,
+	S::Error: core::fmt::Debug,
+{
+	fn unimplemented(&self, request: FuseRequest<'_>) {
+		self.conn.reply(request.id()).err(OsError::UNIMPLEMENTED).unwrap();
+	}
+
+	fn lookup(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::LookupRequest::try_from(request).unwrap();
+
 		if !request.parent_id().is_root() {
-			return call.respond_err(OsError::NOT_FOUND);
+			return send_reply.err(OsError::NOT_FOUND).unwrap();
 		}
 		if request.name() != "file.txt" {
-			return call.respond_err(OsError::NOT_FOUND);
+			return send_reply.err(OsError::NOT_FOUND).unwrap();
 		}
 
 		let mut attr = fuse::Attributes::new(fuse::NodeId::new(2).unwrap());
@@ -58,57 +79,51 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		let mut entry = fuse::Entry::new(attr);
 		entry.set_cache_timeout(std::time::Duration::from_secs(60));
 
-		let resp = LookupResponse::new(Some(entry));
-		call.respond_ok(&resp)
+		send_reply.ok(&entry).unwrap();
 	}
 
-	fn getattr(
-		&self,
-		call: fuse_rpc::Call<S>,
-		request: &GetattrRequest,
-	) -> fuse_rpc::SendResult<GetattrResponse, S::Error> {
+	fn getattr(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::GetattrRequest::try_from(request).unwrap();
 		let mut attr = fuse::Attributes::new(request.node_id());
 
 		if request.node_id().is_root() {
 			attr.set_mode(fuse::FileMode::S_IFDIR | 0o755);
 			attr.set_link_count(2);
-			let resp = GetattrResponse::new(attr);
-			return call.respond_ok(&resp);
+			let mut reply = fuse::kernel::fuse_attr_out::new();
+			reply.attr = *attr.raw();
+			return send_reply.ok(&reply).unwrap();
 		}
 
 		if request.node_id() == fuse::NodeId::new(2).unwrap() {
 			attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 			attr.set_link_count(1);
-			let resp = GetattrResponse::new(attr);
-			return call.respond_ok(&resp);
+			let mut reply = fuse::kernel::fuse_attr_out::new();
+			reply.attr = *attr.raw();
+			return send_reply.ok(&reply).unwrap();
 		}
 
-		call.respond_err(OsError::NOT_FOUND)
+		send_reply.err(OsError::NOT_FOUND).unwrap();
 	}
 
-	fn open(
-		&self,
-		call: fuse_rpc::Call<S>,
-		request: &OpenRequest,
-	) -> fuse_rpc::SendResult<OpenResponse, S::Error> {
-		let mut resp = OpenResponse::new();
-		if request.node_id() == fuse::NodeId::new(2).unwrap() {
-			resp.set_handle(1002);
-			return call.respond_ok(&resp);
+	fn open(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		if request.header().raw().nodeid == 2 {
+			let mut reply = fuse::kernel::fuse_open_out::new();
+			reply.fh = 1002;
+			return send_reply.ok(&reply).unwrap();
 		}
-		call.respond_err(OsError::NOT_FOUND)
+		send_reply.err(OsError::NOT_FOUND).unwrap();
 	}
 
-	fn setattr(
-		&self,
-		call: fuse_rpc::Call<S>,
-		request: &SetattrRequest,
-	) -> fuse_rpc::SendResult<SetattrResponse, S::Error> {
+	fn setattr(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::SetattrRequest::try_from(request).unwrap();
 		println!("{:#?}", request);
 
 		let mut request_str = format!("{:#?}", request);
 
-		if self.opts.stub_lock_owner {
+		if self.fs.opts.stub_lock_owner {
 			// stub out the lock owner, which is non-deterministic.
 			let repl_start = request_str.find("lock_owner:").unwrap();
 			let repl_end =
@@ -119,14 +134,15 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 			);
 		}
 
-		self.requests.send(request_str).unwrap();
+		self.fs.requests.send(request_str).unwrap();
 
 		let mut attr = fuse::Attributes::new(request.node_id());
 		attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 		attr.set_link_count(1);
 
-		let resp = SetattrResponse::new(attr);
-		call.respond_ok(&resp)
+		let mut reply = fuse::kernel::fuse_attr_out::new();
+		reply.attr = *attr.raw();
+		send_reply.ok(&reply).unwrap();
 	}
 }
 

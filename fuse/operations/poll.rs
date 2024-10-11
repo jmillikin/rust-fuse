@@ -14,15 +14,12 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_POLL` operation.
-
 use core::fmt;
 
 use crate::internal::debug;
 use crate::kernel;
 use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // PollHandle {{{
 
@@ -42,9 +39,6 @@ impl fmt::Debug for PollHandle {
 // PollRequest {{{
 
 /// Request type for `FUSE_POLL`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_POLL` operation.
 pub struct PollRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_poll_in,
@@ -74,8 +68,28 @@ impl PollRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for PollRequest<'_> {}
+try_from_cuse_request!(PollRequest<'a>, |request| {
+	Self::try_from(request.inner)
+});
 
+try_from_fuse_request!(PollRequest<'a>, |request| {
+	Self::try_from(request.inner)
+});
+
+impl<'a> PollRequest<'a> {
+	fn try_from(
+		request: server::Request<'a>,
+	) -> Result<Self, server::RequestError> {
+		let mut dec = request.decoder();
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_POLL)?;
+
+		let header = dec.header();
+		let body = dec.next_sized()?;
+		decode::node_id(header.nodeid)?;
+		Ok(Self { header, body })
+	}
+}
+/*
 impl<'a> server::CuseRequest<'a> for PollRequest<'a> {
 	fn from_request(
 		request: server::Request<'a>,
@@ -94,19 +108,7 @@ impl<'a> server::FuseRequest<'a> for PollRequest<'a> {
 	}
 }
 
-impl<'a> PollRequest<'a> {
-	fn decode(
-		request: server::Request<'a>,
-	) -> Result<Self, server::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::FUSE_POLL)?;
-
-		let header = dec.header();
-		let body = dec.next_sized()?;
-		decode::node_id(header.nodeid)?;
-		Ok(Self { header, body })
-	}
-}
+*/
 
 impl fmt::Debug for PollRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -116,66 +118,6 @@ impl fmt::Debug for PollRequest<'_> {
 			.field("poll_events", &debug::hex_u32(self.poll_events()))
 			.field("flags", &self.flags())
 			.finish()
-	}
-}
-
-// }}}
-
-// PollResponse {{{
-
-/// Response type for `FUSE_POLL`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_COPY_FILE_RANGE` operation.
-pub struct PollResponse {
-	raw: kernel::fuse_poll_out,
-}
-
-impl PollResponse {
-	#[must_use]
-	pub fn new() -> PollResponse {
-		Self {
-			raw: kernel::fuse_poll_out::new(),
-		}
-	}
-
-	#[must_use]
-	pub fn poll_events(&self) -> crate::PollEvents {
-		self.raw.revents
-	}
-
-	pub fn set_poll_events(&mut self, poll_events: crate::PollEvents) {
-		self.raw.revents = poll_events;
-	}
-}
-
-impl fmt::Debug for PollResponse {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("PollResponse")
-			.field("poll_events", &debug::hex_u32(self.poll_events()))
-			.finish()
-	}
-}
-
-impl server::sealed::Sealed for PollResponse {}
-
-impl server::CuseResponse for PollResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::CuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::sized(header, &self.raw)
-	}
-}
-
-impl server::FuseResponse for PollResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::sized(header, &self.raw)
 	}
 }
 

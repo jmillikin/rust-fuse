@@ -14,21 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_FSYNCDIR` operation.
-
 use core::fmt;
 
 use crate::kernel;
-use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // FsyncdirRequest {{{
 
 /// Request type for `FUSE_FSYNCDIR`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_FSYNCDIR` operation.
 pub struct FsyncdirRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_fsync_in,
@@ -53,22 +46,15 @@ impl FsyncdirRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for FsyncdirRequest<'_> {}
+try_from_fuse_request!(FsyncdirRequest<'a>, |request| {
+	let mut dec = request.decoder();
+	dec.expect_opcode(kernel::fuse_opcode::FUSE_FSYNCDIR)?;
 
-impl<'a> server::FuseRequest<'a> for FsyncdirRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::FUSE_FSYNCDIR)?;
-
-		let header = dec.header();
-		let body = dec.next_sized()?;
-		decode::node_id(header.nodeid)?;
-		Ok(Self { header, body })
-	}
-}
+	let header = dec.header();
+	let body = dec.next_sized()?;
+	decode::node_id(header.nodeid)?;
+	Ok(Self { header, body })
+});
 
 impl fmt::Debug for FsyncdirRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -77,43 +63,6 @@ impl fmt::Debug for FsyncdirRequest<'_> {
 			.field("handle", &self.handle())
 			.field("flags", &self.flags())
 			.finish()
-	}
-}
-
-// }}}
-
-// FsyncdirResponse {{{
-
-/// Response type for `FUSE_FSYNCDIR`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_FSYNCDIR` operation.
-pub struct FsyncdirResponse {
-	_priv: (),
-}
-
-impl FsyncdirResponse {
-	#[must_use]
-	pub fn new() -> FsyncdirResponse {
-		Self { _priv: () }
-	}
-}
-
-impl fmt::Debug for FsyncdirResponse {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("FsyncdirResponse").finish()
-	}
-}
-
-impl server::sealed::Sealed for FsyncdirResponse {}
-
-impl server::FuseResponse for FsyncdirResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::header_only(header)
 	}
 }
 

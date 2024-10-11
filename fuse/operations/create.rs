@@ -14,8 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_CREATE` operation.
-
 use core::fmt;
 
 use crate::internal::compat;
@@ -23,14 +21,10 @@ use crate::internal::debug;
 use crate::kernel;
 use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // CreateRequest {{{
 
 /// Request type for `FUSE_CREATE`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_CREATE` operation.
 pub struct CreateRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_create_in<'a>>,
@@ -80,33 +74,26 @@ impl CreateRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for CreateRequest<'_> {}
+try_from_fuse_request!(CreateRequest<'a>, |request| {
+	let version_minor = request.layout.version_minor();
+	let mut dec = request.decoder();
+	dec.expect_opcode(kernel::fuse_opcode::FUSE_CREATE)?;
 
-impl<'a> server::FuseRequest<'a> for CreateRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		let version_minor = options.version_minor();
-		let mut dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::FUSE_CREATE)?;
+	let header = dec.header();
+	decode::node_id(header.nodeid)?;
 
-		let header = dec.header();
-		decode::node_id(header.nodeid)?;
+	let body = if version_minor >= 12 {
+		let body_v7p12 = dec.next_sized()?;
+		compat::Versioned::new_create_v7p12(version_minor, body_v7p12)
+	} else {
+		let body_v7p1 = dec.next_sized()?;
+		compat::Versioned::new_create_v7p1(version_minor, body_v7p1)
+	};
 
-		let body = if version_minor >= 12 {
-			let body_v7p12 = dec.next_sized()?;
-			compat::Versioned::new_create_v7p12(version_minor, body_v7p12)
-		} else {
-			let body_v7p1 = dec.next_sized()?;
-			compat::Versioned::new_create_v7p1(version_minor, body_v7p1)
-		};
+	let name = dec.next_node_name()?;
 
-		let name = dec.next_node_name()?;
-
-		Ok(Self { header, body, name })
-	}
-}
+	Ok(Self { header, body, name })
+});
 
 impl fmt::Debug for CreateRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -126,9 +113,6 @@ impl fmt::Debug for CreateRequest<'_> {
 // CreateResponse {{{
 
 /// Response type for `FUSE_CREATE`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_CREATE` operation.
 pub struct CreateResponse {
 	entry: crate::Entry,
 	open_out: kernel::fuse_open_out,
@@ -196,22 +180,16 @@ impl fmt::Debug for CreateResponse {
 	}
 }
 
-impl server::sealed::Sealed for CreateResponse {}
-
-impl server::FuseResponse for CreateResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		if options.version_minor() >= 9 {
-			return encode::sized2(
-				header,
-				self.entry.as_v7p9(),
-				&self.open_out,
-			);
+impl server::FuseReply for CreateResponse {
+	fn send_to<S: server::FuseSocket>(
+		&self,
+		reply_sender: server::FuseReplySender<'_, S>,
+	) -> Result<(), server::SendError<S::Error>> {
+		let mut entry_bytes = self.entry.raw().as_bytes();
+		if reply_sender.layout.version_minor < 9 {
+			entry_bytes = &entry_bytes[..kernel::FUSE_COMPAT_ENTRY_OUT_SIZE];
 		}
-		encode::sized2(header, self.entry.as_v7p1(), &self.open_out)
+		reply_sender.inner.send_2(entry_bytes, self.open_out.as_bytes())
 	}
 }
 

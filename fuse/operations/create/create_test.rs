@@ -14,18 +14,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::mem::size_of;
-
 use fuse::kernel;
-use fuse::operations::create::{
-	CreateRequest,
-	CreateRequestFlags,
-	CreateResponse,
-	CreateResponseFlag,
-};
+use fuse::server::CreateRequest;
 
 use fuse_testutil as testutil;
-use fuse_testutil::{decode_request, encode_response, MessageBuilder};
+use fuse_testutil::{decode_request, MessageBuilder};
 
 #[test]
 fn request_v7p1() {
@@ -45,7 +38,7 @@ fn request_v7p1() {
 
 	let expect: &[u8] = b"hello.world!";
 	assert_eq!(req.name(), expect);
-	assert_eq!(req.flags(), CreateRequestFlags::new());
+	assert_eq!(req.flags(), fuse::CreateRequestFlags::new());
 	assert_eq!(req.open_flags(), 0xFF);
 	assert_eq!(req.mode(), fuse::FileMode::new(0));
 	assert_eq!(req.umask(), 0);
@@ -73,7 +66,7 @@ fn request_v7p12() {
 
 	let expect: &[u8] = b"hello.world!";
 	assert_eq!(req.name(), expect);
-	assert_eq!(req.flags(), CreateRequestFlags::new());
+	assert_eq!(req.flags(), fuse::CreateRequestFlags::new());
 	assert_eq!(req.open_flags(), 0xFF);
 	assert_eq!(req.mode(), fuse::FileMode::new(0xEE));
 	assert_eq!(req.umask(), 0xDD);
@@ -106,142 +99,6 @@ fn request_impl_debug() {
 			"    open_flags: 0x0000007B,\n",
 			"    mode: 0o100644,\n",
 			"    umask: 18,\n",
-			"}",
-		),
-	);
-}
-
-#[test]
-fn response_v7p1() {
-	let attr = fuse::Attributes::new(fuse::NodeId::new(11).unwrap());
-	let mut entry = fuse::Entry::new(attr);
-	entry.set_generation(22);
-
-	let mut resp = CreateResponse::new(entry);
-	resp.set_handle(123);
-	resp.update_flags(|flags| {
-		flags.set(CreateResponseFlag::DIRECT_IO);
-		flags.set(CreateResponseFlag::KEEP_CACHE);
-	});
-
-	let encoded = encode_response!(resp, {
-		protocol_version: (7, 1),
-	});
-
-	assert_eq!(
-		encoded,
-		MessageBuilder::new()
-			.push_sized(&testutil::new!(kernel::fuse_out_header {
-				len: (size_of::<kernel::fuse_out_header>()
-					+ kernel::FUSE_COMPAT_ENTRY_OUT_SIZE
-					+ size_of::<kernel::fuse_open_out>()) as u32,
-				unique: 0xAABBCCDD,
-			}))
-			.push_sized(&testutil::new!(kernel::fuse_entry_out {
-				nodeid: 11,
-				generation: 22,
-				attr: testutil::new!(kernel::fuse_attr {
-					ino: 11,
-				}),
-			}))
-			.unpush(
-				size_of::<kernel::fuse_entry_out>()
-					- kernel::FUSE_COMPAT_ENTRY_OUT_SIZE
-			)
-			.push_sized(&testutil::new!(kernel::fuse_open_out {
-				fh: 123,
-				open_flags: 0b11,
-			}))
-			.build()
-	);
-}
-
-#[test]
-fn response_v7p9() {
-	let attr = fuse::Attributes::new(fuse::NodeId::new(11).unwrap());
-	let mut entry = fuse::Entry::new(attr);
-	entry.set_generation(22);
-
-	let mut resp = CreateResponse::new(entry);
-	resp.set_handle(123);
-	resp.update_flags(|flags| {
-		flags.set(CreateResponseFlag::DIRECT_IO);
-		flags.set(CreateResponseFlag::KEEP_CACHE);
-	});
-
-	let encoded = encode_response!(resp, {
-		protocol_version: (7, 9),
-	});
-
-	assert_eq!(
-		encoded,
-		MessageBuilder::new()
-			.push_sized(&testutil::new!(kernel::fuse_out_header {
-				len: (size_of::<kernel::fuse_out_header>()
-					+ size_of::<kernel::fuse_entry_out>()
-					+ size_of::<kernel::fuse_open_out>()) as u32,
-				unique: 0xAABBCCDD,
-			}))
-			.push_sized(&testutil::new!(kernel::fuse_entry_out {
-				nodeid: 11,
-				generation: 22,
-				attr: testutil::new!(kernel::fuse_attr {
-					ino: 11,
-				}),
-			}))
-			.push_sized(&testutil::new!(kernel::fuse_open_out {
-				fh: 123,
-				open_flags: 0b11,
-			}))
-			.build()
-	);
-}
-
-#[test]
-fn response_impl_debug() {
-
-	let mut attr = fuse::Attributes::new(fuse::NodeId::new(11).unwrap());
-	attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
-
-	let mut entry = fuse::Entry::new(attr);
-	entry.set_generation(22);
-
-	let mut response = CreateResponse::new(entry);
-	response.set_handle(123);
-	response.update_flags(|flags| {
-		flags.set(CreateResponseFlag::DIRECT_IO);
-		flags.set(CreateResponseFlag::KEEP_CACHE);
-	});
-
-	assert_eq!(
-		format!("{:#?}", response),
-		concat!(
-			"CreateResponse {\n",
-			"    entry: Entry {\n",
-			"        generation: 22,\n",
-			"        attributes: Attributes {\n",
-			"            node_id: 11,\n",
-			"            mode: 0o100644,\n",
-			"            size: 0,\n",
-			"            atime: UnixTime(0.000000000),\n",
-			"            mtime: UnixTime(0.000000000),\n",
-			"            ctime: UnixTime(0.000000000),\n",
-			"            link_count: 0,\n",
-			"            user_id: 0,\n",
-			"            group_id: 0,\n",
-			"            device_number: 0,\n",
-			"            block_count: 0,\n",
-			"            block_size: 0,\n",
-			"            flags: AttributeFlags {},\n",
-			"        },\n",
-			"        cache_timeout: 0ns,\n",
-			"        attribute_cache_timeout: 0ns,\n",
-			"    },\n",
-			"    handle: 123,\n",
-			"    flags: CreateResponseFlags {\n",
-			"        DIRECT_IO,\n",
-			"        KEEP_CACHE,\n",
-			"    },\n",
 			"}",
 		),
 	);

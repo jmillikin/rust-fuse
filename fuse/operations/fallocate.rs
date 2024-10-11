@@ -14,22 +14,15 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_FALLOCATE` operation.
-
 use core::fmt;
 
 use crate::internal::debug;
 use crate::kernel;
-use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // FallocateRequest {{{
 
 /// Request type for `FUSE_FALLOCATE`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_FALLOCATE` operation.
 pub struct FallocateRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_fallocate_in,
@@ -62,22 +55,15 @@ impl FallocateRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for FallocateRequest<'_> {}
+try_from_fuse_request!(FallocateRequest<'a>, |request| {
+	let mut dec = request.decoder();
+	dec.expect_opcode(kernel::fuse_opcode::FUSE_FALLOCATE)?;
 
-impl<'a> server::FuseRequest<'a> for FallocateRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::FUSE_FALLOCATE)?;
-
-		let header = dec.header();
-		let body = dec.next_sized()?;
-		decode::node_id(header.nodeid)?;
-		Ok(Self { header, body })
-	}
-}
+	let header = dec.header();
+	let body = dec.next_sized()?;
+	decode::node_id(header.nodeid)?;
+	Ok(Self { header, body })
+});
 
 impl fmt::Debug for FallocateRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -88,43 +74,6 @@ impl fmt::Debug for FallocateRequest<'_> {
 			.field("length", &self.length())
 			.field("fallocate_flags", &debug::hex_u32(self.fallocate_flags()))
 			.finish()
-	}
-}
-
-// }}}
-
-// FallocateResponse {{{
-
-/// Response type for `FUSE_FALLOCATE`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_FALLOCATE` operation.
-pub struct FallocateResponse {
-	_priv: (),
-}
-
-impl FallocateResponse {
-	#[must_use]
-	pub fn new() -> FallocateResponse {
-		Self { _priv: () }
-	}
-}
-
-impl fmt::Debug for FallocateResponse {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("FallocateResponse").finish()
-	}
-}
-
-impl server::sealed::Sealed for FallocateResponse {}
-
-impl server::FuseResponse for FallocateResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::header_only(header)
 	}
 }
 

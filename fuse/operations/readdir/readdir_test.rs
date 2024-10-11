@@ -18,15 +18,14 @@ use core::mem::size_of;
 use core::num;
 
 use fuse::kernel;
-use fuse::operations::readdir::{
+use fuse::server::{
 	ReaddirEntriesWriter,
 	ReaddirEntry,
 	ReaddirRequest,
-	ReaddirResponse,
 };
 
 use fuse_testutil as testutil;
-use fuse_testutil::{decode_request, encode_response, MessageBuilder};
+use fuse_testutil::{decode_request, MessageBuilder};
 
 #[test]
 fn readdir_request_v7p1() {
@@ -106,7 +105,7 @@ fn request_impl_debug() {
 }
 
 #[test]
-fn readdir_response() {
+fn readdir_entries() {
 	let max_size = size_of::<kernel::fuse_dirent>() + 12;
 	let mut buf = vec![0u8; max_size];
 	let mut writer = ReaddirEntriesWriter::new(&mut buf);
@@ -140,18 +139,11 @@ fn readdir_response() {
 		assert!(writer.try_push(&entry).is_ok());
 	}
 
-	let resp = ReaddirResponse::new(writer.into_entries());
-	let encoded = encode_response!(resp);
+	let entries = writer.into_entries();
 
 	assert_eq!(
-		encoded,
+		entries.as_bytes(),
 		MessageBuilder::new()
-			.push_sized(&testutil::new!(kernel::fuse_out_header {
-				len: (size_of::<kernel::fuse_out_header>()
-					+ size_of::<kernel::fuse_dirent>()
-					+ 8) as u32,
-				unique: 0xAABBCCDD,
-			}))
 			.push_sized(&testutil::new!(kernel::fuse_dirent {
 				ino: 100,
 				off: 1,
@@ -164,7 +156,7 @@ fn readdir_response() {
 }
 
 #[test]
-fn response_impl_debug() {
+fn readdir_entries_debug() {
 	let mut buf = vec![0u8; 1024];
 	let mut writer = ReaddirEntriesWriter::new(&mut buf);
 
@@ -188,26 +180,23 @@ fn response_impl_debug() {
 		assert!(writer.try_push(&entry).is_ok());
 	}
 
-	let response = ReaddirResponse::new(writer.into_entries());
 	assert_eq!(
-		format!("{:#?}", response),
+		format!("{:#?}", writer.into_entries()),
 		concat!(
-			"ReaddirResponse {\n",
-			"    entries: [\n",
-			"        ReaddirEntry {\n",
-			"            node_id: 100,\n",
-			"            offset: 1,\n",
-			"            file_type: Some(Regular),\n",
-			"            name: \"hello.txt\",\n",
-			"        },\n",
-			"        ReaddirEntry {\n",
-			"            node_id: 101,\n",
-			"            offset: 2,\n",
-			"            file_type: Some(Regular),\n",
-			"            name: \"world.txt\",\n",
-			"        },\n",
-			"    ],\n",
-			"}",
+			"[\n",
+			"    ReaddirEntry {\n",
+			"        node_id: 100,\n",
+			"        offset: 1,\n",
+			"        file_type: Some(Regular),\n",
+			"        name: \"hello.txt\",\n",
+			"    },\n",
+			"    ReaddirEntry {\n",
+			"        node_id: 101,\n",
+			"        offset: 2,\n",
+			"        file_type: Some(Regular),\n",
+			"        name: \"world.txt\",\n",
+			"    },\n",
+			"]",
 		),
 	);
 }

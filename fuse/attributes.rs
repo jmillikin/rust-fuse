@@ -15,12 +15,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use core::fmt;
-use core::time;
 
-use crate::kernel;
-use crate::internal::timestamp;
-use crate::node_id::NodeId;
 use crate::file_mode::FileMode;
+use crate::kernel;
+use crate::node_id::NodeId;
 
 /// Attributes of a filesystem node.
 #[derive(Clone, Copy)]
@@ -39,6 +37,15 @@ impl Attributes {
 				..kernel::fuse_attr::new()
 			},
 		}
+	}
+
+	/// Returns the raw [`fuse_attr`] for the node attributes.
+	///
+	/// [`fuse_attr`]: kernel::fuse_attr
+	#[inline]
+	#[must_use]
+	pub fn raw(&self) -> &kernel::fuse_attr {
+		&self.raw
 	}
 
 	#[inline]
@@ -318,63 +325,4 @@ mod attr_flags {
 		FUSE_ATTR_SUBMOUNT = kernel::FUSE_ATTR_SUBMOUNT;
 		FUSE_ATTR_DAX = kernel::FUSE_ATTR_DAX;
 	});
-}
-
-#[derive(Clone, Copy)]
-pub(crate) struct FuseAttrOut {
-	raw: kernel::fuse_attr_out,
-}
-
-impl FuseAttrOut {
-	#[inline]
-	#[must_use]
-	pub(crate) fn new(attributes: Attributes) -> FuseAttrOut {
-		Self {
-			raw: new!(kernel::fuse_attr_out {
-				attr: attributes.raw,
-			}),
-		}
-	}
-
-	#[inline]
-	#[must_use]
-	pub(crate) fn attributes(&self) -> &Attributes {
-		unsafe { Attributes::from_ref(&self.raw.attr) }
-	}
-
-	#[inline]
-	#[must_use]
-	pub(crate) fn attributes_mut(&mut self) -> &mut Attributes {
-		unsafe { Attributes::from_ref_mut(&mut self.raw.attr) }
-	}
-
-	#[inline]
-	#[must_use]
-	pub(crate) fn cache_timeout(&self) -> time::Duration {
-		timestamp::new_duration(self.raw.attr_valid, self.raw.attr_valid_nsec)
-	}
-
-	#[inline]
-	pub(crate) fn set_cache_timeout(&mut self, timeout: time::Duration) {
-		let (seconds, nanos) = timestamp::split_duration(timeout);
-		self.raw.attr_valid = seconds;
-		self.raw.attr_valid_nsec = nanos;
-	}
-
-	#[inline]
-	#[must_use]
-	pub(crate) fn as_v7p9(&self) -> &kernel::fuse_attr_out {
-		let self_ptr = self as *const FuseAttrOut;
-		unsafe { &*(self_ptr.cast::<kernel::fuse_attr_out>()) }
-	}
-
-	#[inline]
-	#[must_use]
-	pub(crate) fn as_v7p1(
-		&self,
-	) -> &[u8; kernel::FUSE_COMPAT_ATTR_OUT_SIZE] {
-		let self_ptr = self as *const FuseAttrOut;
-		const OUT_SIZE: usize = kernel::FUSE_COMPAT_ATTR_OUT_SIZE;
-		unsafe { &*(self_ptr.cast::<[u8; OUT_SIZE]>()) }
-	}
 }

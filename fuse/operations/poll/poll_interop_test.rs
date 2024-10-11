@@ -17,8 +17,8 @@
 use std::panic;
 use std::sync::mpsc;
 
-use fuse::server::fuse_rpc;
-use fuse::server::prelude::*;
+use fuse::server;
+use fuse::server::FuseRequest;
 
 use interop_testutil::{
 	diff_str,
@@ -31,19 +31,40 @@ struct TestFS {
 	requests: mpsc::Sender<String>,
 }
 
-impl interop_testutil::TestFS for TestFS {}
+struct TestHandlers<'a, S> {
+	fs: &'a TestFS,
+	conn: &'a server::FuseConnection<S>,
+}
 
-impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
-	fn lookup(
+impl interop_testutil::TestFS for TestFS {
+	fn dispatch_request(
 		&self,
-		call: fuse_rpc::Call<S>,
-		request: &LookupRequest,
-	) -> fuse_rpc::SendResult<LookupResponse, S::Error> {
+		conn: &server::FuseConnection<interop_testutil::DevFuse>,
+		request: FuseRequest<'_>,
+	) {
+		use fuse::server::FuseHandlers;
+		(TestHandlers{fs: self, conn}).dispatch(request);
+	}
+}
+
+impl<'a, S> server::FuseHandlers for TestHandlers<'a, S>
+where
+	S: server::FuseSocket,
+	S::Error: core::fmt::Debug,
+{
+	fn unimplemented(&self, request: FuseRequest<'_>) {
+		self.conn.reply(request.id()).err(OsError::UNIMPLEMENTED).unwrap();
+	}
+
+	fn lookup(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::LookupRequest::try_from(request).unwrap();
+
 		if !request.parent_id().is_root() {
-			return call.respond_err(OsError::NOT_FOUND);
+			return send_reply.err(OsError::NOT_FOUND).unwrap();
 		}
 		if request.name() != "file.txt" {
-			return call.respond_err(OsError::NOT_FOUND);
+			return send_reply.err(OsError::NOT_FOUND).unwrap();
 		}
 
 		let mut attr = fuse::Attributes::new(fuse::NodeId::new(2).unwrap());
@@ -53,30 +74,25 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		let mut entry = fuse::Entry::new(attr);
 		entry.set_cache_timeout(std::time::Duration::from_secs(60));
 
-		let resp = LookupResponse::new(Some(entry));
-		call.respond_ok(&resp)
+		send_reply.ok(&entry).unwrap();
 	}
 
-	fn open(
-		&self,
-		call: fuse_rpc::Call<S>,
-		request: &OpenRequest,
-	) -> fuse_rpc::SendResult<OpenResponse, S::Error> {
+	fn open(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::OpenRequest::try_from(request).unwrap();
+
 		if request.node_id().get() != 2 {
-			return call.respond_err(OsError::NOT_FOUND);
+			return send_reply.err(OsError::NOT_FOUND).unwrap();
 		}
 
-		let mut resp = OpenResponse::new();
-		resp.set_handle(10);
-		call.respond_ok(&resp)
+		let mut reply = fuse::kernel::fuse_open_out::new();
+		reply.fh = 10;
+		send_reply.ok(&reply).unwrap();
 	}
 
-	#[allow(non_snake_case)]
-	fn poll(
-		&self,
-		call: fuse_rpc::Call<S>,
-		request: &PollRequest,
-	) -> fuse_rpc::SendResult<PollResponse, S::Error> {
+	fn poll(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::PollRequest::try_from(request).unwrap();
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the poll handle, which is non-deterministic.
@@ -88,28 +104,24 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 			"poll_handle: STUB_POLL_HANDLE,",
 		);
 
-		self.requests.send(request_str).unwrap();
+		self.fs.requests.send(request_str).unwrap();
 
-		let POLLIN = libc::POLLIN as u32;
-		let POLLOUT = libc::POLLOUT as u32;
+		const POLLIN: u32 = libc::POLLIN as u32;
+		const POLLOUT: u32 = libc::POLLOUT as u32;
 
-		let mut resp = PollResponse::new();
+		let mut reply = fuse::kernel::fuse_poll_out::new();
 		if (request.poll_events() & POLLIN) > 0 {
-			resp.set_poll_events(POLLIN);
+			reply.revents = POLLIN;
 		}
 		if (request.poll_events() & POLLOUT) > 0 {
-			resp.set_poll_events(POLLOUT);
+			reply.revents = POLLOUT;
 		}
-		call.respond_ok(&resp)
+		send_reply.ok(&reply).unwrap();
 	}
 
-	fn release(
-		&self,
-		call: fuse_rpc::Call<S>,
-		_request: &ReleaseRequest,
-	) -> fuse_rpc::SendResult<ReleaseResponse, S::Error> {
-		let resp = ReleaseResponse::new();
-		call.respond_ok(&resp)
+	fn release(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		send_reply.ok_empty().unwrap();
 	}
 }
 

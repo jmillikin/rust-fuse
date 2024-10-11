@@ -14,22 +14,15 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_FSYNC` operation.
-
 use core::fmt;
-use core::marker::PhantomData;
 
 use crate::kernel;
 use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // FsyncRequest {{{
 
 /// Request type for `FUSE_FSYNC`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_FSYNC` operation.
 pub struct FsyncRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_fsync_in,
@@ -54,28 +47,16 @@ impl FsyncRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for FsyncRequest<'_> {}
+try_from_cuse_request!(FsyncRequest<'a>, |request| {
+	Self::try_from(request.inner, true)
+});
 
-impl<'a> server::CuseRequest<'a> for FsyncRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::CuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		Self::decode_request(request, true)
-	}
-}
-
-impl<'a> server::FuseRequest<'a> for FsyncRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		Self::decode_request(request, false)
-	}
-}
+try_from_fuse_request!(FsyncRequest<'a>, |request| {
+	Self::try_from(request.inner, false)
+});
 
 impl<'a> FsyncRequest<'a> {
-	fn decode_request(
+	fn try_from(
 		request: server::Request<'a>,
 		is_cuse: bool,
 	) -> Result<Self, server::RequestError> {
@@ -98,55 +79,6 @@ impl fmt::Debug for FsyncRequest<'_> {
 			.field("handle", &self.handle())
 			.field("flags", &self.flags())
 			.finish()
-	}
-}
-
-// }}}
-
-// FsyncResponse {{{
-
-/// Response type for `FUSE_FSYNC`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_FSYNC` operation.
-pub struct FsyncResponse {
-	phantom: PhantomData<()>,
-}
-
-impl FsyncResponse {
-	#[must_use]
-	pub fn new() -> FsyncResponse {
-		Self {
-			phantom: PhantomData,
-		}
-	}
-}
-
-impl fmt::Debug for FsyncResponse {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("FsyncResponse").finish()
-	}
-}
-
-impl server::sealed::Sealed for FsyncResponse {}
-
-impl server::CuseResponse for FsyncResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::CuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::header_only(header)
-	}
-}
-
-impl server::FuseResponse for FsyncResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::header_only(header)
 	}
 }
 

@@ -17,39 +17,58 @@
 use std::panic;
 use std::sync::mpsc;
 
-use fuse::server::cuse_rpc;
-use fuse::server::prelude::*;
+use fuse::server;
+use fuse::server::CuseRequest;
 
 use interop_testutil::{
 	cuse_interop_test,
 	diff_str,
 	path_cstr,
+	OsError,
 };
 
 struct TestCharDev {
 	requests: mpsc::Sender<String>,
 }
 
-impl interop_testutil::TestDev for TestCharDev {}
+struct TestHandlers<'a, S> {
+	dev: &'a TestCharDev,
+	conn: &'a server::CuseConnection<S>,
+}
 
-impl<S: CuseSocket> cuse_rpc::Handlers<S> for TestCharDev {
-	fn open(
+impl interop_testutil::TestDev for TestCharDev {
+	fn dispatch_request(
 		&self,
-		call: cuse_rpc::Call<S>,
-		request: &OpenRequest,
-	) -> cuse_rpc::SendResult<OpenResponse, S::Error> {
-		self.requests.send(format!("{:#?}", request)).unwrap();
+		conn: &server::CuseConnection<interop_testutil::DevCuse>,
+		request: CuseRequest<'_>,
+	) {
+		use fuse::server::CuseHandlers;
+		(TestHandlers{dev: self, conn}).dispatch(request);
+	}
+}
 
-		let mut resp = OpenResponse::new();
-		resp.set_handle(12345);
-		call.respond_ok(&resp)
+impl<'a, S> server::CuseHandlers for TestHandlers<'a, S>
+where
+	S: server::CuseSocket,
+	S::Error: core::fmt::Debug,
+{
+	fn unimplemented(&self, request: CuseRequest<'_>) {
+		self.conn.reply(request.id()).err(OsError::UNIMPLEMENTED).unwrap();
 	}
 
-	fn read(
-		&self,
-		call: cuse_rpc::Call<S>,
-		request: &ReadRequest,
-	) -> cuse_rpc::SendResult<ReadResponse, S::Error> {
+	fn open(&self, request: CuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::OpenRequest::try_from(request).unwrap();
+		self.dev.requests.send(format!("{:#?}", request)).unwrap();
+
+		let mut reply = fuse::kernel::fuse_open_out::new();
+		reply.fh = 12345;
+		send_reply.ok(&reply).unwrap();
+	}
+
+	fn read(&self, request: CuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::ReadRequest::try_from(request).unwrap();
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the lock owner, which is non-deterministic.
@@ -61,28 +80,20 @@ impl<S: CuseSocket> cuse_rpc::Handlers<S> for TestCharDev {
 			"lock_owner: FAKE_LOCK_OWNER,",
 		);
 
-		self.requests.send(request_str).unwrap();
-
-		let resp = ReadResponse::from_bytes(b"file_content");
-		call.respond_ok(&resp)
+		self.dev.requests.send(request_str).unwrap();
+		send_reply.ok_buf(b"file_content").unwrap();
 	}
 
-	fn release(
-		&self,
-		call: cuse_rpc::Call<S>,
-		request: &ReleaseRequest,
-	) -> cuse_rpc::SendResult<ReleaseResponse, S::Error> {
-		self.requests.send(format!("{:#?}", request)).unwrap();
-
-		let resp = ReleaseResponse::new();
-		call.respond_ok(&resp)
+	fn release(&self, request: CuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::ReleaseRequest::try_from(request).unwrap();
+		self.dev.requests.send(format!("{:#?}", request)).unwrap();
+		send_reply.ok_empty().unwrap();
 	}
 
-	fn write(
-		&self,
-		call: cuse_rpc::Call<S>,
-		request: &WriteRequest,
-	) -> cuse_rpc::SendResult<WriteResponse, S::Error> {
+	fn write(&self, request: CuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::WriteRequest::try_from(request).unwrap();
 		let mut request_str = format!("{:#?}", request);
 
 		// stub out the lock owner, which is non-deterministic.
@@ -94,11 +105,11 @@ impl<S: CuseSocket> cuse_rpc::Handlers<S> for TestCharDev {
 			"lock_owner: FAKE_LOCK_OWNER,",
 		);
 
-		self.requests.send(request_str).unwrap();
+		self.dev.requests.send(request_str).unwrap();
 
-		let mut resp = WriteResponse::new();
-		resp.set_size(request.value().len() as u32);
-		call.respond_ok(&resp)
+		let mut reply = fuse::kernel::fuse_write_out::new();
+		reply.size = request.value().len() as u32;
+		send_reply.ok(&reply).unwrap();
 	}
 }
 

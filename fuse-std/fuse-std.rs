@@ -71,14 +71,7 @@ use fuse::io::{
 	AsAlignedSlice,
 	AsAlignedSliceMut,
 };
-use fuse::server::{
-	cuse_rpc,
-	fuse_rpc,
-	CuseConnection,
-	FuseConnection,
-	ServerError,
-};
-use fuse::server::io::{CuseSocket, FuseSocket};
+use fuse::server;
 
 fn server_threads() -> usize {
 	// Use `thread::available_parallelism()` to estimate how many hardware
@@ -115,15 +108,15 @@ fn server_threads() -> usize {
 /// [`conn.recv_buf_len()`] bytes per worker thread, and also calls standard
 /// library APIs such as [`Vec::with_capacity`] that panic on OOM.
 ///
-/// [`conn.recv_buf_len()`]: FuseConnection::recv_buf_len
+/// [`conn.recv_buf_len()`]: server::FuseConnection::recv_buf_len
 pub fn serve_fuse<S, H>(
-	conn: &FuseConnection<S>,
+	conn: &server::FuseConnection<S>,
 	handlers: &H,
-) -> mpsc::Receiver<ServerError<S::Error>>
+) -> mpsc::Receiver<server::ServerError<S::Error>>
 where
-	S: FuseSocket + Send + Sync,
+	S: server::FuseSocket + Send + Sync,
 	S::Error: Send,
-	H: fuse_rpc::Handlers<S> + Send + Sync,
+	H: server::FuseHandlers + Send + Sync,
 {
 	// Pre-allocate receive buffers so that an allocation failure will happen
 	// before any server threads get spawned.
@@ -140,7 +133,7 @@ where
 			let err_sender = err_sender.clone();
 			let mut buf = recv_bufs.remove(recv_bufs.len() - 1);
 			s.spawn(move || {
-				while let Err(err) = fuse_rpc::serve_local(conn, handlers, &mut buf) {
+				while let Err(err) = server::fuse_serve_local(conn, handlers, &mut buf) {
 					let fatal = is_fatal_error(&err);
 					let _ = err_sender.send(err);
 					if fatal {
@@ -170,15 +163,15 @@ where
 /// [`conn.recv_buf_len()`] bytes per worker thread, and also calls standard
 /// library APIs such as [`Vec::with_capacity`] that panic on OOM.
 ///
-/// [`conn.recv_buf_len()`]: CuseConnection::recv_buf_len
+/// [`conn.recv_buf_len()`]: server::CuseConnection::recv_buf_len
 pub fn serve_cuse<S, H>(
-	conn: &CuseConnection<S>,
+	conn: &server::CuseConnection<S>,
 	handlers: &H,
-) -> mpsc::Receiver<ServerError<S::Error>>
+) -> mpsc::Receiver<server::ServerError<S::Error>>
 where
-	S: CuseSocket + Send + Sync,
+	S: server::CuseSocket + Send + Sync,
 	S::Error: Send,
-	H: cuse_rpc::Handlers<S> + Send + Sync,
+	H: server::CuseHandlers + Send + Sync,
 {
 	// Pre-allocate receive buffers so that an allocation failure will happen
 	// before any server threads get spawned.
@@ -195,7 +188,7 @@ where
 			let err_sender = err_sender.clone();
 			let mut buf = recv_bufs.remove(recv_bufs.len() - 1);
 			s.spawn(move || {
-				while let Err(err) = cuse_rpc::serve_local(conn, handlers, &mut buf) {
+				while let Err(err) = server::cuse_serve_local(conn, handlers, &mut buf) {
 					let fatal = is_fatal_error(&err);
 					let _ = err_sender.send(err);
 					if fatal {
@@ -209,9 +202,9 @@ where
 	err_receiver
 }
 
-fn is_fatal_error<E>(err: &ServerError<E>) -> bool {
+fn is_fatal_error<E>(err: &server::ServerError<E>) -> bool {
 	match err {
-		ServerError::RequestError(_) => false,
+		server::ServerError::RequestError(_) => false,
 		_ => true,
 	}
 }

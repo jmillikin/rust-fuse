@@ -14,22 +14,15 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_RENAME` and `FUSE_RENAME2` operations.
-
 use core::fmt;
 
 use crate::internal::debug;
 use crate::kernel;
-use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // RenameRequest {{{
 
 /// Request type for `FUSE_RENAME` and `FUSE_RENAME2`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_RENAME` and `FUSE_RENAME2` operations.
 pub struct RenameRequest<'a> {
 	old_directory_id: crate::NodeId,
 	old_name: &'a crate::NodeName,
@@ -65,38 +58,31 @@ impl RenameRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for RenameRequest<'_> {}
+try_from_fuse_request!(RenameRequest<'a>, |request| {
+	let mut dec = request.decoder();
+	let header = dec.header();
 
-impl<'a> server::FuseRequest<'a> for RenameRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		let mut dec = request.decoder();
-		let header = dec.header();
-
-		let mut rename_flags = 0;
-		let new_dir: u64;
-		if header.opcode == kernel::fuse_opcode::FUSE_RENAME2 {
-			let parsed: &kernel::fuse_rename2_in = dec.next_sized()?;
-			rename_flags = parsed.flags;
-			new_dir = parsed.newdir;
-		} else {
-			dec.expect_opcode(kernel::fuse_opcode::FUSE_RENAME)?;
-			let parsed: &kernel::fuse_rename_in = dec.next_sized()?;
-			new_dir = parsed.newdir;
-		}
-		let old_name = dec.next_node_name()?;
-		let new_name = dec.next_node_name()?;
-		Ok(Self {
-			old_directory_id: decode::node_id(header.nodeid)?,
-			old_name,
-			new_directory_id: decode::node_id(new_dir)?,
-			new_name,
-			rename_flags,
-		})
+	let mut rename_flags = 0;
+	let new_dir: u64;
+	if header.opcode == kernel::fuse_opcode::FUSE_RENAME2 {
+		let parsed: &kernel::fuse_rename2_in = dec.next_sized()?;
+		rename_flags = parsed.flags;
+		new_dir = parsed.newdir;
+	} else {
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_RENAME)?;
+		let parsed: &kernel::fuse_rename_in = dec.next_sized()?;
+		new_dir = parsed.newdir;
 	}
-}
+	let old_name = dec.next_node_name()?;
+	let new_name = dec.next_node_name()?;
+	Ok(Self {
+		old_directory_id: decode::node_id(header.nodeid)?,
+		old_name,
+		new_directory_id: decode::node_id(new_dir)?,
+		new_name,
+		rename_flags,
+	})
+});
 
 impl fmt::Debug for RenameRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -107,43 +93,6 @@ impl fmt::Debug for RenameRequest<'_> {
 			.field("new_name", &self.new_name)
 			.field("rename_flags", &debug::hex_u32(self.rename_flags))
 			.finish()
-	}
-}
-
-// }}}
-
-// RenameResponse {{{
-
-/// Response type for `FUSE_RENAME` and `FUSE_RENAME2`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_RENAME` and `FUSE_RENAME2` operations.
-pub struct RenameResponse {
-	_priv: (),
-}
-
-impl RenameResponse {
-	#[must_use]
-	pub fn new() -> RenameResponse {
-		Self { _priv: () }
-	}
-}
-
-impl fmt::Debug for RenameResponse {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("RenameResponse").finish()
-	}
-}
-
-impl server::sealed::Sealed for RenameResponse {}
-
-impl server::FuseResponse for RenameResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::header_only(header)
 	}
 }
 

@@ -14,23 +14,16 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_SETXATTR` operation.
-
 use core::fmt;
 
 use crate::internal::compat;
 use crate::internal::debug;
 use crate::kernel;
-use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // SetxattrRequest {{{
 
 /// Request type for `FUSE_SETXATTR`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_SETXATTR` operation.
 pub struct SetxattrRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_setxattr_in<'a>>,
@@ -75,35 +68,28 @@ impl SetxattrRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for SetxattrRequest<'_> {}
+try_from_fuse_request!(SetxattrRequest<'a>, |request| {
+	let mut dec = request.decoder();
+	dec.expect_opcode(kernel::fuse_opcode::FUSE_SETXATTR)?;
 
-impl<'a> server::FuseRequest<'a> for SetxattrRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::FUSE_SETXATTR)?;
+	let header = dec.header();
+	decode::node_id(header.nodeid)?;
 
-		let header = dec.header();
-		decode::node_id(header.nodeid)?;
+	let body = if request.layout.have_setxattr_ext() {
+		let body_v7p33 = dec.next_sized()?;
+		compat::Versioned::new_setxattr_v7p33(body_v7p33)
+	} else {
+		let body_v7p1 = dec.next_sized()?;
+		compat::Versioned::new_setxattr_v7p1(body_v7p1)
+	};
 
-		let body = if options.have_setxattr_ext() {
-			let body_v7p33 = dec.next_sized()?;
-			compat::Versioned::new_setxattr_v7p33(body_v7p33)
-		} else {
-			let body_v7p1 = dec.next_sized()?;
-			compat::Versioned::new_setxattr_v7p1(body_v7p1)
-		};
+	let name_bytes = dec.next_nul_terminated_bytes()?;
+	let name = crate::XattrName::from_bytes(name_bytes.to_bytes_without_nul())?;
+	let value_bytes = dec.next_bytes(body.as_v7p1().size)?;
+	let value = crate::XattrValue::new(value_bytes)?;
 
-		let name_bytes = dec.next_nul_terminated_bytes()?;
-		let name = crate::XattrName::from_bytes(name_bytes.to_bytes_without_nul())?;
-		let value_bytes = dec.next_bytes(body.as_v7p1().size)?;
-		let value = crate::XattrValue::new(value_bytes)?;
-
-		Ok(Self { header, body, name, value })
-	}
-}
+	Ok(Self { header, body, name, value })
+});
 
 impl fmt::Debug for SetxattrRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -114,44 +100,6 @@ impl fmt::Debug for SetxattrRequest<'_> {
 			.field("setxattr_flags", &debug::hex_u32(self.setxattr_flags()))
 			.field("value", &self.value().as_bytes())
 			.finish()
-	}
-}
-
-// }}}
-
-// SetxattrResponse {{{
-
-/// Response type for `FUSE_SETXATTR`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_SETXATTR` operation.
-pub struct SetxattrResponse {
-	_priv: (),
-}
-
-impl SetxattrResponse {
-	#[inline]
-	#[must_use]
-	pub fn new() -> SetxattrResponse {
-		Self { _priv: () }
-	}
-}
-
-impl fmt::Debug for SetxattrResponse {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("SetxattrResponse").finish()
-	}
-}
-
-impl server::sealed::Sealed for SetxattrResponse {}
-
-impl server::FuseResponse for SetxattrResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::header_only(header)
 	}
 }
 

@@ -14,13 +14,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::mem::size_of;
-
 use fuse::kernel;
-use fuse::operations::rmdir::{RmdirRequest, RmdirResponse};
+use fuse::server::RmdirRequest;
 
-use fuse_testutil as testutil;
-use fuse_testutil::{decode_request, encode_response, MessageBuilder};
+use fuse_testutil::{decode_request, MessageBuilder};
 
 #[test]
 fn request() {
@@ -58,27 +55,4 @@ fn request_impl_debug() {
 			"}",
 		),
 	);
-}
-
-#[test]
-fn response_empty() {
-	let resp = RmdirResponse::new();
-	let encoded = encode_response!(resp);
-
-	assert_eq!(
-		encoded,
-		MessageBuilder::new()
-			.push_sized(&testutil::new!(kernel::fuse_out_header {
-				len: size_of::<kernel::fuse_out_header>() as u32,
-				unique: 0xAABBCCDD,
-			}))
-			.build()
-	);
-}
-
-#[test]
-fn response_impl_debug() {
-	let response = RmdirResponse::new();
-
-	assert_eq!(format!("{:#?}", response), "RmdirResponse");
 }

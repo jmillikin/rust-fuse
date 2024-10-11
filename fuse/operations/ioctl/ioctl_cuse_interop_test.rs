@@ -18,8 +18,12 @@ use std::mem::size_of;
 use std::panic;
 use std::sync::mpsc;
 
-use fuse::server::cuse_rpc;
-use fuse::server::prelude::*;
+use fuse::{
+	CuseInitFlag,
+	CuseInitFlags,
+};
+use fuse::server;
+use fuse::server::CuseRequest;
 
 use interop_testutil::{
 	diff_str,
@@ -32,18 +36,38 @@ struct TestCharDev {
 	requests: mpsc::Sender<String>,
 }
 
+struct TestHandlers<'a, S> {
+	dev: &'a TestCharDev,
+	conn: &'a server::CuseConnection<S>,
+}
+
 impl interop_testutil::TestDev for TestCharDev {
+	fn dispatch_request(
+		&self,
+		conn: &server::CuseConnection<interop_testutil::DevCuse>,
+		request: CuseRequest<'_>,
+	) {
+		use fuse::server::CuseHandlers;
+		(TestHandlers{dev: self, conn}).dispatch(request);
+	}
+
 	fn cuse_init_flags(flags: &mut CuseInitFlags) {
 		flags.set(CuseInitFlag::UNRESTRICTED_IOCTL);
 	}
 }
 
-impl<S: CuseSocket> cuse_rpc::Handlers<S> for TestCharDev {
-	fn ioctl(
-		&self,
-		call: cuse_rpc::Call<S>,
-		request: &IoctlRequest,
-	) -> cuse_rpc::SendResult<IoctlResponse, S::Error> {
+impl<'a, S> server::CuseHandlers for TestHandlers<'a, S>
+where
+	S: server::CuseSocket,
+	S::Error: core::fmt::Debug,
+{
+	fn unimplemented(&self, request: CuseRequest<'_>) {
+		self.conn.reply(request.id()).err(OsError::UNIMPLEMENTED).unwrap();
+	}
+
+	fn ioctl(&self, request: CuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::IoctlRequest::try_from(request).unwrap();
 		println!("{:#?}", request);
 
 		let mut request_str = format!("{:#?}", request);
@@ -57,15 +81,15 @@ impl<S: CuseSocket> cuse_rpc::Handlers<S> for TestCharDev {
 			"arg: FAKE_ARG,",
 		);
 
-		self.requests.send(request_str).unwrap();
+		self.dev.requests.send(request_str).unwrap();
 
 		if request.command().get() == libc::TIOCGWINSZ as u32 {
 			if request.output_len() == 0 {
-				let arg: IoctlPtr<libc::winsize> = request.arg().as_ptr();
-				let mut retry = IoctlRetryBuf::new();
+				let arg: server::IoctlPtr<libc::winsize> = request.arg().as_ptr();
+				let mut retry = server::IoctlRetryBuf::new();
 				retry.add_output_ptr(arg).unwrap();
-				let resp = IoctlResponse::new_retry(retry.borrow());
-				return call.respond_ok(&resp);
+				let resp = server::IoctlResponse::new_retry(retry.borrow());
+				return send_reply.ok(&resp).unwrap();
 			}
 
 			let winsize_buf = libc::winsize {
@@ -82,34 +106,31 @@ impl<S: CuseSocket> cuse_rpc::Handlers<S> for TestCharDev {
 				)
 			};
 
-			let resp = IoctlResponse::new(bytes_1);
-			return call.respond_ok(&resp);
+			let resp = server::IoctlResponse::new(bytes_1);
+			return send_reply.ok(&resp).unwrap();
 		}
 
 		if request.command().get() == libc::TIOCSWINSZ as u32 {
 			if request.input_len() == 0 {
-				let arg: IoctlPtr<libc::winsize> = request.arg().as_ptr();
-				let mut retry = IoctlRetryBuf::new();
+				let arg: server::IoctlPtr<libc::winsize> = request.arg().as_ptr();
+				let mut retry = server::IoctlRetryBuf::new();
 				retry.add_input_ptr(arg).unwrap();
-				let resp = IoctlResponse::new_retry(retry.borrow());
-				return call.respond_ok(&resp);
+				let resp = server::IoctlResponse::new_retry(retry.borrow());
+				return send_reply.ok(&resp).unwrap();
 			}
 
-			let resp = IoctlResponse::new(b"");
-			return call.respond_ok(&resp);
+			let resp = server::IoctlResponse::new(b"");
+			return send_reply.ok(&resp).unwrap();
 		}
 
-		call.respond_err(OsError::from(errno::EOPNOTSUPP))
+		send_reply.err(OsError(errno::EOPNOTSUPP)).unwrap();
 	}
 
-	fn open(
-		&self,
-		call: cuse_rpc::Call<S>,
-		_request: &OpenRequest,
-	) -> cuse_rpc::SendResult<OpenResponse, S::Error> {
-		let mut resp = OpenResponse::new();
-		resp.set_handle(1002);
-		call.respond_ok(&resp)
+	fn open(&self, request: CuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let mut reply = fuse::kernel::fuse_open_out::new();
+		reply.fh = 1002;
+		send_reply.ok(&reply).unwrap();
 	}
 }
 

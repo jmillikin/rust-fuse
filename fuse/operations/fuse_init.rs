@@ -14,22 +14,15 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_INIT` operation.
-
 use core::fmt;
 use core::marker::PhantomData;
 
 use crate::Version;
 use crate::kernel;
-use crate::server;
-use crate::server::encode;
 
 // FuseInitRequest {{{
 
 /// Request type for `FUSE_INIT`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_INIT` operation.
 pub struct FuseInitRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	version: Version,
@@ -68,58 +61,52 @@ impl FuseInitRequest<'_> {
 	}
 }
 
-impl<'a> FuseInitRequest<'a> {
-	pub fn from_request(
-		request: server::Request<'a>,
-	) -> Result<Self, server::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::FUSE_INIT)?;
+try_from_fuse_request!(FuseInitRequest<'a>, |request| {
+	let mut dec = request.decoder();
+	dec.expect_opcode(kernel::fuse_opcode::FUSE_INIT)?;
 
-		// There are two cases where we can't read past the version fields:
-		//
-		// * Very old protocol versions have a smaller init frame, containing
-		//   only the (major, minor) version tuple. Trying to read the modern
-		//   frame size would cause EOF.
-		//
-		// * Mismatch in the major version can't be handled at the request
-		//   parsing layer. Per the version negotiation docs, a newer major
-		//   version from the kernel should be rejected by sending a response
-		//   containing the library's major version.
-		let raw_v7p1: &'a fuse_init_in_v7p1 = dec.peek_sized()?;
-		if raw_v7p1.minor < 6
-			|| raw_v7p1.major != kernel::FUSE_KERNEL_VERSION
-		{
-			return Ok(FuseInitRequest {
-				phantom: PhantomData,
-				version: Version::new(raw_v7p1.major, raw_v7p1.minor),
-				max_readahead: 0,
-				flags: FuseInitFlags::new(),
-			});
-		}
+	// There are two cases where we can't read past the version fields:
+	//
+	// * Very old protocol versions have a smaller init frame, containing
+	//   only the (major, minor) version tuple. Trying to read the modern
+	//   frame size would cause EOF.
+	//
+	// * Mismatch in the major version can't be handled at the request
+	//   parsing layer. Per the version negotiation docs, a newer major
+	//   version from the kernel should be rejected by sending a response
+	//   containing the library's major version.
+	let raw_v7p1: &'a fuse_init_in_v7p1 = dec.peek_sized()?;
+	if raw_v7p1.minor < 6 || raw_v7p1.major != kernel::FUSE_KERNEL_VERSION {
+		return Ok(FuseInitRequest {
+			phantom: PhantomData,
+			version: Version::new(raw_v7p1.major, raw_v7p1.minor),
+			max_readahead: 0,
+			flags: FuseInitFlags::new(),
+		});
+	}
 
-		if raw_v7p1.minor < 36 {
-			let raw: &'a fuse_init_in_v7p6 = dec.next_sized()?;
-			return Ok(FuseInitRequest {
-				phantom: PhantomData,
-				version: Version::new(raw.major, raw.minor),
-				max_readahead: raw.max_readahead,
-				flags: FuseInitFlags {
-					bits: u64::from(raw.flags),
-				},
-			});
-		}
-
-		let raw: &'a kernel::fuse_init_in = dec.next_sized()?;
-		let mut flags = u64::from(raw.flags);
-		flags |= u64::from(raw.flags2) << 32;
-		Ok(FuseInitRequest {
+	if raw_v7p1.minor < 36 {
+		let raw: &'a fuse_init_in_v7p6 = dec.next_sized()?;
+		return Ok(FuseInitRequest {
 			phantom: PhantomData,
 			version: Version::new(raw.major, raw.minor),
 			max_readahead: raw.max_readahead,
-			flags: FuseInitFlags { bits: flags },
-		})
+			flags: FuseInitFlags {
+				bits: u64::from(raw.flags),
+			},
+		});
 	}
-}
+
+	let raw: &'a kernel::fuse_init_in = dec.next_sized()?;
+	let mut flags = u64::from(raw.flags);
+	flags |= u64::from(raw.flags2) << 32;
+	Ok(FuseInitRequest {
+		phantom: PhantomData,
+		version: Version::new(raw.major, raw.minor),
+		max_readahead: raw.max_readahead,
+		flags: FuseInitFlags { bits: flags },
+	})
+});
 
 impl fmt::Debug for FuseInitRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -136,11 +123,8 @@ impl fmt::Debug for FuseInitRequest<'_> {
 // FuseInitResponse {{{
 
 /// Response type for `FUSE_INIT`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_INIT` operation.
 pub struct FuseInitResponse {
-	raw: kernel::fuse_init_out,
+	pub(crate) raw: kernel::fuse_init_out,
 }
 
 impl FuseInitResponse {
@@ -236,45 +220,6 @@ impl fmt::Debug for FuseInitResponse {
 			.field("max_write", &self.max_write())
 			.field("time_granularity", &self.time_granularity())
 			.finish()
-	}
-}
-
-#[repr(C)]
-struct fuse_init_out_v7p1 {
-	major: u32,
-	minor: u32,
-}
-
-#[repr(C)]
-struct fuse_init_out_v7p5 {
-	major: u32,
-	minor: u32,
-	max_readahead: u32,        // v7.6
-	flags: u32,                // v7.6
-	max_background: u16,       // v7.6
-	congestion_threshold: u16, // v7.6
-	max_write: u32,
-}
-
-impl FuseInitResponse {
-	pub fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-	) -> server::Response<'a> {
-		if self.raw.minor >= 23 {
-			return encode::sized(header, &self.raw);
-		}
-
-		let raw_ptr = &self.raw as *const kernel::fuse_init_out;
-		if self.raw.minor >= 5 {
-			return encode::sized(header, unsafe {
-				&*(raw_ptr.cast::<fuse_init_out_v7p5>())
-			});
-		}
-
-		encode::sized(header, unsafe {
-			&*(raw_ptr.cast::<fuse_init_out_v7p1>())
-		})
 	}
 }
 

@@ -14,21 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_LSEEK` operation.
-
 use core::fmt;
 
 use crate::kernel;
-use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // LseekRequest {{{
 
 /// Request type for `FUSE_LSEEK`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_LSEEK` operation.
 pub struct LseekRequest<'a> {
 	raw: &'a kernel::fuse_lseek_in,
 	node_id: crate::NodeId,
@@ -56,22 +49,15 @@ impl LseekRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for LseekRequest<'_> {}
-
-impl<'a> server::FuseRequest<'a> for LseekRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::FUSE_LSEEK)?;
-		let raw = dec.next_sized()?;
-		Ok(Self {
-			raw,
-			node_id: decode::node_id(dec.header().nodeid)?,
-		})
-	}
-}
+try_from_fuse_request!(LseekRequest<'a>, |request| {
+	let mut dec = request.decoder();
+	dec.expect_opcode(kernel::fuse_opcode::FUSE_LSEEK)?;
+	let raw = dec.next_sized()?;
+	Ok(Self {
+		raw,
+		node_id: decode::node_id(dec.header().nodeid)?,
+	})
+});
 
 impl fmt::Debug for LseekRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -99,51 +85,6 @@ impl fmt::Debug for LseekWhence {
 			4 => fmt.write_str("SEEK_HOLE"),
 			_ => self.0.fmt(fmt),
 		}
-	}
-}
-
-// }}}
-
-// LseekResponse {{{
-
-/// Response type for `FUSE_LSEEK`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_LSEEK` operation.
-pub struct LseekResponse {
-	raw: kernel::fuse_lseek_out,
-}
-
-impl LseekResponse {
-	#[must_use]
-	pub fn new() -> LseekResponse {
-		Self {
-			raw: kernel::fuse_lseek_out { offset: 0 },
-		}
-	}
-
-	pub fn set_offset(&mut self, offset: u64) {
-		self.raw.offset = offset;
-	}
-}
-
-impl fmt::Debug for LseekResponse {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("LseekResponse")
-			.field("offset", &self.raw.offset)
-			.finish()
-	}
-}
-
-impl server::sealed::Sealed for LseekResponse {}
-
-impl server::FuseResponse for LseekResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::sized(header, &self.raw)
 	}
 }
 

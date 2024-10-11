@@ -17,9 +17,10 @@
 use std::panic;
 use std::sync::mpsc;
 
-use fuse::server::fuse_rpc;
-use fuse::server::prelude::*;
 use linux_syscall::ResultSize;
+
+use fuse::server;
+use fuse::server::FuseRequest;
 
 use interop_testutil::{
 	diff_str,
@@ -32,28 +33,47 @@ struct TestFS {
 	requests: mpsc::Sender<String>,
 }
 
-impl interop_testutil::TestFS for TestFS {}
+struct TestHandlers<'a, S> {
+	fs: &'a TestFS,
+	conn: &'a server::FuseConnection<S>,
+}
 
-impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
-	fn copy_file_range(
+impl interop_testutil::TestFS for TestFS {
+	fn dispatch_request(
 		&self,
-		call: fuse_rpc::Call<S>,
-		request: &CopyFileRangeRequest,
-	) -> fuse_rpc::SendResult<CopyFileRangeResponse, S::Error> {
-		self.requests.send(format!("{:#?}", request)).unwrap();
+		conn: &server::FuseConnection<interop_testutil::DevFuse>,
+		request: FuseRequest<'_>,
+	) {
+		use fuse::server::FuseHandlers;
+		(TestHandlers{fs: self, conn}).dispatch(request);
+	}
+}
 
-		let mut resp = CopyFileRangeResponse::new();
-		resp.set_size(500);
-		call.respond_ok(&resp)
+impl<'a, S> server::FuseHandlers for TestHandlers<'a, S>
+where
+	S: server::FuseSocket,
+	S::Error: core::fmt::Debug,
+{
+	fn unimplemented(&self, request: FuseRequest<'_>) {
+		self.conn.reply(request.id()).err(OsError::UNIMPLEMENTED).unwrap();
 	}
 
-	fn lookup(
-		&self,
-		call: fuse_rpc::Call<S>,
-		request: &LookupRequest,
-	) -> fuse_rpc::SendResult<LookupResponse, S::Error> {
+	fn copy_file_range(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::CopyFileRangeRequest::try_from(request).unwrap();
+		self.fs.requests.send(format!("{:#?}", request)).unwrap();
+
+		let mut reply = fuse::kernel::fuse_write_out::new();
+		reply.size = 500;
+		send_reply.ok(&reply).unwrap();
+	}
+
+	fn lookup(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::LookupRequest::try_from(request).unwrap();
+
 		if !request.parent_id().is_root() {
-			return call.respond_err(OsError::NOT_FOUND);
+			return send_reply.err(OsError::NOT_FOUND).unwrap();
 		}
 
 		let node_id;
@@ -62,7 +82,7 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		} else if request.name() == "file_dst.txt" {
 			node_id = fuse::NodeId::new(3).unwrap();
 		} else {
-			return call.respond_err(OsError::NOT_FOUND);
+			return send_reply.err(OsError::NOT_FOUND).unwrap();
 		}
 
 		let mut attr = fuse::Attributes::new(node_id);
@@ -73,37 +93,31 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		let mut entry = fuse::Entry::new(attr);
 		entry.set_cache_timeout(std::time::Duration::from_secs(60));
 
-		let resp = LookupResponse::new(Some(entry));
-		call.respond_ok(&resp)
+		send_reply.ok(&entry).unwrap();
 	}
 
-	fn open(
-		&self,
-		call: fuse_rpc::Call<S>,
-		request: &OpenRequest,
-	) -> fuse_rpc::SendResult<OpenResponse, S::Error> {
-		self.requests.send(format!("{:#?}", request)).unwrap();
+	fn open(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let node_id = request.header().raw().nodeid;
+		let request = server::OpenRequest::try_from(request).unwrap();
+		self.fs.requests.send(format!("{:#?}", request)).unwrap();
 
-		let mut resp = OpenResponse::new();
-		if request.node_id().get() == 2 {
-			resp.set_handle(10);
-		} else if request.node_id().get() == 3 {
-			resp.set_handle(20);
+		let mut reply = fuse::kernel::fuse_open_out::new();
+		if node_id == 2 {
+			reply.fh = 10;
+		} else if node_id == 3 {
+			reply.fh = 20;
 		} else {
-			return call.respond_err(OsError::NOT_FOUND);
+			return send_reply.err(OsError::NOT_FOUND).unwrap();
 		}
-		call.respond_ok(&resp)
+		send_reply.ok(&reply).unwrap();
 	}
 
-	fn release(
-		&self,
-		call: fuse_rpc::Call<S>,
-		request: &ReleaseRequest,
-	) -> fuse_rpc::SendResult<ReleaseResponse, S::Error> {
-		self.requests.send(format!("{:#?}", request)).unwrap();
-
-		let resp = ReleaseResponse::new();
-		call.respond_ok(&resp)
+	fn release(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::ReleaseRequest::try_from(request).unwrap();
+		self.fs.requests.send(format!("{:#?}", request)).unwrap();
+		send_reply.ok_empty().unwrap();
 	}
 }
 

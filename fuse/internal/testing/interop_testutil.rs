@@ -15,17 +15,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
-use std::{env, ffi, fs, io, panic, path, sync, thread};
+use std::{env, ffi, fs, io, panic, path, thread};
 
 use fuse::{
 	CuseDeviceName,
 	CuseDeviceNumber,
 };
-use fuse::operations::cuse_init;
-use fuse::operations::fuse_init;
 use fuse::server;
-use fuse::server::cuse_rpc;
-use fuse::server::fuse_rpc;
 use fuse::server::io::{SendError, RecvError};
 
 use fuse_testutil::SendBufToVec;
@@ -42,45 +38,32 @@ pub use freebsd_errno as errno;
 #[cfg(target_os = "freebsd")]
 pub use fuse::os::freebsd::OsError;
 
-struct PrintHooks {}
-
-impl server::Hooks for PrintHooks {
-	fn unknown_opcode(&self, request: server::Request) {
-		println!(
-			"\n[unknown_opcode]\n{:#?}\n{:?}\n",
-			request.header(),
-			request.as_slice(),
-		);
-	}
-
-	fn unimplemented(&self, request: server::Request) {
-		println!("\n[unimplemented]\n{:#?}", request.header());
-	}
-
-	fn request_error(
-		&self,
-		request: server::Request,
-		err: server::RequestError,
-	) {
-		println!("\n[request_error]\n{:#?}", request.header());
-		println!("{:#?}", err);
-	}
-}
-
 #[cfg(target_os = "linux")]
-type DevFuse = fuse_linux::FuseServerSocket;
+pub type DevFuse = fuse_linux::FuseServerSocket;
 
 #[cfg(target_os = "freebsd")]
-type DevFuse = fuse_libc::FuseServerSocket;
+pub type DevFuse = fuse_libc::FuseServerSocket;
 
-pub trait TestDev: cuse_rpc::Handlers<DevCuse> {
+pub trait TestDev {
+	fn dispatch_request(
+		&self,
+		conn: &server::CuseConnection<DevCuse>,
+		request: server::CuseRequest<'_>,
+	);
+
 	#[allow(unused)]
-	fn cuse_init_flags(flags: &mut cuse_init::CuseInitFlags) {}
+	fn cuse_init_flags(flags: &mut fuse::CuseInitFlags) {}
 }
 
-pub trait TestFS: fuse_rpc::Handlers<DevFuse> {
+pub trait TestFS {
+	fn dispatch_request(
+		&self,
+		conn: &server::FuseConnection<DevFuse>,
+		request: server::FuseRequest<'_>,
+	);
+
 	#[allow(unused)]
-	fn fuse_init_flags(flags: &mut fuse_init::FuseInitFlags) {}
+	fn fuse_init_flags(flags: &mut fuse::FuseInitFlags) {}
 
 	fn mount_subtype(&self) -> ffi::CString {
 		ffi::CString::new("rust_fuse_test").unwrap()
@@ -113,8 +96,8 @@ pub trait TestFS: fuse_rpc::Handlers<DevFuse> {
 	}
 }
 
-pub fn fuse_interop_test<H: TestFS + Send + 'static>(
-	handlers: H,
+pub fn fuse_interop_test<Fs: TestFS + Send + 'static>(
+	fs: Fs,
 	test_fn: impl FnOnce(&std::path::Path) + panic::UnwindSafe,
 ) {
 	let mut mkdtemp_template = {
@@ -139,17 +122,17 @@ pub fn fuse_interop_test<H: TestFS + Send + 'static>(
 	{
 		let mut mount_options = fuse::os::linux::MountOptions::new();
 
-		let mount_source = handlers.mount_source();
-		let mount_subtype = handlers.mount_subtype();
+		let mount_source = fs.mount_source();
+		let mount_subtype = fs.mount_subtype();
 		mount_options.set_mount_source(
 			fuse::os::linux::MountSource::new(&mount_source).unwrap(),
 		);
-		mount_options.set_mount_type(handlers.mount_type());
+		mount_options.set_mount_type(fs.mount_type());
 		mount_options.set_subtype(Some(
 			fuse::os::linux::FuseSubtype::new(&mount_subtype).unwrap(),
 		));
 
-		handlers.linux_mount_options(&mut mount_options);
+		fs.linux_mount_options(&mut mount_options);
 
 		dev_fuse = fuse_linux::mount(&mount_cstr, mount_options).unwrap();
 	}
@@ -158,38 +141,29 @@ pub fn fuse_interop_test<H: TestFS + Send + 'static>(
 	{
 		let mut mount_options = fuse::os::freebsd::MountOptions::new();
 
-		let mount_subtype = handlers.mount_subtype();
+		let mount_subtype = fs.mount_subtype();
 		mount_options.set_subtype(Some(
 			fuse::os::freebsd::FuseSubtype::new(&mount_subtype).unwrap(),
 		));
 
-		handlers.freebsd_mount_options(&mut mount_options);
+		fs.freebsd_mount_options(&mut mount_options);
 
 		dev_fuse = fuse_libc::os::freebsd::mount(&mount_cstr, mount_options)
 			.unwrap();
 	}
 
-	let server_ready = sync::Arc::new(sync::Barrier::new(2));
-	let server_thread = {
-		let ready = sync::Arc::clone(&server_ready);
-		thread::spawn(move || {
-			let conn_or_err = server::FuseServer::new()
-				.update_flags(H::fuse_init_flags)
-				.connect(dev_fuse);
-			ready.wait();
+	let conn = server::FuseServer::new()
+		.update_flags(Fs::fuse_init_flags)
+		.connect(dev_fuse)
+		.unwrap();
 
-			let conn = conn_or_err.unwrap();
-			let mut dispatcher = fuse_rpc::Dispatcher::new(&conn, &handlers);
-			dispatcher.set_hooks(&PrintHooks {});
+	let server_thread = thread::spawn(move || {
+		let mut buf = fuse::io::MinReadBuffer::new();
+		while let Some(request) = conn.recv(buf.as_aligned_slice_mut()).unwrap() {
+			fs.dispatch_request(&conn, request);
+		}
+	});
 
-			let mut buf = fuse::io::MinReadBuffer::new();
-			while let Some(request) = conn.recv(buf.as_aligned_slice_mut()).unwrap() {
-				dispatcher.dispatch(request).unwrap();
-			}
-		})
-	};
-
-	server_ready.wait();
 	let test_result = panic::catch_unwind(|| test_fn(&mount_path));
 
 	let unmount_rc = unsafe {
@@ -337,8 +311,8 @@ extern "C" {
 const CUSE_DEV_MAJOR: libc::c_uint = 240; // "LOCAL/EXPERIMENTAL USE"
 const CUSE_DEV_MINOR: libc::c_uint = 1;
 
-pub fn cuse_interop_test<H: TestDev + Send + 'static>(
-	handlers: H,
+pub fn cuse_interop_test<D: TestDev + Send + 'static>(
+	dev: D,
 	test_fn: impl FnOnce(&path::Path) + panic::UnwindSafe,
 ) {
 	let mut mktemp_template = {
@@ -371,52 +345,43 @@ pub fn cuse_interop_test<H: TestDev + Send + 'static>(
 
 	let (dev_cuse, dev_cuse_closer) = DevCuse::new();
 
-	let server_ready = sync::Arc::new(sync::Barrier::new(2));
-	let server_thread = {
-		let ready = sync::Arc::clone(&server_ready);
-		thread::spawn(move || {
-			let dev_name = CuseDeviceName::from_bytes(&mktemp_template)
-				.unwrap();
-			let dev_number = CuseDeviceNumber {
-				major: CUSE_DEV_MAJOR,
-				minor: CUSE_DEV_MINOR,
-			};
-
-			let conn_or_err = server::CuseServer::new(dev_name, dev_number)
-				.update_flags(H::cuse_init_flags)
-				.connect(dev_cuse);
-			ready.wait();
-
-			let conn = conn_or_err.unwrap();
-			let mut dispatcher = cuse_rpc::Dispatcher::new(&conn, &handlers);
-			dispatcher.set_hooks(&PrintHooks {});
-
-			let serve = || -> Result<(), server::ServerError<std::io::Error>> {
-				let mut buf = fuse::io::MinReadBuffer::new();
-				loop {
-					let request = conn.recv(buf.as_aligned_slice_mut())?;
-					dispatcher.dispatch(request)?;
-				}
-			};
-
-			fn is_conn_reset(err: &server::ServerError<io::Error>) -> bool {
-				if let server::ServerError::RecvError(err) = err {
-					if err.kind() == io::ErrorKind::ConnectionReset {
-						return true;
-					}
-				}
-				false
-			}
-
-			match serve() {
-				Ok(_) => {},
-				Err(err) if is_conn_reset(&err) => {},
-				Err(err) => Err(err).unwrap(),
-			}
-		})
+	let dev_name = CuseDeviceName::from_bytes(&mktemp_template).unwrap();
+	let dev_number = CuseDeviceNumber {
+		major: CUSE_DEV_MAJOR,
+		minor: CUSE_DEV_MINOR,
 	};
 
-	server_ready.wait();
+	let conn = server::CuseServer::new(dev_name, dev_number)
+		.update_flags(D::cuse_init_flags)
+		.connect(dev_cuse)
+		.unwrap();
+
+	let server_thread = thread::spawn(move || {
+		let serve = || -> Result<(), server::ServerError<std::io::Error>> {
+			let mut buf = fuse::io::MinReadBuffer::new();
+			loop {
+				let request = conn.recv(buf.as_aligned_slice_mut())?;
+				dev.dispatch_request(&conn, request);
+			}
+		};
+
+		fn is_conn_reset(err: &server::ServerError<io::Error>) -> bool {
+			if let server::ServerError::RecvError(err) = err {
+				return match err {
+					server::RecvError::ConnectionClosed(_) => true,
+					_ => false,
+				};
+			}
+			false
+		}
+
+		match serve() {
+			Ok(_) => {},
+			Err(err) if is_conn_reset(&err) => {},
+			Err(err) => Err(err).unwrap(),
+		}
+	});
+
 	let test_result = panic::catch_unwind(|| test_fn(&device_path));
 
 	drop(dev_cuse_closer);

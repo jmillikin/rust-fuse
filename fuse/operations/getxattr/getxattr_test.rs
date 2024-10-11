@@ -14,14 +14,13 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::mem::size_of;
 use core::num;
 
 use fuse::kernel;
-use fuse::operations::getxattr::{GetxattrRequest, GetxattrResponse};
+use fuse::server::GetxattrRequest;
 
 use fuse_testutil as testutil;
-use fuse_testutil::{decode_request, encode_response, MessageBuilder};
+use fuse_testutil::{decode_request, MessageBuilder};
 
 #[test]
 fn request_sized() {
@@ -82,76 +81,6 @@ fn request_impl_debug() {
 			"    node_id: 1,\n",
 			"    size: Some(11),\n",
 			"    name: \"hello.world!\",\n",
-			"}",
-		),
-	);
-}
-
-#[test]
-fn response_with_value() {
-	let value = fuse::XattrValue::new(&[255, 0, 255]).unwrap();
-	let resp = GetxattrResponse::with_value(value);
-	let encoded = encode_response!(resp);
-
-	assert_eq!(
-		encoded,
-		MessageBuilder::new()
-			.push_sized(&testutil::new!(kernel::fuse_out_header {
-				len: (size_of::<kernel::fuse_out_header>() + 3) as u32,
-				unique: 0xAABBCCDD,
-			}))
-			.push_bytes(&[255, 0, 255])
-			.build()
-	);
-}
-
-#[test]
-fn response_with_value_size() {
-	let resp = GetxattrResponse::with_value_size(4);
-	let encoded = encode_response!(resp);
-
-	assert_eq!(
-		encoded,
-		MessageBuilder::new()
-			.push_sized(&testutil::new!(kernel::fuse_out_header {
-				len: (size_of::<kernel::fuse_out_header>()
-					+ size_of::<kernel::fuse_getxattr_out>()) as u32,
-				unique: 0xAABBCCDD,
-			}))
-			.push_sized(&testutil::new!(kernel::fuse_getxattr_out {
-				size: 4,
-			}))
-			.build()
-	);
-}
-
-#[test]
-fn response_with_value_debug() {
-	let value = fuse::XattrValue::new(&[1, 2, 3, 4]).unwrap();
-	let response = GetxattrResponse::with_value(value);
-	assert_eq!(
-		format!("{:#?}", response),
-		concat!(
-			"GetxattrResponse {\n",
-			"    value: [\n",
-			"        1,\n",
-			"        2,\n",
-			"        3,\n",
-			"        4,\n",
-			"    ],\n",
-			"}",
-		),
-	);
-}
-
-#[test]
-fn response_with_value_size_debug() {
-	let response = GetxattrResponse::with_value_size(10);
-	assert_eq!(
-		format!("{:#?}", response),
-		concat!(
-			"GetxattrResponse {\n",
-			"    size: 10,\n",
 			"}",
 		),
 	);

@@ -25,14 +25,10 @@ use crate::internal::debug;
 use crate::kernel;
 use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // WriteRequest {{{
 
 /// Request type for `FUSE_WRITE`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_WRITE` operation.
 pub struct WriteRequest<'a> {
 	msg: &'a write_msg,
 	version_minor: u32,
@@ -89,9 +85,9 @@ impl WriteRequest<'_> {
 		self.body_v7p1().offset
 	}
 
-	/// The value passed to [`OpenResponse::set_handle`], or zero if not set.
+	/// The value set in [`fuse_open_out::fh`], or zero if not set.
 	///
-	/// [`OpenResponse::set_handle`]: crate::operations::open::OpenResponse::set_handle
+	/// [`fuse_open_out::fh`]: crate::kernel::fuse_open_out::fh
 	#[must_use]
 	pub fn handle(&self) -> u64 {
 		self.body_v7p1().fh
@@ -140,28 +136,18 @@ impl WriteRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for WriteRequest<'_> {}
+try_from_cuse_request!(WriteRequest<'a>, |request| {
+	let version_minor = request.layout.version_minor();
+	Self::try_from(request.inner, version_minor, true)
+});
 
-impl<'a> server::CuseRequest<'a> for WriteRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		options: server::CuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		Self::decode_request(request, options.version_minor(), true)
-	}
-}
-
-impl<'a> server::FuseRequest<'a> for WriteRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		Self::decode_request(request, options.version_minor(), false)
-	}
-}
+try_from_fuse_request!(WriteRequest<'a>, |request| {
+	let version_minor = request.layout.version_minor();
+	Self::try_from(request.inner, version_minor, false)
+});
 
 impl<'a> WriteRequest<'a> {
-	fn decode_request(
+	fn try_from(
 		request: server::Request<'a>,
 		version_minor: u32,
 		is_cuse: bool,
@@ -202,61 +188,6 @@ impl fmt::Debug for WriteRequest<'_> {
 			.field("lock_owner", &format_args!("{:?}", &self.lock_owner()))
 			.field("open_flags", &debug::hex_u32(self.open_flags()))
 			.finish()
-	}
-}
-
-// }}}
-
-// WriteResponse {{{
-
-/// Response type for `FUSE_WRITE`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_WRITE` operation.
-pub struct WriteResponse {
-	raw: kernel::fuse_write_out,
-}
-
-impl WriteResponse {
-	#[must_use]
-	pub fn new() -> WriteResponse {
-		Self {
-			raw: kernel::fuse_write_out::new(),
-		}
-	}
-
-	pub fn set_size(&mut self, size: u32) {
-		self.raw.size = size;
-	}
-}
-
-impl fmt::Debug for WriteResponse {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("WriteResponse")
-			.field("size", &self.raw.size)
-			.finish()
-	}
-}
-
-impl server::sealed::Sealed for WriteResponse {}
-
-impl server::CuseResponse for WriteResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::CuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::sized(header, &self.raw)
-	}
-}
-
-impl server::FuseResponse for WriteResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::sized(header, &self.raw)
 	}
 }
 

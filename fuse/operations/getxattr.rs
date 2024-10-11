@@ -14,23 +14,15 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_GETXATTR` operation.
-
-use core::convert::TryFrom;
 use core::fmt;
 use core::num;
 
 use crate::kernel;
-use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // GetxattrRequest {{{
 
 /// Request type for `FUSE_GETXATTR`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_GETXATTR` operation.
 pub struct GetxattrRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_getxattr_in,
@@ -58,25 +50,18 @@ impl GetxattrRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for GetxattrRequest<'_> {}
+try_from_fuse_request!(GetxattrRequest<'a>, |request| {
+	let mut dec = request.decoder();
+	dec.expect_opcode(kernel::fuse_opcode::FUSE_GETXATTR)?;
 
-impl<'a> server::FuseRequest<'a> for GetxattrRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::FUSE_GETXATTR)?;
+	let header = dec.header();
+	decode::node_id(header.nodeid)?;
 
-		let header = dec.header();
-		decode::node_id(header.nodeid)?;
-
-		let body = dec.next_sized()?;
-		let name_bytes = dec.next_nul_terminated_bytes()?;
-		let name = crate::XattrName::from_bytes(name_bytes.to_bytes_without_nul())?;
-		Ok(Self { header, body, name })
-	}
-}
+	let body = dec.next_sized()?;
+	let name_bytes = dec.next_nul_terminated_bytes()?;
+	let name = crate::XattrName::from_bytes(name_bytes.to_bytes_without_nul())?;
+	Ok(Self { header, body, name })
+});
 
 impl fmt::Debug for GetxattrRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -86,95 +71,6 @@ impl fmt::Debug for GetxattrRequest<'_> {
 			.field("name", &self.name())
 			.finish()
 	}
-}
-
-// }}}
-
-// GetxattrResponse {{{
-
-/// Response type for `FUSE_GETXATTR`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_GETXATTR` operation.
-pub struct GetxattrResponse<'a> {
-	output: GetxattrOutput<'a>,
-}
-
-enum GetxattrOutput<'a> {
-	Value(&'a crate::XattrValue),
-	Size(kernel::fuse_getxattr_out),
-	ErrTooBig(usize),
-}
-
-impl<'a> GetxattrResponse<'a> {
-	#[inline]
-	#[must_use]
-	pub fn with_value(value: &'a crate::XattrValue) -> GetxattrResponse<'a> {
-		GetxattrResponse {
-			output: GetxattrOutput::Value(value),
-		}
-	}
-
-	#[inline]
-	#[must_use]
-	pub fn with_value_size(value_size: usize) -> GetxattrResponse<'a> {
-		if let Some(size_u32) = check_value_size(value_size) {
-			let raw = new!(kernel::fuse_getxattr_out {
-				size: size_u32,
-			});
-			let output = GetxattrOutput::Size(raw);
-			return GetxattrResponse { output };
-		}
-		GetxattrResponse {
-			output: GetxattrOutput::ErrTooBig(value_size),
-		}
-	}
-}
-
-impl fmt::Debug for GetxattrResponse<'_> {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		let mut dbg = fmt.debug_struct("GetxattrResponse");
-		match self.output {
-			GetxattrOutput::Value(value) => {
-				dbg.field("value", &value.as_bytes());
-			},
-			GetxattrOutput::Size(out) => {
-				dbg.field("size", &out.size);
-			},
-			GetxattrOutput::ErrTooBig(size) => {
-				dbg.field("size", &size);
-			},
-		}
-		dbg.finish()
-	}
-}
-
-impl server::sealed::Sealed for GetxattrResponse<'_> {}
-
-impl server::FuseResponse for GetxattrResponse<'_> {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		use GetxattrOutput as Out;
-		match &self.output {
-			Out::Value(value) => encode::bytes(header, value.as_bytes()),
-			Out::Size(out) => encode::sized(header, out),
-			Out::ErrTooBig(_) => encode::error(header, crate::Error::E2BIG),
-		}
-	}
-}
-
-#[inline]
-#[must_use]
-fn check_value_size(value_size: usize) -> Option<u32> {
-	if let Some(max_len) = crate::os::XATTR_SIZE_MAX {
-		if value_size > max_len {
-			return None;
-		}
-	}
-	u32::try_from(value_size).ok()
 }
 
 // }}}

@@ -18,6 +18,13 @@ use std::mem::size_of;
 use std::slice;
 
 use fuse::kernel;
+use fuse::server::{
+	CuseSocket,
+	FuseSocket,
+	RecvError,
+	SendError,
+	Socket,
+};
 
 pub struct MessageBuilder {
 	header: Option<kernel::fuse_in_header>,
@@ -98,26 +105,22 @@ macro_rules! decode_request {
 		$crate::decode_request!($t, $buf, {})
 	};
 	($t:ty, $buf: ident, $opts:tt $(,)?) => {{
-		use fuse::operations::fuse_init;
 		use fuse::server;
-		use fuse::server::FuseRequest;
-		use fuse::server::FuseRequestOptions;
+		use fuse::server::{FuseLayout, FuseRequest};
 
 		use $crate::DecodeRequestOpts;
 
 		let opts = $crate::decode_request_opts!($opts);
 		let request_len = $buf.as_slice().len();
 
-		let mut init = fuse_init::FuseInitResponse::new();
-		init.set_version(fuse::Version::new(
-			opts.protocol_version.0,
-			opts.protocol_version.1,
-		));
-		let req_opts = FuseRequestOptions::from_init_response(&init);
+		let mut fuse_init_out = fuse::kernel::fuse_init_out::new();
+		fuse_init_out.major = opts.protocol_version.0;
+		fuse_init_out.minor = opts.protocol_version.1;
+		let layout = FuseLayout::new(&fuse_init_out).unwrap();
 
 		let req_buf = $buf.as_aligned_slice().truncate(request_len);
-		let request = server::Request::new(req_buf).unwrap();
-		<$t>::from_request(request, req_opts).unwrap()
+		let request = server::FuseRequest::new(req_buf, layout).unwrap();
+		<$t>::try_from(request).unwrap()
 	}};
 }
 
@@ -159,32 +162,54 @@ impl SendBufToVec for fuse::io::SendBuf<'_> {
 	}
 }
 
+pub struct FakeSocket(std::cell::Cell<Vec<u8>>);
+
+impl FakeSocket {
+	pub fn new() -> FakeSocket {
+		Self(std::cell::Cell::new(Vec::new()))
+	}
+
+	pub fn into_vec(self) -> Vec<u8> {
+		self.0.into_inner()
+	}
+}
+
+impl Socket for FakeSocket {
+	type Error = ();
+	fn recv(&self, _buf: &mut [u8]) -> Result<usize, RecvError<()>> {
+		unimplemented!()
+	}
+
+	fn send(&self, buf: fuse::io::SendBuf) -> Result<(), SendError<()>> {
+		self.0.set(buf.to_vec());
+		Ok(())
+	}
+}
+
+impl CuseSocket for FakeSocket {}
+
+impl FuseSocket for FakeSocket {}
+
 #[macro_export]
 macro_rules! encode_response {
-	($response:expr) => {
-		$crate::encode_response!($response, {})
+	($reply:expr) => {
+		$crate::encode_response!($reply, {})
 	};
-	($response:expr, $opts:tt $(,)?) => {{
-		use fuse::operations::fuse_init;
-		use fuse::server::FuseRequest;
-		use fuse::server::FuseResponse;
-		use fuse::server::FuseResponseOptions;
+	($reply:expr, $opts:tt $(,)?) => {{
+		use fuse::server::{FuseLayout, FuseReplySender};
 		use $crate::EncodeRequestOpts;
-		use $crate::SendBufToVec;
 
 		let opts = $crate::encode_request_opts!($opts);
 
-		let mut init = fuse_init::FuseInitResponse::new();
-		init.set_version(fuse::Version::new(
-			opts.protocol_version.0,
-			opts.protocol_version.1,
-		));
-		let resp_opts = FuseResponseOptions::from_init_response(&init);
+		let mut fuse_init_out = fuse::kernel::fuse_init_out::new();
+		fuse_init_out.major = opts.protocol_version.0;
+		fuse_init_out.minor = opts.protocol_version.1;
+		let layout = FuseLayout::new(&fuse_init_out).unwrap();
 
 		let request_id = core::num::NonZeroU64::new(0xAABBCCDD).unwrap();
-		let mut resp_header = fuse::ResponseHeader::new(request_id);
-		let response = $response.to_response(&mut resp_header, resp_opts);
-		fuse::io::SendBuf::from(response).to_vec()
+		let socket = $crate::FakeSocket::new();
+		FuseReplySender::new(socket, request_id, layout).ok($reply).unwrap();
+		socket.into_vec()
 	}};
 }
 

@@ -14,23 +14,15 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_GETATTR` operation.
-
 use core::fmt;
-use core::time;
 
 use crate::internal::compat;
 use crate::kernel;
-use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // GetattrRequest {{{
 
 /// Request type for `FUSE_GETATTR`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_GETATTR` operation.
 pub struct GetattrRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_getattr_in<'a>>,
@@ -52,30 +44,23 @@ impl GetattrRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for GetattrRequest<'_> {}
+try_from_fuse_request!(GetattrRequest<'a>, |request| {
+	let version_minor = request.layout.version_minor();
+	let mut dec = request.decoder();
+	dec.expect_opcode(kernel::fuse_opcode::FUSE_GETATTR)?;
 
-impl<'a> server::FuseRequest<'a> for GetattrRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		let version_minor = options.version_minor();
-		let mut dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::FUSE_GETATTR)?;
+	let header = dec.header();
+	decode::node_id(header.nodeid)?;
 
-		let header = dec.header();
-		decode::node_id(header.nodeid)?;
+	let body = if version_minor >= 9 {
+		let body_v7p9 = dec.next_sized()?;
+		compat::Versioned::new_getattr_v7p9(version_minor, body_v7p9)
+	} else {
+		compat::Versioned::new_getattr_v7p1(version_minor)
+	};
 
-		let body = if version_minor >= 9 {
-			let body_v7p9 = dec.next_sized()?;
-			compat::Versioned::new_getattr_v7p9(version_minor, body_v7p9)
-		} else {
-			compat::Versioned::new_getattr_v7p1(version_minor)
-		};
-
-		Ok(Self { header, body })
-	}
-}
+	Ok(Self { header, body })
+});
 
 impl fmt::Debug for GetattrRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -83,75 +68,6 @@ impl fmt::Debug for GetattrRequest<'_> {
 			.field("node_id", &self.node_id())
 			.field("handle", &format_args!("{:?}", &self.handle()))
 			.finish()
-	}
-}
-
-// }}}
-
-// GetattrResponse {{{
-
-/// Response type for `FUSE_GETATTR`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_GETATTR` operation.
-pub struct GetattrResponse {
-	attr_out: crate::FuseAttrOut,
-}
-
-impl GetattrResponse {
-	#[inline]
-	#[must_use]
-	pub fn new(attributes: crate::Attributes) -> GetattrResponse {
-		Self {
-			attr_out: crate::FuseAttrOut::new(attributes),
-		}
-	}
-
-	#[inline]
-	#[must_use]
-	pub fn attributes(&self) -> &crate::Attributes {
-		self.attr_out.attributes()
-	}
-
-	#[inline]
-	#[must_use]
-	pub fn attributes_mut(&mut self) -> &mut crate::Attributes {
-		self.attr_out.attributes_mut()
-	}
-
-	#[inline]
-	#[must_use]
-	pub fn cache_timeout(&self) -> time::Duration {
-		self.attr_out.cache_timeout()
-	}
-
-	#[inline]
-	pub fn set_cache_timeout(&mut self, timeout: time::Duration) {
-		self.attr_out.set_cache_timeout(timeout)
-	}
-}
-
-impl fmt::Debug for GetattrResponse {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("GetattrResponse")
-			.field("attributes", self.attributes())
-			.field("cache_timeout", &self.cache_timeout())
-			.finish()
-	}
-}
-
-impl server::sealed::Sealed for GetattrResponse {}
-
-impl server::FuseResponse for GetattrResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		if options.version_minor() >= 9 {
-			return encode::sized(header, self.attr_out.as_v7p9());
-		}
-		encode::sized(header, self.attr_out.as_v7p1())
 	}
 }
 

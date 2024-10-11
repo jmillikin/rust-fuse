@@ -20,8 +20,8 @@ use core::marker::PhantomData;
 use core::mem::size_of;
 use core::slice::from_raw_parts;
 
-use crate::kernel;
 use crate::internal::timestamp;
+use crate::kernel;
 use crate::server::RequestError;
 
 #[cfg(rust_fuse_test = "decode_test")]

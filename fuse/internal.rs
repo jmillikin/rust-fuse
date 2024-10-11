@@ -32,3 +32,31 @@ macro_rules! new {
 		value
 	}}
 }
+
+macro_rules! try_from_cuse_request {
+	($t:ty, |$request:ident| $try_from:tt) => {
+		impl<'a> TryFrom<crate::server::CuseRequest<'a>> for $t {
+			type Error = crate::server::RequestError;
+
+			fn try_from(
+				$request: crate::server::CuseRequest<'a>,
+			) -> Result<Self, crate::server::RequestError> {
+				$try_from
+			}
+		}
+	}
+}
+
+macro_rules! try_from_fuse_request {
+	($t:ty, |$request:ident| $try_from:tt) => {
+		impl<'a> TryFrom<crate::server::FuseRequest<'a>> for $t {
+			type Error = crate::server::RequestError;
+
+			fn try_from(
+				$request: crate::server::FuseRequest<'a>,
+			) -> Result<Self, crate::server::RequestError> {
+				$try_from
+			}
+		}
+	}
+}

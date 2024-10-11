@@ -14,21 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_SETLK` and `FUSE_SETLKW` operations.
-
 use core::fmt;
 
 use crate::kernel;
-use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // SetlkRequest {{{
 
 /// Request type for `FUSE_SETLK` and `FUSE_SETLKW`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_SETLK` and `FUSE_SETLKW` operations.
 pub struct SetlkRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_lk_in,
@@ -75,27 +68,20 @@ impl SetlkRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for SetlkRequest<'_> {}
+try_from_fuse_request!(SetlkRequest<'a>, |request| {
+	let mut dec = request.decoder();
 
-impl<'a> server::FuseRequest<'a> for SetlkRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		let mut dec = request.decoder();
-
-		let header = dec.header();
-		if header.opcode != kernel::fuse_opcode::FUSE_SETLKW {
-			dec.expect_opcode(kernel::fuse_opcode::FUSE_SETLK)?;
-		}
-
-		decode::node_id(header.nodeid)?;
-
-		let body: &kernel::fuse_lk_in = dec.next_sized()?;
-		let lock = crate::Lock::decode(&body.lk)?;
-		Ok(Self { header, body, lock })
+	let header = dec.header();
+	if header.opcode != kernel::fuse_opcode::FUSE_SETLKW {
+		dec.expect_opcode(kernel::fuse_opcode::FUSE_SETLK)?;
 	}
-}
+
+	decode::node_id(header.nodeid)?;
+
+	let body: &kernel::fuse_lk_in = dec.next_sized()?;
+	let lock = crate::Lock::decode(&body.lk)?;
+	Ok(Self { header, body, lock })
+});
 
 /// Optional flags set on [`SetlkRequest`].
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -125,43 +111,6 @@ impl fmt::Debug for SetlkRequest<'_> {
 			.field("lock", &self.lock())
 			.field("flags", &self.flags())
 			.finish()
-	}
-}
-
-// }}}
-
-// SetlkResponse {{{
-
-/// Response type for `FUSE_SETLK` and `FUSE_SETLKW`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_SETLK` and `FUSE_SETLKW` operations.
-pub struct SetlkResponse {
-	_priv: (),
-}
-
-impl SetlkResponse {
-	#[must_use]
-	pub fn new() -> SetlkResponse {
-		Self { _priv: () }
-	}
-}
-
-impl fmt::Debug for SetlkResponse {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("SetlkResponse").finish()
-	}
-}
-
-impl server::sealed::Sealed for SetlkResponse {}
-
-impl server::FuseResponse for SetlkResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::header_only(header)
 	}
 }
 

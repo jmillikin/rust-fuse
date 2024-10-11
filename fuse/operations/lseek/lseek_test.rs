@@ -14,13 +14,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::mem::size_of;
-
 use fuse::kernel;
-use fuse::operations::lseek::{LseekRequest, LseekResponse, LseekWhence};
+use fuse::server::LseekRequest;
 
 use fuse_testutil as testutil;
-use fuse_testutil::{decode_request, encode_response, MessageBuilder};
+use fuse_testutil::{decode_request, MessageBuilder};
 
 #[test]
 fn request() {
@@ -40,7 +38,7 @@ fn request() {
 
 	assert_eq!(req.handle(), 12);
 	assert_eq!(req.offset(), 34);
-	assert_eq!(req.whence(), LseekWhence::SEEK_DATA);
+	assert_eq!(req.whence(), fuse::LseekWhence::SEEK_DATA);
 }
 
 #[test]
@@ -66,41 +64,6 @@ fn request_impl_debug() {
 			"    handle: 12,\n",
 			"    offset: 34,\n",
 			"    whence: SEEK_DATA,\n",
-			"}",
-		),
-	);
-}
-
-#[test]
-fn response_empty() {
-	let mut resp = LseekResponse::new();
-	resp.set_offset(4096);
-	let encoded = encode_response!(resp);
-
-	assert_eq!(
-		encoded,
-		MessageBuilder::new()
-			.push_sized(&testutil::new!(kernel::fuse_out_header {
-				len: (size_of::<kernel::fuse_out_header>()
-					+ size_of::<kernel::fuse_lseek_out>()) as u32,
-				unique: 0xAABBCCDD,
-			}))
-			.push_sized(&testutil::new!(kernel::fuse_lseek_out {
-				offset: 4096,
-			}))
-			.build()
-	);
-}
-
-#[test]
-fn response_impl_debug() {
-	let mut response = LseekResponse::new();
-	response.set_offset(4096);
-	assert_eq!(
-		format!("{:#?}", response),
-		concat!(
-			"LseekResponse {\n",
-			"    offset: 4096,\n",
 			"}",
 		),
 	);

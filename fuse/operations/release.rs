@@ -14,8 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_RELEASE` operation.
-
 use core::fmt;
 
 use crate::internal::compat;
@@ -23,14 +21,10 @@ use crate::internal::debug;
 use crate::kernel;
 use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // ReleaseRequest {{{
 
 /// Request type for `FUSE_RELEASE`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_RELEASE` operation.
 pub struct ReleaseRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_release_in<'a>>,
@@ -42,9 +36,9 @@ impl ReleaseRequest<'_> {
 		crate::NodeId::new(self.header.nodeid).unwrap_or(crate::NodeId::ROOT)
 	}
 
-	/// The value passed to [`OpenResponse::set_handle`], or zero if not set.
+	/// The value set in [`fuse_open_out::fh`], or zero if not set.
 	///
-	/// [`OpenResponse::set_handle`]: crate::operations::open::OpenResponse::set_handle
+	/// [`fuse_open_out::fh`]: crate::kernel::fuse_open_out::fh
 	#[must_use]
 	pub fn handle(&self) -> u64 {
 		self.body.as_v7p1().fh
@@ -65,28 +59,18 @@ impl ReleaseRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for ReleaseRequest<'_> {}
+try_from_cuse_request!(ReleaseRequest<'a>, |request| {
+	let version_minor = request.layout.version_minor();
+	Self::try_from(request.inner, version_minor, true)
+});
 
-impl<'a> server::CuseRequest<'a> for ReleaseRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		options: server::CuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		Self::decode_request(request, options.version_minor(), true)
-	}
-}
-
-impl<'a> server::FuseRequest<'a> for ReleaseRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		Self::decode_request(request, options.version_minor(), false)
-	}
-}
+try_from_fuse_request!(ReleaseRequest<'a>, |request| {
+	let version_minor = request.layout.version_minor();
+	Self::try_from(request.inner, version_minor, false)
+});
 
 impl<'a> ReleaseRequest<'a> {
-	fn decode_request(
+	fn try_from(
 		request: server::Request<'a>,
 		version_minor: u32,
 		is_cuse: bool,
@@ -119,53 +103,6 @@ impl fmt::Debug for ReleaseRequest<'_> {
 			.field("lock_owner", &format_args!("{:?}", self.lock_owner()))
 			.field("open_flags", &debug::hex_u32(self.open_flags()))
 			.finish()
-	}
-}
-
-// }}}
-
-// ReleaseResponse {{{
-
-/// Response type for `FUSE_RELEASE`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_RELEASE` operation.
-pub struct ReleaseResponse {
-	_priv: (),
-}
-
-impl ReleaseResponse {
-	#[must_use]
-	pub fn new() -> ReleaseResponse {
-		Self { _priv: () }
-	}
-}
-
-impl fmt::Debug for ReleaseResponse {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("ReleaseResponse").finish()
-	}
-}
-
-impl server::sealed::Sealed for ReleaseResponse {}
-
-impl server::CuseResponse for ReleaseResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::CuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::header_only(header)
-	}
-}
-
-impl server::FuseResponse for ReleaseResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::header_only(header)
 	}
 }
 

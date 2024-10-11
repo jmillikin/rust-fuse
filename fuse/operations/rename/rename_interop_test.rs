@@ -17,8 +17,8 @@
 use std::panic;
 use std::sync::mpsc;
 
-use fuse::server::fuse_rpc;
-use fuse::server::prelude::*;
+use fuse::server;
+use fuse::server::FuseRequest;
 
 use interop_testutil::{
 	diff_str,
@@ -32,16 +32,37 @@ struct TestFS {
 	requests: mpsc::Sender<String>,
 }
 
-impl interop_testutil::TestFS for TestFS {}
+struct TestHandlers<'a, S> {
+	fs: &'a TestFS,
+	conn: &'a server::FuseConnection<S>,
+}
 
-impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
-	fn lookup(
+impl interop_testutil::TestFS for TestFS {
+	fn dispatch_request(
 		&self,
-		call: fuse_rpc::Call<S>,
-		request: &LookupRequest,
-	) -> fuse_rpc::SendResult<LookupResponse, S::Error> {
+		conn: &server::FuseConnection<interop_testutil::DevFuse>,
+		request: FuseRequest<'_>,
+	) {
+		use fuse::server::FuseHandlers;
+		(TestHandlers{fs: self, conn}).dispatch(request);
+	}
+}
+
+impl<'a, S> server::FuseHandlers for TestHandlers<'a, S>
+where
+	S: server::FuseSocket,
+	S::Error: core::fmt::Debug,
+{
+	fn unimplemented(&self, request: FuseRequest<'_>) {
+		self.conn.reply(request.id()).err(OsError::UNIMPLEMENTED).unwrap();
+	}
+
+	fn lookup(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::LookupRequest::try_from(request).unwrap();
+
 		if !request.parent_id().is_root() {
-			return call.respond_err(OsError::NOT_FOUND);
+			return send_reply.err(OsError::NOT_FOUND).unwrap();
 		}
 
 		let cache_timeout = std::time::Duration::from_secs(60);
@@ -54,8 +75,7 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 			let mut entry = fuse::Entry::new(attr);
 			entry.set_cache_timeout(cache_timeout);
 
-			let resp = LookupResponse::new(Some(entry));
-			return call.respond_ok(&resp);
+			return send_reply.ok(&entry).unwrap();
 		}
 
 		if request.name() == "rename_new.txt" {
@@ -66,8 +86,7 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 			let mut entry = fuse::Entry::new(attr);
 			entry.set_cache_timeout(cache_timeout);
 
-			let resp = LookupResponse::new(Some(entry));
-			return call.respond_ok(&resp);
+			return send_reply.ok(&entry).unwrap();
 		}
 
 		if request.name() == "rename_dir.d" {
@@ -78,21 +97,21 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 			let mut entry = fuse::Entry::new(attr);
 			entry.set_cache_timeout(cache_timeout);
 
-			let resp = LookupResponse::new(Some(entry));
-			return call.respond_ok(&resp);
+			return send_reply.ok(&entry).unwrap();
 		}
 
-		call.respond_err(OsError::NOT_FOUND)
+		send_reply.err(OsError::NOT_FOUND).unwrap();
 	}
 
-	fn rename(
-		&self,
-		call: fuse_rpc::Call<S>,
-		request: &RenameRequest,
-	) -> fuse_rpc::SendResult<RenameResponse, S::Error> {
-		self.requests.send(format!("{:#?}", request)).unwrap();
-		let resp = RenameResponse::new();
-		call.respond_ok(&resp)
+	fn rename(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::RenameRequest::try_from(request).unwrap();
+		self.fs.requests.send(format!("{:#?}", request)).unwrap();
+		send_reply.ok_empty().unwrap();
+	}
+
+	fn rename2(&self, request: FuseRequest<'_>) {
+		self.rename(request)
 	}
 }
 

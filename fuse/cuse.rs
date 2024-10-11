@@ -163,27 +163,4 @@ pub struct DeviceNumber {
 	pub minor: u32,
 }
 
-impl DeviceNumber {
-	/// Create a new `DeviceNumber` with the given major and minor numbers.
-	#[inline]
-	#[must_use]
-	pub const fn new(major: u32, minor: u32) -> DeviceNumber {
-		Self { major, minor }
-	}
-
-	/// Return the device number's major number.
-	#[inline]
-	#[must_use]
-	pub const fn major(&self) -> u32 {
-		self.major
-	}
-
-	/// Return the device number's minor number.
-	#[inline]
-	#[must_use]
-	pub const fn minor(&self) -> u32 {
-		self.minor
-	}
-}
-
 // }}}

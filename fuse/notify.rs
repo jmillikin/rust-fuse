@@ -23,7 +23,6 @@ use core::num;
 
 use crate::kernel;
 use crate::operations::poll;
-use crate::server::encode;
 
 // FuseNotification {{{
 
@@ -90,18 +89,24 @@ fn encode_notify<'a, T: Sized>(
 	if let Some(name_bytes) = name_bytes {
 		crate::io::SendBuf::new_4(
 			message_len,
-			encode::sized_to_slice(header),
-			encode::sized_to_slice(body),
+			sized_to_slice(header),
+			sized_to_slice(body),
 			name_bytes,
 			b"\0",
 		)
 	} else {
 		crate::io::SendBuf::new_2(
 			message_len,
-			encode::sized_to_slice(header),
-			encode::sized_to_slice(body),
+			sized_to_slice(header),
+			sized_to_slice(body),
 		)
 	}
+}
+
+#[inline]
+fn sized_to_slice<T>(t: &T) -> &[u8] {
+	let t_ptr = (t as *const T).cast::<u8>();
+	unsafe { core::slice::from_raw_parts(t_ptr, mem::size_of::<T>()) }
 }
 
 // }}}

@@ -22,15 +22,28 @@ use fuse::{
 	Version,
 };
 use fuse::kernel;
-use fuse::operations::cuse_init::{
-	CuseInitFlag,
+use fuse::server::{
 	CuseInitRequest,
 	CuseInitResponse,
+	CuseLayout,
 };
 use fuse::server;
 
 use fuse_testutil as testutil;
-use fuse_testutil::{MessageBuilder, SendBufToVec};
+use fuse_testutil::MessageBuilder;
+
+const LAYOUT: CuseLayout = layout();
+
+const fn layout() -> CuseLayout {
+	let init_out = testutil::new!(kernel::cuse_init_out{
+		major: kernel::FUSE_KERNEL_VERSION,
+		minor: kernel::FUSE_KERNEL_MINOR_VERSION,
+	});
+	match server::CuseLayout::new(&init_out) {
+		Ok(layout) => layout,
+		Err(_) => panic!(),
+	}
+}
 
 #[test]
 fn request() {
@@ -43,13 +56,13 @@ fn request() {
 		}))
 		.build_aligned();
 
-	let req = CuseInitRequest::from_request(
-		server::Request::new(buf.as_aligned_slice()).unwrap(),
+	let req = CuseInitRequest::try_from(
+		server::CuseRequest::new(buf.as_aligned_slice(), LAYOUT).unwrap(),
 	).unwrap();
 
 	assert_eq!(req.version().major(), 7);
 	assert_eq!(req.version().minor(), 6);
-	assert_eq!(req.flags(), CuseInitFlag::UNRESTRICTED_IOCTL);
+	assert_eq!(req.flags(), fuse::CuseInitFlag::UNRESTRICTED_IOCTL);
 }
 
 #[test]
@@ -63,8 +76,8 @@ fn request_impl_debug() {
 		}))
 		.build_aligned();
 
-	let request = CuseInitRequest::from_request(
-		server::Request::new(buf.as_aligned_slice()).unwrap(),
+	let request = CuseInitRequest::try_from(
+		server::CuseRequest::new(buf.as_aligned_slice(), LAYOUT).unwrap(),
 	).unwrap();
 
 	assert_eq!(
@@ -85,18 +98,20 @@ fn request_impl_debug() {
 
 #[test]
 fn response() {
+	use fuse::server::CuseReplySender;
+
 	let device_name = CuseDeviceName::new("test-device").unwrap();
 	let mut resp = CuseInitResponse::new(device_name);
 	resp.set_version(Version::new(7, 23));
 	resp.set_max_write(4096);
 	resp.update_flags(|flags| {
-		flags.set(CuseInitFlag::UNRESTRICTED_IOCTL);
+		flags.set(fuse::CuseInitFlag::UNRESTRICTED_IOCTL);
 	});
 
 	let request_id = core::num::NonZeroU64::new(0xAABBCCDD).unwrap();
-	let mut header = fuse::ResponseHeader::new(request_id);
-	let encoded = fuse::io::SendBuf::from(resp.to_response(&mut header))
-		.to_vec();
+	let socket = fuse_testutil::FakeSocket::new();
+	CuseReplySender::new(&socket, LAYOUT, request_id).ok(&resp).unwrap();
+	let encoded = socket.into_vec();
 
 	assert_eq!(
 		encoded,
@@ -125,9 +140,12 @@ fn response_impl_debug() {
 	response.set_version(fuse::Version::new(123, 456));
 	response.set_max_read(4096);
 	response.set_max_write(8192);
-	response.set_device_number(CuseDeviceNumber::new(10, 11));
+	response.set_device_number(CuseDeviceNumber {
+		major: 10,
+		minor: 11,
+	});
 	response.update_flags(|flags| {
-		flags.set(CuseInitFlag::UNRESTRICTED_IOCTL);
+		flags.set(fuse::CuseInitFlag::UNRESTRICTED_IOCTL);
 	});
 
 	assert_eq!(

@@ -16,19 +16,12 @@
 
 //! Implements the `FUSE_UNLINK` operation.
 
-use core::fmt;
-
 use crate::kernel;
-use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // UnlinkRequest {{{
 
 /// Request type for `FUSE_UNLINK`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_UNLINK` operation.
 #[derive(Debug)]
 pub struct UnlinkRequest<'a> {
 	parent_id: crate::NodeId,
@@ -47,57 +40,13 @@ impl UnlinkRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for UnlinkRequest<'_> {}
-
-impl<'a> server::FuseRequest<'a> for UnlinkRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::FUSE_UNLINK)?;
-		Ok(Self {
-			parent_id: decode::node_id(dec.header().nodeid)?,
-			name: dec.next_node_name()?,
-		})
-	}
-}
-
-// }}}
-
-// UnlinkResponse {{{
-
-/// Response type for `FUSE_UNLINK`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_UNLINK` operation.
-pub struct UnlinkResponse {
-	_priv: (),
-}
-
-impl UnlinkResponse {
-	#[must_use]
-	pub fn new() -> UnlinkResponse {
-		Self { _priv: () }
-	}
-}
-
-impl fmt::Debug for UnlinkResponse {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("UnlinkResponse").finish()
-	}
-}
-
-impl server::sealed::Sealed for UnlinkResponse {}
-
-impl server::FuseResponse for UnlinkResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::header_only(header)
-	}
-}
+try_from_fuse_request!(UnlinkRequest<'a>, |request| {
+	let mut dec = request.decoder();
+	dec.expect_opcode(kernel::fuse_opcode::FUSE_UNLINK)?;
+	Ok(Self {
+		parent_id: decode::node_id(dec.header().nodeid)?,
+		name: dec.next_node_name()?,
+	})
+});
 
 // }}}

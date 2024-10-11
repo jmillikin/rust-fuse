@@ -18,8 +18,8 @@ use std::ffi;
 use std::panic;
 use std::sync::mpsc;
 
-use fuse::server::fuse_rpc;
-use fuse::server::prelude::*;
+use fuse::server;
+use fuse::server::FuseRequest;
 
 use interop_testutil::{
 	diff_str,
@@ -33,9 +33,23 @@ struct TestFS {
 	requests: mpsc::Sender<String>,
 }
 
+struct TestHandlers<'a, S> {
+	fs: &'a TestFS,
+	conn: &'a server::FuseConnection<S>,
+}
+
 const FIBMAP: i32 = 1; // IO(0x00,1)
 
 impl interop_testutil::TestFS for TestFS {
+	fn dispatch_request(
+		&self,
+		conn: &server::FuseConnection<interop_testutil::DevFuse>,
+		request: FuseRequest<'_>,
+	) {
+		use fuse::server::FuseHandlers;
+		(TestHandlers{fs: self, conn}).dispatch(request);
+	}
+
 	fn mount_type(&self) -> &'static fuse::os::linux::MountType {
 		fuse::os::linux::MountType::FUSEBLK
 	}
@@ -52,29 +66,35 @@ impl interop_testutil::TestFS for TestFS {
 	}
 }
 
-impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
-	fn bmap(
-		&self,
-		call: fuse_rpc::Call<S>,
-		request: &BmapRequest,
-	) -> fuse_rpc::SendResult<BmapResponse, S::Error> {
-		self.requests.send(format!("{:#?}", request)).unwrap();
-
-		let mut resp = BmapResponse::new();
-		resp.set_block(5678);
-		call.respond_ok(&resp)
+impl<'a, S> server::FuseHandlers for TestHandlers<'a, S>
+where
+	S: server::FuseSocket,
+	S::Error: core::fmt::Debug,
+{
+	fn unimplemented(&self, request: FuseRequest<'_>) {
+		self.conn.reply(request.id()).err(OsError::UNIMPLEMENTED).unwrap();
 	}
 
-	fn lookup(
-		&self,
-		call: fuse_rpc::Call<S>,
-		request: &LookupRequest,
-	) -> fuse_rpc::SendResult<LookupResponse, S::Error> {
+	fn bmap(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::BmapRequest::try_from(request).unwrap();
+
+		self.fs.requests.send(format!("{:#?}", request)).unwrap();
+
+		let mut reply = fuse::kernel::fuse_bmap_out::new();
+		reply.block = 5678;
+		send_reply.ok(&reply).unwrap();
+	}
+
+	fn lookup(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::LookupRequest::try_from(request).unwrap();
+
 		if !request.parent_id().is_root() {
-			return call.respond_err(OsError::NOT_FOUND);
+			return send_reply.err(OsError::NOT_FOUND).unwrap();
 		}
 		if request.name() != "file.txt" {
-			return call.respond_err(OsError::NOT_FOUND);
+			return send_reply.err(OsError::NOT_FOUND).unwrap();
 		}
 
 		let mut attr = fuse::Attributes::new(fuse::NodeId::new(2).unwrap());
@@ -84,30 +104,22 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		let mut entry = fuse::Entry::new(attr);
 		entry.set_cache_timeout(std::time::Duration::from_secs(60));
 
-		let resp = LookupResponse::new(Some(entry));
-		call.respond_ok(&resp)
+		send_reply.ok(&entry).unwrap();
 	}
 
-	fn open(
-		&self,
-		call: fuse_rpc::Call<S>,
-		request: &OpenRequest,
-	) -> fuse_rpc::SendResult<OpenResponse, S::Error> {
-		if request.node_id().get() != 2 {
-			return call.respond_err(OsError::NOT_FOUND);
+	fn open(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		if request.header().raw().nodeid != 2 {
+			return send_reply.err(OsError::NOT_FOUND).unwrap();
 		}
-		let mut resp = OpenResponse::new();
-		resp.set_handle(10);
-		call.respond_ok(&resp)
+		let mut reply = fuse::kernel::fuse_open_out::new();
+		reply.fh = 10;
+		send_reply.ok(&reply).unwrap();
 	}
 
-	fn release(
-		&self,
-		call: fuse_rpc::Call<S>,
-		_request: &ReleaseRequest,
-	) -> fuse_rpc::SendResult<ReleaseResponse, S::Error> {
-		let resp = ReleaseResponse::new();
-		call.respond_ok(&resp)
+	fn release(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		send_reply.ok_empty().unwrap();
 	}
 }
 

@@ -14,8 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_IOCTL` operation.
-
 use core::fmt;
 use core::marker::PhantomData;
 use core::mem::size_of;
@@ -24,14 +22,10 @@ use crate::internal::debug;
 use crate::kernel;
 use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // IoctlRequest {{{
 
 /// Request type for `FUSE_IOCTL`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_IOCTL` operation.
 pub struct IoctlRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_ioctl_in,
@@ -82,28 +76,16 @@ impl<'a> IoctlRequest<'a> {
 	}
 }
 
-impl server::sealed::Sealed for IoctlRequest<'_> {}
+try_from_cuse_request!(IoctlRequest<'a>, |request| {
+	Self::try_from(request.inner, true)
+});
 
-impl<'a> server::CuseRequest<'a> for IoctlRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::CuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		Self::decode(request, true)
-	}
-}
-
-impl<'a> server::FuseRequest<'a> for IoctlRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		Self::decode(request, false)
-	}
-}
+try_from_fuse_request!(IoctlRequest<'a>, |request| {
+	Self::try_from(request.inner, false)
+});
 
 impl<'a> IoctlRequest<'a> {
-	fn decode(
+	fn try_from(
 		request: server::Request<'a>,
 		is_cuse: bool,
 	) -> Result<Self, server::RequestError> {
@@ -299,9 +281,6 @@ impl<'a> IoctlInputReader<'a> {
 // IoctlResponse {{{
 
 /// Response type for `FUSE_IOCTL`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_IOCTL` operation.
 pub struct IoctlResponse<'a> {
 	raw: kernel::fuse_ioctl_out,
 	output: IoctlResponseOutput<'a>,
@@ -377,13 +356,13 @@ impl fmt::Debug for IoctlResponse<'_> {
 }
 
 impl<'a> IoctlResponse<'a> {
-	fn encode(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-	) -> server::Response<'a> {
+	fn send_to<S: server::Socket>(
+		&self,
+		reply_sender: server::ReplySender<'_, S>,
+	) -> Result<(), server::SendError<S::Error>> {
 		match self.output {
 			IoctlResponseOutput::Bytes(output) => {
-				encode::sized_bytes(header, &self.raw, output)
+				reply_sender.send_2(self.raw.as_bytes(), output)
 			},
 			IoctlResponseOutput::Retry(input_slices, output_slices) => {
 				let bytes_2: &'a [u8] = unsafe {
@@ -398,31 +377,27 @@ impl<'a> IoctlResponse<'a> {
 						core::mem::size_of_val(output_slices),
 					)
 				};
-				encode::sized_bytes2(header, &self.raw, bytes_2, bytes_3)
+				reply_sender.send_3(self.raw.as_bytes(), bytes_2, bytes_3)
 			},
 		}
 	}
 }
 
-impl server::sealed::Sealed for IoctlResponse<'_> {}
-
-impl server::CuseResponse for IoctlResponse<'_> {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::CuseResponseOptions,
-	) -> server::Response<'a> {
-		self.encode(header)
+impl server::FuseReply for IoctlResponse<'_> {
+	fn send_to<S: server::FuseSocket>(
+		&self,
+		reply_sender: server::FuseReplySender<'_, S>,
+	) -> Result<(), server::SendError<S::Error>> {
+		self.send_to(reply_sender.inner)
 	}
 }
 
-impl server::FuseResponse for IoctlResponse<'_> {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		self.encode(header)
+impl server::CuseReply for IoctlResponse<'_> {
+	fn send_to<S: server::CuseSocket>(
+		&self,
+		reply_sender: server::CuseReplySender<'_, S>,
+	) -> Result<(), server::SendError<S::Error>> {
+		self.send_to(reply_sender.inner)
 	}
 }
 

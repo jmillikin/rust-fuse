@@ -14,13 +14,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::mem::size_of;
-
 use fuse::kernel;
-use fuse::operations::read::{ReadRequest, ReadResponse};
+use fuse::server::ReadRequest;
 
 use fuse_testutil as testutil;
-use fuse_testutil::{decode_request, encode_response, MessageBuilder};
+use fuse_testutil::{decode_request, MessageBuilder};
 
 const DUMMY_READ_FLAG: u32 = 0x80000000;
 
@@ -122,39 +120,6 @@ fn request_impl_debug() {
 			"    handle: 3,\n",
 			"    lock_owner: None,\n",
 			"    open_flags: 0x00000004,\n",
-			"}",
-		),
-	);
-}
-
-#[test]
-fn response() {
-	let resp_bytes = &[255, 0, 255];
-	let resp = ReadResponse::from_bytes(resp_bytes);
-	let encoded = encode_response!(resp);
-
-	assert_eq!(
-		encoded,
-		MessageBuilder::new()
-			.push_sized(&testutil::new!(kernel::fuse_out_header {
-				len: (size_of::<kernel::fuse_out_header>()
-					+ resp_bytes.len()) as u32,
-				unique: 0xAABBCCDD,
-			}))
-			.push_bytes(&[255, 0, 255])
-			.build()
-	);
-}
-
-#[test]
-fn response_impl_debug() {
-	let response = ReadResponse::from_bytes(&[255, 0, 255]);
-
-	assert_eq!(
-		format!("{:#?}", response),
-		concat!(
-			"ReadResponse {\n",
-			r#"    bytes: "\xff\x00\xff","#, "\n",
 			"}",
 		),
 	);

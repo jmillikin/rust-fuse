@@ -14,8 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_READDIRPLUS` operation.
-
 use core::convert::TryFrom;
 use core::fmt;
 use core::num;
@@ -24,16 +22,11 @@ use crate::internal::compat;
 use crate::internal::debug;
 use crate::internal::dirent;
 use crate::kernel;
-use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // ReaddirplusRequest {{{
 
 /// Request type for `FUSE_READDIRPLUS`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_READDIRPLUS` operation.
 pub struct ReaddirplusRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_read_in<'a>>,
@@ -55,9 +48,9 @@ impl ReaddirplusRequest<'_> {
 		num::NonZeroU64::new(self.body.as_v7p1().offset)
 	}
 
-	/// The value passed to [`OpendirResponse::set_handle`], or zero if not set.
+	/// The value set in [`fuse_open_out::fh`], or zero if not set.
 	///
-	/// [`OpendirResponse::set_handle`]: crate::operations::opendir::OpendirResponse::set_handle
+	/// [`fuse_open_out::fh`]: crate::kernel::fuse_open_out::fh
 	#[must_use]
 	pub fn handle(&self) -> u64 {
 		self.body.as_v7p1().fh
@@ -72,31 +65,24 @@ impl ReaddirplusRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for ReaddirplusRequest<'_> {}
+try_from_fuse_request!(ReaddirplusRequest<'a>, |request| {
+	let version_minor = request.layout.version_minor();
+	let mut dec = request.decoder();
+	dec.expect_opcode(kernel::fuse_opcode::FUSE_READDIRPLUS)?;
 
-impl<'a> server::FuseRequest<'a> for ReaddirplusRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		let version_minor = options.version_minor();
-		let mut dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::FUSE_READDIRPLUS)?;
+	let header = dec.header();
+	decode::node_id(header.nodeid)?;
 
-		let header = dec.header();
-		decode::node_id(header.nodeid)?;
+	let body = if version_minor >= 9 {
+		let body_v7p9 = dec.next_sized()?;
+		compat::Versioned::new_read_v7p9(version_minor, body_v7p9)
+	} else {
+		let body_v7p1 = dec.next_sized()?;
+		compat::Versioned::new_read_v7p1(version_minor, body_v7p1)
+	};
 
-		let body = if version_minor >= 9 {
-			let body_v7p9 = dec.next_sized()?;
-			compat::Versioned::new_read_v7p9(version_minor, body_v7p9)
-		} else {
-			let body_v7p1 = dec.next_sized()?;
-			compat::Versioned::new_read_v7p1(version_minor, body_v7p1)
-		};
-
-		Ok(Self { header, body })
-	}
-}
+	Ok(Self { header, body })
+});
 
 impl fmt::Debug for ReaddirplusRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -107,64 +93,6 @@ impl fmt::Debug for ReaddirplusRequest<'_> {
 			.field("handle", &self.handle())
 			.field("open_flags", &debug::hex_u32(self.open_flags()))
 			.finish()
-	}
-}
-
-// }}}
-
-// ReaddirplusResponse {{{
-
-/// Response type for `FUSE_READDIRPLUS`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_READDIRPLUS` operation.
-pub struct ReaddirplusResponse<'a> {
-	entries: ReaddirplusEntries<'a>,
-}
-
-impl ReaddirplusResponse<'_> {
-	/// An empty `ReaddirplusResponse`, containing no entries.
-	///
-	/// This is useful for returning end-of-stream responses.
-	pub const EMPTY: &'static ReaddirplusResponse<'static> = &ReaddirplusResponse {
-		entries: ReaddirplusEntries { buf: b"" },
-	};
-}
-
-impl<'a> ReaddirplusResponse<'a> {
-	#[inline]
-	#[must_use]
-	pub fn new(entries: ReaddirplusEntries<'a>) -> ReaddirplusResponse<'a> {
-		Self { entries }
-	}
-
-	#[inline]
-	pub fn entries(&self) -> impl Iterator<Item = ReaddirplusEntry> {
-		ReaddirplusEntriesIter::new(&self.entries)
-	}
-}
-
-impl fmt::Debug for ReaddirplusResponse<'_> {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("ReaddirplusResponse")
-			.field("entries", &self.entries)
-			.finish()
-	}
-}
-
-impl server::sealed::Sealed for ReaddirplusResponse<'_> {}
-
-impl server::FuseResponse for ReaddirplusResponse<'_> {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		if self.entries.is_empty() {
-			encode::header_only(header)
-		} else {
-			encode::bytes(header, self.entries.buf)
-		}
 	}
 }
 
@@ -197,7 +125,7 @@ impl<'a> ReaddirplusEntry<'a> {
 					namelen: name.as_bytes().len() as u32,
 					..kernel::fuse_dirent::new()
 				},
-				entry_out: entry.into_entry_out(),
+				entry_out: *entry.raw(),
 			},
 			name,
 		}

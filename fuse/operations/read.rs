@@ -14,8 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_READ` operation.
-
 use core::fmt;
 
 use crate::internal::compat;
@@ -23,14 +21,10 @@ use crate::internal::debug;
 use crate::kernel;
 use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // ReadRequest {{{
 
 /// Request type for `FUSE_READ`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_READ` operation.
 pub struct ReadRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_read_in<'a>>,
@@ -52,9 +46,9 @@ impl ReadRequest<'_> {
 		self.body.as_v7p1().offset
 	}
 
-	/// The value passed to [`OpenResponse::set_handle`], or zero if not set.
+	/// The value set in [`fuse_open_out::fh`], or zero if not set.
 	///
-	/// [`OpenResponse::set_handle`]: crate::operations::open::OpenResponse::set_handle
+	/// [`fuse_open_out::fh`]: crate::kernel::fuse_open_out::fh
 	#[must_use]
 	pub fn handle(&self) -> u64 {
 		self.body.as_v7p1().fh
@@ -78,28 +72,18 @@ impl ReadRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for ReadRequest<'_> {}
+try_from_cuse_request!(ReadRequest<'a>, |request| {
+	let version_minor = request.layout.version_minor();
+	Self::try_from(request.inner, version_minor, true)
+});
 
-impl<'a> server::CuseRequest<'a> for ReadRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		options: server::CuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		Self::decode_request(request, options.version_minor(), true)
-	}
-}
-
-impl<'a> server::FuseRequest<'a> for ReadRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		Self::decode_request(request, options.version_minor(), false)
-	}
-}
+try_from_fuse_request!(ReadRequest<'a>, |request| {
+	let version_minor = request.layout.version_minor();
+	Self::try_from(request.inner, version_minor, false)
+});
 
 impl<'a> ReadRequest<'a> {
-	fn decode_request(
+	fn try_from(
 		request: server::Request<'a>,
 		version_minor: u32,
 		is_cuse: bool,
@@ -134,59 +118,6 @@ impl fmt::Debug for ReadRequest<'_> {
 			.field("lock_owner", &format_args!("{:?}", &self.lock_owner()))
 			.field("open_flags", &debug::hex_u32(self.open_flags()))
 			.finish()
-	}
-}
-
-// }}}
-
-// ReadResponse {{{
-
-/// Response type for `FUSE_READ`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_READ` operation.
-pub struct ReadResponse<'a> {
-	bytes: &'a [u8],
-}
-
-impl<'a> ReadResponse<'a> {
-	#[must_use]
-	pub fn from_bytes(bytes: &'a [u8]) -> ReadResponse<'a> {
-		Self { bytes }
-	}
-
-	// TODO; from &[std::io::IoSlice]
-
-	// TODO: from file descriptor (for splicing)
-}
-
-impl fmt::Debug for ReadResponse<'_> {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("ReadResponse")
-			.field("bytes", &debug::bytes(self.bytes))
-			.finish()
-	}
-}
-
-impl server::sealed::Sealed for ReadResponse<'_> {}
-
-impl server::CuseResponse for ReadResponse<'_> {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::CuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::bytes(header, self.bytes)
-	}
-}
-
-impl server::FuseResponse for ReadResponse<'_> {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::bytes(header, self.bytes)
 	}
 }
 

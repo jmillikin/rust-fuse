@@ -14,23 +14,16 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_RELEASEDIR` operation.
-
 use core::fmt;
 
 use crate::internal::compat;
 use crate::internal::debug;
 use crate::kernel;
-use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // ReleasedirRequest {{{
 
 /// Request type for `FUSE_RELEASEDIR`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_RELEASEDIR` operation.
 pub struct ReleasedirRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_release_in<'a>>,
@@ -42,9 +35,9 @@ impl ReleasedirRequest<'_> {
 		unsafe { crate::NodeId::new_unchecked(self.header.nodeid) }
 	}
 
-	/// The value passed to [`OpendirResponse::set_handle`], or zero if not set.
+	/// The value set in [`fuse_open_out::fh`], or zero if not set.
 	///
-	/// [`OpendirResponse::set_handle`]: crate::operations::opendir::OpendirResponse::set_handle
+	/// [`fuse_open_out::fh`]: crate::kernel::fuse_open_out::fh
 	#[must_use]
 	pub fn handle(&self) -> u64 {
 		self.body.as_v7p1().fh
@@ -65,31 +58,24 @@ impl ReleasedirRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for ReleasedirRequest<'_> {}
+try_from_fuse_request!(ReleasedirRequest<'a>, |request| {
+	let version_minor = request.layout.version_minor();
+	let mut dec = request.decoder();
+	dec.expect_opcode(kernel::fuse_opcode::FUSE_RELEASEDIR)?;
 
-impl<'a> server::FuseRequest<'a> for ReleasedirRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		let version_minor = options.version_minor();
-		let mut dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::FUSE_RELEASEDIR)?;
+	let header = dec.header();
+	decode::node_id(header.nodeid)?;
 
-		let header = dec.header();
-		decode::node_id(header.nodeid)?;
+	let body = if version_minor >= 8 {
+		let body_v7p8 = dec.next_sized()?;
+		compat::Versioned::new_release_v7p8(version_minor, body_v7p8)
+	} else {
+		let body_v7p1 = dec.next_sized()?;
+		compat::Versioned::new_release_v7p1(version_minor, body_v7p1)
+	};
 
-		let body = if version_minor >= 8 {
-			let body_v7p8 = dec.next_sized()?;
-			compat::Versioned::new_release_v7p8(version_minor, body_v7p8)
-		} else {
-			let body_v7p1 = dec.next_sized()?;
-			compat::Versioned::new_release_v7p1(version_minor, body_v7p1)
-		};
-
-		Ok(Self { header, body })
-	}
-}
+	Ok(Self { header, body })
+});
 
 impl fmt::Debug for ReleasedirRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -99,43 +85,6 @@ impl fmt::Debug for ReleasedirRequest<'_> {
 			.field("lock_owner", &format_args!("{:?}", self.lock_owner()))
 			.field("open_flags", &debug::hex_u32(self.open_flags()))
 			.finish()
-	}
-}
-
-// }}}
-
-// ReleasedirResponse {{{
-
-/// Response type for `FUSE_RELEASEDIR`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_RELEASEDIR` operation.
-pub struct ReleasedirResponse {
-	_priv: (),
-}
-
-impl ReleasedirResponse {
-	#[must_use]
-	pub fn new() -> ReleasedirResponse {
-		Self { _priv: () }
-	}
-}
-
-impl fmt::Debug for ReleasedirResponse {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("ReleasedirResponse").finish()
-	}
-}
-
-impl server::sealed::Sealed for ReleasedirResponse {}
-
-impl server::FuseResponse for ReleasedirResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::header_only(header)
 	}
 }
 

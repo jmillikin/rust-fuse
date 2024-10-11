@@ -14,8 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_READDIR` operation.
-
 use core::convert::TryFrom;
 use core::fmt;
 use core::num;
@@ -26,14 +24,10 @@ use crate::internal::dirent;
 use crate::kernel;
 use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // ReaddirRequest {{{
 
 /// Request type for `FUSE_READDIR`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_READDIR` operation.
 pub struct ReaddirRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_read_in<'a>>,
@@ -55,9 +49,9 @@ impl ReaddirRequest<'_> {
 		num::NonZeroU64::new(self.body.as_v7p1().offset)
 	}
 
-	/// The value passed to [`OpendirResponse::set_handle`], or zero if not set.
+	/// The value set in [`fuse_open_out::fh`], or zero if not set.
 	///
-	/// [`OpendirResponse::set_handle`]: crate::operations::opendir::OpendirResponse::set_handle
+	/// [`fuse_open_out::fh`]: crate::kernel::fuse_open_out::fh
 	#[must_use]
 	pub fn handle(&self) -> u64 {
 		self.body.as_v7p1().fh
@@ -72,31 +66,24 @@ impl ReaddirRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for ReaddirRequest<'_> {}
+try_from_fuse_request!(ReaddirRequest<'a>, |request| {
+	let version_minor = request.layout.version_minor();
+	let mut dec = request.decoder();
+	dec.expect_opcode(kernel::fuse_opcode::FUSE_READDIR)?;
 
-impl<'a> server::FuseRequest<'a> for ReaddirRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		let version_minor = options.version_minor();
-		let mut dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::FUSE_READDIR)?;
+	let header = dec.header();
+	decode::node_id(header.nodeid)?;
 
-		let header = dec.header();
-		decode::node_id(header.nodeid)?;
+	let body = if version_minor >= 9 {
+		let body_v7p9 = dec.next_sized()?;
+		compat::Versioned::new_read_v7p9(version_minor, body_v7p9)
+	} else {
+		let body_v7p1 = dec.next_sized()?;
+		compat::Versioned::new_read_v7p1(version_minor, body_v7p1)
+	};
 
-		let body = if version_minor >= 9 {
-			let body_v7p9 = dec.next_sized()?;
-			compat::Versioned::new_read_v7p9(version_minor, body_v7p9)
-		} else {
-			let body_v7p1 = dec.next_sized()?;
-			compat::Versioned::new_read_v7p1(version_minor, body_v7p1)
-		};
-
-		Ok(Self { header, body })
-	}
-}
+	Ok(Self { header, body })
+});
 
 impl fmt::Debug for ReaddirRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -107,64 +94,6 @@ impl fmt::Debug for ReaddirRequest<'_> {
 			.field("handle", &self.handle())
 			.field("open_flags", &debug::hex_u32(self.open_flags()))
 			.finish()
-	}
-}
-
-// }}}
-
-// ReaddirResponse {{{
-
-/// Response type for `FUSE_READDIR`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_READDIR` operation.
-pub struct ReaddirResponse<'a> {
-	entries: ReaddirEntries<'a>,
-}
-
-impl ReaddirResponse<'_> {
-	/// An empty `ReaddirResponse`, containing no entries.
-	///
-	/// This is useful for returning end-of-stream responses.
-	pub const EMPTY: &'static ReaddirResponse<'static> = &ReaddirResponse {
-		entries: ReaddirEntries { buf: b"" },
-	};
-}
-
-impl<'a> ReaddirResponse<'a> {
-	#[inline]
-	#[must_use]
-	pub fn new(entries: ReaddirEntries<'a>) -> ReaddirResponse<'a> {
-		Self { entries }
-	}
-
-	#[inline]
-	pub fn entries(&self) -> impl Iterator<Item = ReaddirEntry> {
-		ReaddirEntriesIter::new(&self.entries)
-	}
-}
-
-impl fmt::Debug for ReaddirResponse<'_> {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("ReaddirResponse")
-			.field("entries", &self.entries)
-			.finish()
-	}
-}
-
-impl server::sealed::Sealed for ReaddirResponse<'_> {}
-
-impl server::FuseResponse for ReaddirResponse<'_> {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		if self.entries.is_empty() {
-			encode::header_only(header)
-		} else {
-			encode::bytes(header, self.entries.buf)
-		}
 	}
 }
 
@@ -250,8 +179,8 @@ pub struct ReaddirEntries<'a> {
 impl<'a> ReaddirEntries<'a> {
 	#[inline]
 	#[must_use]
-	pub fn is_empty(&self) -> bool {
-		self.buf.is_empty()
+	pub fn as_bytes(&self) -> &'a [u8] {
+		self.buf
 	}
 }
 
@@ -260,6 +189,15 @@ impl fmt::Debug for ReaddirEntries<'_> {
 		fmt.debug_list()
 			.entries(ReaddirEntriesIter::new(self))
 			.finish()
+	}
+}
+
+impl server::FuseReply for ReaddirEntries<'_> {
+	fn send_to<S: server::FuseSocket>(
+		&self,
+		reply_sender: server::FuseReplySender<'_, S>,
+	) -> Result<(), server::SendError<S::Error>> {
+		reply_sender.inner.send_1(self.buf)
 	}
 }
 

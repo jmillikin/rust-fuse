@@ -14,23 +14,20 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `CUSE_INIT` operation.
-
 use core::fmt;
 use core::marker::PhantomData;
 
-use crate::Version;
-use crate::cuse;
+use crate::{
+	CuseDeviceName,
+	CuseDeviceNumber,
+	Version,
+};
 use crate::kernel;
 use crate::server;
-use crate::server::encode;
 
 // CuseInitRequest {{{
 
 /// Request type for `CUSE_INIT`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `CUSE_INIT` operation.
 pub struct CuseInitRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	version: Version,
@@ -49,21 +46,17 @@ impl CuseInitRequest<'_> {
 	}
 }
 
-impl<'a> CuseInitRequest<'a> {
-	pub fn from_request(
-		request: server::Request<'a>,
-	) -> Result<CuseInitRequest<'a>, server::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::CUSE_INIT)?;
+try_from_cuse_request!(CuseInitRequest<'a>, |request| {
+	let mut dec = request.decoder();
+	dec.expect_opcode(kernel::fuse_opcode::CUSE_INIT)?;
 
-		let raw: &'a kernel::cuse_init_in = dec.next_sized()?;
-		Ok(CuseInitRequest {
-			phantom: PhantomData,
-			version: Version::new(raw.major, raw.minor),
-			flags: CuseInitFlags { bits: raw.flags },
-		})
-	}
-}
+	let raw: &'a kernel::cuse_init_in = dec.next_sized()?;
+	Ok(CuseInitRequest {
+		phantom: PhantomData,
+		version: Version::new(raw.major, raw.minor),
+		flags: CuseInitFlags { bits: raw.flags },
+	})
+});
 
 impl fmt::Debug for CuseInitRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -79,17 +72,14 @@ impl fmt::Debug for CuseInitRequest<'_> {
 // CuseInitResponse {{{
 
 /// Response type for `CUSE_INIT`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `CUSE_INIT` operation.
 pub struct CuseInitResponse<'a> {
-	raw: kernel::cuse_init_out,
-	device_name: Option<&'a cuse::DeviceName>,
+	pub(crate) raw: kernel::cuse_init_out,
+	device_name: Option<&'a CuseDeviceName>,
 }
 
 impl<'a> CuseInitResponse<'a> {
 	#[must_use]
-	pub fn new(device_name: &'a cuse::DeviceName) -> CuseInitResponse<'a> {
+	pub fn new(device_name: &'a CuseDeviceName) -> CuseInitResponse<'a> {
 		CuseInitResponse {
 			raw: kernel::cuse_init_out::new(),
 			device_name: Some(device_name),
@@ -149,16 +139,16 @@ impl<'a> CuseInitResponse<'a> {
 	}
 
 	#[must_use]
-	pub fn device_number(&self) -> cuse::DeviceNumber {
-		cuse::DeviceNumber::new(
-			self.raw.dev_major,
-			self.raw.dev_minor,
-		)
+	pub fn device_number(&self) -> CuseDeviceNumber {
+		CuseDeviceNumber {
+			major: self.raw.dev_major,
+			minor: self.raw.dev_minor,
+		}
 	}
 
-	pub fn set_device_number(&mut self, device_number: cuse::DeviceNumber) {
-		self.raw.dev_major = device_number.major();
-		self.raw.dev_minor = device_number.minor();
+	pub fn set_device_number(&mut self, device_number: CuseDeviceNumber) {
+		self.raw.dev_major = device_number.major;
+		self.raw.dev_minor = device_number.minor;
 	}
 }
 
@@ -178,21 +168,20 @@ impl fmt::Debug for CuseInitResponse<'_> {
 	}
 }
 
-impl CuseInitResponse<'_> {
-	pub fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-	) -> server::Response<'a> {
-		match self.device_name.map(|n| n.as_bytes()) {
-			None => encode::sized(header, &self.raw),
-			Some(device_name) => encode::sized_bytes3(
-				header,
-				&self.raw,
+impl server::CuseReply for CuseInitResponse<'_> {
+	fn send_to<S: server::CuseSocket>(
+		&self,
+		reply_sender: server::CuseReplySender<'_, S>,
+	) -> Result<(), server::SendError<S::Error>> {
+		if let Some(device_name) = self.device_name.map(|n| n.as_bytes()) {
+			return reply_sender.inner.send_4(
+				self.raw.as_bytes(),
 				b"DEVNAME=",
 				device_name,
 				b"\x00",
-			),
+			);
 		}
+		return reply_sender.inner.send_1(self.raw.as_bytes());
 	}
 }
 

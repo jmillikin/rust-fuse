@@ -14,22 +14,15 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_MKNOD` operation.
-
 use core::fmt;
 
 use crate::internal::compat;
 use crate::kernel;
-use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // MknodRequest {{{
 
 /// Request type for `FUSE_MKNOD`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_MKNOD` operation.
 pub struct MknodRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_mknod_in<'a>>,
@@ -65,41 +58,32 @@ impl MknodRequest<'_> {
 		use crate::FileType as T;
 		let body = self.body.as_v7p1();
 		match crate::FileType::from_mode(self.mode()) {
-			Some(T::CharacterDevice | T::BlockDevice) => {
-				Some(body.rdev)
-			},
+			Some(T::CharacterDevice | T::BlockDevice) => Some(body.rdev),
 			_ => None,
 		}
 	}
 }
 
-impl server::sealed::Sealed for MknodRequest<'_> {}
+try_from_fuse_request!(MknodRequest<'a>, |request| {
+	let version_minor = request.layout.version_minor();
+	let mut dec = request.decoder();
+	dec.expect_opcode(kernel::fuse_opcode::FUSE_MKNOD)?;
 
-impl<'a> server::FuseRequest<'a> for MknodRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		let version_minor = options.version_minor();
-		let mut dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::FUSE_MKNOD)?;
+	let header = dec.header();
+	decode::node_id(dec.header().nodeid)?;
 
-		let header = dec.header();
-		decode::node_id(dec.header().nodeid)?;
+	let body = if version_minor >= 12 {
+		let body_v7p12 = dec.next_sized()?;
+		compat::Versioned::new_mknod_v7p12(version_minor, body_v7p12)
+	} else {
+		let body_v7p1 = dec.next_sized()?;
+		compat::Versioned::new_mknod_v7p1(version_minor, body_v7p1)
+	};
 
-		let body = if version_minor >= 12 {
-			let body_v7p12 = dec.next_sized()?;
-			compat::Versioned::new_mknod_v7p12(version_minor, body_v7p12)
-		} else {
-			let body_v7p1 = dec.next_sized()?;
-			compat::Versioned::new_mknod_v7p1(version_minor, body_v7p1)
-		};
+	let name = dec.next_node_name()?;
 
-		let name = dec.next_node_name()?;
-
-		Ok(Self { header, body, name })
-	}
-}
+	Ok(Self { header, body, name })
+});
 
 impl fmt::Debug for MknodRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -110,60 +94,6 @@ impl fmt::Debug for MknodRequest<'_> {
 			.field("umask", &format_args!("{:#o}", &self.umask()))
 			.field("device_number", &format_args!("{:?}", self.device_number()))
 			.finish()
-	}
-}
-
-// }}}
-
-// MknodResponse {{{
-
-/// Response type for `FUSE_MKNOD`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_MKNOD` operation.
-pub struct MknodResponse {
-	entry: crate::Entry,
-}
-
-impl MknodResponse {
-	#[must_use]
-	pub fn new(entry: crate::Entry) -> MknodResponse {
-		Self { entry }
-	}
-
-	#[inline]
-	#[must_use]
-	pub fn entry(&self) -> &crate::Entry {
-		&self.entry
-	}
-
-	#[inline]
-	#[must_use]
-	pub fn entry_mut(&mut self) -> &mut crate::Entry {
-		&mut self.entry
-	}
-}
-
-impl fmt::Debug for MknodResponse {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("MknodResponse")
-			.field("entry", &self.entry())
-			.finish()
-	}
-}
-
-impl server::sealed::Sealed for MknodResponse {}
-
-impl server::FuseResponse for MknodResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		if options.version_minor() >= 9 {
-			return encode::sized(header, self.entry.as_v7p9());
-		}
-		encode::sized(header, self.entry.as_v7p1())
 	}
 }
 

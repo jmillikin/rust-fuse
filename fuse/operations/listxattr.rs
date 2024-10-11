@@ -14,8 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_LISTXATTR` operation.
-
 use core::convert::TryFrom;
 use core::fmt;
 use core::num;
@@ -24,14 +22,10 @@ use core::ptr;
 use crate::kernel;
 use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // ListxattrRequest {{{
 
 /// Request type for `FUSE_LISTXATTR`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_LISTXATTR` operation.
 pub struct ListxattrRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_getxattr_in,
@@ -52,23 +46,16 @@ impl ListxattrRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for ListxattrRequest<'_> {}
+try_from_fuse_request!(ListxattrRequest<'a>, |request| {
+	let mut dec = request.decoder();
+	dec.expect_opcode(kernel::fuse_opcode::FUSE_LISTXATTR)?;
 
-impl<'a> server::FuseRequest<'a> for ListxattrRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::FUSE_LISTXATTR)?;
+	let header = dec.header();
+	decode::node_id(header.nodeid)?;
 
-		let header = dec.header();
-		decode::node_id(header.nodeid)?;
-
-		let body = dec.next_sized()?;
-		Ok(Self { header, body })
-	}
-}
+	let body = dec.next_sized()?;
+	Ok(Self { header, body })
+});
 
 impl fmt::Debug for ListxattrRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -81,97 +68,6 @@ impl fmt::Debug for ListxattrRequest<'_> {
 
 // }}}
 
-// ListxattrResponse {{{
-
-/// Response type for `FUSE_LISTXATTR`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_LISTXATTR` operation.
-pub struct ListxattrResponse<'a> {
-	output: ListxattrOutput<'a>,
-}
-
-enum ListxattrOutput<'a> {
-	Names(ListxattrNames<'a>),
-	Size(kernel::fuse_getxattr_out),
-	ErrTooBig(usize),
-}
-
-impl<'a> ListxattrResponse<'a> {
-	#[inline]
-	#[must_use]
-	pub fn with_names(
-		names: impl Into<ListxattrNames<'a>>,
-	) -> ListxattrResponse<'a> {
-		ListxattrResponse {
-			output: ListxattrOutput::Names(names.into()),
-		}
-	}
-
-	#[inline]
-	#[must_use]
-	pub fn with_names_size(names_size: usize) -> ListxattrResponse<'a> {
-		if let Some(size_u32) = check_list_size(names_size) {
-			let raw = new!(kernel::fuse_getxattr_out {
-				size: size_u32,
-			});
-			let output = ListxattrOutput::Size(raw);
-			return ListxattrResponse { output };
-		}
-		ListxattrResponse {
-			output: ListxattrOutput::ErrTooBig(names_size),
-		}
-	}
-}
-
-impl fmt::Debug for ListxattrResponse<'_> {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		let mut dbg = fmt.debug_struct("ListxattrResponse");
-		match self.output {
-			ListxattrOutput::Names(names) => {
-				dbg.field("names", &names);
-			},
-			ListxattrOutput::Size(raw) => {
-				dbg.field("size", &raw.size);
-			},
-			ListxattrOutput::ErrTooBig(size) => {
-				dbg.field("size", &size);
-			},
-		}
-		dbg.finish()
-	}
-}
-
-impl server::sealed::Sealed for ListxattrResponse<'_> {}
-
-impl server::FuseResponse for ListxattrResponse<'_> {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		use ListxattrOutput as Out;
-		match &self.output {
-			Out::Names(names) => encode::bytes(header, names.buf),
-			Out::Size(out) => encode::sized(header, out),
-			Out::ErrTooBig(_) => encode::error(header, crate::Error::E2BIG),
-		}
-	}
-}
-
-#[inline]
-#[must_use]
-fn check_list_size(list_size: usize) -> Option<u32> {
-	if let Some(max_size) = crate::os::XATTR_LIST_MAX {
-		if list_size > max_size {
-			return None;
-		}
-	}
-	u32::try_from(list_size).ok()
-}
-
-// }}}
-
 // ListxattrNames {{{
 
 #[derive(Copy, Clone)]
@@ -179,11 +75,28 @@ pub struct ListxattrNames<'a> {
 	buf: &'a [u8],
 }
 
+impl<'a> ListxattrNames<'a> {
+	#[inline]
+	#[must_use]
+	pub fn as_bytes(&self) -> &'a [u8] {
+		self.buf
+	}
+}
+
 impl fmt::Debug for ListxattrNames<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_list()
 			.entries(XattrNamesIter(self.buf))
 			.finish()
+	}
+}
+
+impl server::FuseReply for ListxattrNames<'_> {
+	fn send_to<S: server::FuseSocket>(
+		&self,
+		reply_sender: server::FuseReplySender<'_, S>,
+	) -> Result<(), server::SendError<S::Error>> {
+		reply_sender.inner.send_1(self.buf)
 	}
 }
 

@@ -14,21 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_BMAP` operation.
-
 use core::fmt;
 
 use crate::kernel;
-use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // BmapRequest {{{
 
 /// Request type for `FUSE_BMAP`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_BMAP` operation.
 pub struct BmapRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_bmap_in,
@@ -51,22 +44,15 @@ impl BmapRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for BmapRequest<'_> {}
+try_from_fuse_request!(BmapRequest<'a>, |request| {
+	let mut dec = request.decoder();
+	dec.expect_opcode(kernel::fuse_opcode::FUSE_BMAP)?;
 
-impl<'a> server::FuseRequest<'a> for BmapRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::FUSE_BMAP)?;
-
-		let header = dec.header();
-		let body = dec.next_sized()?;
-		decode::node_id(header.nodeid)?;
-		Ok(Self { header, body })
-	}
-}
+	let header = dec.header();
+	let body = dec.next_sized()?;
+	decode::node_id(header.nodeid)?;
+	Ok(Self { header, body })
+});
 
 impl fmt::Debug for BmapRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -75,56 +61,6 @@ impl fmt::Debug for BmapRequest<'_> {
 			.field("block", &self.block())
 			.field("block_size", &self.block_size())
 			.finish()
-	}
-}
-
-// }}}
-
-// BmapResponse {{{
-
-/// Response type for `FUSE_BMAP`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_BMAP` operation.
-pub struct BmapResponse {
-	raw: kernel::fuse_bmap_out,
-}
-
-impl BmapResponse {
-	#[must_use]
-	pub fn new() -> BmapResponse {
-		Self {
-			raw: kernel::fuse_bmap_out::new(),
-		}
-	}
-
-	#[must_use]
-	pub fn block(self) -> u64 {
-		self.raw.block
-	}
-
-	pub fn set_block(&mut self, block: u64) {
-		self.raw.block = block;
-	}
-}
-
-impl fmt::Debug for BmapResponse {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("BmapResponse")
-			.field("block", &self.raw.block)
-			.finish()
-	}
-}
-
-impl server::sealed::Sealed for BmapResponse {}
-
-impl server::FuseResponse for BmapResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::sized(header, &self.raw)
 	}
 }
 

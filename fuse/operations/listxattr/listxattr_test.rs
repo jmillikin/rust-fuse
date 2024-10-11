@@ -14,18 +14,16 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::mem::size_of;
 use core::num;
 
 use fuse::kernel;
-use fuse::operations::listxattr::{
+use fuse::server::{
 	ListxattrNamesWriter,
 	ListxattrRequest,
-	ListxattrResponse,
 };
 
 use fuse_testutil as testutil;
-use fuse_testutil::{decode_request, encode_response, MessageBuilder};
+use fuse_testutil::{decode_request, MessageBuilder};
 
 #[test]
 fn request_sized() {
@@ -84,7 +82,7 @@ fn request_impl_debug() {
 }
 
 #[test]
-fn response_with_names() {
+fn listxattr_names() {
 	let mut buf = [0u8; 10];
 	let mut names = ListxattrNamesWriter::new(&mut buf);
 	assert_eq!(names.capacity(), 10);
@@ -101,81 +99,6 @@ fn response_with_names() {
 	names.try_push(fuse::XattrName::new("456").unwrap()).unwrap();
 	assert_eq!(names.position(), 8);
 
-	let resp = ListxattrResponse::with_names(names);
-	let encoded = encode_response!(resp);
-
-	assert_eq!(
-		encoded,
-		MessageBuilder::new()
-			.push_sized(&testutil::new!(kernel::fuse_out_header {
-				len: (size_of::<kernel::fuse_out_header>() + 8) as u32,
-				unique: 0xAABBCCDD,
-			}))
-			.push_bytes(&[49, 50, 51, 0, 52, 53, 54, 0])
-			.build()
-	);
-}
-
-#[test]
-fn response_with_names_size() {
-	let resp = ListxattrResponse::with_names_size(8);
-	let encoded = encode_response!(resp);
-
-	assert_eq!(
-		encoded,
-		MessageBuilder::new()
-			.push_sized(&testutil::new!(kernel::fuse_out_header {
-				len: (size_of::<kernel::fuse_out_header>()
-					+ size_of::<kernel::fuse_getxattr_out>()) as u32,
-				unique: 0xAABBCCDD,
-			}))
-			.push_sized(&testutil::new!(kernel::fuse_getxattr_out {
-				size: 8,
-			}))
-			.build()
-	);
-}
-
-#[cfg(target_os = "linux")]
-#[test]
-fn response_size_limit() {
-	// listxattr response size can't exceed XATTR_LIST_MAX
-	let mut buf = [0u8; 65536 + 1];
-	let names = ListxattrNamesWriter::new(&mut buf);
-	assert_eq!(names.capacity(), 65536);
-}
-
-#[test]
-fn response_with_names_debug() {
-	let mut buf = [0u8; 10];
-	let mut names = ListxattrNamesWriter::new(&mut buf);
-
-	names.try_push(fuse::XattrName::new("123").unwrap()).unwrap();
-	names.try_push(fuse::XattrName::new("456").unwrap()).unwrap();
-
-	let response = ListxattrResponse::with_names(names);
-	assert_eq!(
-		format!("{:#?}", response),
-		concat!(
-			"ListxattrResponse {\n",
-			"    names: [\n",
-			"        \"123\",\n",
-			"        \"456\",\n",
-			"    ],\n",
-			"}",
-		),
-	);
-}
-
-#[test]
-fn response_with_names_size_debug() {
-	let response = ListxattrResponse::with_names_size(8);
-	assert_eq!(
-		format!("{:#?}", response),
-		concat!(
-			"ListxattrResponse {\n",
-			"    size: 8,\n",
-			"}",
-		),
-	);
+	let names = names.into_names();
+	assert_eq!(names.as_bytes(), b"123\x00456\x00")
 }

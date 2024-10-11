@@ -15,7 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use fuse::kernel;
-use fuse::operations::forget::{ForgetRequest, ForgetRequestItem};
+use fuse::server::{ForgetRequest, ForgetRequestItem};
 
 use fuse_testutil as testutil;
 use fuse_testutil::{decode_request, MessageBuilder};

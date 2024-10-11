@@ -20,16 +20,11 @@ use core::fmt;
 
 use crate::internal::debug;
 use crate::kernel;
-use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // SymlinkRequest {{{
 
 /// Request type for `FUSE_SYMLINK`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_SYMLINK` operation.
 pub struct SymlinkRequest<'a> {
 	parent_id: crate::NodeId,
 	name: &'a crate::NodeName,
@@ -53,24 +48,17 @@ impl SymlinkRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for SymlinkRequest<'_> {}
-
-impl<'a> server::FuseRequest<'a> for SymlinkRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::FUSE_SYMLINK)?;
-		let content = dec.next_nul_terminated_bytes()?.to_bytes_without_nul();
-		let name = dec.next_node_name()?;
-		Ok(Self {
-			parent_id: decode::node_id(dec.header().nodeid)?,
-			name,
-			content,
-		})
-	}
-}
+try_from_fuse_request!(SymlinkRequest<'a>, |request| {
+	let mut dec = request.decoder();
+	dec.expect_opcode(kernel::fuse_opcode::FUSE_SYMLINK)?;
+	let content = dec.next_nul_terminated_bytes()?.to_bytes_without_nul();
+	let name = dec.next_node_name()?;
+	Ok(Self {
+		parent_id: decode::node_id(dec.header().nodeid)?,
+		name,
+		content,
+	})
+});
 
 impl fmt::Debug for SymlinkRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -79,60 +67,6 @@ impl fmt::Debug for SymlinkRequest<'_> {
 			.field("name", &self.name)
 			.field("content", &debug::bytes(self.content))
 			.finish()
-	}
-}
-
-// }}}
-
-// SymlinkResponse {{{
-
-/// Response type for `FUSE_SYMLINK`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_SYMLINK` operation.
-pub struct SymlinkResponse {
-	entry: crate::Entry,
-}
-
-impl SymlinkResponse {
-	#[must_use]
-	pub fn new(entry: crate::Entry) -> SymlinkResponse {
-		Self { entry }
-	}
-
-	#[inline]
-	#[must_use]
-	pub fn entry(&self) -> &crate::Entry {
-		&self.entry
-	}
-
-	#[inline]
-	#[must_use]
-	pub fn entry_mut(&mut self) -> &mut crate::Entry {
-		&mut self.entry
-	}
-}
-
-impl fmt::Debug for SymlinkResponse {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("SymlinkResponse")
-			.field("entry", &self.entry())
-			.finish()
-	}
-}
-
-impl server::sealed::Sealed for SymlinkResponse {}
-
-impl server::FuseResponse for SymlinkResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		if options.version_minor() >= 9 {
-			return encode::sized(header, self.entry.as_v7p9());
-		}
-		encode::sized(header, self.entry.as_v7p1())
 	}
 }
 

@@ -84,8 +84,7 @@ mod file_mode;
 pub use file_mode::{FileMode, FileType};
 
 mod attributes;
-pub use attributes::{Attributes};
-pub(crate) use attributes::FuseAttrOut;
+pub use attributes::Attributes;
 
 mod entry;
 pub use entry::Entry;
@@ -104,6 +103,7 @@ pub use entry::Entry;
 	clippy::exhaustive_structs,
 )]
 pub mod kernel;
+mod kernel_traits;
 
 mod notify;
 pub use notify::{
@@ -139,7 +139,24 @@ pub use crate::os::{
 
 pub mod client;
 pub mod io;
-pub mod operations;
+
+pub(crate) mod operations;
+pub use operations::{
+	copy_file_range::{
+		CopyFileRangeRequestFlag,
+		CopyFileRangeRequestFlags,
+	},
+	create::{CreateRequestFlag, CreateRequestFlags},
+	cuse_init::{CuseInitFlag, CuseInitFlags},
+	fsync::{FsyncRequestFlag, FsyncRequestFlags},
+	fsyncdir::{FsyncdirRequestFlag, FsyncdirRequestFlags},
+	fuse_init::{FuseInitFlag, FuseInitFlags},
+	lseek::LseekWhence,
+	open::{OpenRequestFlag, OpenRequestFlags},
+	statfs::StatfsAttributes,
+	write::{WriteRequestFlag, WriteRequestFlags},
+};
+
 pub mod os;
 pub mod server;
 
@@ -160,21 +177,6 @@ pub mod server;
 #[allow(clippy::exhaustive_structs)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Error(pub core::num::NonZeroI32);
-
-// FIXME
-#[cfg(target_os = "freebsd")]
-use crate::os::freebsd::OsError;
-#[cfg(target_os = "linux")]
-use crate::os::linux::OsError;
-
-impl Error {
-	pub(crate) const E2BIG: Error = OsError::E2BIG;
-	pub(crate) const NOT_FOUND: Error = OsError::NOT_FOUND;
-	pub(crate) const PROTOCOL_ERROR: Error = OsError::PROTOCOL_ERROR;
-	pub(crate) const UNIMPLEMENTED: Error = OsError::UNIMPLEMENTED;
-	pub(crate) const INVALID_ARGUMENT: Error = OsError::INVALID_ARGUMENT;
-	pub(crate) const OVERFLOW: Error = OsError::OVERFLOW;
-}
 
 // RequestHeader {{{
 

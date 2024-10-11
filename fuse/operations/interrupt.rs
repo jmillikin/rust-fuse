@@ -14,8 +14,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_INTERRUPT` operation.
-
 use core::fmt;
 use core::num;
 
@@ -25,9 +23,6 @@ use crate::server;
 // InterruptRequest {{{
 
 /// Request type for `FUSE_INTERRUPT`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_INTERRUPT` operation.
 pub struct InterruptRequest<'a> {
 	body: &'a kernel::fuse_interrupt_in,
 }
@@ -39,28 +34,16 @@ impl InterruptRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for InterruptRequest<'_> {}
+try_from_cuse_request!(InterruptRequest<'a>, |request| {
+	Self::try_from(request.inner)
+});
 
-impl<'a> server::CuseRequest<'a> for InterruptRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::CuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		Self::decode(request)
-	}
-}
-
-impl<'a> server::FuseRequest<'a> for InterruptRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		Self::decode(request)
-	}
-}
+try_from_fuse_request!(InterruptRequest<'a>, |request| {
+	Self::try_from(request.inner)
+});
 
 impl<'a> InterruptRequest<'a> {
-	fn decode(
+	fn try_from(
 		request: server::Request<'a>,
 	) -> Result<Self, server::RequestError> {
 		let mut dec = request.decoder();

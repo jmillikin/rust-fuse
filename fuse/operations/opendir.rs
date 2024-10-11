@@ -14,22 +14,15 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_OPENDIR` operation.
-
 use core::fmt;
 
 use crate::internal::debug;
 use crate::kernel;
-use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // OpendirRequest {{{
 
 /// Request type for `FUSE_OPENDIR`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_OPENDIR` operation.
 pub struct OpendirRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_open_in,
@@ -55,22 +48,15 @@ impl OpendirRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for OpendirRequest<'_> {}
+try_from_fuse_request!(OpendirRequest<'a>, |request| {
+	let mut dec = request.decoder();
+	dec.expect_opcode(kernel::fuse_opcode::FUSE_OPENDIR)?;
 
-impl<'a> server::FuseRequest<'a> for OpendirRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::FUSE_OPENDIR)?;
-
-		let header = dec.header();
-		let body = dec.next_sized()?;
-		decode::node_id(header.nodeid)?;
-		Ok(Self { header, body })
-	}
-}
+	let header = dec.header();
+	let body = dec.next_sized()?;
+	decode::node_id(header.nodeid)?;
+	Ok(Self { header, body })
+});
 
 impl fmt::Debug for OpendirRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -79,75 +65,6 @@ impl fmt::Debug for OpendirRequest<'_> {
 			.field("flags", &self.flags())
 			.field("open_flags", &debug::hex_u32(self.open_flags()))
 			.finish()
-	}
-}
-
-// }}}
-
-// OpendirResponse {{{
-
-/// Response type for `FUSE_OPENDIR`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_OPENDIR` operation.
-pub struct OpendirResponse {
-	raw: kernel::fuse_open_out,
-}
-
-impl OpendirResponse {
-	#[must_use]
-	pub fn new() -> OpendirResponse {
-		Self {
-			raw: kernel::fuse_open_out::new(),
-		}
-	}
-
-	#[must_use]
-	pub fn handle(&self) -> u64 {
-		self.raw.fh
-	}
-
-	pub fn set_handle(&mut self, handle: u64) {
-		self.raw.fh = handle;
-	}
-
-	#[must_use]
-	pub fn flags(&self) -> OpendirResponseFlags {
-		OpendirResponseFlags {
-			bits: self.raw.open_flags,
-		}
-	}
-
-	pub fn set_flags(&mut self, flags: OpendirResponseFlags) {
-		self.raw.open_flags = flags.bits
-	}
-
-	#[inline]
-	pub fn update_flags(&mut self, f: impl FnOnce(&mut OpendirResponseFlags)) {
-		let mut flags = self.flags();
-		f(&mut flags);
-		self.set_flags(flags)
-	}
-}
-
-impl fmt::Debug for OpendirResponse {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("OpendirResponse")
-			.field("handle", &self.handle())
-			.field("flags", &self.flags())
-			.finish()
-	}
-}
-
-impl server::sealed::Sealed for OpendirResponse {}
-
-impl server::FuseResponse for OpendirResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::sized(header, &self.raw)
 	}
 }
 

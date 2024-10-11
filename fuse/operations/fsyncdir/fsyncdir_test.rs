@@ -14,17 +14,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::mem::size_of;
-
 use fuse::kernel;
-use fuse::operations::fsyncdir::{
-	FsyncdirRequest,
-	FsyncdirRequestFlag,
-	FsyncdirResponse,
-};
+use fuse::server::FsyncdirRequest;
 
 use fuse_testutil as testutil;
-use fuse_testutil::{decode_request, encode_response, MessageBuilder};
+use fuse_testutil::{decode_request, MessageBuilder};
 
 #[test]
 fn request() {
@@ -44,7 +38,7 @@ fn request() {
 	});
 
 	assert_eq!(req.handle(), 3);
-	assert_eq!(req.flags().get(FsyncdirRequestFlag::FDATASYNC), true);
+	assert_eq!(req.flags().get(fuse::FsyncdirRequestFlag::FDATASYNC), true);
 }
 
 #[test]
@@ -73,26 +67,4 @@ fn request_impl_debug() {
 			"}",
 		),
 	);
-}
-
-#[test]
-fn response_empty() {
-	let resp = FsyncdirResponse::new();
-	let encoded = encode_response!(resp);
-
-	assert_eq!(
-		encoded,
-		MessageBuilder::new()
-			.push_sized(&testutil::new!(kernel::fuse_out_header {
-				len: size_of::<kernel::fuse_out_header>() as u32,
-				unique: 0xAABBCCDD,
-			}))
-			.build()
-	);
-}
-
-#[test]
-fn response_impl_debug() {
-	let response = FsyncdirResponse::new();
-	assert_eq!(format!("{:#?}", response), "FsyncdirResponse",);
 }

@@ -14,22 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_SETATTR` operation.
-
 use core::fmt;
-use core::time;
 
 use crate::kernel;
-use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // SetattrRequest {{{
 
 /// Request type for `FUSE_SETATTR`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_SETATTR` operation.
 pub struct SetattrRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	raw: &'a kernel::fuse_setattr_in,
@@ -135,32 +127,25 @@ impl SetattrRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for SetattrRequest<'_> {}
+try_from_fuse_request!(SetattrRequest<'a>, |request| {
+	let mut dec = request.decoder();
+	dec.expect_opcode(kernel::fuse_opcode::FUSE_SETATTR)?;
+	let header = dec.header();
+	decode::node_id(header.nodeid)?;
+	let raw: &kernel::fuse_setattr_in = dec.next_sized()?;
 
-impl<'a> server::FuseRequest<'a> for SetattrRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::FUSE_SETATTR)?;
-		let header = dec.header();
-		decode::node_id(header.nodeid)?;
-		let raw: &kernel::fuse_setattr_in = dec.next_sized()?;
-
-		if raw.valid & kernel::FATTR_ATIME > 0 {
-			decode::check_timespec_nanos(raw.atimensec)?;
-		}
-		if raw.valid & kernel::FATTR_MTIME > 0 {
-			decode::check_timespec_nanos(raw.mtimensec)?;
-		}
-		if raw.valid & kernel::FATTR_CTIME > 0 {
-			decode::check_timespec_nanos(raw.ctimensec)?;
-		}
-
-		Ok(Self { header, raw })
+	if raw.valid & kernel::FATTR_ATIME > 0 {
+		decode::check_timespec_nanos(raw.atimensec)?;
 	}
-}
+	if raw.valid & kernel::FATTR_MTIME > 0 {
+		decode::check_timespec_nanos(raw.mtimensec)?;
+	}
+	if raw.valid & kernel::FATTR_CTIME > 0 {
+		decode::check_timespec_nanos(raw.ctimensec)?;
+	}
+
+	Ok(Self { header, raw })
+});
 
 impl fmt::Debug for SetattrRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -178,75 +163,6 @@ impl fmt::Debug for SetattrRequest<'_> {
 			.field("user_id", &format_args!("{:?}", self.user_id()))
 			.field("group_id", &format_args!("{:?}", self.group_id()))
 			.finish()
-	}
-}
-
-// }}}
-
-// SetattrResponse {{{
-
-/// Response type for `FUSE_SETATTR`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_SETATTR` operation.
-pub struct SetattrResponse {
-	attr_out: crate::FuseAttrOut,
-}
-
-impl SetattrResponse {
-	#[inline]
-	#[must_use]
-	pub fn new(attributes: crate::Attributes) -> SetattrResponse {
-		Self {
-			attr_out: crate::FuseAttrOut::new(attributes),
-		}
-	}
-
-	#[inline]
-	#[must_use]
-	pub fn attributes(&self) -> &crate::Attributes {
-		self.attr_out.attributes()
-	}
-
-	#[inline]
-	#[must_use]
-	pub fn attributes_mut(&mut self) -> &mut crate::Attributes {
-		self.attr_out.attributes_mut()
-	}
-
-	#[inline]
-	#[must_use]
-	pub fn cache_timeout(&self) -> time::Duration {
-		self.attr_out.cache_timeout()
-	}
-
-	#[inline]
-	pub fn set_cache_timeout(&mut self, timeout: time::Duration) {
-		self.attr_out.set_cache_timeout(timeout)
-	}
-}
-
-impl fmt::Debug for SetattrResponse {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("SetattrResponse")
-			.field("attributes", self.attributes())
-			.field("cache_timeout", &self.cache_timeout())
-			.finish()
-	}
-}
-
-impl server::sealed::Sealed for SetattrResponse {}
-
-impl server::FuseResponse for SetattrResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		if options.version_minor() >= 9 {
-			return encode::sized(header, self.attr_out.as_v7p9());
-		}
-		encode::sized(header, self.attr_out.as_v7p1())
 	}
 }
 

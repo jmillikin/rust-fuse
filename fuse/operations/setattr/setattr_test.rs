@@ -14,14 +14,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::mem::size_of;
-use core::time;
-
 use fuse::kernel;
-use fuse::operations::setattr::{SetattrRequest, SetattrResponse};
+use fuse::server::SetattrRequest;
 
 use fuse_testutil as testutil;
-use fuse_testutil::{encode_response, MessageBuilder};
 
 const S_IFREG: u32 = 0o100000;
 
@@ -132,117 +128,6 @@ fn request_impl_debug() {
 			"    mode: Some(0o100644),\n",
 			"    user_id: Some(12),\n",
 			"    group_id: Some(13),\n",
-			"}",
-		),
-	);
-}
-
-#[test]
-fn response_v7p1() {
-	let mut attr = fuse::Attributes::new(fuse::NodeId::new(2).unwrap());
-	attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
-	attr.set_link_count(1);
-	attr.set_size(999);
-
-	let mut response = SetattrResponse::new(attr);
-	response.set_cache_timeout(time::Duration::new(123, 456));
-
-	let encoded = encode_response!(response, {
-		protocol_version: (7, 1),
-	});
-
-	assert_eq!(
-		encoded,
-		MessageBuilder::new()
-			.push_sized(&testutil::new!(kernel::fuse_out_header {
-				len: (size_of::<kernel::fuse_out_header>()
-					+ kernel::FUSE_COMPAT_ATTR_OUT_SIZE) as u32,
-				unique: 0xAABBCCDD,
-			}))
-			.push_sized(&testutil::new!(kernel::fuse_attr_out {
-				attr_valid: 123,
-				attr_valid_nsec: 456,
-				attr: testutil::new!(kernel::fuse_attr {
-					ino: 2,
-					size: 999,
-					mode: S_IFREG | 0o644,
-					nlink: 1,
-				}),
-			}))
-			.unpush(
-				size_of::<kernel::fuse_attr_out>()
-					- kernel::FUSE_COMPAT_ATTR_OUT_SIZE
-			)
-			.build()
-	);
-}
-
-#[test]
-fn response_v7p9() {
-	let mut attr = fuse::Attributes::new(fuse::NodeId::new(2).unwrap());
-	attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
-	attr.set_link_count(1);
-	attr.set_size(999);
-
-	let mut response = SetattrResponse::new(attr);
-	response.set_cache_timeout(time::Duration::new(123, 456));
-
-	let encoded = encode_response!(response, {
-		protocol_version: (7, 9),
-	});
-
-	assert_eq!(
-		encoded,
-		MessageBuilder::new()
-			.push_sized(&testutil::new!(kernel::fuse_out_header {
-				len: (size_of::<kernel::fuse_out_header>()
-					+ size_of::<kernel::fuse_attr_out>()) as u32,
-				unique: 0xAABBCCDD,
-			}))
-			.push_sized(&testutil::new!(kernel::fuse_attr_out {
-				attr_valid: 123,
-				attr_valid_nsec: 456,
-				attr: testutil::new!(kernel::fuse_attr {
-					ino: 2,
-					size: 999,
-					mode: S_IFREG | 0o644,
-					nlink: 1,
-				}),
-			}))
-			.build()
-	);
-}
-
-#[test]
-fn response_impl_debug() {
-	let mut attr = fuse::Attributes::new(fuse::NodeId::new(2).unwrap());
-	attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
-	attr.set_link_count(1);
-	attr.set_size(999);
-
-	let mut response = SetattrResponse::new(attr);
-	response.set_cache_timeout(time::Duration::new(123, 456));
-
-	assert_eq!(
-		format!("{:#?}", response),
-		concat!(
-			"SetattrResponse {\n",
-			"    attributes: Attributes {\n",
-			"        node_id: 2,\n",
-			"        mode: 0o100644,\n",
-			"        size: 999,\n",
-			"        atime: UnixTime(0.000000000),\n",
-			"        mtime: UnixTime(0.000000000),\n",
-			"        ctime: UnixTime(0.000000000),\n",
-			"        link_count: 1,\n",
-			"        user_id: 0,\n",
-			"        group_id: 0,\n",
-			"        device_number: 0,\n",
-			"        block_count: 0,\n",
-			"        block_size: 0,\n",
-			"        flags: AttributeFlags {},\n",
-			"    },\n",
-			"    cache_timeout: 123.000000456s,\n",
 			"}",
 		),
 	);

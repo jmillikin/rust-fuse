@@ -17,8 +17,8 @@
 use std::sync::mpsc;
 use std::panic;
 
-use fuse::server::fuse_rpc;
-use fuse::server::prelude::*;
+use fuse::server;
+use fuse::server::FuseRequest;
 
 use interop_testutil::{
 	diff_str,
@@ -33,19 +33,40 @@ struct TestFS {
 	requests: mpsc::Sender<String>,
 }
 
-impl interop_testutil::TestFS for TestFS {}
+struct TestHandlers<'a, S> {
+	fs: &'a TestFS,
+	conn: &'a server::FuseConnection<S>,
+}
 
-impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
-	fn lookup(
+impl interop_testutil::TestFS for TestFS {
+	fn dispatch_request(
 		&self,
-		call: fuse_rpc::Call<S>,
-		request: &LookupRequest,
-	) -> fuse_rpc::SendResult<LookupResponse, S::Error> {
+		conn: &server::FuseConnection<interop_testutil::DevFuse>,
+		request: FuseRequest<'_>,
+	) {
+		use fuse::server::FuseHandlers;
+		(TestHandlers{fs: self, conn}).dispatch(request);
+	}
+}
+
+impl<'a, S> server::FuseHandlers for TestHandlers<'a, S>
+where
+	S: server::FuseSocket,
+	S::Error: core::fmt::Debug,
+{
+	fn unimplemented(&self, request: FuseRequest<'_>) {
+		self.conn.reply(request.id()).err(OsError::UNIMPLEMENTED).unwrap();
+	}
+
+	fn lookup(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::LookupRequest::try_from(request).unwrap();
+
 		if !request.parent_id().is_root() {
-			return call.respond_err(OsError::NOT_FOUND);
+			return send_reply.err(OsError::NOT_FOUND).unwrap();
 		}
 		if request.name() != "xattrs.txt" {
-			return call.respond_err(OsError::NOT_FOUND);
+			return send_reply.err(OsError::NOT_FOUND).unwrap();
 		}
 
 		let mut attr = fuse::Attributes::new(fuse::NodeId::new(2).unwrap());
@@ -55,44 +76,38 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		let mut entry = fuse::Entry::new(attr);
 		entry.set_cache_timeout(std::time::Duration::from_secs(60));
 
-		let resp = LookupResponse::new(Some(entry));
-		call.respond_ok(&resp)
+		send_reply.ok(&entry).unwrap();
 	}
 
-	fn getxattr(
-		&self,
-		call: fuse_rpc::Call<S>,
-		request: &GetxattrRequest,
-	) -> fuse_rpc::SendResult<GetxattrResponse, S::Error> {
-		self.requests.send(format!("{:#?}", request)).unwrap();
+	fn getxattr(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::GetxattrRequest::try_from(request).unwrap();
+		self.fs.requests.send(format!("{:#?}", request)).unwrap();
 
-		let xattr_small = fuse::XattrName::new("user.xattr_small").unwrap();
-		let xattr_toobig = fuse::XattrName::new("user.xattr_toobig").unwrap();
-
-		if request.name() == xattr_small {
-			let value = fuse::XattrValue::new(b"small xattr value").unwrap();
+		if request.name() == "user.xattr_small" {
+			let value = b"small xattr value";
 
 			match request.size() {
 				None => {
-					let resp = GetxattrResponse::with_value_size(value.size());
-					return call.respond_ok(&resp);
+					let mut reply = fuse::kernel::fuse_getxattr_out::new();
+					reply.size = value.len() as u32;
+					return send_reply.ok(&reply).unwrap();
 				},
 				Some(request_size) => {
-					if value.size() > request_size.get() {
-						return call.respond_err(OsError::from(errno::ERANGE));
+					if value.len() > request_size.get() {
+						return send_reply.err(OsError(errno::ERANGE)).unwrap();
 					}
 				},
 			};
 
-			let resp = GetxattrResponse::with_value(value);
-			return call.respond_ok(&resp);
+			return send_reply.ok_buf(value).unwrap();
 		}
 
-		if request.name() == xattr_toobig {
-			return call.respond_err(OsError::from(errno::E2BIG));
+		if request.name() == "user.xattr_toobig" {
+			return send_reply.err(OsError(errno::E2BIG)).unwrap();
 		}
 
-		call.respond_err(OsError::XATTR_NOT_FOUND)
+		send_reply.err(OsError::XATTR_NOT_FOUND).unwrap();
 	}
 }
 

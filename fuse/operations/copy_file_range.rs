@@ -14,21 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_COPY_FILE_RANGE` operation.
-
 use core::fmt;
 
 use crate::kernel;
-use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // CopyFileRangeRequest {{{
 
 /// Request type for `FUSE_COPY_FILE_RANGE`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_COPY_FILE_RANGE` operation.
 pub struct CopyFileRangeRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_copy_file_range_in,
@@ -78,26 +71,19 @@ impl CopyFileRangeRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for CopyFileRangeRequest<'_> {}
+try_from_fuse_request!(CopyFileRangeRequest<'a>, |request| {
+	let mut dec = request.decoder();
+	dec.expect_opcode(kernel::fuse_opcode::FUSE_COPY_FILE_RANGE)?;
 
-impl<'a> server::FuseRequest<'a> for CopyFileRangeRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		let mut dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::FUSE_COPY_FILE_RANGE)?;
+	use kernel::fuse_copy_file_range_in;
 
-		use kernel::fuse_copy_file_range_in;
+	let header = dec.header();
+	let body: &'a fuse_copy_file_range_in = dec.next_sized()?;
+	decode::node_id(header.nodeid)?;
+	decode::node_id(body.nodeid_out)?;
 
-		let header = dec.header();
-		let body: &'a fuse_copy_file_range_in = dec.next_sized()?;
-		decode::node_id(header.nodeid)?;
-		decode::node_id(body.nodeid_out)?;
-
-		Ok(Self { header, body })
-	}
-}
+	Ok(Self { header, body })
+});
 
 impl fmt::Debug for CopyFileRangeRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
@@ -111,51 +97,6 @@ impl fmt::Debug for CopyFileRangeRequest<'_> {
 			.field("len", &self.len())
 			.field("flags", &self.flags())
 			.finish()
-	}
-}
-
-// }}}
-
-// CopyFileRangeResponse {{{
-
-/// Response type for `FUSE_COPY_FILE_RANGE`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_COPY_FILE_RANGE` operation.
-pub struct CopyFileRangeResponse {
-	raw: kernel::fuse_write_out,
-}
-
-impl CopyFileRangeResponse {
-	#[must_use]
-	pub fn new() -> CopyFileRangeResponse {
-		Self {
-			raw: kernel::fuse_write_out::new(),
-		}
-	}
-
-	pub fn set_size(&mut self, size: u32) {
-		self.raw.size = size;
-	}
-}
-
-impl fmt::Debug for CopyFileRangeResponse {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("CopyFileRangeResponse")
-			.field("size", &self.raw.size)
-			.finish()
-	}
-}
-
-impl server::sealed::Sealed for CopyFileRangeResponse {}
-
-impl server::FuseResponse for CopyFileRangeResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::sized(header, &self.raw)
 	}
 }
 

@@ -14,22 +14,16 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_FLUSH` operation.
-
 use core::fmt;
 use core::marker::PhantomData;
 
 use crate::kernel;
 use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // FlushRequest {{{
 
 /// Request type for `FUSE_FLUSH`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_FLUSH` operation.
 pub struct FlushRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: crate::NodeId,
@@ -54,28 +48,16 @@ impl FlushRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for FlushRequest<'_> {}
+try_from_cuse_request!(FlushRequest<'a>, |request| {
+	Self::try_from(request.inner, true)
+});
 
-impl<'a> server::CuseRequest<'a> for FlushRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::CuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		Self::decode_request(request, true)
-	}
-}
-
-impl<'a> server::FuseRequest<'a> for FlushRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		Self::decode_request(request, false)
-	}
-}
+try_from_fuse_request!(FlushRequest<'a>, |request| {
+	Self::try_from(request.inner, false)
+});
 
 impl<'a> FlushRequest<'a> {
-	fn decode_request(
+	fn try_from(
 		request: server::Request<'a>,
 		is_cuse: bool,
 	) -> Result<Self, server::RequestError> {
@@ -105,55 +87,6 @@ impl fmt::Debug for FlushRequest<'_> {
 			.field("handle", &self.handle)
 			.field("lock_owner", &self.lock_owner)
 			.finish()
-	}
-}
-
-// }}}
-
-// FlushResponse {{{
-
-/// Response type for `FUSE_FLUSH`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_FLUSH` operation.
-pub struct FlushResponse {
-	phantom: PhantomData<()>,
-}
-
-impl FlushResponse {
-	#[must_use]
-	pub fn new() -> FlushResponse {
-		Self {
-			phantom: PhantomData,
-		}
-	}
-}
-
-impl fmt::Debug for FlushResponse {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("FlushResponse").finish()
-	}
-}
-
-impl server::sealed::Sealed for FlushResponse {}
-
-impl server::CuseResponse for FlushResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::CuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::header_only(header)
-	}
-}
-
-impl server::FuseResponse for FlushResponse {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::header_only(header)
 	}
 }
 

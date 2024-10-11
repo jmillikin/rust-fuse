@@ -14,24 +14,15 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//! Implements the `FUSE_READLINK` operation.
-
-use core::ffi;
 use core::fmt;
 use core::marker::PhantomData;
 
-use crate::internal::debug;
 use crate::kernel;
-use crate::server;
 use crate::server::decode;
-use crate::server::encode;
 
 // ReadlinkRequest {{{
 
 /// Request type for `FUSE_READLINK`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_READLINK` operation.
 pub struct ReadlinkRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: crate::NodeId,
@@ -44,71 +35,20 @@ impl ReadlinkRequest<'_> {
 	}
 }
 
-impl server::sealed::Sealed for ReadlinkRequest<'_> {}
-
-impl<'a> server::FuseRequest<'a> for ReadlinkRequest<'a> {
-	fn from_request(
-		request: server::Request<'a>,
-		_options: server::FuseRequestOptions,
-	) -> Result<Self, server::RequestError> {
-		let dec = request.decoder();
-		dec.expect_opcode(kernel::fuse_opcode::FUSE_READLINK)?;
-		Ok(Self {
-			phantom: PhantomData,
-			node_id: decode::node_id(dec.header().nodeid)?,
-		})
-	}
-}
+try_from_fuse_request!(ReadlinkRequest<'a>, |request| {
+	let dec = request.decoder();
+	dec.expect_opcode(kernel::fuse_opcode::FUSE_READLINK)?;
+	Ok(Self {
+		phantom: PhantomData,
+		node_id: decode::node_id(dec.header().nodeid)?,
+	})
+});
 
 impl fmt::Debug for ReadlinkRequest<'_> {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
 		fmt.debug_struct("ReadlinkRequest")
 			.field("node_id", &self.node_id)
 			.finish()
-	}
-}
-
-// }}}
-
-// ReadlinkResponse {{{
-
-/// Response type for `FUSE_READLINK`.
-///
-/// See the [module-level documentation](self) for an overview of the
-/// `FUSE_READLINK` operation.
-pub struct ReadlinkResponse<'a> {
-	target: &'a [u8],
-}
-
-impl<'a> ReadlinkResponse<'a> {
-	#[must_use]
-	pub fn new(target: &'a ffi::CStr) -> ReadlinkResponse<'a> {
-		Self { target: target.to_bytes() }
-	}
-
-	#[must_use]
-	pub fn from_name(target: &'a crate::NodeName) -> ReadlinkResponse<'a> {
-		Self { target: target.as_bytes() }
-	}
-}
-
-impl fmt::Debug for ReadlinkResponse<'_> {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("ReadlinkResponse")
-			.field("target", &debug::bytes(self.target))
-			.finish()
-	}
-}
-
-impl server::sealed::Sealed for ReadlinkResponse<'_> {}
-
-impl server::FuseResponse for ReadlinkResponse<'_> {
-	fn to_response<'a>(
-		&'a self,
-		header: &'a mut crate::ResponseHeader,
-		_options: server::FuseResponseOptions,
-	) -> server::Response<'a> {
-		encode::bytes(header, self.target)
 	}
 }
 

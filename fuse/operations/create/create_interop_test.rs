@@ -17,8 +17,8 @@
 use std::panic;
 use std::sync::mpsc;
 
-use fuse::server::fuse_rpc;
-use fuse::server::prelude::*;
+use fuse::server;
+use fuse::server::FuseRequest;
 
 use interop_testutil::{
 	diff_str,
@@ -31,23 +31,40 @@ struct TestFS {
 	requests: mpsc::Sender<String>,
 }
 
-impl interop_testutil::TestFS for TestFS {}
+struct TestHandlers<'a, S> {
+	fs: &'a TestFS,
+	conn: &'a server::FuseConnection<S>,
+}
 
-impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
-	fn lookup(
+impl interop_testutil::TestFS for TestFS {
+	fn dispatch_request(
 		&self,
-		call: fuse_rpc::Call<S>,
-		_request: &LookupRequest,
-	) -> fuse_rpc::SendResult<LookupResponse, S::Error> {
-		call.respond_err(OsError::NOT_FOUND)
+		conn: &server::FuseConnection<interop_testutil::DevFuse>,
+		request: FuseRequest<'_>,
+	) {
+		use fuse::server::FuseHandlers;
+		(TestHandlers{fs: self, conn}).dispatch(request);
+	}
+}
+
+impl<'a, S> server::FuseHandlers for TestHandlers<'a, S>
+where
+	S: server::FuseSocket,
+	S::Error: core::fmt::Debug,
+{
+	fn unimplemented(&self, request: FuseRequest<'_>) {
+		self.conn.reply(request.id()).err(OsError::UNIMPLEMENTED).unwrap();
 	}
 
-	fn create(
-		&self,
-		call: fuse_rpc::Call<S>,
-		request: &CreateRequest,
-	) -> fuse_rpc::SendResult<CreateResponse, S::Error> {
-		self.requests.send(format!("{:#?}", request)).unwrap();
+	fn lookup(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		send_reply.err(OsError::NOT_FOUND).unwrap();
+	}
+
+	fn create(&self, request: FuseRequest<'_>) {
+		let send_reply = self.conn.reply(request.id());
+		let request = server::CreateRequest::try_from(request).unwrap();
+		self.fs.requests.send(format!("{:#?}", request)).unwrap();
 
 		let mut attr = fuse::Attributes::new(fuse::NodeId::new(2).unwrap());
 		attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
@@ -56,10 +73,10 @@ impl<S: FuseSocket> fuse_rpc::Handlers<S> for TestFS {
 		let mut entry = fuse::Entry::new(attr);
 		entry.set_cache_timeout(std::time::Duration::from_secs(60));
 
-		let mut resp = CreateResponse::new(entry);
+		let mut resp = server::CreateResponse::new(entry);
 		resp.set_handle(12345);
 
-		call.respond_ok(&resp)
+		send_reply.ok(&resp).unwrap();
 	}
 }
 
