@@ -100,18 +100,6 @@ pub use crate::operations::{
 	write::WriteRequest,
 };
 
-// FIXME
-#[allow(missing_docs)]
-pub mod io {
-	pub use super::{
-		CuseSocket,
-		FuseSocket,
-		RecvError,
-		SendError,
-		Socket,
-	};
-}
-
 /// Errors that may be encountered when receiving a request.
 ///
 /// Sockets may use the variants of this enum to provide hints to server code
@@ -1236,7 +1224,7 @@ impl<S: CuseSocket> CuseConnection<S> {
 	pub fn notify(
 		&self,
 		notification: &crate::FuseNotification<'_>,
-	) -> Result<(), io::SendError<S::Error>> {
+	) -> Result<(), SendError<S::Error>> {
 		let mut header = crate::ResponseHeader::new_notification();
 		self.socket.send(notification.encode(&mut header))
 	}
@@ -1245,8 +1233,6 @@ impl<S: CuseSocket> CuseConnection<S> {
 
 impl<S> CuseConnection<S> {
 	/// Returns a reference to the underlying [`Socket`] for this connection.
-	///
-	/// [`Socket`]: io::Socket
 	#[inline]
 	#[must_use]
 	pub fn socket(&self) -> &S {
@@ -1380,7 +1366,7 @@ impl<S: FuseSocket> FuseConnection<S> {
 	pub fn notify(
 		&self,
 		notification: &crate::FuseNotification<'_>,
-	) -> Result<(), io::SendError<S::Error>> {
+	) -> Result<(), SendError<S::Error>> {
 		let mut header = crate::ResponseHeader::new_notification();
 		self.socket.send(notification.encode(&mut header))
 	}
@@ -1388,8 +1374,6 @@ impl<S: FuseSocket> FuseConnection<S> {
 
 impl<S> FuseConnection<S> {
 	/// Returns a reference to the underlying [`Socket`] for this connection.
-	///
-	/// [`Socket`]: io::Socket
 	#[inline]
 	#[must_use]
 	pub fn socket(&self) -> &S {

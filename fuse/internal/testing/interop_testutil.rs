@@ -22,7 +22,7 @@ use fuse::{
 	CuseDeviceNumber,
 };
 use fuse::server;
-use fuse::server::io::{SendError, RecvError};
+use fuse::server::{SendError, RecvError};
 
 use fuse_testutil::SendBufToVec;
 
@@ -224,9 +224,9 @@ impl DevCuse {
 	}
 }
 
-impl server::io::CuseSocket for DevCuse {}
+impl server::CuseSocket for DevCuse {}
 
-impl server::io::Socket for DevCuse {
+impl server::Socket for DevCuse {
 	type Error = io::Error;
 
 	fn send(

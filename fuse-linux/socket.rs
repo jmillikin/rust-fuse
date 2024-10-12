@@ -19,7 +19,7 @@ use core::mem;
 
 use fuse::io::SendBuf;
 use fuse::server;
-use fuse::server::io::{RecvError, SendError};
+use fuse::server::{RecvError, SendError};
 use linux_errno::{self as errno, Error};
 
 use crate::sys;
@@ -119,9 +119,9 @@ impl CuseServerSocket {
 	}
 }
 
-impl server::io::CuseSocket for CuseServerSocket {}
+impl server::CuseSocket for CuseServerSocket {}
 
-impl server::io::Socket for CuseServerSocket {
+impl server::Socket for CuseServerSocket {
 	type Error = Error;
 
 	fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<Error>> {
@@ -159,9 +159,9 @@ impl FuseServerSocket {
 	}
 }
 
-impl server::io::FuseSocket for FuseServerSocket {}
+impl server::FuseSocket for FuseServerSocket {}
 
-impl server::io::Socket for FuseServerSocket {
+impl server::Socket for FuseServerSocket {
 	type Error = Error;
 
 	fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<Error>> {

@@ -19,7 +19,7 @@ use core::ffi;
 
 use fuse::io::SendBuf;
 use fuse::server;
-use fuse::server::io::{RecvError, SendError};
+use fuse::server::{RecvError, SendError};
 use crate::io::iovec::IoVec;
 
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -166,10 +166,10 @@ impl CuseServerSocket {
 }
 
 #[cfg(any(doc, not(target_os = "freebsd")))]
-impl server::io::CuseSocket for CuseServerSocket {}
+impl server::CuseSocket for CuseServerSocket {}
 
 #[cfg(any(doc, not(target_os = "freebsd")))]
-impl server::io::Socket for CuseServerSocket {
+impl server::Socket for CuseServerSocket {
 	type Error = LibcError;
 
 	fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<LibcError>> {
@@ -211,9 +211,9 @@ impl FuseServerSocket {
 	}
 }
 
-impl server::io::FuseSocket for FuseServerSocket {}
+impl server::FuseSocket for FuseServerSocket {}
 
-impl server::io::Socket for FuseServerSocket {
+impl server::Socket for FuseServerSocket {
 	type Error = LibcError;
 
 	fn recv(&self, buf: &mut [u8]) -> Result<usize, RecvError<LibcError>> {
