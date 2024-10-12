@@ -36,9 +36,8 @@ fn request() {
 
 	let req = decode_request!(MkdirRequest, buf);
 
-	let expect: &[u8] = b"hello.world!";
 	assert_eq!(req.parent_id(), fuse::NodeId::new(100).unwrap());
-	assert_eq!(req.name(), expect);
+	assert_eq!(req.name(), "hello.world!");
 	assert_eq!(req.mode(), fuse::FileMode::new(0o755));
 	assert_eq!(req.umask(), 0o111);
 }

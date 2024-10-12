@@ -30,8 +30,7 @@ fn request() {
 		.build_aligned();
 	let req = decode_request!(LookupRequest, buf);
 
-	let expect: &[u8] = b"hello.world!";
-	assert_eq!(req.name(), expect);
+	assert_eq!(req.name(), "hello.world!");
 }
 
 #[test]

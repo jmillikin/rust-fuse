@@ -83,8 +83,7 @@ where
 		let request = server::ReadlinkRequest::try_from(request).unwrap();
 		self.fs.requests.send(format!("{:#?}", request)).unwrap();
 
-		let name = fuse::NodeName::new("target.txt").unwrap();
-		send_reply.ok_buf(name.as_bytes()).unwrap();
+		send_reply.ok_buf(b"target.txt").unwrap();
 	}
 }
 

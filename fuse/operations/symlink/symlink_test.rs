@@ -31,11 +31,9 @@ fn request() {
 		.build_aligned();
 	let request = decode_request!(SymlinkRequest, buf);
 
-	let expect_content: &[u8] = b"link content";
-	let expect_name: &[u8] = b"link name";
 	assert_eq!(request.parent_id(), fuse::NodeId::new(100).unwrap());
-	assert_eq!(request.name(), expect_name);
-	assert_eq!(request.content(), expect_content);
+	assert_eq!(request.name(), "link name");
+	assert_eq!(request.content(), b"link content");
 }
 
 #[test]

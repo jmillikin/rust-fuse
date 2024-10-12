@@ -35,10 +35,9 @@ fn request() {
 
 	let req = decode_request!(LinkRequest, buf);
 
-	let expect: &[u8] = b"hello.world!";
 	assert_eq!(req.node_id(), fuse::NodeId::new(123).unwrap());
 	assert_eq!(req.new_parent_id(), fuse::NodeId::new(100).unwrap());
-	assert_eq!(req.new_name(), expect.as_ref());
+	assert_eq!(req.new_name(), "hello.world!");
 }
 
 #[test]

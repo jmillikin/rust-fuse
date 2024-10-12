@@ -36,8 +36,7 @@ fn request_v7p1() {
 		protocol_version: (7, 1),
 	});
 
-	let expect: &[u8] = b"hello.world!";
-	assert_eq!(req.name(), expect);
+	assert_eq!(req.name(), "hello.world!");
 	assert_eq!(req.flags(), fuse::CreateRequestFlags::new());
 	assert_eq!(req.open_flags(), 0xFF);
 	assert_eq!(req.mode(), fuse::FileMode::new(0));
@@ -64,8 +63,7 @@ fn request_v7p12() {
 		protocol_version: (7, 12),
 	});
 
-	let expect: &[u8] = b"hello.world!";
-	assert_eq!(req.name(), expect);
+	assert_eq!(req.name(), "hello.world!");
 	assert_eq!(req.flags(), fuse::CreateRequestFlags::new());
 	assert_eq!(req.open_flags(), 0xFF);
 	assert_eq!(req.mode(), fuse::FileMode::new(0xEE));
