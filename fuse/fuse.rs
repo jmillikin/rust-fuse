@@ -105,6 +105,12 @@ pub use entry::Entry;
 pub mod kernel;
 mod kernel_traits;
 
+mod node_name;
+pub use node_name::{
+	NodeName,
+	NodeNameError,
+};
+
 mod notify;
 pub use notify::{
 	FuseNotification,
@@ -129,8 +135,6 @@ pub use unix_time::UnixTime;
 
 // FIXME
 pub use crate::os::{
-	NodeName,
-	NodeNameError,
 	XattrName,
 	XattrNameError,
 	XattrValue,

@@ -5,7 +5,6 @@ filegroup(
     srcs = [
         "freebsd.rs",
         "linux.rs",
-        "node_name.rs",
         "xattr.rs",
     ],
     visibility = ["//:__subpackages__"],

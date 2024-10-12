@@ -14,31 +14,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::convert;
 use core::fmt;
 
 use crate::internal::debug;
-
-/// The maximum length of a node name, in bytes.
-///
-/// This value is platform-specific. If `None`, then the platform does not
-/// impose a maximum length on node names.
-///
-/// | Platform | Symbolic constant | Value |
-/// |----------|-------------------|-------|
-/// | FreeBSD  | `NAME_MAX`        | 255   |
-/// | Linux    | `FUSE_NAME_MAX`   | 1024  |
-pub const NAME_MAX: Option<usize> = name_max();
-
-const fn name_max() -> Option<usize> {
-	if cfg!(target_os = "freebsd") {
-		Some(255) // NAME_MAX
-	} else if cfg!(target_os = "linux") {
-		Some(1024) // FUSE_NAME_MAX
-	} else {
-		None
-	}
-}
 
 /// Errors that may occur when validating the content of a node name.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -50,8 +28,6 @@ pub enum NodeNameError {
 	ContainsNul,
 	/// The input contains `'/'`.
 	ContainsSlash,
-	/// The input length in bytes exceeds [`NAME_MAX`].
-	ExceedsMaxLen,
 }
 
 /// A borrowed filesystem node name.
@@ -61,8 +37,8 @@ pub enum NodeNameError {
 /// or `&[u8]` slice.
 ///
 /// An instance of this type is a static guarantee that the underlying byte
-/// array is non-empty, is less than [`NAME_MAX`] bytes in length, and
-/// does not contain a forbidden character (`NUL` or `'/'`).
+/// array is non-empty and does not contain a forbidden character
+/// (`NUL` or `'/'`).
 #[derive(Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct NodeName {
 	bytes: [u8],
@@ -73,9 +49,8 @@ impl NodeName {
 	///
 	/// # Errors
 	///
-	/// Returns an error if the string is empty, is longer than
-	/// [`NAME_MAX`] bytes, or contains a forbidden character
-	/// (`NUL` or `'/'`).
+	/// Returns an error if the string is empty or contains a forbidden
+	/// character (`NUL` or `'/'`).
 	#[inline]
 	pub fn new(name: &str) -> Result<&NodeName, NodeNameError> {
 		Self::from_bytes(name.as_bytes())
@@ -85,12 +60,11 @@ impl NodeName {
 	///
 	/// # Safety
 	///
-	/// The provided string must be non-empty, must be no longer than
-	/// [`NAME_MAX`] bytes, and must not contain a forbidden character
-	/// (`NUL` or `'/'`).
+	/// The provided string must be non-empty and must not contain a forbidden
+	/// character (`NUL` or `'/'`).
 	#[inline]
 	#[must_use]
-	pub unsafe fn new_unchecked(name: &str) -> &NodeName {
+	pub const unsafe fn new_unchecked(name: &str) -> &NodeName {
 		Self::from_bytes_unchecked(name.as_bytes())
 	}
 
@@ -98,18 +72,12 @@ impl NodeName {
 	///
 	/// # Errors
 	///
-	/// Returns an error if the slice is empty, is longer than
-	/// [`NAME_MAX`] bytes, or contains a forbidden character
+	/// Returns an error if the slice is empty or contains a forbidden character
 	/// (`NUL` or `'/'`).
 	#[inline]
 	pub fn from_bytes(bytes: &[u8]) -> Result<&NodeName, NodeNameError> {
 		if bytes.is_empty() {
 			return Err(NodeNameError::Empty);
-		}
-		if let Some(max_len) = NAME_MAX {
-			if bytes.len() > max_len {
-				return Err(NodeNameError::ExceedsMaxLen);
-			}
 		}
 		for &byte in bytes {
 			if byte == 0 {
@@ -126,9 +94,8 @@ impl NodeName {
 	///
 	/// # Safety
 	///
-	/// The provided slice must be non-empty, must be no longer than
-	/// [`NAME_MAX`] bytes, and must not contain a forbidden character
-	/// (`NUL` or `'/'`).
+	/// The provided slice must be non-empty and must not contain a forbidden
+	/// character (`NUL` or `'/'`).
 	#[inline]
 	#[must_use]
 	pub const unsafe fn from_bytes_unchecked(bytes: &[u8]) -> &NodeName {
@@ -138,7 +105,7 @@ impl NodeName {
 	/// Converts this `NodeName` to a byte slice.
 	#[inline]
 	#[must_use]
-	pub fn as_bytes(&self) -> &[u8] {
+	pub const fn as_bytes(&self) -> &[u8] {
 		&self.bytes
 	}
 
@@ -148,7 +115,7 @@ impl NodeName {
 	///
 	/// Returns an error if the name is not UTF-8.
 	#[inline]
-	pub fn as_str(&self) -> Result<&str, core::str::Utf8Error> {
+	pub const fn as_str(&self) -> Result<&str, core::str::Utf8Error> {
 		core::str::from_utf8(&self.bytes)
 	}
 }
@@ -159,14 +126,27 @@ impl fmt::Debug for NodeName {
 	}
 }
 
-impl<'a> convert::TryFrom<&'a NodeName> for &'a str {
+impl<'a> From<&'a NodeName> for &'a [u8] {
+	fn from(name: &'a NodeName) -> &'a [u8] {
+		name.as_bytes()
+	}
+}
+
+impl<'a> TryFrom<&'a [u8]> for &'a NodeName {
+	type Error = NodeNameError;
+	fn try_from(name: &'a [u8]) -> Result<&'a NodeName, NodeNameError> {
+		NodeName::from_bytes(name)
+	}
+}
+
+impl<'a> TryFrom<&'a NodeName> for &'a str {
 	type Error = core::str::Utf8Error;
 	fn try_from(name: &'a NodeName) -> Result<&'a str, core::str::Utf8Error> {
 		name.as_str()
 	}
 }
 
-impl<'a> convert::TryFrom<&'a str> for &'a NodeName {
+impl<'a> TryFrom<&'a str> for &'a NodeName {
 	type Error = NodeNameError;
 	fn try_from(name: &'a str) -> Result<&'a NodeName, NodeNameError> {
 		NodeName::new(name)
@@ -179,15 +159,15 @@ impl PartialEq<str> for NodeName {
 	}
 }
 
-impl PartialEq<[u8]> for NodeName {
-	fn eq(&self, other: &[u8]) -> bool {
-		self.as_bytes().eq(other)
-	}
-}
-
 impl PartialEq<NodeName> for str {
 	fn eq(&self, other: &NodeName) -> bool {
 		self.as_bytes().eq(other.as_bytes())
+	}
+}
+
+impl PartialEq<[u8]> for NodeName {
+	fn eq(&self, other: &[u8]) -> bool {
+		self.as_bytes().eq(other)
 	}
 }
 
