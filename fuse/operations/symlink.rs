@@ -18,7 +18,6 @@
 
 use core::fmt;
 
-use crate::internal::debug;
 use crate::kernel;
 use crate::server::decode;
 
@@ -28,7 +27,7 @@ use crate::server::decode;
 pub struct SymlinkRequest<'a> {
 	parent_id: crate::NodeId,
 	name: &'a crate::NodeName,
-	content: &'a [u8],
+	content: &'a core::ffi::CStr,
 }
 
 impl SymlinkRequest<'_> {
@@ -43,7 +42,7 @@ impl SymlinkRequest<'_> {
 	}
 
 	#[must_use]
-	pub fn content(&self) -> &[u8] {
+	pub fn content(&self) -> &core::ffi::CStr {
 		self.content
 	}
 }
@@ -51,7 +50,7 @@ impl SymlinkRequest<'_> {
 try_from_fuse_request!(SymlinkRequest<'a>, |request| {
 	let mut dec = request.decoder();
 	dec.expect_opcode(kernel::fuse_opcode::FUSE_SYMLINK)?;
-	let content = dec.next_nul_terminated_bytes()?.to_bytes_without_nul();
+	let content = dec.next_cstr()?;
 	let name = dec.next_node_name()?;
 	Ok(Self {
 		parent_id: decode::node_id(dec.header().nodeid)?,
@@ -65,7 +64,7 @@ impl fmt::Debug for SymlinkRequest<'_> {
 		fmt.debug_struct("SymlinkRequest")
 			.field("parent_id", &self.parent_id)
 			.field("name", &self.name)
-			.field("content", &debug::bytes(self.content))
+			.field("content", &self.content)
 			.finish()
 	}
 }

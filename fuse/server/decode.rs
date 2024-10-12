@@ -16,10 +16,12 @@
 
 //! Request parsing and validation.
 
+use core::ffi::CStr;
 use core::marker::PhantomData;
 use core::mem::size_of;
 use core::slice::from_raw_parts;
 
+use crate::{NodeName, NodeNameError};
 use crate::internal::timestamp;
 use crate::kernel;
 use crate::server::RequestError;
@@ -139,9 +141,50 @@ impl<'a> RequestDecoder<'a> {
 
 	pub(crate) fn next_node_name(
 		&mut self,
-	) -> Result<&'a crate::NodeName, RequestError> {
-		let bytes = self.next_nul_terminated_bytes()?;
-		Ok(crate::NodeName::from_bytes(bytes.to_bytes_without_nul())?)
+	) -> Result<&'a NodeName, RequestError> {
+		let buf = self.buf.as_slice();
+		for off in self.consumed..self.header_len {
+			let c: u8 = unsafe { *buf.get_unchecked(off) };
+			if c == b'/' {
+				return Err(NodeNameError::ContainsSlash)?;
+			}
+			if c != 0 {
+				continue
+			}
+			if self.consumed == off {
+				return Err(NodeNameError::Empty)?;
+			}
+			let name = unsafe {
+				NodeName::from_bytes_unchecked(
+					buf.get_unchecked(self.consumed..off),
+				)
+			};
+			self.consumed = off + 1;
+			return Ok(name);
+		}
+		Err(RequestError::UnexpectedEof)
+	}
+
+	pub(crate) fn next_cstr(&mut self) -> Result<&'a CStr, RequestError> {
+		let buf = self.buf.as_slice();
+		for off in self.consumed..self.header_len {
+			let c: u8 = unsafe { *buf.get_unchecked(off) };
+			if c != 0 {
+				continue
+			}
+			if self.consumed == off {
+				return Ok(c"");
+			}
+			let new_consumed = off + 1;
+			let cstr = unsafe {
+				CStr::from_bytes_with_nul_unchecked(
+					buf.get_unchecked(self.consumed..new_consumed),
+				)
+			};
+			self.consumed = new_consumed;
+			return Ok(cstr);
+		}
+		Err(RequestError::UnexpectedEof)
 	}
 
 	pub(crate) fn next_nul_terminated_bytes(

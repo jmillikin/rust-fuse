@@ -33,7 +33,7 @@ fn request() {
 
 	assert_eq!(request.parent_id(), fuse::NodeId::new(100).unwrap());
 	assert_eq!(request.name(), "link name");
-	assert_eq!(request.content(), b"link content");
+	assert_eq!(request.content(), c"link content");
 }
 
 #[test]
