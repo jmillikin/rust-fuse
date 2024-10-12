@@ -89,14 +89,13 @@ fn listxattr_names() {
 
 	// response must fit in provided buffer
 	{
-		let name = fuse::XattrName::new("12345678901").unwrap();
-		assert!(names.try_push(name).is_err());
+		assert!(names.try_push(c"12345678901").is_err());
 	}
 
 	// xattr names are NUL-terminated, so two 3-byte names requires 8 bytes
 	// of buffer space.
-	names.try_push(fuse::XattrName::new("123").unwrap()).unwrap();
-	names.try_push(fuse::XattrName::new("456").unwrap()).unwrap();
+	names.try_push(c"123").unwrap();
+	names.try_push(c"456").unwrap();
 	assert_eq!(names.position(), 8);
 
 	let names = names.into_names();

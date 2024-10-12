@@ -186,36 +186,6 @@ impl<'a> RequestDecoder<'a> {
 		}
 		Err(RequestError::UnexpectedEof)
 	}
-
-	pub(crate) fn next_nul_terminated_bytes(
-		&mut self,
-	) -> Result<NulTerminatedBytes<'a>, RequestError> {
-		let buf = self.buf.as_slice();
-		for off in self.consumed..self.header_len {
-			if unsafe { buf.get_unchecked(off) } == &0 {
-				let len = off - self.consumed;
-				if len == 0 {
-					return Err(RequestError::UnexpectedEof);
-				}
-				let new_consumed = off + 1;
-				let out = unsafe {
-					buf.get_unchecked(self.consumed..new_consumed)
-				};
-				self.consumed = new_consumed;
-				return Ok(NulTerminatedBytes(out));
-			}
-		}
-		Err(RequestError::UnexpectedEof)
-	}
-}
-
-pub(crate) struct NulTerminatedBytes<'a>(&'a [u8]);
-
-impl<'a> NulTerminatedBytes<'a> {
-	#[allow(clippy::wrong_self_convention)] // TODO
-	pub(crate) fn to_bytes_without_nul(self) -> &'a [u8] {
-		&self.0[0..self.0.len() - 1]
-	}
 }
 
 pub(crate) fn node_id(raw: u64) -> Result<crate::NodeId, RequestError> {

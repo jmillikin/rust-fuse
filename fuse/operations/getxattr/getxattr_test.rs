@@ -37,9 +37,8 @@ fn request_sized() {
 
 	let req = decode_request!(GetxattrRequest, buf);
 
-	let expect = fuse::XattrName::new("hello.world!").unwrap();
 	assert_eq!(req.size(), Some(num::NonZeroUsize::new(10).unwrap()));
-	assert_eq!(req.name(), expect);
+	assert_eq!(req.name(), c"hello.world!");
 }
 
 #[test]
@@ -55,9 +54,8 @@ fn request_unsized() {
 
 	let req = decode_request!(GetxattrRequest, buf);
 
-	let expect = fuse::XattrName::new("hello.world!").unwrap();
 	assert_eq!(req.size(), None);
-	assert_eq!(req.name(), expect);
+	assert_eq!(req.name(), c"hello.world!");
 }
 
 #[test]

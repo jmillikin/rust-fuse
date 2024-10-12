@@ -84,7 +84,7 @@ where
 		let request = server::GetxattrRequest::try_from(request).unwrap();
 		self.fs.requests.send(format!("{:#?}", request)).unwrap();
 
-		if request.name() == "user.xattr_small" {
+		if request.name() == c"user.xattr_small" {
 			let value = b"small xattr value";
 
 			match request.size() {
@@ -103,7 +103,7 @@ where
 			return send_reply.ok_buf(value).unwrap();
 		}
 
-		if request.name() == "user.xattr_toobig" {
+		if request.name() == c"user.xattr_toobig" {
 			return send_reply.err(OsError(errno::E2BIG)).unwrap();
 		}
 

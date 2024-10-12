@@ -94,13 +94,13 @@ where
 			return send_reply.err(OsError(errno::E2BIG)).unwrap();
 		}
 
-		let xattr_small = fuse::XattrName::new("user.xattr_small").unwrap();
-		let xattr_toobig = fuse::XattrName::new("user.xattr_toobig").unwrap();
+		let xattr_small = c"user.xattr_small";
+		let xattr_toobig = c"user.xattr_toobig";
 
 		let buf_size = match request.size() {
 			None => {
-				let mut need_size = xattr_small.size();
-				need_size += xattr_toobig.size();
+				let mut need_size = xattr_small.to_bytes_with_nul().len();
+				need_size += xattr_toobig.to_bytes_with_nul().len();
 				let mut reply = fuse::kernel::fuse_getxattr_out::new();
 				reply.size = need_size as u32;
 				return send_reply.ok(&reply).unwrap();

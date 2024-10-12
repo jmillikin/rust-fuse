@@ -30,9 +30,7 @@ fn request() {
 		.build_aligned();
 
 	let req = decode_request!(RemovexattrRequest, buf);
-
-	let expect = fuse::XattrName::new("hello.world!").unwrap();
-	assert_eq!(req.name(), expect);
+	assert_eq!(req.name(), c"hello.world!");
 }
 
 #[test]

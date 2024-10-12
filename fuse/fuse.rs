@@ -133,14 +133,6 @@ pub use lock::{
 mod unix_time;
 pub use unix_time::UnixTime;
 
-// FIXME
-pub use crate::os::{
-	XattrName,
-	XattrNameError,
-	XattrValue,
-	XattrValueError,
-};
-
 pub mod client;
 pub mod io;
 

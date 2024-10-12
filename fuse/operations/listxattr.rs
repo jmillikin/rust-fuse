@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-use core::convert::TryFrom;
+use core::ffi::CStr;
 use core::fmt;
 use core::num;
 use core::ptr;
@@ -107,23 +107,22 @@ impl server::FuseReply for ListxattrNames<'_> {
 struct XattrNamesIter<'a>(&'a [u8]);
 
 impl<'a> core::iter::Iterator for XattrNamesIter<'a> {
-	type Item = &'a crate::XattrName;
+	type Item = &'a CStr;
 
-	fn next(&mut self) -> Option<&'a crate::XattrName> {
+	fn next(&mut self) -> Option<&'a CStr> {
 		if self.0.is_empty() {
 			return None;
 		}
 		for (ii, byte) in self.0.iter().enumerate() {
 			if *byte == 0 {
-				let (name, _) = self.0.split_at(ii);
-				let (_, next) = self.0.split_at(ii + 1);
+				let (name, next) = self.0.split_at(ii + 1);
 				self.0 = next;
 				return Some(unsafe {
-					crate::XattrName::from_bytes_unchecked(name)
+					CStr::from_bytes_with_nul_unchecked(name)
 				});
 			}
 		}
-		let name = unsafe { crate::XattrName::from_bytes_unchecked(self.0) };
+		let name = unsafe { CStr::from_bytes_with_nul_unchecked(self.0) };
 		self.0 = &[];
 		Some(name)
 	}
@@ -176,25 +175,24 @@ impl<'a> ListxattrNamesWriter<'a> {
 
 	pub fn try_push(
 		&mut self,
-		name: &crate::XattrName,
+		name: &CStr,
 	) -> Result<(), ListxattrCapacityError> {
-		let remaining_capacity = self.capacity() - self.position();
-		if name.size() > remaining_capacity {
+		let name = name.to_bytes_with_nul();
+		let remaining_capacity = self.buf.len() - self.position;
+		if name.len() > remaining_capacity {
 			return Err(ListxattrCapacityError {});
 		}
 
 		let name_start = self.position;
-		self.position += name.size();
+		self.position += name.len();
 
-		let name_bytes = name.as_bytes();
 		unsafe {
 			let dst = self.buf.get_unchecked_mut(name_start..self.position);
 			ptr::copy_nonoverlapping(
-				name_bytes.as_ptr(),
+				name.as_ptr(),
 				dst.as_mut_ptr(),
-				name_bytes.len(),
+				name.len(),
 			);
-			*dst.get_unchecked_mut(name_bytes.len()) = 0;
 		};
 		Ok(())
 	}

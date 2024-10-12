@@ -26,7 +26,7 @@ use crate::server::decode;
 pub struct GetxattrRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_getxattr_in,
-	name: &'a crate::XattrName,
+	name: &'a core::ffi::CStr,
 }
 
 impl GetxattrRequest<'_> {
@@ -45,7 +45,7 @@ impl GetxattrRequest<'_> {
 
 	#[inline]
 	#[must_use]
-	pub fn name(&self) -> &crate::XattrName {
+	pub fn name(&self) -> &core::ffi::CStr {
 		self.name
 	}
 }
@@ -58,8 +58,7 @@ try_from_fuse_request!(GetxattrRequest<'a>, |request| {
 	decode::node_id(header.nodeid)?;
 
 	let body = dec.next_sized()?;
-	let name_bytes = dec.next_nul_terminated_bytes()?;
-	let name = crate::XattrName::from_bytes(name_bytes.to_bytes_without_nul())?;
+	let name = dec.next_cstr()?;
 	Ok(Self { header, body, name })
 });
 

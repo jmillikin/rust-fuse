@@ -27,8 +27,8 @@ use crate::server::decode;
 pub struct SetxattrRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_setxattr_in<'a>>,
-	name: &'a crate::XattrName,
-	value: &'a crate::XattrValue,
+	name: &'a core::ffi::CStr,
+	value: &'a [u8],
 }
 
 impl SetxattrRequest<'_> {
@@ -40,7 +40,7 @@ impl SetxattrRequest<'_> {
 
 	#[inline]
 	#[must_use]
-	pub fn name(&self) -> &crate::XattrName {
+	pub fn name(&self) -> &core::ffi::CStr {
 		self.name
 	}
 
@@ -63,7 +63,7 @@ impl SetxattrRequest<'_> {
 
 	#[inline]
 	#[must_use]
-	pub fn value(&self) -> &crate::XattrValue {
+	pub fn value(&self) -> &[u8] {
 		self.value
 	}
 }
@@ -83,10 +83,8 @@ try_from_fuse_request!(SetxattrRequest<'a>, |request| {
 		compat::Versioned::new_setxattr_v7p1(body_v7p1)
 	};
 
-	let name_bytes = dec.next_nul_terminated_bytes()?;
-	let name = crate::XattrName::from_bytes(name_bytes.to_bytes_without_nul())?;
-	let value_bytes = dec.next_bytes(body.as_v7p1().size)?;
-	let value = crate::XattrValue::new(value_bytes)?;
+	let name = dec.next_cstr()?;
+	let value = dec.next_bytes(body.as_v7p1().size)?;
 
 	Ok(Self { header, body, name, value })
 });
@@ -98,7 +96,7 @@ impl fmt::Debug for SetxattrRequest<'_> {
 			.field("name", &self.name())
 			.field("flags", &self.flags())
 			.field("setxattr_flags", &debug::hex_u32(self.setxattr_flags()))
-			.field("value", &self.value().as_bytes())
+			.field("value", &debug::bytes(self.value))
 			.finish()
 	}
 }

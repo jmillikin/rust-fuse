@@ -34,9 +34,8 @@ fn request() {
 
 	let req = decode_request!(SetxattrRequest, buf);
 
-	let expect_name = fuse::XattrName::new("hello.world!").unwrap();
-	assert_eq!(req.name(), expect_name);
-	assert_eq!(req.value().as_bytes(), b"some\x00value");
+	assert_eq!(req.name(), c"hello.world!");
+	assert_eq!(req.value(), b"some\x00value");
 	assert_eq!(req.setxattr_flags(), 0b11);
 }
 
@@ -62,18 +61,7 @@ fn request_impl_debug() {
 			"    name: \"hello.world!\",\n",
 			"    flags: SetxattrRequestFlags {},\n",
 			"    setxattr_flags: 0x00000000,\n",
-			"    value: [\n",
-			"        115,\n",
-			"        111,\n",
-			"        109,\n",
-			"        101,\n",
-			"        0,\n",
-			"        118,\n",
-			"        97,\n",
-			"        108,\n",
-			"        117,\n",
-			"        101,\n",
-			"    ],\n",
+			"    value: \"some\\x00value\",\n",
 			"}",
 		),
 	);

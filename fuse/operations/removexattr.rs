@@ -24,7 +24,7 @@ use crate::server::decode;
 /// Request type for `FUSE_REMOVEXATTR`.
 pub struct RemovexattrRequest<'a> {
 	header: &'a kernel::fuse_in_header,
-	name: &'a crate::XattrName,
+	name: &'a core::ffi::CStr,
 }
 
 impl RemovexattrRequest<'_> {
@@ -36,7 +36,7 @@ impl RemovexattrRequest<'_> {
 
 	#[inline]
 	#[must_use]
-	pub fn name(&self) -> &crate::XattrName {
+	pub fn name(&self) -> &core::ffi::CStr {
 		self.name
 	}
 }
@@ -47,9 +47,7 @@ try_from_fuse_request!(RemovexattrRequest<'a>, |request| {
 
 	let header = dec.header();
 	decode::node_id(header.nodeid)?;
-
-	let name_bytes = dec.next_nul_terminated_bytes()?;
-	let name = crate::XattrName::from_bytes(name_bytes.to_bytes_without_nul())?;
+	let name = dec.next_cstr()?;
 	Ok(Self { header, name })
 });
 

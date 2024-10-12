@@ -310,16 +310,6 @@ pub enum RequestError {
 	/// The request contains a timestamp with too many nanoseconds.
 	TimestampOverflow,
 
-	/// The request contains an invalid [`crate::XattrName`].
-	///
-	/// [`crate::XattrName`]: crate::XattrName
-	XattrNameError(crate::XattrNameError),
-
-	/// The request contains an invalid [`crate::XattrValue`].
-	///
-	/// [`crate::XattrValue`]: crate::XattrValue
-	XattrValueError(crate::XattrValueError),
-
 	// Errors indicating a programming error in the client.
 
 	/// The request header's request ID is zero.
@@ -345,18 +335,6 @@ impl From<crate::LockError> for RequestError {
 impl From<crate::NodeNameError> for RequestError {
 	fn from(err: crate::NodeNameError) -> RequestError {
 		RequestError::NodeNameError(err)
-	}
-}
-
-impl From<crate::XattrNameError> for RequestError {
-	fn from(err: crate::XattrNameError) -> RequestError {
-		RequestError::XattrNameError(err)
-	}
-}
-
-impl From<crate::XattrValueError> for RequestError {
-	fn from(err: crate::XattrValueError) -> RequestError {
-		RequestError::XattrValueError(err)
 	}
 }
 
