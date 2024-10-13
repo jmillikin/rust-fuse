@@ -22,6 +22,7 @@ use crate::server::decode;
 // RemovexattrRequest {{{
 
 /// Request type for `FUSE_REMOVEXATTR`.
+#[derive(Clone, Copy)]
 pub struct RemovexattrRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	name: &'a core::ffi::CStr,

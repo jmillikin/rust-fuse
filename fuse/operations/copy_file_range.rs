@@ -22,6 +22,7 @@ use crate::server::decode;
 // CopyFileRangeRequest {{{
 
 /// Request type for `FUSE_COPY_FILE_RANGE`.
+#[derive(Clone, Copy)]
 pub struct CopyFileRangeRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_copy_file_range_in,

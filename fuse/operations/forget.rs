@@ -43,6 +43,7 @@ impl ForgetRequestItem {
 // FIXME: Separate `BatchForgetRequest`
 
 /// Request type for `FUSE_FORGET` and `FUSE_BATCH_FORGET`.
+#[derive(Clone, Copy)]
 pub struct ForgetRequest<'a> {
 	forget: Option<kernel::fuse_forget_one>,
 	batch_forgets: &'a [kernel::fuse_forget_one],

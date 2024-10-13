@@ -22,6 +22,7 @@ use crate::server::decode;
 // MkdirRequest {{{
 
 /// Request type for `FUSE_MKDIR`.
+#[derive(Clone, Copy)]
 pub struct MkdirRequest<'a> {
 	parent_id: crate::NodeId,
 	name: &'a crate::NodeName,

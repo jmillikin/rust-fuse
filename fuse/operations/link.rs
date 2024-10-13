@@ -20,7 +20,7 @@ use crate::server::decode;
 // LinkRequest {{{
 
 /// Request type for `FUSE_LINK`.
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct LinkRequest<'a> {
 	node_id: crate::NodeId,
 	new_parent_id: crate::NodeId,

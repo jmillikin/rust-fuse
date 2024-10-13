@@ -24,6 +24,7 @@ use crate::server::decode;
 // SymlinkRequest {{{
 
 /// Request type for `FUSE_SYMLINK`.
+#[derive(Clone, Copy)]
 pub struct SymlinkRequest<'a> {
 	parent_id: crate::NodeId,
 	name: &'a crate::NodeName,

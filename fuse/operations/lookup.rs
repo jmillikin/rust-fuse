@@ -20,7 +20,7 @@ use crate::server::decode;
 // LookupRequest {{{
 
 /// Request type for `FUSE_LOOKUP`.
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct LookupRequest<'a> {
 	parent_id: crate::NodeId,
 	name: &'a crate::NodeName,

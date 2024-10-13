@@ -22,6 +22,7 @@ use crate::server::decode;
 // SetattrRequest {{{
 
 /// Request type for `FUSE_SETATTR`.
+#[derive(Clone, Copy)]
 pub struct SetattrRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	raw: &'a kernel::fuse_setattr_in,

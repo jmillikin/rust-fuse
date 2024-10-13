@@ -26,6 +26,7 @@ use crate::server::decode;
 // ListxattrRequest {{{
 
 /// Request type for `FUSE_LISTXATTR`.
+#[derive(Clone, Copy)]
 pub struct ListxattrRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_getxattr_in,

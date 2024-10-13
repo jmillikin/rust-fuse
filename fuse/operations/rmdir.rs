@@ -20,7 +20,7 @@ use crate::server::decode;
 // RmdirRequest {{{
 
 /// Request type for `FUSE_RMDIR`.
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct RmdirRequest<'a> {
 	parent_id: crate::NodeId,
 	name: &'a crate::NodeName,

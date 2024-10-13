@@ -23,6 +23,7 @@ use crate::server;
 // InterruptRequest {{{
 
 /// Request type for `FUSE_INTERRUPT`.
+#[derive(Clone, Copy)]
 pub struct InterruptRequest<'a> {
 	body: &'a kernel::fuse_interrupt_in,
 }

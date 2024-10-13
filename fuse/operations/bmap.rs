@@ -22,6 +22,7 @@ use crate::server::decode;
 // BmapRequest {{{
 
 /// Request type for `FUSE_BMAP`.
+#[derive(Clone, Copy)]
 pub struct BmapRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_bmap_in,

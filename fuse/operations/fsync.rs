@@ -23,6 +23,7 @@ use crate::server::decode;
 // FsyncRequest {{{
 
 /// Request type for `FUSE_FSYNC`.
+#[derive(Clone, Copy)]
 pub struct FsyncRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_fsync_in,

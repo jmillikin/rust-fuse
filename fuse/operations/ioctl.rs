@@ -26,6 +26,7 @@ use crate::server::decode;
 // IoctlRequest {{{
 
 /// Request type for `FUSE_IOCTL`.
+#[derive(Clone, Copy)]
 pub struct IoctlRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_ioctl_in,

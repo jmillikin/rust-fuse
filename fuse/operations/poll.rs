@@ -39,6 +39,7 @@ impl fmt::Debug for PollHandle {
 // PollRequest {{{
 
 /// Request type for `FUSE_POLL`.
+#[derive(Clone, Copy)]
 pub struct PollRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_poll_in,

@@ -23,6 +23,7 @@ use crate::server::decode;
 // AccessRequest {{{
 
 /// Request type for `FUSE_ACCESS`.
+#[derive(Clone, Copy)]
 pub struct AccessRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: crate::NodeId,

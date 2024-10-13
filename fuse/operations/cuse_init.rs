@@ -28,6 +28,7 @@ use crate::server;
 // CuseInitRequest {{{
 
 /// Request type for `CUSE_INIT`.
+#[derive(Clone, Copy)]
 pub struct CuseInitRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	version: Version,

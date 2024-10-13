@@ -27,6 +27,7 @@ use crate::server::decode;
 // ReaddirplusRequest {{{
 
 /// Request type for `FUSE_READDIRPLUS`.
+#[derive(Clone, Copy)]
 pub struct ReaddirplusRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_read_in<'a>>,

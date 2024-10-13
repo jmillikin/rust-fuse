@@ -22,6 +22,7 @@ use crate::server::decode;
 // LseekRequest {{{
 
 /// Request type for `FUSE_LSEEK`.
+#[derive(Clone, Copy)]
 pub struct LseekRequest<'a> {
 	raw: &'a kernel::fuse_lseek_in,
 	node_id: crate::NodeId,

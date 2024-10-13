@@ -23,6 +23,7 @@ use crate::server::decode;
 // MknodRequest {{{
 
 /// Request type for `FUSE_MKNOD`.
+#[derive(Clone, Copy)]
 pub struct MknodRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_mknod_in<'a>>,

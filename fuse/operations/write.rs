@@ -29,6 +29,7 @@ use crate::server::decode;
 // WriteRequest {{{
 
 /// Request type for `FUSE_WRITE`.
+#[derive(Clone, Copy)]
 pub struct WriteRequest<'a> {
 	msg: &'a write_msg,
 	version_minor: u32,

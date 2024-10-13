@@ -23,6 +23,7 @@ use crate::kernel;
 // FuseInitRequest {{{
 
 /// Request type for `FUSE_INIT`.
+#[derive(Clone, Copy)]
 pub struct FuseInitRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	version: Version,

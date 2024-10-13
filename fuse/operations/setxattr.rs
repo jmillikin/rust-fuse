@@ -24,6 +24,7 @@ use crate::server::decode;
 // SetxattrRequest {{{
 
 /// Request type for `FUSE_SETXATTR`.
+#[derive(Clone, Copy)]
 pub struct SetxattrRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_setxattr_in<'a>>,

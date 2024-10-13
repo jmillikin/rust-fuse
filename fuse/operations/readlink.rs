@@ -23,6 +23,7 @@ use crate::server::decode;
 // ReadlinkRequest {{{
 
 /// Request type for `FUSE_READLINK`.
+#[derive(Clone, Copy)]
 pub struct ReadlinkRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: crate::NodeId,

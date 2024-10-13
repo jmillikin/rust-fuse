@@ -23,6 +23,7 @@ use crate::server::decode;
 // OpendirRequest {{{
 
 /// Request type for `FUSE_OPENDIR`.
+#[derive(Clone, Copy)]
 pub struct OpendirRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_open_in,

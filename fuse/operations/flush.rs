@@ -24,6 +24,7 @@ use crate::server::decode;
 // FlushRequest {{{
 
 /// Request type for `FUSE_FLUSH`.
+#[derive(Clone, Copy)]
 pub struct FlushRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: crate::NodeId,

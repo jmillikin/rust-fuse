@@ -23,6 +23,7 @@ use crate::server::decode;
 // RenameRequest {{{
 
 /// Request type for `FUSE_RENAME` and `FUSE_RENAME2`.
+#[derive(Clone, Copy)]
 pub struct RenameRequest<'a> {
 	old_directory_id: crate::NodeId,
 	old_name: &'a crate::NodeName,

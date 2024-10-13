@@ -24,6 +24,7 @@ use crate::server::decode;
 // ReleasedirRequest {{{
 
 /// Request type for `FUSE_RELEASEDIR`.
+#[derive(Clone, Copy)]
 pub struct ReleasedirRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_release_in<'a>>,

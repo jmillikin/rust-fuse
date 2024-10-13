@@ -23,6 +23,7 @@ use crate::server::decode;
 // StatfsRequest {{{
 
 /// Request type for `FUSE_STATFS`.
+#[derive(Clone, Copy)]
 pub struct StatfsRequest<'a> {
 	phantom: PhantomData<&'a ()>,
 	node_id: crate::NodeId,

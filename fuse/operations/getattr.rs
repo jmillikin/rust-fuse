@@ -23,6 +23,7 @@ use crate::server::decode;
 // GetattrRequest {{{
 
 /// Request type for `FUSE_GETATTR`.
+#[derive(Clone, Copy)]
 pub struct GetattrRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_getattr_in<'a>>,

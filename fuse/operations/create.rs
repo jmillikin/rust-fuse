@@ -25,6 +25,7 @@ use crate::server::decode;
 // CreateRequest {{{
 
 /// Request type for `FUSE_CREATE`.
+#[derive(Clone, Copy)]
 pub struct CreateRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: compat::Versioned<compat::fuse_create_in<'a>>,

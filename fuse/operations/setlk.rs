@@ -22,6 +22,7 @@ use crate::server::decode;
 // SetlkRequest {{{
 
 /// Request type for `FUSE_SETLK` and `FUSE_SETLKW`.
+#[derive(Clone, Copy)]
 pub struct SetlkRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_lk_in,

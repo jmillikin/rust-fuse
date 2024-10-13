@@ -23,6 +23,7 @@ use crate::server::decode;
 // FallocateRequest {{{
 
 /// Request type for `FUSE_FALLOCATE`.
+#[derive(Clone, Copy)]
 pub struct FallocateRequest<'a> {
 	header: &'a kernel::fuse_in_header,
 	body: &'a kernel::fuse_fallocate_in,

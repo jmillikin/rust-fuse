@@ -22,7 +22,7 @@ use crate::server::decode;
 // UnlinkRequest {{{
 
 /// Request type for `FUSE_UNLINK`.
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct UnlinkRequest<'a> {
 	parent_id: crate::NodeId,
 	name: &'a crate::NodeName,
