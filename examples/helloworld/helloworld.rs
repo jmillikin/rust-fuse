@@ -159,7 +159,7 @@ where
 			return;
 		}
 
-		let mut buf = vec![0u8; request.size()];
+		let mut buf = vec![0u8; request.size() as usize];
 		let mut entries = server::ReaddirEntriesWriter::new(&mut buf);
 
 		let node_offset = NonZeroU64::new(1).unwrap();

@@ -39,8 +39,8 @@ impl ReaddirplusRequest<'_> {
 	}
 
 	#[must_use]
-	pub fn size(&self) -> usize {
-		usize::try_from(self.body.as_v7p1().size).unwrap_or(usize::MAX)
+	pub fn size(&self) -> u32 {
+		self.body.as_v7p1().size
 	}
 
 	#[must_use]

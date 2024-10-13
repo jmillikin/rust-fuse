@@ -96,7 +96,7 @@ where
 			None => 0,
 		};
 
-		let mut buf = vec![0u8; request.size()];
+		let mut buf = vec![0u8; request.size() as usize];
 		let mut entries = server::ReaddirEntriesWriter::new(&mut buf);
 
 		if offset == 0 {
