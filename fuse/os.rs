@@ -22,6 +22,21 @@ pub mod freebsd;
 #[cfg(any(doc, target_os = "linux"))]
 pub mod linux;
 
+#[cfg(all(not(doc), target_os = "freebsd"))]
+pub use freebsd::OsError as OsError;
+
+#[cfg(all(not(doc), target_os = "linux"))]
+pub use linux::OsError as OsError;
+
+/// Re-export of platform-specific error code adapters.
+///
+/// | Platform | Re-export of         |
+/// |----------|----------------------|
+/// | FreeBSD  | [`freebsd::OsError`] |
+/// | Linux    | [`linux::OsError`]   |
+#[cfg(doc)]
+pub struct OsError;
+
 /// The maximum length of a node name, in bytes.
 ///
 /// This value is platform-specific. If `None`, then the platform does not
