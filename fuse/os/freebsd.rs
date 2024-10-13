@@ -74,15 +74,18 @@ mod errno {
 		pub const fn get(self) -> i32 { 1 }
 	}
 
-	pub const E2BIG: Error = Error;
 	pub const EINTR: Error = Error;
 	pub const EINVAL: Error = Error;
+	pub const EISDIR: Error = Error;
+	pub const ENOTDIR: Error = Error;
 	pub const ENOENT: Error = Error;
+	pub const EOPNOTSUPP: Error = Error;
 	pub const EOVERFLOW: Error = Error;
 	pub const EPROTO: Error = Error;
 	pub const EAGAIN: Error = Error;
 	pub const ENOSYS: Error = Error;
 	pub const ENOATTR: Error = Error;
+	pub const E2BIG: Error = Error;
 }
 
 impl OsError {
@@ -99,10 +102,25 @@ impl OsError {
 	/// This error maps to `EINVAL`.
 	pub const INVALID_ARGUMENT: crate::Error = fuse_error(errno::EINVAL);
 
+	/// The requested node is a directory.
+	///
+	/// This error maps to `EISDIR`.
+	pub const IS_DIRECTORY: crate::Error = fuse_error(errno::EISDIR);
+
+	/// The requested node is not a directory.
+	///
+	/// This error maps to `ENOTDIR`.
+	pub const NOT_DIRECTORY: crate::Error = fuse_error(errno::ENOTDIR);
+
 	/// The requested file or directory does not exist.
 	///
 	/// This error maps to `ENOENT`.
 	pub const NOT_FOUND: crate::Error = fuse_error(errno::ENOENT);
+
+	/// The requested operation is not supported by the specified node.
+	///
+	/// This error maps to `EOPNOTSUPP`.
+	pub const NOT_SUPPORTED: crate::Error = fuse_error(errno::EOPNOTSUPP);
 
 	/// A value is too large to store in its data type.
 	///
@@ -128,6 +146,11 @@ impl OsError {
 	///
 	/// This error maps to `ENOATTR`.
 	pub const XATTR_NOT_FOUND: crate::Error = fuse_error(errno::ENOATTR);
+
+	/// The requested extended attribute is too big and cannot be retrieved.
+	///
+	/// This error maps to `E2BIG`.
+	pub const XATTR_TOO_BIG: crate::Error = fuse_error(errno::E2BIG);
 }
 
 // FuseSubtype {{{

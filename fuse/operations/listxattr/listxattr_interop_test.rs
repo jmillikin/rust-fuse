@@ -91,7 +91,7 @@ where
 		self.fs.requests.send(format!("{:#?}", request)).unwrap();
 
 		if request.node_id() == fuse::NodeId::new(3).unwrap() {
-			return send_reply.err(OsError(errno::E2BIG)).unwrap();
+			return send_reply.err(OsError::XATTR_TOO_BIG).unwrap();
 		}
 
 		let xattr_small = c"user.xattr_small";

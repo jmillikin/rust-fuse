@@ -104,7 +104,7 @@ where
 		}
 
 		if request.name() == c"user.xattr_toobig" {
-			return send_reply.err(OsError(errno::E2BIG)).unwrap();
+			return send_reply.err(OsError::XATTR_TOO_BIG).unwrap();
 		}
 
 		send_reply.err(OsError::XATTR_NOT_FOUND).unwrap();

@@ -23,7 +23,6 @@ use fuse::server::FuseRequest;
 
 use interop_testutil::{
 	diff_str,
-	errno,
 	path_cstr,
 	OsError,
 };
@@ -148,7 +147,7 @@ where
 			return send_reply.ok(&resp).unwrap();
 		}
 
-		send_reply.err(OsError(errno::EOPNOTSUPP)).unwrap();
+		send_reply.err(OsError::NOT_SUPPORTED).unwrap();
 	}
 
 	fn open(&self, request: FuseRequest<'_>) {
