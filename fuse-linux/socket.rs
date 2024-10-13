@@ -117,6 +117,15 @@ impl CuseServerSocket {
 		};
 		Ok(CuseServerSocket { socket })
 	}
+
+	#[must_use]
+	pub unsafe fn from_raw_fd(fd: i32) -> CuseServerSocket {
+		let socket = Socket {
+			fd,
+			enodev_is_eof: true,
+		};
+		CuseServerSocket { socket }
+	}
 }
 
 impl server::CuseSocket for CuseServerSocket {}
@@ -156,6 +165,15 @@ impl FuseServerSocket {
 	#[must_use]
 	pub fn fuse_device_fd(&self) -> u32 {
 		self.socket.fd as u32
+	}
+
+	#[must_use]
+	pub unsafe fn from_raw_fd(fd: i32) -> FuseServerSocket {
+		let socket = Socket {
+			fd,
+			enodev_is_eof: true,
+		};
+		FuseServerSocket { socket }
 	}
 }
 
