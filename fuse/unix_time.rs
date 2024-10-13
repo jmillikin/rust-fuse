@@ -47,6 +47,15 @@ impl UnixTime {
 		Some(Self { seconds, nanos })
 	}
 
+	/// Creates a new `UnixTime` with the given offset from the epoch.
+	///
+	/// Returns `None` if the nanoseconds value exceeds 999,999,999.
+	#[inline]
+	#[must_use]
+	pub const fn from_seconds(seconds: i64) -> UnixTime {
+		Self { seconds, nanos: 0 }
+	}
+
 	/// Creates a new `UnixTime` without checking that the nanoseconds value
 	/// is valid.
 	///
