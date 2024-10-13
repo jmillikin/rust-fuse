@@ -19,7 +19,7 @@
 use core::fmt;
 use core::time;
 
-use crate::attributes::Attributes;
+use crate::NodeAttr;
 use crate::internal::timestamp;
 use crate::kernel;
 use crate::server;
@@ -34,11 +34,11 @@ impl Entry {
 	/// Creates a new `Entry` for a node with the given attributes.
 	#[inline]
 	#[must_use]
-	pub fn new(attributes: Attributes) -> Entry {
+	pub fn new(node_attr: NodeAttr) -> Entry {
 		Self {
 			raw: kernel::fuse_entry_out {
-				nodeid: attributes.raw.ino,
-				attr: attributes.raw,
+				nodeid: node_attr.raw.ino,
+				attr: node_attr.raw,
 				..kernel::fuse_entry_out::new()
 			},
 		}
@@ -76,15 +76,15 @@ impl Entry {
 	/// Returns the node attributes for this entry.
 	#[inline]
 	#[must_use]
-	pub fn attributes(&self) -> &Attributes {
-		unsafe { Attributes::from_ref(&self.raw.attr) }
+	pub fn attributes(&self) -> &NodeAttr {
+		unsafe { NodeAttr::from_ref(&self.raw.attr) }
 	}
 
 	/// Returns a mutable reference to the node attributes for this entry.
 	#[inline]
 	#[must_use]
-	pub fn attributes_mut(&mut self) -> &mut Attributes {
-		unsafe { Attributes::from_ref_mut(&mut self.raw.attr) }
+	pub fn attributes_mut(&mut self) -> &mut NodeAttr {
+		unsafe { NodeAttr::from_ref_mut(&mut self.raw.attr) }
 	}
 
 	/// Returns the lookup cache timeout for this entry.

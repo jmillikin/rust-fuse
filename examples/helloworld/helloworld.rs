@@ -40,7 +40,7 @@ impl HelloTxt {
 		fuse::NodeId::new(100).unwrap()
 	}
 
-	fn set_attr(&self, attr: &mut fuse::Attributes) {
+	fn set_attr(&self, attr: &mut fuse::NodeAttr) {
 		attr.set_user_id(getuid());
 		attr.set_group_id(getgid());
 		attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
@@ -77,7 +77,7 @@ where
 			return;
 		}
 
-		let mut attr = fuse::Attributes::new(HELLO_TXT.node_id());
+		let mut attr = fuse::NodeAttr::new(HELLO_TXT.node_id());
 		HELLO_TXT.set_attr(&mut attr);
 
 		send_reply.ok(&fuse::Entry::new(attr)).unwrap();
@@ -87,7 +87,7 @@ where
 		let send_reply = self.conn.reply(request.id());
 		let request = server::GetattrRequest::try_from(request).unwrap();
 
-		let mut attr = fuse::Attributes::new(request.node_id());
+		let mut attr = fuse::NodeAttr::new(request.node_id());
 		if request.node_id().is_root() {
 			attr.set_user_id(getuid());
 			attr.set_group_id(getgid());

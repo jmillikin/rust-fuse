@@ -68,7 +68,7 @@ where
 		let cache_timeout = std::time::Duration::from_secs(60);
 
 		if request.name() == "rename_old.txt" {
-			let mut attr = fuse::Attributes::new(fuse::NodeId::new(2).unwrap());
+			let mut attr = fuse::NodeAttr::new(fuse::NodeId::new(2).unwrap());
 			attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 			attr.set_link_count(1);
 
@@ -79,7 +79,7 @@ where
 		}
 
 		if request.name() == "rename_new.txt" {
-			let mut attr = fuse::Attributes::new(fuse::NodeId::new(4).unwrap());
+			let mut attr = fuse::NodeAttr::new(fuse::NodeId::new(4).unwrap());
 			attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 			attr.set_link_count(1);
 
@@ -90,7 +90,7 @@ where
 		}
 
 		if request.name() == "rename_dir.d" {
-			let mut attr = fuse::Attributes::new(fuse::NodeId::new(4).unwrap());
+			let mut attr = fuse::NodeAttr::new(fuse::NodeId::new(4).unwrap());
 			attr.set_mode(fuse::FileMode::S_IFDIR | 0o755);
 			attr.set_link_count(2);
 

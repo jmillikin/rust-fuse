@@ -75,7 +75,7 @@ where
 			return send_reply.err(OsError::NOT_FOUND).unwrap();
 		}
 
-		let mut attr = fuse::Attributes::new(node_id);
+		let mut attr = fuse::NodeAttr::new(node_id);
 		attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 		attr.set_link_count(1);
 

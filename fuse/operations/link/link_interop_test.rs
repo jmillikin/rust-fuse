@@ -69,7 +69,7 @@ where
 			return send_reply.err(OsError::NOT_FOUND).unwrap();
 		}
 
-		let mut attr = fuse::Attributes::new(fuse::NodeId::new(2).unwrap());
+		let mut attr = fuse::NodeAttr::new(fuse::NodeId::new(2).unwrap());
 		attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 		attr.set_link_count(1);
 
@@ -84,7 +84,7 @@ where
 		let request = server::LinkRequest::try_from(request).unwrap();
 		self.fs.requests.send(format!("{:#?}", request)).unwrap();
 
-		let mut attr = fuse::Attributes::new(fuse::NodeId::new(3).unwrap());
+		let mut attr = fuse::NodeAttr::new(fuse::NodeId::new(3).unwrap());
 		attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 		attr.set_link_count(1);
 

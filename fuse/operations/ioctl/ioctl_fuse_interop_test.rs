@@ -67,7 +67,7 @@ where
 			return send_reply.err(OsError::NOT_FOUND).unwrap();
 		}
 
-		let mut attr = fuse::Attributes::new(fuse::NodeId::new(2).unwrap());
+		let mut attr = fuse::NodeAttr::new(fuse::NodeId::new(2).unwrap());
 		attr.set_mode(fuse::FileMode::S_IFREG | 0o644);
 		attr.set_link_count(1);
 
@@ -82,7 +82,7 @@ where
 		let request = server::GetattrRequest::try_from(request).unwrap();
 		println!("{:#?}", request);
 
-		let mut attr = fuse::Attributes::new(request.node_id());
+		let mut attr = fuse::NodeAttr::new(request.node_id());
 
 		if request.node_id().is_root() {
 			attr.set_mode(fuse::FileMode::S_IFDIR | 0o755);

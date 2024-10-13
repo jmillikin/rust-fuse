@@ -83,8 +83,8 @@ pub use node_id::NodeId;
 mod file_mode;
 pub use file_mode::{FileMode, FileType};
 
-mod attributes;
-pub use attributes::Attributes;
+mod node_attr;
+pub use node_attr::NodeAttr;
 
 mod entry;
 pub use entry::Entry;

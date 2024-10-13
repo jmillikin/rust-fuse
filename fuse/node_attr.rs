@@ -22,15 +22,15 @@ use crate::node_id::NodeId;
 
 /// Attributes of a filesystem node.
 #[derive(Clone, Copy)]
-pub struct Attributes {
+pub struct NodeAttr {
 	pub(crate) raw: kernel::fuse_attr,
 }
 
-impl Attributes {
-	/// Creates a new `Attributes` for a node with the given ID.
+impl NodeAttr {
+	/// Creates a new `NodeAttr` for a node with the given ID.
 	#[inline]
 	#[must_use]
-	pub fn new(node_id: NodeId) -> Attributes {
+	pub fn new(node_id: NodeId) -> NodeAttr {
 		Self {
 			raw: kernel::fuse_attr {
 				ino: node_id.get(),
@@ -52,7 +52,7 @@ impl Attributes {
 	#[must_use]
 	pub(crate) unsafe fn from_ref(raw: &kernel::fuse_attr) -> &Self {
 		let raw_ptr = raw as *const kernel::fuse_attr;
-		&*(raw_ptr.cast::<Attributes>())
+		&*(raw_ptr.cast::<NodeAttr>())
 	}
 
 	#[inline]
@@ -61,7 +61,7 @@ impl Attributes {
 		raw: &mut kernel::fuse_attr,
 	) -> &mut Self {
 		let raw_ptr = raw as *mut kernel::fuse_attr;
-		&mut *(raw_ptr.cast::<Attributes>())
+		&mut *(raw_ptr.cast::<NodeAttr>())
 	}
 
 	/// Returns the per-mount unique identifier of the node.
@@ -288,9 +288,9 @@ impl Attributes {
 	}
 }
 
-impl fmt::Debug for Attributes {
+impl fmt::Debug for NodeAttr {
 	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		fmt.debug_struct("Attributes")
+		fmt.debug_struct("NodeAttr")
 			.field("node_id", &self.node_id())
 			.field("mode", &self.mode())
 			.field("size", &self.size())
@@ -308,7 +308,7 @@ impl fmt::Debug for Attributes {
 	}
 }
 
-/// Optional flags set on [`Attributes`].
+/// Optional flags set on [`NodeAttr`].
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 struct AttributeFlags {
 	bits: u32,
