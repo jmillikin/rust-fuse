@@ -42,13 +42,6 @@ impl LibcError {
 	}
 }
 
-#[cfg(feature = "std")]
-impl From<LibcError> for std::io::Error {
-	fn from(err: LibcError) -> Self {
-		std::io::Error::from_raw_os_error(err.code)
-	}
-}
-
 struct Socket {
 	fd: i32,
 	enodev_is_eof: bool,

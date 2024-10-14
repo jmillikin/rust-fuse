@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#![cfg_attr(not(any(doc, feature = "std")), no_std)]
+#![no_std]
 
 #![warn(
 	// API hygiene

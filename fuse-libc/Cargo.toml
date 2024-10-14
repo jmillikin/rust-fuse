@@ -12,7 +12,3 @@ path = "fuse-libc.rs"
 [dependencies]
 fuse = { version = "0.0.1", path = "../fuse" }
 libc = { version = "0.2.*" }
-
-[features]
-default = ["std"]
-std = []

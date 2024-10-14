@@ -13,7 +13,6 @@ rust_library(
         "io/*.rs",
         "os/*.rs",
     ]),
-    crate_features = ["std"],
     edition = "2021",
     visibility = ["//visibility:public"],
     deps = [
