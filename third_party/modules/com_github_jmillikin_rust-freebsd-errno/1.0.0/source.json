@@ -1,0 +1,12 @@
+
+{
+    "url": "https://github.com/jmillikin/rust-freebsd-errno/releases/download/v1.0.0/freebsd-errno-1.0.0.tar.xz",
+    "integrity": "sha256-BK+kzKZbR9EJOw/WCGjzrVCosIGUz2/SpJfihZMz7vE=",
+    "strip_prefix": "freebsd-errno-1.0.0",
+    "overlay": {
+        "MODULE.bazel": "sha256-1LxOmnmakzHskjhvHbgqUlA7sLritoWfqXDcp3sRLBI="
+    },
+	"patches": {
+		"rust_edition.patch": "sha256-VjqdvnH0hYph+ui+w6OKxGgvu2wrCfJ3wbUeK2rwLws="
+	}
+}

@@ -25,10 +25,10 @@ def _operation_test(filename):
             "//fuse/internal/testing:fuse_testutil",
         ] + select({
             "@platforms//os:freebsd": [
-                "@rust_freebsd_errno//freebsd-errno",
+                "@com_github_jmillikin_rust-freebsd-errno//freebsd-errno",
             ],
             "@platforms//os:linux": [
-                "@rust_linux_errno//linux-errno",
+                "@com_github_jmillikin_rust-linux-errno//linux-errno",
             ],
             "//conditions:default": [],
         }),
@@ -48,11 +48,11 @@ def _operation_interop_test(filename, interop_test_os):
         deps = [
             "//fuse",
             "//fuse/internal/testing:interop_testutil",
-            "@rust_libc//:libc",
+            "@com_github_rust-lang_libc//:libc",
         ] + select({
             "@platforms//os:linux": [
-                "@rust_linux_errno//linux-errno",
-                "@rust_linux_syscall//linux-syscall",
+                "@com_github_jmillikin_rust-linux-errno//linux-errno",
+                "@com_github_jmillikin_rust-linux-syscall//linux-syscall",
             ],
             "//conditions:default": [],
         }),

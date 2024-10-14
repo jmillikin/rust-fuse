@@ -1,0 +1,10 @@
+{
+    "url": "https://crates.io/api/v1/crates/libc/0.2.149/download",
+    "integrity": "sha256-oIFzvIi3lV0bMUWqVhU5CWxCGsjevejLw2EuxjX+4ps=",
+    "strip_prefix": "libc-0.2.149",
+	"archive_type": "tar.gz",
+    "overlay": {
+        "BUILD.bazel": "sha256-pD7Ws3ZXg6kJQ2XmKiR0OE4YdFwg3RZejsCuU7alCRY=",
+        "MODULE.bazel": "sha256-6SoYPBR/9IWcd2M9T2gjs0fYuk+5jihnVu29ETZEVh8="
+    }
+}

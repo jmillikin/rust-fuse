@@ -1,0 +1,24 @@
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+load("@rules_rust//rust:defs.bzl", "rust_library")
+
+string_flag(
+    name = "freebsd_abi",
+    build_setting_default = "14",
+    make_variable = "FREEBSD_ABI",
+)
+
+rust_library(
+    name = "libc",
+    srcs = glob(["src/**/*.rs"]),
+    edition = "2015",
+    rustc_flags = [
+        "--cfg=libc_const_extern_fn",
+        "--cfg=libc_core_cvoid",
+        "--cfg=libc_priv_mod_use",
+    ] + select({
+        "@platforms//os:freebsd": ["--cfg=freebsd$(FREEBSD_ABI)"],
+        "//conditions:default": [],
+    }),
+    toolchains = [":freebsd_abi"],
+    visibility = ["//visibility:public"],
+)

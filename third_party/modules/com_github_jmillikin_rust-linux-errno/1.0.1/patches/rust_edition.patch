@@ -1,0 +1,10 @@
+--- linux-errno/BUILD
++++ linux-errno/BUILD
+@@ -8,6 +8,7 @@ rust_library(
+         "linux-errno.rs",
+         "linux-errno_*.rs",
+     ]),
++    edition = "2018",
+     crate_features = ["posix-traits"],
+     target_compatible_with = [
+         "@platforms//os:linux",

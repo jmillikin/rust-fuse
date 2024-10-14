@@ -13,8 +13,8 @@ rust_library(
     visibility = ["//visibility:public"],
     deps = [
         "//fuse",
-        "@rust_linux_errno//linux-errno",
-        "@rust_linux_syscall//linux-syscall",
+        "@com_github_jmillikin_rust-linux-errno//linux-errno",
+        "@com_github_jmillikin_rust-linux-syscall//linux-syscall",
     ],
 )
 

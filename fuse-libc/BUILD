@@ -17,7 +17,7 @@ rust_library(
     visibility = ["//visibility:public"],
     deps = [
         "//fuse",
-        "@rust_libc//:libc",
+        "@com_github_rust-lang_libc//:libc",
     ],
 )
 

@@ -1,0 +1,12 @@
+
+{
+    "url": "https://github.com/jmillikin/rust-linux-syscall/releases/download/v1.0.0/linux-syscall-1.0.0.tar.xz",
+    "integrity": "sha256-bia54g2HlRALkDXGmPSXetFTvtHq/p+dy1TxT70rEgo=",
+    "strip_prefix": "linux-syscall-1.0.0",
+    "overlay": {
+        "MODULE.bazel": "sha256-ZSlMN+v6fHu2pY8O/OIZo+7cocDYmhHsdZhijN5FVeI="
+    },
+	"patches": {
+		"rust_edition.patch": "sha256-v/nAU6LiqZB6ZENwaQOt7m67vEOw3xsmtQxz0nI/PCE="
+	}
+}

@@ -1,0 +1,10 @@
+--- linux-syscall/BUILD
++++ linux-syscall/BUILD
+@@ -8,6 +8,7 @@ rust_library(
+         "linux-syscall.rs",
+         "arch/**/*.rs",
+     ]),
++    edition = "2018",
+     target_compatible_with = [
+         "@platforms//os:linux",
+     ],

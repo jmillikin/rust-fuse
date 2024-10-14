@@ -1,0 +1,31 @@
+module(
+    name = "com_github_jmillikin_rust-fuse",
+)
+
+bazel_dep(name = "platforms", version = "0.0.10")
+bazel_dep(name = "rules_rust", version = "0.52.2")
+
+bazel_dep(
+    name = "com_github_jmillikin_rust-freebsd-errno",
+    version = "1.0.0",
+)
+
+bazel_dep(
+    name = "com_github_jmillikin_rust-linux-errno",
+    version = "1.0.1",
+)
+
+bazel_dep(
+    name = "com_github_jmillikin_rust-linux-syscall",
+    version = "1.0.0",
+)
+
+bazel_dep(
+    name = "com_github_rust-lang_libc",
+    version = "0.2.149",
+)
+
+rust = use_extension("@rules_rust//rust:extensions.bzl", "rust")
+rust.toolchain(
+    versions = ["1.81.0"],
+)

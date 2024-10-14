@@ -20,16 +20,16 @@ rust_library(
     deps = [
         ":fuse_testutil",
         "//fuse",
-        "@rust_diff//:diff",
-        "@rust_libc//:libc",
+        "@com_github_rust-lang_libc//:libc",
+        "@com_github_utkarshkukreti_diff.rs//:diff",
     ] + select({
         "@platforms//os:freebsd": [
             "//fuse-libc",
-            "@rust_freebsd_errno//freebsd-errno",
+            "@com_github_jmillikin_rust-freebsd-errno//freebsd-errno",
         ],
         "@platforms//os:linux": [
             "//fuse-linux",
-            "@rust_linux_errno//linux-errno",
+            "@com_github_jmillikin_rust-linux-errno//linux-errno",
         ],
         "//conditions:default": [],
     }),

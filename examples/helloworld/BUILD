@@ -8,6 +8,6 @@ rust_binary(
         "//fuse",
         "//fuse-libc",
         "//fuse-std",
-        "@rust_libc//:libc",
+        "@com_github_rust-lang_libc//:libc",
     ],
 )

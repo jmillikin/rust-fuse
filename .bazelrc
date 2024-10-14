@@ -1,0 +1,2 @@
+common --registry=https://bcr.bazel.build
+common --registry=file:///%workspace%/third_party

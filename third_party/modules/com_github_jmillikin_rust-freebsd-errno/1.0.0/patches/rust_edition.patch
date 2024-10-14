@@ -1,0 +1,10 @@
+--- freebsd-errno/BUILD
++++ freebsd-errno/BUILD
+@@ -6,6 +6,7 @@ rust_library(
+     name = "freebsd-errno",
+     srcs = ["freebsd-errno.rs"],
+     crate_features = ["posix-traits"],
++    edition = "2018",
+     target_compatible_with = [
+         "@platforms//os:freebsd",
+     ],

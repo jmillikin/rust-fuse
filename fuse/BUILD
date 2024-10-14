@@ -19,10 +19,10 @@ rust_library(
     visibility = ["//visibility:public"],
     deps = select({
         "@platforms//os:freebsd": [
-            "@rust_freebsd_errno//freebsd-errno",
+            "@com_github_jmillikin_rust-freebsd-errno//freebsd-errno",
         ],
         "@platforms//os:linux": [
-            "@rust_linux_errno//linux-errno",
+            "@com_github_jmillikin_rust-linux-errno//linux-errno",
         ],
         "//conditions:default": [],
     }),

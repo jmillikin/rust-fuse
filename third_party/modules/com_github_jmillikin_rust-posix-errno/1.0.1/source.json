@@ -1,0 +1,12 @@
+
+{
+    "url": "https://github.com/jmillikin/rust-posix-errno/releases/download/v1.0.1/posix-errno-1.0.1.tar.xz",
+    "integrity": "sha256-DIbISf9nM3L+ZBXUAEojNWW1eyiE6knTtyXdEpbMJSk=",
+    "strip_prefix": "posix-errno-1.0.1",
+    "overlay": {
+        "MODULE.bazel": "sha256-vtls4Ss3RUfsRScZPTXRXgn0C6Uv6HixtDBgF6uTcPA="
+    },
+	"patches": {
+		"rust_edition.patch": "sha256-zvLtnKD96AUHPrU4d679GUd1Evb5AJkiJeZamLEpGts="
+	}
+}

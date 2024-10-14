@@ -1,0 +1,12 @@
+
+{
+    "url": "https://github.com/jmillikin/rust-linux-errno/releases/download/v1.0.1/linux-errno-1.0.1.tar.xz",
+    "integrity": "sha256-AJ1YyTyAbxeABKTNMK8hGGC8RPjOfQLrT1RIIa3Xypk=",
+    "strip_prefix": "linux-errno-1.0.1",
+    "overlay": {
+        "MODULE.bazel": "sha256-Y0fI6GppyuyK9Kiy71xgJErgXKLFC3AaMNammmcMIOQ="
+    },
+	"patches": {
+		"rust_edition.patch": "sha256-X7Mz/XhwlbKe8l/rOsVK+ihS2eNY7lhKs4BTROSoXG4="
+	}
+}

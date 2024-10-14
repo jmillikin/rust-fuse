@@ -1,0 +1,10 @@
+--- posix-errno/BUILD
++++ posix-errno/BUILD
+@@ -5,6 +5,7 @@ package(default_visibility = ["//visibility:public"])
+ rust_library(
+     name = "posix-errno",
+     srcs = ["posix-errno.rs"],
++    edition = "2015",
+ )
+ 
+ rust_doc(
