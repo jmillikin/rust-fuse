@@ -178,6 +178,7 @@ mod errno {
 	pub const EINTR: Error = Error;
 	pub const EINVAL: Error = Error;
 	pub const EISDIR: Error = Error;
+	pub const ENODATA: Error = Error;
 	pub const ENOTDIR: Error = Error;
 	pub const ENOENT: Error = Error;
 	pub const EOPNOTSUPP: Error = Error;
