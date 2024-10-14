@@ -1,0 +1,13 @@
+[package]
+name = "fuse-vfs"
+version = "0.0.1"
+authors = ["John Millikin <john@john-millikin.com>"]
+license = "Apache-2.0"
+edition = "2021"
+
+[lib]
+name = "fuse_vfs"
+path = "fuse-vfs.rs"
+
+[dependencies]
+fuse = { version = "0.0.1", path = "../fuse" }
