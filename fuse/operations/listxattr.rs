@@ -145,12 +145,7 @@ pub struct ListxattrNamesWriter<'a> {
 impl<'a> ListxattrNamesWriter<'a> {
 	#[inline]
 	#[must_use]
-	pub fn new(mut buf: &'a mut [u8]) -> ListxattrNamesWriter<'a> {
-		if let Some(max_size) = crate::os::XATTR_LIST_MAX {
-			if buf.len() > max_size {
-				buf = &mut buf[..max_size];
-			}
-		}
+	pub fn new(buf: &'a mut [u8]) -> ListxattrNamesWriter<'a> {
 		Self { buf, position: 0 }
 	}
 

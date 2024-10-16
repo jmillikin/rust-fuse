@@ -153,7 +153,13 @@ pub use operations::{
 	write::{WriteRequestFlag, WriteRequestFlags},
 };
 
+#[cfg(any(
+	doc,
+	target_os = "linux",
+	target_os = "freebsd",
+))]
 pub mod os;
+
 pub mod server;
 
 /// The error type for FUSE operations.
