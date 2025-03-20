@@ -781,7 +781,7 @@ impl fuse_notify_code {
 	pub const FUSE_NOTIFY_RETRIEVE: fuse_notify_code = fuse_notify_code(5);
 	pub const FUSE_NOTIFY_DELETE: fuse_notify_code = fuse_notify_code(6);
 	pub const FUSE_NOTIFY_RESEND: fuse_notify_code = fuse_notify_code(7);
-	pub const FUSE_NOTIFY_CODE_MAX: fuse_notify_code = fuse_notify_code(8);
+	// pub const FUSE_NOTIFY_CODE_MAX: fuse_notify_code = fuse_notify_code(8);
 }
 
 impl core::fmt::Debug for fuse_notify_code {
