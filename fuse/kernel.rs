@@ -369,7 +369,7 @@ pub struct fuse_file_lock {
 	pub start: u64,
 	pub end: u64,
 	pub r#type: u32,
-	pub pid: u32,
+	pub pid: u32, /* tgid */
 }
 
 impl fuse_file_lock {
@@ -809,10 +809,10 @@ pub const FUSE_COMPAT_ENTRY_OUT_SIZE: usize = 120;
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_entry_out {
-	pub nodeid: u64,
-	pub generation: u64,
-	pub entry_valid: u64,
-	pub attr_valid: u64,
+	pub nodeid: u64, /* Inode ID */
+	pub generation: u64, /* Inode generation: nodeid:gen must be unique for the fs's lifetime */
+	pub entry_valid: u64, /* Cache timeout for the name */
+	pub attr_valid: u64, /* Cache timeout for the attributes */
 	pub entry_valid_nsec: u32,
 	pub attr_valid_nsec: u32,
 	pub attr: fuse_attr,
@@ -891,7 +891,7 @@ pub const FUSE_COMPAT_ATTR_OUT_SIZE: usize = 96;
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_attr_out {
-	pub attr_valid: u64,
+	pub attr_valid: u64, /* Cache timeout for the attributes */
 	pub attr_valid_nsec: u32,
 	dummy: u32,
 	pub attr: fuse_attr,
@@ -926,7 +926,7 @@ impl fuse_statx_in {
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_statx_out {
-	pub attr_valid: u64,
+	pub attr_valid: u64, /* Cache timeout for the attributes */
 	pub attr_valid_nsec: u32,
 	pub flags: u32,
 	spare: [u64; 2],
@@ -1052,7 +1052,7 @@ impl fuse_setattr_in {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct fuse_open_in {
 	pub flags: u32,
-	pub open_flags: u32,
+	pub open_flags: u32, /* FUSE_OPEN_... */
 }
 
 impl fuse_open_in {
@@ -1069,7 +1069,7 @@ pub struct fuse_create_in {
 	pub flags: u32,
 	pub mode: u32,
 	pub umask: u32,
-	pub open_flags: u32,
+	pub open_flags: u32, /* FUSE_OPEN_... */
 }
 
 impl fuse_create_in {
@@ -1391,8 +1391,8 @@ pub struct cuse_init_out {
 	pub flags: u32,
 	pub max_read: u32,
 	pub max_write: u32,
-	pub dev_major: u32,
-	pub dev_minor: u32,
+	pub dev_major: u32, /* chardev major */
+	pub dev_minor: u32, /* chardev minor */
 	spare: [u32; 10],
 }
 
@@ -1596,7 +1596,7 @@ pub struct fuse_in_header {
 	pub uid: u32,
 	pub gid: u32,
 	pub pid: u32,
-	pub total_extlen: u16,
+	pub total_extlen: u16, /* length of extensions in 8byte units */
 	padding: u16,
 }
 
