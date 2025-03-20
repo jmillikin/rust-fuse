@@ -182,7 +182,7 @@ impl server::CuseReply for CuseInitResponse<'_> {
 				b"\x00",
 			);
 		}
-		return reply_sender.inner.send_1(self.raw.as_bytes());
+		reply_sender.inner.send_1(self.raw.as_bytes())
 	}
 }
 

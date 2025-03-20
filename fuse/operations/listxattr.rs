@@ -101,7 +101,7 @@ impl server::FuseReply for ListxattrNames<'_> {
 	}
 }
 
-/// }}}
+// }}}
 
 // XattrNamesIter {{{
 
