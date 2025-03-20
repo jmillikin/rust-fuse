@@ -115,8 +115,6 @@ where
 
 	fn release(&self, request: FuseRequest<'_>) {
 		let send_reply = self.conn.reply(request.id());
-		let request = server::ReleaseRequest::try_from(request).unwrap();
-		self.fs.requests.send(format!("{:#?}", request)).unwrap();
 		send_reply.ok_empty().unwrap();
 	}
 }
