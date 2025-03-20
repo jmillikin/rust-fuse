@@ -196,6 +196,32 @@
  *  - add FUSE_SECURITY_CTX init flag
  *  - add security context to create, mkdir, symlink, and mknod requests
  *  - add FUSE_HAS_INODE_DAX, FUSE_ATTR_DAX
+ *
+ *  7.37
+ *  - add FUSE_TMPFILE
+ *
+ *  7.38
+ *  - add FUSE_EXPIRE_ONLY flag to fuse_notify_inval_entry
+ *  - add FOPEN_PARALLEL_DIRECT_WRITES
+ *  - add total_extlen to fuse_in_header
+ *  - add FUSE_MAX_NR_SECCTX
+ *  - add extension header
+ *  - add FUSE_EXT_GROUPS
+ *  - add FUSE_CREATE_SUPP_GROUP
+ *  - add FUSE_HAS_EXPIRE_ONLY
+ *
+ *  7.39
+ *  - add FUSE_DIRECT_IO_ALLOW_MMAP
+ *  - add FUSE_STATX and related structures
+ *
+ *  7.40
+ *  - add max_stack_depth to fuse_init_out, add FUSE_PASSTHROUGH init flag
+ *  - add backing_id to fuse_open_out, add FOPEN_PASSTHROUGH open flag
+ *  - add FUSE_NO_EXPORT_SUPPORT init flag
+ *  - add FUSE_NOTIFY_RESEND, add FUSE_HAS_RESEND init flag
+ *
+ *  7.41
+ *  - add FUSE_ALLOW_IDMAP
  */
 
 /*
@@ -222,7 +248,7 @@
 pub const FUSE_KERNEL_VERSION: u32 = 7;
 
 /* Minor version number of this interface */
-pub const FUSE_KERNEL_MINOR_VERSION: u32 = 36;
+pub const FUSE_KERNEL_MINOR_VERSION: u32 = 41;
 
 /* The node ID of the root inode */
 pub const FUSE_ROOT_ID: u64 = 1;
@@ -255,6 +281,60 @@ pub struct fuse_attr {
 impl fuse_attr {
 	#[inline] #[must_use]
 	pub const fn new() -> fuse_attr { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
+}
+
+/*
+ * The following structures are bit-for-bit compatible with the statx(2) ABI in
+ * Linux.
+ */
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct fuse_sx_time {
+	pub tv_sec: i64,
+	pub tv_nsec: u32,
+	__reserved: i32,
+}
+
+impl fuse_sx_time {
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_sx_time { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct fuse_statx {
+	pub mask: u32,
+	pub blksize: u32,
+	pub attributes: u64,
+	pub nlink: u32,
+	pub uid: u32,
+	pub gid: u32,
+	pub mode: u16,
+	__spare0: [u16; 1],
+	pub ino: u64,
+	pub size: u64,
+	pub blocks: u64,
+	pub attributes_mask: u64,
+	pub atime: fuse_sx_time,
+	pub btime: fuse_sx_time,
+	pub ctime: fuse_sx_time,
+	pub mtime: fuse_sx_time,
+	pub rdev_major: u32,
+	pub rdev_minor: u32,
+	pub dev_major: u32,
+	pub dev_minor: u32,
+	__spare2: [u64; 14],
+}
+
+impl fuse_statx {
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_statx { unsafe { core::mem::zeroed() } }
 	#[inline] #[must_use]
 	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
@@ -324,6 +404,8 @@ pub const FATTR_KILL_SUIDGID: u32 = (1 << 11);
  * FOPEN_CACHE_DIR: allow caching this directory
  * FOPEN_STREAM: the file is stream-like (no file position at all)
  * FOPEN_NOFLUSH: don't flush data cache on close (unless FUSE_WRITEBACK_CACHE)
+ * FOPEN_PARALLEL_DIRECT_WRITES: Allow concurrent direct writes on the same inode
+ * FOPEN_PASSTHROUGH: passthrough read/write io for this open file
  */
 pub const FOPEN_DIRECT_IO: u32 = (1 << 0);
 pub const FOPEN_KEEP_CACHE: u32 = (1 << 1);
@@ -331,6 +413,8 @@ pub const FOPEN_NONSEEKABLE: u32 = (1 << 2);
 pub const FOPEN_CACHE_DIR: u32 = (1 << 3);
 pub const FOPEN_STREAM: u32 = (1 << 4);
 pub const FOPEN_NOFLUSH: u32 = (1 << 5);
+pub const FOPEN_PARALLEL_DIRECT_WRITES: u32 = (1 << 6);
+pub const FOPEN_PASSTHROUGH: u32 = (1 << 7);
 
 /*
  * INIT request/reply flags
@@ -376,6 +460,14 @@ pub const FOPEN_NOFLUSH: u32 = (1 << 5);
  * FUSE_SECURITY_CTX:	add security context to create, mkdir, symlink, and
  *			mknod
  * FUSE_HAS_INODE_DAX:  use per inode DAX
+ * FUSE_CREATE_SUPP_GROUP: add supplementary group info to create, mkdir,
+ *			symlink and mknod (single group that matches parent)
+ * FUSE_HAS_EXPIRE_ONLY: kernel supports expiry-only entry invalidation
+ * FUSE_DIRECT_IO_ALLOW_MMAP: allow shared mmap in FOPEN_DIRECT_IO mode.
+ * FUSE_NO_EXPORT_SUPPORT: explicitly disable export support
+ * FUSE_HAS_RESEND: kernel supports resending pending requests, and the high bit
+ *		    of the request ID indicates resend requests
+ * FUSE_ALLOW_IDMAP: allow creation of idmapped mounts
  */
 pub const FUSE_ASYNC_READ: u32 = (1 << 0);
 pub const FUSE_POSIX_LOCKS: u32 = (1 << 1);
@@ -412,6 +504,16 @@ pub const FUSE_INIT_RESERVED: u32 = (1 << 31);
 /* bits 32..63 get shifted down 32 bits into the flags2 field */
 pub const FUSE_SECURITY_CTX: u64 = (1u64 << 32);
 pub const FUSE_HAS_INODE_DAX: u64 = (1u64 << 33);
+pub const FUSE_CREATE_SUPP_GROUP: u64 = (1u64 << 34);
+pub const FUSE_HAS_EXPIRE_ONLY: u64 = (1u64 << 35);
+pub const FUSE_DIRECT_IO_ALLOW_MMAP: u64 = (1u64 << 36);
+pub const FUSE_PASSTHROUGH: u64 = (1u64 << 37);
+pub const FUSE_NO_EXPORT_SUPPORT: u64 = (1u64 << 38);
+pub const FUSE_HAS_RESEND: u64 = (1u64 << 39);
+
+/* Obsolete alias for FUSE_DIRECT_IO_ALLOW_MMAP */
+pub const FUSE_DIRECT_IO_RELAX: u64 = FUSE_DIRECT_IO_ALLOW_MMAP;
+pub const FUSE_ALLOW_IDMAP: u64 = (1u64 << 40);
 
 /*
  * CUSE INIT request/reply flags
@@ -511,6 +613,37 @@ pub const FUSE_OPEN_KILL_SUIDGID: u32 = (1 << 0);
  */
 pub const FUSE_SETXATTR_ACL_KILL_SGID: u32 = (1 << 0);
 
+/*
+ * notify_inval_entry flags
+ * FUSE_EXPIRE_ONLY
+ */
+pub const FUSE_EXPIRE_ONLY: u32 = (1 << 0);
+
+/*
+ * extension type
+ * FUSE_MAX_NR_SECCTX: maximum value of &fuse_secctx_header.nr_secctx
+ * FUSE_EXT_GROUPS: &fuse_supp_groups extension
+ */
+#[repr(transparent)]
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct fuse_ext_type(pub u32);
+
+impl fuse_ext_type {
+	/* Types 0..31 are reserved for fuse_secctx_header */
+	pub const FUSE_MAX_NR_SECCTX: fuse_ext_type = fuse_ext_type(31);
+	pub const FUSE_EXT_GROUPS: fuse_ext_type = fuse_ext_type(32);
+}
+
+impl core::fmt::Debug for fuse_ext_type {
+	fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
+		match self.0 {
+			31 => fmt.write_str("FUSE_MAX_NR_SECCTX"),
+			32 => fmt.write_str("FUSE_EXT_GROUPS"),
+			_ => write!(fmt, "fuse_ext_type({})", self.0),
+		}
+	}
+}
+
 #[repr(transparent)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct fuse_opcode(pub u32);
@@ -564,6 +697,8 @@ impl fuse_opcode {
 	pub const FUSE_SETUPMAPPING: fuse_opcode = fuse_opcode(48);
 	pub const FUSE_REMOVEMAPPING: fuse_opcode = fuse_opcode(49);
 	pub const FUSE_SYNCFS: fuse_opcode = fuse_opcode(50);
+	pub const FUSE_TMPFILE: fuse_opcode = fuse_opcode(51);
+	pub const FUSE_STATX: fuse_opcode = fuse_opcode(52);
 
 	/* CUSE specific operations */
 	pub const CUSE_INIT: fuse_opcode = fuse_opcode(4096);
@@ -624,6 +759,8 @@ impl core::fmt::Debug for fuse_opcode {
 			48 => fmt.write_str("FUSE_SETUPMAPPING"),
 			49 => fmt.write_str("FUSE_REMOVEMAPPING"),
 			50 => fmt.write_str("FUSE_SYNCFS"),
+			51 => fmt.write_str("FUSE_TMPFILE"),
+			52 => fmt.write_str("FUSE_STATX"),
 			4096 => fmt.write_str("CUSE_INIT"),
 			1048576 => fmt.write_str("CUSE_INIT_BSWAP_RESERVED"),
 			436207616 => fmt.write_str("FUSE_INIT_BSWAP_RESERVED"),
@@ -643,7 +780,8 @@ impl fuse_notify_code {
 	pub const FUSE_NOTIFY_STORE: fuse_notify_code = fuse_notify_code(4);
 	pub const FUSE_NOTIFY_RETRIEVE: fuse_notify_code = fuse_notify_code(5);
 	pub const FUSE_NOTIFY_DELETE: fuse_notify_code = fuse_notify_code(6);
-	pub const FUSE_NOTIFY_CODE_MAX: fuse_notify_code = fuse_notify_code(7);
+	pub const FUSE_NOTIFY_RESEND: fuse_notify_code = fuse_notify_code(7);
+	pub const FUSE_NOTIFY_CODE_MAX: fuse_notify_code = fuse_notify_code(8);
 }
 
 impl core::fmt::Debug for fuse_notify_code {
@@ -655,7 +793,8 @@ impl core::fmt::Debug for fuse_notify_code {
 			4 => fmt.write_str("FUSE_NOTIFY_STORE"),
 			5 => fmt.write_str("FUSE_NOTIFY_RETRIEVE"),
 			6 => fmt.write_str("FUSE_NOTIFY_DELETE"),
-			7 => fmt.write_str("FUSE_NOTIFY_CODE_MAX"),
+			7 => fmt.write_str("FUSE_NOTIFY_RESEND"),
+			8 => fmt.write_str("FUSE_NOTIFY_CODE_MAX"),
 			_ => write!(fmt, "fuse_notify_code({})", self.0),
 		}
 	}
@@ -761,6 +900,42 @@ pub struct fuse_attr_out {
 impl fuse_attr_out {
 	#[inline] #[must_use]
 	pub const fn new() -> fuse_attr_out { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct fuse_statx_in {
+	pub getattr_flags: u32,
+	reserved: u32,
+	pub fh: u64,
+	pub sx_flags: u32,
+	pub sx_mask: u32,
+}
+
+impl fuse_statx_in {
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_statx_in { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
+}
+
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct fuse_statx_out {
+	pub attr_valid: u64,
+	pub attr_valid_nsec: u32,
+	pub flags: u32,
+	spare: [u64; 2],
+	pub stat: fuse_statx,
+}
+
+impl fuse_statx_out {
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_statx_out { unsafe { core::mem::zeroed() } }
 	#[inline] #[must_use]
 	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
@@ -910,7 +1085,7 @@ impl fuse_create_in {
 pub struct fuse_open_out {
 	pub fh: u64,
 	pub open_flags: u32,
-	padding: u32,
+	pub backing_id: i32,
 }
 
 impl fuse_open_out {
@@ -1176,7 +1351,8 @@ pub struct fuse_init_out {
 	pub max_pages: u16,
 	pub map_alignment: u16,
 	pub flags2: u32,
-	unused: [u32; 7],
+	pub max_stack_depth: u32,
+	unused: [u32; 6],
 }
 
 impl fuse_init_out {
@@ -1386,6 +1562,29 @@ impl fuse_fallocate_in {
 	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
+/*
+ * FUSE request unique ID flag
+ *
+ * Indicates whether this is a resend request. The receiver should handle this
+ * request accordingly.
+ */
+pub const FUSE_UNIQUE_RESEND: u64 = (1u64 << 63);
+
+/*
+ * This value will be set by the kernel to
+ * (struct fuse_in_header).{uid,gid} fields in
+ * case when:
+ * - fuse daemon enabled FUSE_ALLOW_IDMAP
+ * - idmapping information is not available and uid/gid
+ *   can not be mapped in accordance with an idmapping.
+ *
+ * Note: an idmapping information always available
+ * for inode creation operations like:
+ * FUSE_MKNOD, FUSE_SYMLINK, FUSE_MKDIR, FUSE_TMPFILE,
+ * FUSE_CREATE and FUSE_RENAME2 (with RENAME_WHITEOUT).
+ */
+pub const FUSE_INVALID_UIDGID: u32 = -1i32 as u32;
+
 #[repr(C)]
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -1397,7 +1596,8 @@ pub struct fuse_in_header {
 	pub uid: u32,
 	pub gid: u32,
 	pub pid: u32,
-	padding: u32,
+	pub total_extlen: u16,
+	padding: u16,
 }
 
 impl fuse_in_header {
@@ -1488,7 +1688,7 @@ impl fuse_notify_inval_inode_out {
 pub struct fuse_notify_inval_entry_out {
 	pub parent: u64,
 	pub namelen: u32,
-	padding: u32,
+	pub flags: u32,
 }
 
 impl fuse_notify_inval_entry_out {
@@ -1570,9 +1770,27 @@ impl fuse_notify_retrieve_in {
 	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
 
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct fuse_backing_map {
+	pub fd: i32,
+	pub flags: u32,
+	padding: u64,
+}
+
+impl fuse_backing_map {
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_backing_map { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
+}
+
 /* Device ioctls: */
 pub const FUSE_DEV_IOC_MAGIC: u32 = 229;
 // #define FUSE_DEV_IOC_CLONE		_IOR(FUSE_DEV_IOC_MAGIC, 0, uint32_t)
+// #define FUSE_DEV_IOC_BACKING_OPEN	_IOW(FUSE_DEV_IOC_MAGIC, 1, struct fuse_backing_map)
+// #define FUSE_DEV_IOC_BACKING_CLOSE	_IOW(FUSE_DEV_IOC_MAGIC, 2, uint32_t)
 
 #[repr(C)]
 #[non_exhaustive]
@@ -1736,6 +1954,49 @@ pub struct fuse_secctx_header {
 impl fuse_secctx_header {
 	#[inline] #[must_use]
 	pub const fn new() -> fuse_secctx_header { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
+}
+
+/*
+ * struct fuse_ext_header - extension header
+ * @size: total size of this extension including this header
+ * @type: type of extension
+ *
+ * This is made compatible with fuse_secctx_header by using type values >
+ * FUSE_MAX_NR_SECCTX
+ */
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct fuse_ext_header {
+	pub size: u32,
+	pub r#type: u32,
+}
+
+impl fuse_ext_header {
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_ext_header { unsafe { core::mem::zeroed() } }
+	#[inline] #[must_use]
+	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
+}
+
+/*
+ * struct fuse_supp_groups - Supplementary group extension
+ * @nr_groups: number of supplementary groups
+ * @groups: flexible array of group IDs
+ */
+#[repr(C)]
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct fuse_supp_groups {
+	pub nr_groups: u32,
+	pub groups: [u32; 0],
+}
+
+impl fuse_supp_groups {
+	#[inline] #[must_use]
+	pub const fn new() -> fuse_supp_groups { unsafe { core::mem::zeroed() } }
 	#[inline] #[must_use]
 	pub const fn as_bytes(&self) -> &[u8] { unsafe { as_bytes(self) } }
 }
